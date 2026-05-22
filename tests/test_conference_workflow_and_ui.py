@@ -56,6 +56,7 @@ class ConferenceWorkflowAndUiTest(unittest.TestCase):
         self.assertIn(":8000${path}", runner)
         self.assertIn("loadLocalConfigOverride", runner)
         self.assertIn("config: localConfigOverride", runner)
+        self.assertIn("secret: localSecret", runner)
         github_token = (root / "app" / "subscriptions.github-token.js").read_text(encoding="utf-8")
         self.assertIn("loadLocalConfigOverride", github_token)
         self.assertIn("192\\.168", runner)
@@ -79,8 +80,12 @@ class ConferenceWorkflowAndUiTest(unittest.TestCase):
         fetch_arxiv = (root / "src" / "maintain" / "fetchers" / "fetch_arxiv.py").read_text(encoding="utf-8")
 
         self.assertIn("DPR_CONFIG_FILE", server)
+        self.assertIn("build_secret_env", server)
+        self.assertIn("DEEPSEEK_API_KEY", server)
+        self.assertIn("SUMMARY_API_KEY", server)
         self.assertIn("config.yaml", server)
         self.assertIn("payload.get(\"config\")", server)
+        self.assertIn("payload.get(\"secret\")", server)
         for text in [main, bm25, embedding, fetch_arxiv]:
             self.assertIn("DPR_CONFIG_FILE", text)
 

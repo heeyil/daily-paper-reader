@@ -30,6 +30,62 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def norm_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def build_secret_env(secret: dict[str, Any] | None) -> dict[str, str]:
+    if not isinstance(secret, dict):
+        return {}
+    summarized = secret.get("summarizedLLM") if isinstance(secret.get("summarizedLLM"), dict) else {}
+    chat_llms = secret.get("chatLLMs") if isinstance(secret.get("chatLLMs"), list) else []
+    first_chat = chat_llms[0] if chat_llms and isinstance(chat_llms[0], dict) else {}
+
+    api_key = norm_text(summarized.get("apiKey") or first_chat.get("apiKey"))
+    base_url = norm_text(summarized.get("baseUrl") or first_chat.get("baseUrl"))
+    model = norm_text(summarized.get("model"))
+    if not model and isinstance(first_chat.get("models"), list) and first_chat.get("models"):
+        model = norm_text(first_chat.get("models")[0])
+
+    env: dict[str, str] = {}
+    if api_key:
+        env["SUMMARY_API_KEY"] = api_key
+        env["DEEPSEEK_API_KEY"] = api_key
+    if base_url:
+        env["SUMMARY_BASE_URL"] = base_url
+        env["DEEPSEEK_BASE_URL"] = base_url
+        env["LLM_PRIMARY_BASE_URL"] = base_url
+    if model:
+        env["SUMMARY_MODEL"] = model
+        env["DEEPSEEK_MODEL"] = model
+
+    reranker = secret.get("rerankerLLM") if isinstance(secret.get("rerankerLLM"), dict) else {}
+    rerank_profile = norm_text(reranker.get("profile"))
+    rerank_provider = norm_text(reranker.get("provider") or reranker.get("type"))
+    rerank_model = norm_text(reranker.get("model"))
+    rerank_key = norm_text(reranker.get("apiKey"))
+    rerank_base = norm_text(reranker.get("baseUrl"))
+    if rerank_profile:
+        env["RERANK_PROFILE"] = rerank_profile
+    if rerank_provider:
+        env["RERANK_PROVIDER"] = rerank_provider
+    if rerank_model:
+        env["RERANK_MODEL"] = rerank_model
+    if rerank_key:
+        env["RERANK_API_KEY"] = rerank_key
+        if rerank_provider == "public_zwwen":
+            env["PUBLIC_RERANK_API_KEY"] = rerank_key
+        if rerank_provider == "siliconflow":
+            env["SILICONFLOW_API_KEY"] = rerank_key
+    if rerank_base:
+        env["RERANK_API_BASE_URL"] = rerank_base
+        if rerank_provider == "public_zwwen":
+            env["PUBLIC_RERANK_API_BASE_URL"] = rerank_base
+        if rerank_provider == "siliconflow":
+            env["SILICONFLOW_RERANK_URL"] = rerank_base
+    return env
+
+
 class RunStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -42,6 +98,7 @@ class RunStore:
         inputs: dict[str, str],
         command: list[str],
         config: dict[str, Any] | None = None,
+        secret: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         run_id = uuid.uuid4().hex[:12]
         run_dir = RUNS_DIR / run_id
@@ -70,18 +127,29 @@ class RunStore:
             "completed_at": None,
             "log_path": str(run_dir / "run.log"),
             "config_path": config_path,
+            "secret_env": build_secret_env(secret),
         }
         with self._lock:
             self._runs[run_id] = run
         thread = threading.Thread(target=self._run_process, args=(run_id,), daemon=True)
         thread.start()
-        return dict(run)
+        return self._public_run(run)
+
+    def _public_run(self, run: dict[str, Any]) -> dict[str, Any]:
+        public = dict(run)
+        public.pop("secret_env", None)
+        return public
 
     def list(self) -> list[dict[str, Any]]:
         with self._lock:
-            return sorted((dict(item) for item in self._runs.values()), key=lambda r: r["created_at"], reverse=True)
+            return sorted((self._public_run(item) for item in self._runs.values()), key=lambda r: r["created_at"], reverse=True)
 
     def get(self, run_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            run = self._runs.get(run_id)
+            return self._public_run(run) if run else None
+
+    def _get_private(self, run_id: str) -> dict[str, Any] | None:
         with self._lock:
             run = self._runs.get(run_id)
             return dict(run) if run else None
@@ -104,7 +172,7 @@ class RunStore:
             run["updated_at"] = utc_now()
 
     def _run_process(self, run_id: str) -> None:
-        run = self.get(run_id)
+        run = self._get_private(run_id)
         if not run:
             return
         log_path = Path(str(run["log_path"]))
@@ -115,12 +183,19 @@ class RunStore:
         config_path = str(run.get("config_path") or "")
         if config_path:
             env["DPR_CONFIG_FILE"] = config_path
+        secret_env = run.get("secret_env") if isinstance(run.get("secret_env"), dict) else {}
+        for key, value in secret_env.items():
+            text = norm_text(value)
+            if text:
+                env[str(key)] = text
         try:
             with log_path.open("w", encoding="utf-8") as log:
                 log.write(f"[local-debug] started_at={utc_now()}\n")
                 log.write(f"[local-debug] cwd={ROOT_DIR}\n")
                 if config_path:
                     log.write(f"[local-debug] config={config_path}\n")
+                if secret_env:
+                    log.write("[local-debug] secret_env=SUMMARY/DEEPSEEK/RERANK variables injected\n")
                 log.write(f"[local-debug] command={' '.join(run['command'])}\n\n")
                 log.flush()
                 proc = subprocess.run(
@@ -244,8 +319,9 @@ class Handler(SimpleHTTPRequestHandler):
             inputs = payload.get("inputs") if isinstance(payload.get("inputs"), dict) else {}
             inputs = {str(k): str(v) for k, v in inputs.items() if v is not None}
             config = payload.get("config") if isinstance(payload.get("config"), dict) else None
+            secret = payload.get("secret") if isinstance(payload.get("secret"), dict) else None
             cmd = build_command(workflow_key, workflow_file, inputs)
-            run = RUN_STORE.create(workflow_key, workflow_file, inputs, cmd, config=config)
+            run = RUN_STORE.create(workflow_key, workflow_file, inputs, cmd, config=config, secret=secret)
             return self._json({"ok": True, "run": run})
         except Exception as exc:
             return self._json({"ok": False, "error": str(exc)}, status=400)

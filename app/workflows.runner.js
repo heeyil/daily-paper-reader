@@ -300,6 +300,9 @@ window.DPRWorkflowRunner = (function () {
       typeof window.SubscriptionsGithubToken.loadLocalConfigOverride === 'function'
       ? window.SubscriptionsGithubToken.loadLocalConfigOverride()
       : null;
+    const localSecret = window.decoded_secret_private && typeof window.decoded_secret_private === 'object'
+      ? window.decoded_secret_private
+      : null;
     const data = await localApiFetch('/api/local/workflows/dispatch', {
       method: 'POST',
       body: JSON.stringify({
@@ -307,6 +310,7 @@ window.DPRWorkflowRunner = (function () {
         workflowFile,
         inputs: dispatchInputs || {},
         config: localConfigOverride && localConfigOverride.config ? localConfigOverride.config : null,
+        secret: localSecret,
       }),
     });
     const run = data.run || {};
