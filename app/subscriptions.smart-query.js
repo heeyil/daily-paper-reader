@@ -1796,9 +1796,18 @@ window.SubscriptionsSmartQuery = (function () {
     el.style.color = color || '#666';
   };
 
+  const isChatAppendRound = (state = modalState) =>
+    Array.isArray(state && state.requestHistory) && state.requestHistory.length > 0;
+
+  const getChatActionMeta = (state = modalState) =>
+    isChatAppendRound(state)
+      ? { label: '追加生成', className: 'dpr-chat-send-btn--append' }
+      : { label: '生成候选', className: 'dpr-chat-send-btn--initial' };
+
   const setSendBtnLoading = (loading) => {
     const btn = modalPanel?.querySelector('[data-action="chat-send"]');
     if (!btn) return;
+    const meta = getChatActionMeta();
     if (loading) {
       btn.disabled = true;
       btn.classList.add('dpr-btn-loading');
@@ -1809,7 +1818,7 @@ window.SubscriptionsSmartQuery = (function () {
     btn.disabled = false;
     btn.classList.remove('dpr-btn-loading');
     const label = btn.querySelector('.dpr-chat-send-label');
-    if (label) label.textContent = '生成候选';
+    if (label) label.textContent = meta.label;
   };
 
   const toggleChatChoice = (kind, index, nextSelected = null) => {
@@ -2114,7 +2123,7 @@ window.SubscriptionsSmartQuery = (function () {
       hasIntentSection && modalState.intent_queries.some((item) => !isDraftSlot(item));
     const hasCandidates = hasKeywords || hasIntentQueries;
     const sourceChoices = renderPaperSourceChoices(modalState.paper_sources || []);
-    const actionLabel = '生成候选';
+    const actionMeta = getChatActionMeta(modalState);
     const kwSection = hasKeywordSection
       ? `<div class="dpr-chat-result-block">
            <div class="dpr-modal-group-title">${buildSelectionTitle('keyword', '用于召回')}</div>
@@ -2169,11 +2178,11 @@ window.SubscriptionsSmartQuery = (function () {
             )}</textarea>
           </label>
           <button
-            class="arxiv-tool-btn dpr-chat-send-btn"
+            class="arxiv-tool-btn dpr-chat-send-btn ${actionMeta.className}"
             data-action="chat-send"
             ${modalState.pending ? 'disabled' : ''}
           >
-            <span class="dpr-chat-send-label">${actionLabel}</span>
+            <span class="dpr-chat-send-label">${actionMeta.label}</span>
             <span class="dpr-mini-spinner" aria-hidden="true"></span>
           </button>
         </div>
