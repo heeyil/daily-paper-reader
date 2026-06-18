@@ -25,3 +25,60 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: agent-LSH
+      description: 请帮我找agent相关的论文，方向侧重为Long-Horizon、self-improving、Harness
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: long horizon agent
+          keyword_cn: 长视界智能体
+          query: agent that operates over long horizons
+        - keyword: self improving agent
+          keyword_cn: 自我改进智能体
+          query: agent that improves itself over time
+        - keyword: agent harnessing
+          keyword_cn: 智能体驾驭技术
+          query: techniques for harnessing and controlling agents
+        - keyword: autonomous agent
+          keyword_cn: 自主智能体
+          query: autonomous agent research planning and improvement
+        - keyword: long term planning agent
+          keyword_cn: 长期规划智能体
+          query: agent capable of long term planning and adaptation
+        - keyword: self improvement ai
+          keyword_cn: 自我改进人工智能
+          query: AI systems that learn and improve through self supervision
+      intent_queries:
+        - query: Research papers on autonomous agents with long horizon planning capabilities
+          query_cn: 关于具有长视界规划能力的自主智能体的研究论文
+          enabled: true
+          source: manual
+          note: ''
+        - query: Self improving agents that evolve their strategies over extended time scales
+          query_cn: 在长时间尺度上演进策略的自我改进智能体
+          enabled: true
+          source: manual
+          note: ''
+        - query: Techniques for harnessing large language model agents in complex environments
+          query_cn: 在复杂环境中驾驭大型语言模型智能体的技术
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-06-18T04:18:03.673Z'
+source_backends:
+  arxiv:
+    papers_table: arxiv_papers
+    use_vector_rpc: true
+    vector_rpc: match_arxiv_papers
+    vector_rpc_exact: match_arxiv_papers_exact
+    use_bm25_rpc: true
+    bm25_rpc: match_arxiv_papers_bm25
+    sync_table: arxiv_sync_status
+    sync_success_value: success
+    schema: public
+    kind: supabase
+    enabled: true
+    url: https://lyucdwgefyfbmaiopjbk.supabase.co
+    anon_key: sb_publishable_lX-oi64Uxyd7SIVv3_w2Uw_MTOojeKq
