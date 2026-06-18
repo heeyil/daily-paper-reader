@@ -1,0 +1,400 @@
+Title: FlyRoute: Self-Evolving Agent Profiling via Data Flywheel for Adaptive Task Routing
+
+URL Source: https://arxiv.org/pdf/2605.22057v1
+
+Published Time: Fri, 22 May 2026 00:39:46 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# FlyRoute: Self-Evolving Agent Profiling via Data Flywheel for Adaptive Task Routing 
+
+Rongjun Li Ziyu Zhou Yihang Wu 
+
+IT Innovation and Research Center, Huawei Technologies 
+
+{lirongjun3, zhouziyu8}@huawei.com wuyihang2@h-partners.com 
+
+Abstract 
+
+Enterprise routers assign queries to expert agents, yet deployed profiles stay static while agents evolve (prompts, tools, models), and de-velopers rarely keep descriptions or exemplars current. We present FlyRoute, a self-evolving profiling framework that grows capability ev-idence from real traffic: dispatch candidates, quality-gate successful pairs into each agent’s success store, periodically distill evidence into learned capability descriptions, and inject those descriptions together with BM25-retrieved suc-cesses into an LLM router. To make this fly-wheel data-efficient, FlyRoute introduces a tar-geted exploration policy that combines profile uncertainty, BM25 relevance, and lexical nov-elty, prioritizing under-profiled agents only for plausible queries and avoiding redundant evi-dence collection. In experiments on our pro-prietary enterprise developer-support dataset of real routed queries, FlyRoute improves a same-backbone zero-shot LLM router from 72.57% to 78.04% with only five seed queries per agent, showing that profile retrieval already strength-ens cold-start routing. After streaming 7,211 labeled training queries through the flywheel, accuracy rises to 89.83% (+17.26pp over zero-shot; +11.79pp over cold start), with consis-tent gains across four expert domains under standard routing accuracy on single-gold test queries. 
+
+1 Introduction 
+
+Multi-Agent Systems (MAS) have emerged as a powerful paradigm for building intelligent appli-cations by decomposing complex problems into sub-tasks handled by specialized agents (Park et al., 2023). Within these systems, the router— responsible for determining which expert agent should handle a given query—plays a crucial role in overall performance. Existing routing methods, whether based on supervised encoder routers (Si-monds et al., 2024), embedding similarity (Piskala et al., 2025), or structure-based learning meth-ods (Zhao et al., 2026), share a common assump-tion: that each agent’s capabilities can be accurately described at registration time and will remain stable thereafter. This assumption breaks down in real-world en-terprise deployments for two reasons. First, agent developers often cannot provide accurate capa-bility descriptions . In practice, an agent’s behavior is determined by its system prompt, the tools it has access to, and the underlying model—all of which are under active development. Writing a precise natural-language description of what an agent can and cannot do is time-consuming, and even when provided, such descriptions quickly become stale as the agent evolves. Representative examples are equally hard to curate: developers may not know which queries best characterize the agent’s com-petence boundaries. Second, agent capabilities change after deployment . A developer may up-date the agent’s prompt to handle new scenarios, integrate a new tool that extends its reach, or switch to a more capable model. When this happens, the original profile registered with the router no longer reflects the agent’s actual behavior, yet the router continues to make decisions based on outdated in-formation. We observe that the root cause of both problems is the static nature of current agent profiling: ca-pabilities are typically captured at registration and seldom revised as agents evolve in production. This motivates a fundamentally different approach— let the system discover and continuously update agent capabilities through actual interactions . The key insight is that user queries are the best probes for profiling agents : when a query is dispatched to an agent and the response is evaluated as high-quality, we obtain direct evidence that the agent can handle that type of query. Over time, accumulated evidence forms a rich, empirically grounded pro-file that is always up-to-date because it is derived  
+
+> arXiv:2605.22057v1 [cs.CL] 21 May 2026 Query
+> LLM Router Retrieve Examples
+> LLM -as -Judge
+> Profile -Aware Routing
+> Adaptive Agent Profiling
+> Agents
+> Inference
+> Cloud
+> AI
+> Hardware
+> OS
+> …
+> Response
+> Capability
+> Distillation
+> Data flywheel
+> Response
+> Seed Des. Example Store Learned Des.
+> Agent Profiles
+> Uncertainty -Driven
+> Exploration
+> Accumulate high -quality
+> query -response pairs
+> Profile
+> Update
+
+Figure 1: FlyRoute closed-loop data flywheel: adaptive profiling, uncertainty-driven exploration, and profile-aware routing. 
+
+from the agent’s current behavior, not from a static description. In this paper, we propose FlyRoute, a self-evolving agent-profiling framework that turns de-ployment interactions into continuously updated routing evidence. Our main contributions are: • We identify and formalize the problem of self-evolving agent profiling : constructing and con-tinuously updating agent capability descrip-tions from deployment interactions, rather than relying on static developer-provided de-scriptions. • We propose an uncertainty-driven exploration policy under bounded per-query dispatch that combines profile uncertainty, lexical query– agent relevance, and redundancy-aware nov-elty to target underspecified agents. • Empirically, FlyRoute raises overall rout-ing accuracy under the same backbone from 72.57% (zero-shot LLM router) to 78.04% at cold start ( k=5 seeds per agent) and further to 89.83% after streaming all 7,211 training queries through the flywheel, with the router consistently dispatching queries to the best-matching expert agent across four enterprise deployment domains. 
+
+2 Related Work 
+
+Performance-Based Routing. Performance-based routing primarily allocates requests across models to balance quality, cost, and latency. Prior work builds cascades and budget-aware selectors (Chen et al., 2023; Ding et al., 2024), benchmark- or preference-trained routing func-tions (Shnitzer et al., 2023; Ong et al., 2024), compatibility embeddings (Zhuang et al., 2025; Chen et al., 2024), universal or graph-based model-fleet routers (Jitkrittum et al., 2025; Feng et al., 2024), and online or confidence-aware allocation policies (Wang et al., 2025; Chuang et al., 2025; Zhang et al., 2025a). Related systems also improve output quality by ranking, blending, or constraint-aware selection over candidate LLMs (Jiang et al., 2023; Piskala et al., 2025). These methods assume a pool of foundation models known in advance and do not maintain deployment-evolving capability profiles for enterprise expert agents. ICL-Router (Wang et al., 2026) is the closest prior work: it summarizes probe-derived query–model histories into compact in-context vectors for retraining-free model selection. Unlike ICL-Router, FlyRoute targets continuously evolving agent profiles revised from live traffic rather than offline probes. 
+
+Task-Based Routing. Task-based routing selects the most suitable specialist agent or domain expert for each query. Existing systems use supervised domain classifiers or reward-distilled routers (Si-monds et al., 2024; Lu et al., 2024), planner-based tool and specialist invocation (Shen et al., 2023; Yao et al., 2023; Wu et al., 2023; Hong et al., 2024), embedding-similarity matching between queries and agent profiles, and LLM- or graph-enhanced routers that exploit preferences, system structure, or explicit rationales (Tran et al., 2025; Zhang et al., 2025b; Zhao et al., 2026). Every method above depends on static agent profiles fixed at registra-tion; FlyRoute targets an orthogonal yet underex-plored problem where agent competence bound-aries change after deployment and profiles must be revised from routed traffic. We focus our baselines on same-backbone comparisons that isolate the value of evolving profiles, as task routers with static initialization such as TCAR (Zhao et al., 2026) are not directly comparable under our streaming proto-col. 
+
+Agent Profiling and Capability Discovery. Ca-pability representation remains less studied. Most routing work assumes developers provide accu-rate descriptions at registration (Zhao et al., 2026), which becomes brittle when agents are repeat-edly updated. FlyRoute borrows the budget-aware spirit of bandit-style exploration (Lattimore and Szepesvári, 2020), allocating limited dispatch bud-get across underspecified agents to build their pro-files efficiently. This differs from active learn-ing (Settles, 2012), which selects examples to la-bel for a fixed classifier: FlyRoute instead selects which agents to probe, folding accepted evidence into continuously evolving capability profiles. 
+
+3 Method 
+
+3.1 Overview 
+
+FlyRoute follows the closed loop in Figure 1. When a new agent joins, it registers with minimal information—a name, an optional seed description, and a few seed examples—and the system initial-izes an empty profile (§3.2). For each incoming query, the routing module decides which agents to dispatch the query to, balancing exploitation (se-lecting agents with strong profiles) and exploration (dispatching to agents with uncertain profiles to gather more evidence) (§3.3). After the selected agents produce responses, a quality gate decides which query–agent pairs enter the success store (§3.2); our default implementation instantiates this gate with LLM-as-Judge on the training stream. Pe-riodically, the system distills accumulated evidence into a refined capability description. This creates a self-reinforcing cycle: better profiles → better routing → higher-quality feedback → even better profiles. 
+
+Task formulation. Each benchmark example pairs a query q with exactly one supervising special-ist a⋆ ∈ A = {a1, . . . , a N }, and held-out routing accuracy measures whether the deployed router predicts a⋆. At training-replay time FlyRoute still merges exploitation candidates with exploration probes into a bounded dispatch set S ⊆ A so sev-eral experts may answer; the quality gate decides which (q, agent ) pairs merit success-store updates (§3.2) while the annotated a⋆ supports evaluation only. 
+
+3.2 Adaptive Agent Profiling 
+
+The agent profile is the core artifact maintained by FlyRoute: rather than relying on a static developer-provided description, each profile evolves continu-ously as the system accumulates deployment evi-dence, and every routing decision is made directly from the current profile state. 
+
+Profile Structure. Each agent ai maintains a pro-file Pi consisting of three elements: • Seed description dseed  
+
+> i
+
+: the natural-language description provided by the developer at regis-tration. This may be incomplete or inaccurate, but it serves as the initial signal for cold-start routing. • Learned description dlearn  
+
+> i
+
+: a refined capa-bility description automatically distilled from accumulated success examples. This is ini-tially empty and is generated once the agent has accumulated enough evidence. • Success example store Ei = {(qj , r j , s j )}: a collection of query–response pairs with qual-ity scores sj ≥ θ, where θ is the quality thresh-old. 
+
+Cold Start. When a new agent ai registers, the system requires only a name, an optional seed description (which may be a rough one-sentence summary), and a small number of seed exam-ples (as few as 5). The profile is initialized as 
+
+Pi = ( dseed  
+
+> i
+
+, ∅, Eseed  
+
+> i
+
+), where Eseed  
+
+> i
+
+contains the seed examples. The learned description is left empty, and the router relies on the seed descrip-tion until enough evidence is collected. 
+
+Profile Update. After a query q is dispatched to agent ai and a response ri is generated, a quality gate assigns a score si ∈ [0 , 1] . If si ≥ θ, the triple 
+
+(q, r i, s i) is added to the success store: 
+
+Ei ← E i ∪ { (q, r i, s i)} (1) 
+
+Capability Distillation. As the success store grows, raw examples become too numerous to use directly in routing prompts. We periodically distill the accumulated evidence into a refined capability description. Specifically, every M new success ex-amples, we prompt an LLM with the agent’s seed description (optionally the prior learned summary), recent successes, and request an updated learned description dlearn  
+
+> i
+
+that captures what the agent 
+
+actually excels at based on empirical evidence— possibly differing from the developer’s registered wording. The distillation step compresses the pro-file into routing-ready natural language and can surface undocumented competence shifts after de-ployment. At routing time, the active description di
+
+(learned if available, else seed) is always injected into the LLM router’s system prompt together with BM25-retrieved success examples, so the classifier sees both a global summary and query-local lexical neighbors from Ei.
+
+3.3 Uncertainty-Driven Exploration 
+
+A naive approach to building agent profiles is to broadcast every query to all agents, but this is wasteful—many queries are irrelevant to certain agents, and the cost of invoking every agent for every query is prohibitive. Conversely, always routing to the best-known agent (pure exploita-tion) starves new or updated agents of the evidence they need to build profiles. FlyRoute introduces an uncertainty-driven exploration strategy that targets profile construction efficiently. 
+
+Profile Uncertainty. We quantify how much ex-ploration pressure agent ai should receive using profile uncertainty computed from its success-store size: 
+
+U (ai) = 11 + |E i|α (2) where |E i| is the number of quality-gated successes and α controls the decay rate. A profile backed by few examples has high U (ai), favoring exploration; as |E i| grows, U (ai) decreases and the agent shifts toward exploitation in the composite scores below. 
+
+Exploration Value. For a query q and an agent ai
+
+not already selected by exploitation, we first define a base exploration value: 
+
+Vexplore (q, a i) = U (ai) · R(q, a i) (3) where U (ai) is the profile uncertainty from Eq. (2) ,and R(q, a i) is the query–agent relevance esti-mated by lexical retrieval . Concretely, we in-dex each agent’s success-store queries with Okapi BM25 and define R(q, a i) as the retriever’s nor-malized relevance score for agent ai (higher when 
+
+q matches that agent’s stored queries). This base score uses relevance as a gate, so uncertain agents are explored only when the incoming query is plau-sibly within their capability region. It also matches our deployment setting and avoids relying on a separate embedding model for exploration. 
+
+Novelty Reweighting. The base score above fil-ters out unrelated agents, but high lexical overlap can also indicate redundancy: dispatching another near-duplicate query may add little new profile ev-idence. We therefore reuse the normalized rele-vance signal from Eq. (3) to derive a lightweight non-redundancy weight: 
+
+N (q, a i) = 1 − R(q, a i) (4) The final exploration score is therefore a relevance-gated novelty reweighting: 
+
+V +
+
+> explore
+
+(q, a i) = U (ai)·R(q, a i)· 1+ β ·N (q, a i)
+
+(5) where β controls how strongly we favor less redun-dant candidates among relevance-matched agents. Equivalently, V + 
+
+> explore
+
+= U (ai)·R(q, a i) 1+ β(1 −
+
+R(q, a i)) : the outer R(q, a i) still suppresses unre-lated agents, while the multiplier gives moderate extra weight to queries that are relevant but not already saturated by the success store. 
+
+Routing Decision. The full routing procedure operates as follows: 1. Exploitation : Use the current router (an LLM with each agent’s active profile description and top-k retrieved success examples) to se-lect a candidate agent set Sexploit .2. Exploration : For each agent ai /∈ S exploit ,compute V +
+
+> explore
+
+(q, a i). Select up to nexplore 
+
+agents with the highest scores among those with V + 
+
+> explore
+
+≥ γ; if that set is empty, fall back to the top-nexplore agents by V + 
+
+> explore
+
+(so explo-ration does not stall when γ is tight relative to the composite score scale). 3. Merge : S = Sexploit ∪ S explore .This strategy ensures that newly onboarded agents with uncertain profiles receive targeted query ex-posure, while irrelevant queries are not wasted on agents that cannot benefit from them. 
+
+3.4 Profile-Aware Routing 
+
+The routing module uses the adaptive profiles to make dispatch decisions. For each incoming query 
+
+q, the router receives: • The agent’s current routing description di =
+
+dlearn  
+
+> i
+
+if available, otherwise dseed  
+
+> i
+
+, inserted ver-batim (up to a length cap) into the LLM’s sys-tem prompt as a per-agent profile summary .• The top-k most relevant success examples from Ei, retrieved by BM25 lexical similarity to q, listed in the same prompt as query-local few-shot evidence. The LLM is instructed to combine the global pro-file summaries—which approximate coverage over the whole success store after distillation—with the retrieved examples that focus on surface similarity to q. This differs from using retrieval alone: when Table 1: Dataset statistics for our enterprise developer-support benchmark.             
+
+> Domain Train Test Cloud Services 3,631 610 AI Accelerator 946 292 Server Hardware 1,044 294 Mobile OS 1,590 102 Total 7,211 1,298
+
+BM25 returns weak or empty hits early in training, the profile summary still carries coarse-grained ca-pability boundaries learned from the stream. During the cold-start phase (when dlearn  
+
+> i
+
+is empty and |E i| is small), the router relies on the seed de-scription in the prompt together with sparse re-trieved seeds. As the flywheel accumulates evi-dence, the distilled description replaces the seed in the active slot and sharpens the global signal seen by the LLM, while the example pool grows for BM25. 
+
+4 Experiments 
+
+4.1 Experimental Setup Dataset and Agents. We evaluate FlyRoute on a proprietary enterprise benchmark collected from real routed user queries. The benchmark covers four business domains—Cloud Services, AI Accel-erator, Server Hardware, and Mobile OS—with the train/test statistics shown in Table 1. We register one expert agent per domain; each agent starts with only a short developer-authored capability descrip-tion and k seed queries, so the initial profiles are deliberately sparse. 
+
+Baselines. We use same-backbone comparisons to isolate the value of evolving profiles. The LLM Router baseline uses Qwen3-8B to dispatch queries from static seed descriptions only, with no retrieved examples. The cold-start FlyRoute variant uses the same BM25+LLM router as the full system, but before any training query is streamed, so each success store Ei contains only the k registration seeds. 
+
+Router configuration. Unless stated otherwise, all experiments use BM25-retrieved successes in a few-shot routing prompt served by Qwen3-8B; hyperparameters and prompts are listed in Ap-pendix B–C. 
+
+Streaming Protocol. We simulate cold start with 
+
+k=5 seed queries per agent, then replay the remain-                        
+
+> Table 2: Main results on our enterprise developer-support dataset. †: BM25 + LLM-fewshot (Qwen3-8B).
+> Cold : seed-only stores before streaming. Flywheel :after all training queries.
+> Method Overall CS AIA SHW MOS LLM Router 72.57 93.61 62.33 37.41 77.45 FlyRoute (cold) †
+> 78.04 82.30 78.42 69.05 77.45 FlyRoute (flywheel) †
+> 89.83 94.26 88.70 81.29 91.18
+> Domain abbreviations: CS , Cloud Services; AIA , AI Accel-erator; SHW , Server Hardware; MOS , Mobile OS.
+
+ing training data as a stream. For each incoming query, FlyRoute routes with the current profiles, adds exploration targets using Eq. (5) , and writes accepted query–agent pairs into the corresponding success store. The default acceptance gate is LLM-as-Judge with threshold si ≥ θ. All checkpoints are evaluated on the held-out test set under same configuration. 
+
+Metrics. Training and test splits provide exactly one gold expert per query. Each test prediction names a single domain using the profile sum-maries and BM25-retrieved exemplars. Overall accuracy is the fraction of test queries whose dis-patch matches the supervising gold route. Per-domain columns report the accuracy restricted to queries whose gold annotation names that domain (class-conditional accuracy under the single-label protocol). Improvements are stated in percentage points (pp). 
+
+4.2 Main Results 
+
+Table 2 shows that FlyRoute improves routing ac-curacy. Seed-only retrieval already outperforms the zero-shot LLM Router (78.04% vs. 72.57%), and the full flywheel reaches 89.83% after processing the training stream. This is a +17.26pp gain over the zero-shot router and +11.79pp over cold start, with improvements across all four domains. The comparison separates retrieval-augmented cold start from self-evolution: seed examples pro-vide immediate lexical grounding, while the fly-wheel expands Ei, probes underspecified agents, and refreshes profile summaries as more traffic is observed. Table 3: Data flywheel effect: held-out routing accuracy (%) after streaming N training queries. Row ∆: gain from N =0 to N =7 ,211 .                                         
+
+> Queries Overall CS AIA SHW MOS 078.04 82.30 78.42 69.05 77.45 500 84.05 93.61 83.56 64.63 84.31 1,000 85.13 92.79 85.62 68.71 85.29 2,000 85.75 91.80 86.64 72.11 86.27 4,000 88.44 93.77 86.99 78.57 89.22 7,211 89.83 94.26 88.70 81.29 91.18
+> ∆+11.79 +11.96 +10.28 +12.24 +13.73
+> Abbreviations: Table 2.
+
+Table 4: Exploration strategy comparison after 500 streamed training queries. ∆: held-out overall accu-racy gain from N =100 to N =500 .           
+
+> Strategy Final Acc. (%) ∆(pp) No Exploration 81.05 +3.01
+> ϵ-Greedy ( ϵ=0 .3)81.90 +3.86 Random Broadcasting 81.97 +3.93
+> FlyRoute ( k=5, flywheel) 84.05 +6.01
+
+4.3 Data Flywheel Effect 
+
+To measure whether routing improves as profile evidence accumulates, we track held-out accuracy after increasing amounts of streamed training data. Table 3 reports checkpoints from the initial five-seed state through the full 7,211-query stream. The flywheel produces a clear upward trend. Overall accuracy rises from 78.04% at cold start to 89.83% after the full stream (+11.79pp), and all domains improve by the final checkpoint. 
+
+4.4 Exploration Strategy Comparison 
+
+We next isolate the exploration policy by hold-ing the router, seed profiles, streaming order, and LLM-as-Judge acceptance gate fixed. Table 4 re-ports held-out accuracy after 500 streamed training queries, when profiles are still sparse enough for exploration quality to matter. At N =500 , FlyRoute reaches 84.05%, outper-forming random broadcast (81.97%), ϵ-greedy ex-ploration (81.90%), and pure exploitation (81.05%). Because random broadcast uses the same realized two-agent dispatch budget but performs worse, the result indicates that which agents receive probes matters beyond call volume alone. Late-stream results are discussed in Appendix B. 
+
+4.5 Ablation Study 
+
+Table 5 ablates the main sources of routing evi-dence after the full training stream, keeping the 
+
+Table 5: Ablation study after the full training stream.                               
+
+> Config. Overall CS AIA SHW MOS FlyRoute (flywheel)
+> 89.83 94.26 88.70 81.29 91.18
+> w/o Novelty 89.06 94.43 88.36 79.59 86.27 w/o Distill. 89.29 94.43 86.99 81.63 87.25 w/o Explore 88.52 93.44 88.70 77.89 89.22 w/o Judge 88.44 91.15 91.44 79.93 88.24
+> Abbreviations: Table 2.
+
+seed setting, backbone router, and metric fixed. The strongest degradations come from loosen-ing quality control or removing targeted probes: unconditionally accepting every dispatched pair (Judge gate removed) lowers overall accuracy by 1.39pp (to 88.44%), and switching to exploitation-only routing lowers it by 1.31pp (to 88.52%), with Server Hardware hit hardest ( −3.40pp relative to FlyRoute on Server Hardware), aligning with sparse domains that still need exploratory cover-age. Smaller-but-consistent gaps appear when we weaken redundancy-aware exploration or distil-lates: stripping the novelty multiplier in Eq. (5) costs 0.77pp overall (89.06%), and disabling pe-riodic capability distillation costs 0.54pp overall (89.29%), even though lexical stores are large; the distill ablation concentrates its loss on Mo-bile OS ( −3.93pp there), implying compressed summaries remain useful precisely when retrieval-heavy prompts blur domain boundaries. 
+
+5 Conclusion 
+
+We have presented FlyRoute, a self-evolving agent profiling framework that continuously updates agent capability profiles from deployment inter-actions rather than relying on static developer-provided descriptions. FlyRoute implements this through a data flywheel of adaptive profiling with capability distillation, uncertainty-driven explo-ration, and profile-aware routing. On our enter-prise developer-support benchmark, cold-start rout-ing with five seeds reaches 78.04% overall, above a zero-shot LLM router with the same backbone (72.57%); after streaming all 7,211 training queries, accuracy reaches 89.83% (+11.79pp vs. cold start, +17.26pp vs. LLM), with strong gains across all four domains. Future work includes quality-aware example eviction, more expressive profile encoders, and scaling to larger agent fleets in open-domain settings. Limitations 
+
+Our evaluation is based on proprietary enterprise routing logs from a single developer-support prod-uct surface with four domain-specific routes. Al-though this setting reflects a realistic industrial de-ployment, it does not yet demonstrate transfer to other industries, languages, open-domain agents, or substantially larger agent fleets. The proprietary na-ture of the logs also limits full public reproducibil-ity beyond the reported statistics and paraphrased examples. FlyRoute relies on feedback quality during pro-file updates. In our default training setup, the qual-ity gate uses LLM-as-Judge scores, which may disagree with curator-provided gold routes and in-troduce judge noise into the evolving profiles. Ro-bustness to judge prompt variants, judge-model swaps, and calibration choices remains an open question. Our experiments also do not fully characterize long-term deployment dynamics. When agents change after deployment, such as through prompt edits, tool updates, or model swaps, adaptation in our runs relies only on the ongoing flywheel rather than explicit drift detection or drift-triggered re-exploration. Finally, our evaluation focuses on routing accuracy rather than serving efficiency. Fu-ture work should quantify deployment cost and la-tency, including BM25 refresh overhead, additional agent dispatch cost, and distillation frequency un-der production-scale service constraints. 
+
+References 
+
+Lingjiao Chen, Matei Zaharia, and James Zou. 2023. FrugalGPT: How to use large language models while reducing cost and improving performance. Preprint ,arXiv:2305.05176. Shuhao Chen, Weisen Jiang, Baijiong Lin, James T. Kwok, and Yu Zhang. 2024. RouterDC: Query-based router by dual contrastive learning for assembling large language models. In Advances in Neural Infor-mation Processing Systems , volume 37. Yu-Neng Chuang, Prathusha Kameswara Sarma, Parik-shit Gopalan, John Boccio, Sara Bolouki, Xia Hu, and Helen Zhou. 2025. Learning to route LLMs with confidence tokens. In Proceedings of the 42nd Inter-national Conference on Machine Learning , volume 267 of Proceedings of Machine Learning Research ,pages 10859–10878. Dan Ding, Aditi Mallick, Congxu Wang, Robert Sim, Sudha Mukherjee, Viktor Ruhle, Laks V. S. Laksh-manan, and Ahmed H. Awadallah. 2024. Hybrid LLM: Cost-efficient and quality-aware query routing. 
+
+Preprint , arXiv:2404.14618. Tao Feng, Yanzhen Shen, and Jiaxuan You. 2024. GraphRouter: A graph-based router for LLM selec-tions. Preprint , arXiv:2410.03834. Sirui Hong, Mingchen Zhuge, Jonathan Chen, Xiawu Zheng, Yuheng Cheng, Jinlin Wang, Ceyao Zhang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, Liyang Zhou, Chenyu Ran, Lingfeng Xiao, Chenglin Wu, and Jürgen Schmidhuber. 2024. MetaGPT: Meta pro-gramming for a multi-agent collaborative framework. In International Conference on Learning Representa-tions .Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. 2023. LLM-blender: Ensembling large language models with pairwise ranking and generative fusion. In Pro-ceedings of the 61st Annual Meeting of the Associa-tion for Computational Linguistics (Volume 1: Long Papers) , pages 14165–14178, Toronto, Canada. As-sociation for Computational Linguistics. Wittawat Jitkrittum, Harikrishna Narasimhan, Ananda Theertha Rawat, Jyoti Juneja, Charlie Wang, Zhichen Wang, Albert Go, Ching-Yun Lee, Prateek Shenoy, Rina Panigrahy, and 1 others. 2025. Universal model routing for efficient LLM inference. 
+
+Preprint , arXiv:2502.08773. Tor Lattimore and Csaba Szepesvári. 2020. Bandit Algorithms . Cambridge University Press. Keming Lu, Hongyi Yuan, Runji Lin, Junyang Lin, Zheng Yuan, Chang Zhou, and Jingren Zhou. 2024. Routing to the expert: Efficient reward-guided en-semble of large language models. In Proceedings of the 2024 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 1964–1974, Mexico City, Mexico. As-sociation for Computational Linguistics. Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gonzalez, Mo-hammed Waleed Kadous, and Ion Stoica. 2024. RouteLLM: Learning to route LLMs with preference data. Preprint , arXiv:2406.18665. Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Patrick Liang, and Michael S. Bernstein. 2023. Generative agents: Inter-active simulacra of human behavior. In Proceedings of the 36th Annual ACM Symposium on User Inter-face Software and Technology , pages 1–22. Dylan B. Piskala, Vignesh Raajaa, Sourabh Mishra, and Brandon Bozza. 2025. Dynamic LLM routing and se-lection based on user preferences: Balancing perfor-mance, cost, and ethics. Preprint , arXiv:2502.16696. Burr Settles. 2012. Active Learning , volume 6 of Syn-thesis Lectures on Artificial Intelligence and Machine Learning . Morgan and Claypool Publishers. Yongliang Shen, Kaitao Song, Xu Tan, Dongsheng Li, Weiming Lu, and Yueting Zhuang. 2023. Hugging-GPT: Solving AI tasks with ChatGPT and its friends in Hugging Face. Preprint , arXiv:2303.17580. Tal Shnitzer, Allan Ou, Mauro Silva, Kate Soule, Yilei Sun, Josh Solomon, Nate Thompson, and Mikhail Yurochkin. 2023. Large language model routing with benchmark datasets. Preprint , arXiv:2309.15789. Toby Simonds, Kemal Kurniawan, and Jey Han Lau. 2024. MoDEM: Mixture of domain expert models. 
+
+Preprint , arXiv:2410.07490. Charles Tran, Sarim Paracha, Abdul Hafeez, and Shiyi Chen. 2025. Arch-router: Aligning LLM routing with human preferences. Preprint ,arXiv:2506.16655. Chenxu Wang, Hao Li, Yiqun Zhang, Linyao Chen, Jian-hao Chen, Ping Jian, Peng Ye, Qiaosheng Zhang, and Shuyue Hu. 2026. ICL-Router: In-context learned model representations for LLM routing. In Proceed-ings of the AAAI Conference on Artificial Intelligence ,volume 40, pages 33413–33421. Xinyuan Wang, Yanchi Liu, Wei Cheng, Xujiang Zhao, Zhengzhang Chen, Wenchao Yu, Yanjie Fu, and Haifeng Chen. 2025. MixLLM: Dynamic rout-ing in mixed large language models. Preprint ,arXiv:2502.18482. Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang, Xiaoyun Zhang, Shaokun Zhang, Jiale Liu, Ahmed Hassan Awadal-lah, Ryen W. White, Doug Burger, and Chi Wang. 2023. AutoGen: Enabling next-gen LLM appli-cations via multi-agent conversation. Preprint ,arXiv:2308.08155. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations .Tony Zhang, Ali Mehradfar, Dimitris Dimitriadis, and Salman Avestimehr. 2025a. Leveraging uncertainty estimation for efficient LLM routing. Preprint ,arXiv:2502.11021. Zihao Zhang, Kaiyuan Shi, Zheng Yuan, Zhengyang Wang, Tianhua Ma, Keerthiram Murugesan, Vittoria Galassi, Chuang Zhang, and Ye Ye. 2025b. Agen-tRouter: A knowledge-graph-guided LLM router for collaborative multi-agent question answering. 
+
+Preprint , arXiv:2510.05445. J. Zhao and 1 others. 2026. TCAndon-Router: Adap-tive reasoning router for multi-agent collaboration. 
+
+Preprint , arXiv:2601.04544. Richard Zhuang, Tianhao Wu, Zhaojin Wen, Andrew Li, Jiantao Jiao, and Kannan Ramchandran. 2025. EmbedLLM: Learning compact representations of large language models. Preprint , arXiv:2410.02223. 
+
+A Illustrative Training Queries 
+
+Table 6 illustrates typical user questions in our en-terprise developer-support benchmark (§4). We include one example per gold domain, drawn at random within that domain from the training split so coverage is balanced across the four experts. Each row reflects the single-label supervision used in our experiments. Wording is paraphrased in English and lightly redacted for publication; it may differ from raw logs. 
+
+B Implementation Details 
+
+The router is a BM25 retriever over each agent’s stored success queries coupled with Qwen3-8B (API access) under a few-shot prompt design. We retrieve the top 20 queries per agent for scoring and prompt construction. The active profile text ( dlearn 
+
+> i
+
+if distilled, otherwise dseed  
+
+> i
+
+) is placed in the system prompt together with retrieved snippets, each trun-cated to 450 characters. Capability distillation calls the same model after every M =20 new accepts. Exploration uses α=0 .5, quality threshold θ=0 .7,
+
+β=0 .5, and γ=0 .06 applied to V +
+
+> explore
+
+. We add at most nexplore =2 exploration agents per query, with rank-based fallback when too few pass γ, and treat a profile as well explored once |E i| ≥ 10 . Unless otherwise noted, we stream the full training split in chronological order. Training-time acceptance uses LLM-as-Judge scores from the same Qwen3-8B backbone ( si ≥ θ); optional diagnostics replace that judge with deterministic acceptance from the annotated route, eliminating judge variance when-ever labels exist. Capability distillation uses the user-message template in Figure 3. The LLM-as-Judge gate uses Figure 4. 
+
+Additional experiment notes. The exploration-strategy comparison in Table 4 stops at 500 training queries because early profile construction is where exploration policies are most distinguishable. Con-tinuing the same sweep through all 7,211 queries narrows the gaps among substitutes: no exploration and ϵ-greedy both finish at 88.52% routing accu-racy, while random broadcast reaches 88.06%. This convergence is expected because exploitation and large retrieval stores dominate once many accepted examples have accumulated. In the distillation abla-tion, the modest aggregate drop should not be read as evidence that distillation is unnecessary: under strong BM25 retrieval and large success stores, re-trieved lexical neighbors already carry much of the Query (English paraphrase) Gold domain 
+
+How should a Gearbox workflow elastically scale a Deadline render cluster when driving Maya batch rendering on the cloud? Cloud Services How do I obtain the base OS image (environment setup for device toolchain)? AI Accelerator What Apache Traffic Server (ATS) version is recommended on Kunpeng-related server stacks, and why? Server Hardware What are compatibility requirements and usage steps for cross-device clipboard features on HarmonyOS-class client OS? Mobile OS 
+
+Table 6: Illustrative training-split queries (one per domain). English paraphrases for readability. 
+
+signal, while distilled summaries remain useful for compact routing context and domains with weaker seed coverage. 
+
+C Prompt Design 
+
+To demonstrate the exact instructions used in our system, we present the prompts that guided rout-ing, distilled profile updates, and training-time acceptance. Figures 2–4 summarize the rout-ing system prompt, the capability-distillation prompt, and the LLM-as-Judge prompts aligned with dataset/llm_as_judge.py (English transla-tions of the deployed Chinese templates). FlyRoute router — system prompt ( English translation )
+
+You are an expert at routing queries. Combine the Agent profile summary with the BM25 retrieval examples :The profile gives a global summary of successful trajectories; the retrieval lines highlight past successes lexically close to the current user query. 
+
+[Initial developer descriptions] 
+
+1. Cloud Services: Cloud product resources, tools, services, specifications, purchase, documentation, etc. 2. AI Accelerator: Ascend stack, CANN, MindSpore, operators, model training and inference tooling, etc. 3. Server Hardware: Kunpeng, openEuler, DevKit, BoostKit, HPC, acceleration libraries, storage, etc. 4. Mobile OS: HarmonyOS, Ability Kit, ArkTS, ArkUI, HarmonyOS Next, etc. 
+
+[Agent profile summary] 
+
+Below are global capability statements for each route (seed text at registration; after distillation, summaries induced from historical successes, to capture shared competence beyond the retrieved examples): 
+
+{profile_block} 
+
+[BM25 retrieval examples] (successful queries close to the current query and their supervising route label) 
+
+{examples_section} 
+
+[Output rules] 
+
+1. Output exactly one agent dispatch per query: choose one of Cloud Services, AI Accelerator, Server Hardware, Mobile OS defined in the deployment template. 2. Output route names only—no explanation or extra text. 
+
+Figure 2: Prompt for FlyRoute. Notice that the live system prompt uses Chinese-language tokens; English labels shown here for readability. FlyRoute capability distillation — user prompt ( English translation )
+
+You are an expert at analyzing AI agent capabilities. From the information below, produce a concise capability description for the agent. 
+
+[Agent id] 
+
+{agent_id} 
+
+[Developer’s initial description] 
+
+{seed_desc} (if missing, code fills a fixed empty-valued sentinel string )
+
+{prev_learned_block} 
+
+[Recent successful user queries handled by this agent (excerpt, at most 30)] 
+
+{examples} (numbered lines; code inserts a placeholder line if the list is empty )
+
+[Requirements] 
+
+1. Ground the summary only in queries that actually succeeded; do not fabricate capabilities. 2. If empirical behavior differs from the initial description or the prior distilled summary, follow the newest evidence; retain prior wording that still holds and revise only when evidence conflicts. 3.Keep the description concise: ≤500 characters in the deployed Chinese template (We state these rules in English for readability). 4. If no prior distilled description exists, {prev_learned_block} is omitted. 
+
+[Output format] 
+
+<Description> . . . capability text (within the character cap) . . . </Description> 
+
+Figure 3: Distillation prompt for FlyRoute. Notice that the live template is in Chinese; we translate it to English here for readability. FlyRoute LLM-as-Judge — prompts ( English translation )
+
+system prompt 
+
+You are an expert in intent understanding. You evaluate response quality to determine whether a query–response pair should be accepted into a success-store exemplar corpus. You receive a paired input: the user’s factual query q and candidate response r from a routed expert. r may be partial, vague, produced by tooling or LLMs (including placeholders, refusals, or missing answers). Your task is not to rewrite the answer but to assign a scalar score expressing whether accepting (q, r ) into a “success-store” exemplar corpus is warranted. 
+
+[Business-scope boundaries] (consistent with four expert routes) 1. Cloud Services: Cloud product resources, tools, services, specifications, purchase, documentation, etc. 2. AI Accelerator: Ascend stack, CANN, MindSpore, operators, model training and inference tooling, etc. 3. Server Hardware: Kunpeng, openEuler, DevKit, BoostKit, HPC, acceleration libraries, storage, etc. 4. Mobile OS: HarmonyOS, Ability Kit, ArkTS, ArkUI, HarmonyOS Next, etc. 
+
+[Scoring principles] 
+
+1. r must address the technical subject of q; off-topic chatter, unrelated marketing, or empty acknowledgments lowers the score. 2. If r sprawls largely outside those four competencies with weak grounding, penalize under “off-topic/low applicability.” 3. Responses that are blank, boilerplate refusals, or contain no substantive guidance should score ≤ 0.35 .4. Partially helpful but misses the crux earns mid-range scores; only concrete, actionable, mostly non-contradictory answers earn high scores (watch for hallucination). 5. The FlyRoute gate typically applies θ ≈ 0.70 : slightly beyond “barely usable” denotes evidence worth caching. 
+
+[Optional calibration block] Few-shot excerpts can be inlined here via {examples_optional} when enabled in code. 
+
+[Output schema] Return a single JSON object. Use ASCII quotes only; omit Markdown wrappers. The mandatory key is quality_score , whose value must be a float in [0 .0, 1.0] (two decimal places optional). Optionally add reason ;parsers consume only quality_score .
+
+user message template 
+
+(When available) This response is attributed to route {routed_agent_id} (deployment tokens: Cloud-Services ,
+
+AI-Accelerator , Server-Hardware , Mobile-OS ). Consider whether r reads like domain-plausible developer guidance for that route. 
+
+[Query] 
+
+{query} 
+
+[Candidate response] 
+
+{response} 
+
+Output JSON obeying the system instructions. 
+
+Figure 4: LLM-as-Judge prompts for FlyRoute. The deployed templates are Chinese; we convert them to English for readability. FlyRoute Learned descriptions ( English translation )
+
+[Cloud Services] 
+
+The agent provides broad cloud resource management and service coverage across compute, storage, networking, databases, security, and DevOps. It supports configuration, monitoring, and management of resources such as RDS, Redis, OBS, and GaussDB (DWS), including usage/cost reporting, SKU queries, automated deployment, and resource reclamation. It supports IAM, service provisioning, API guidance, and SDK operations, and can assist with database migration, certificate management, container configuration, and code checks. It supports services such as CCE, CDN, CodeArts Check, and container image services—from resource creation through permission assignment. It answers questions on cloud product capabilities, deployment, troubleshooting, and API usage for developers, operators, and enterprise workloads. It supports OCR, FRS, SparkRTC, and related services, and provides cost breakdowns, capacity planning, security auditing, and automated operations for enterprise cloud management. 
+
+[AI Accelerator] 
+
+The agent answers questions on the Ascend AI platform: CANN, MindSpore, operator development, and train-ing/inference toolchains. It supports deploying and configuring PyTorch, MindSpore, and similar frameworks on bare metal and in Docker, with guidance on environment setup, device attach, and network parameters. It supports Ascend Deployer, MindCluster, MindEdge, and related components—logging, resource queries, and mode switching. It supports virtualized instances and Atlas inference configuration and tuning (e.g., vNPU management, VDEC core counts). It documents interfaces such as dcmi_subscribe_fault_event and alarm resource queries, including behavior, parameters, and constraints. It supports common troubleshooting such as missing modules and memory-interface adjustments, with strong toolchain and systems integration. It clarifies API behavior, parameters, and constraints—including PyTorch native API coverage and precision_tool deployment—and supports plugin development, SDK configuration, version compatibility checks, and error-code retrieval for training, inference, deployment, and operations. 
+
+[Server Hardware] 
+
+The agent focuses on Kunpeng processors, the openEuler OS, the DevKit toolchain, the BoostKit acceleration suite, and HPC. It provides end-to-end support for development and debugging, system deployment, performance optimization, and security configuration. It supports scenarios such as Kunpeng–x86 difference analysis, acceleration-library integra-tion, network and I/O tuning, compiler optimization, MPI communication tuning, GPU performance tuning, memory management, and NUMA-node analysis. It can handle technical issues including header parsing, tool usage, compile verification, instruction substitution, platform difference analysis, file permissions, authentication service configuration, and storage-system debugging. It has successfully addressed concrete problems such as TEEC API usage, Hyper MPI configuration, KVSIP complex arithmetic, compiler option tuning, Kbox container information collection, Ceph RPM builds, GPU performance optimization, Jenkins cluster setup, TrustZone RSA operations, BoostKit feature configuration, OpenStack troubleshooting, and secure-OS testing. It spans the full chain of development, operations, and performance tuning, and is suited to technical consulting and issue resolution in the Kunpeng ecosystem. 
+
+[Mobile OS] 
+
+The agent focuses on full-stack HarmonyOS development: system architecture, API usage, component development, and platform rules. It supports struct parsing and functional guidance for ArkTS, ArkUI, Ability Kit, ArkGraphics, and related modules; API change lookup; migration guidance; and HarmonyOS NEXT adaptation plans. It supports device adaptation cases such as round-screen wearables and physical-keyboard input anomalies. It supports release configuration, SDK review rule interpretation, personal-data collection compliance, and marketplace qualification review. It can interpret structs such as OH_RecorderInfo, ColorXY, and Rdb_Statistic, and supports scenarios including Vulkan surface creation, audio encoder instantiation, two-way binding for Slider, and reuse patterns for ListItemGroup with LazyForEach. It applies to HarmonyOS 5.0.0 and NEXT, including Netstack certificate-chain verification, Connectivity Kit Bluetooth scanning, and ArkWeb navigation. It has handled diverse requests such as sensor access, payment merchant configuration, Image module queries, Crypto key derivation, AbilityDelegatorArgs usage, ArkTS array creation, Cangjie multithreading, API maintenance status, struct member parsing, in-app charging configuration, and error-code diagnosis. 
+
+Figure 5: FlyRoute learned descriptions. The deployed templates are Chinese; we convert them to English for readability.
