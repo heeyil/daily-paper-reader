@@ -1,0 +1,951 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-06-19T21:25:18.836495+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 19,
+    "deep_cap": 6,
+    "deep_selected": 11,
+    "quick_candidates": 25,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2606.20002v1",
+      "source": "arxiv",
+      "title": "Connect the Dots: Training LLMs for Long-Lifecycle Agents with Cross-Domain Generalization Via Reinforcement Learning",
+      "abstract": "This work presents a general framework for training large language models (LLMs) to \"Connect the Dots\" (CoD), a meta-capability required by long-lifecycle agents: as an LLM-based AI agent gets deployed in an environment, it solves a long sequence of tasks while continuously exploring the environment, learning from its own experiences, and iteratively self-updating its context about the environment, thereby achieving progressively better performance on future tasks conditioned on the updated context. Major components of the CoD framework include: (1) algorithm design and infrastructure for end-to-end reinforcement learning (RL) with long rollout sequences interleaving solve-task and update-context episodes; (2) tasks and environments for incentivizing and eliciting the targeted meta-capability in LLMs during training, as well as for faithfully measuring progress during evaluation. We present proof-of-concept implementations of the CoD framework, including a GRPO-style RL algorithm with fine-grained credit assignment, as well as tasks and environments tailored to the targeted meta-capability (rather than domain-specific LLM capabilities or standard task-by-task RL). Empirical results validate the efficacy of end-to-end RL training in the CoD setting, and demonstrate the potential for out-of-distribution generalization -- within the training domains, across different domains, and from CoD to Ralph-loop settings -- of the elicited meta-capability. Our investigation of CoD connects several lines of prior works, and opens up new opportunities for advancing LLMs and AI agents. To facilitate further research and applications, we release our implementations at \\url{https://github.com/agentscope-ai/Trinity-RFT/tree/research/cod/examples/research_cod}.",
+      "authors": [
+        "Yanxi Chen",
+        "Weijie Shi",
+        "Yuexiang Xie",
+        "Boyi Hu",
+        "Yaliang Li",
+        "Bolin Ding",
+        "Jingren Zhou"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-18T09:38:45+00:00",
+      "link": "https://arxiv.org/pdf/2606.20002v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "training LLMs for long-lifecycle self-improving agents via RL",
+      "llm_evidence_cn": "通过强化学习训练长期生命周期自改进代理",
+      "llm_evidence": "通过强化学习训练长期生命周期自改进代理",
+      "canonical_evidence": "通过强化学习训练长期生命周期自改进代理",
+      "llm_tldr_en": "Proposes Connect the Dots (CoD) framework to train LLMs for long-lifecycle agents that learn and self-improve via reinforcement learning.",
+      "llm_tldr_cn": "长时间运行的代理需要持续学习和自改进能力。本文提出“连接点”（CoD）框架，通过端到端强化学习训练LLM，使其在长序列任务中交替执行和更新上下文，实现跨领域泛化和性能提升。框架包含长轨迹强化学习算法和基础设施，实验表明代理在多个领域随环境交互逐步提升任务成功率，为长期自主代理训练提供了可行方案。",
+      "llm_tldr": "长时间运行的代理需要持续学习和自改进能力。本文提出“连接点”（CoD）框架，通过端到端强化学习训练LLM，使其在长序列任务中交替执行和更新上下文，实现跨领域泛化和性能提升。框架包含长轨迹强化学习算法和基础设施，实验表明代理在多个领域随环境交互逐步提升任务成功率，为长期自主代理训练提供了可行方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Self improving agents that evolve their strategies over extended time scales",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.14302v1",
+      "source": "arxiv",
+      "title": "Retrospective Progress-Aware Self-Refinement for LLM Agent Training",
+      "abstract": "LLM-based agents trained with reinforcement learning optimize step-wise action prediction but lack metacognitive awareness of task progress, inducing a gap that hinders long-horizon scaling. A pilot study reveals that online progress prompting hurts performance while retrospective demonstrations help, yet this capability cannot emerge from outcome-reward training alone. We present RePro, Retrospective Progress-Aware Training, a framework that trains agents to self-generate progress signals via a forward-then-reflect rollout paradigm: the agent executes actions online, then retrospectively reassesses its step-wise progress given the completed trajectory and known outcome. RePro initializes with a Retrospection Warmup that teaches reflection format from minimal external demonstrations, then further trains through RePro-PO with a composite reward that produces self-generated signals without continuous external supervision. Experiments on WebShop, ALFWorld, and Sokoban show that RePro enhances the Qwen family's performance, with up to $12\\%$ absolute success rate gains.",
+      "authors": [
+        "Xinbei Ma",
+        "Congmin Zheng",
+        "Jiyang Qiu",
+        "Jiale Hong",
+        "Yao Yao",
+        "Xiangmou Qu",
+        "Jiaxin Yin",
+        "Xingyu Lou",
+        "Jun Wang",
+        "Weiwen Liu",
+        "Weinan Zhang",
+        "Zhuosheng Zhang",
+        "Hai Zhao"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-12T09:38:47+00:00",
+      "link": "https://arxiv.org/pdf/2606.14302v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "addresses long-horizon scaling by training agents to self-generate progress signals retrospectively",
+      "llm_evidence_cn": "通过训练智能体回顾性地自生成进度信号来解决长周期扩展问题",
+      "llm_evidence": "通过训练智能体回顾性地自生成进度信号来解决长周期扩展问题",
+      "canonical_evidence": "通过训练智能体回顾性地自生成进度信号来解决长周期扩展问题",
+      "llm_tldr_en": "Proposes RePro, a retrospective progress-aware training framework that teaches agents to self-refine for better long-horizon performance.",
+      "llm_tldr_cn": "LLM智能体在长周期任务中因缺乏元认知意识而性能下降。本文提出RePro框架，通过“前向执行+后向反思”的范式训练智能体自生成进度信号。先在线执行动作，再根据完整轨迹和已知结果回溯评估进度。该方法显著提升了智能体在长周期任务中的表现，解决了奖励信号稀疏的问题。",
+      "llm_tldr": "LLM智能体在长周期任务中因缺乏元认知意识而性能下降。本文提出RePro框架，通过“前向执行+后向反思”的范式训练智能体自生成进度信号。先在线执行动作，再根据完整轨迹和已知结果回溯评估进度。该方法显著提升了智能体在长周期任务中的表现，解决了奖励信号稀疏的问题。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.15306v1",
+      "source": "arxiv",
+      "title": "LatentGym: A Testbed For Cross-Task Experiential Learning With Controllable Latent Structure",
+      "abstract": "We envision continually learning agentic systems that become more useful over time: as they encounter sequences of related tasks, they should infer the hidden structure shared across those tasks and use it to improve future decisions. This cross-task experiential learning capability is pivotal in domains such as personalization and interactive assistance, but existing training/evaluation frameworks do not provide shared, controllable latent structures and cannot measure whether or why agents improve. We introduce LatentGym: a controllable suite in which each environment is organized around a ground-truth latent variable governing the structure across tasks. Our construction yields metrics that separate exploration (whether the agent's actions gather information about the latent) from exploitation (whether the agent uses what it has gathered). We demonstrate our suite on empirical studies addressing three questions: how and why frontier models fail to adapt across related tasks; whether post-training on related task sequences improves general cross-task adaptation, and where those gains come from; and how design choices such as inter-task feedback shape training dynamics and generalization. Together, these results establish a controlled foundation for studying how LLM agents learn from experience across tasks, and for designing agents that adapt more reliably in sequential, personalized, and interactive settings.",
+      "authors": [
+        "Daksh Mittal",
+        "Tommaso Castellani",
+        "Thomson Yen",
+        "Naimeng Ye",
+        "Fangyu Wu",
+        "Minghui Chen",
+        "Tiffany Cai",
+        "Emmanouil Koukoumidis",
+        "William Zeng",
+        "Hongseok Namkoong"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-06-13T13:51:22+00:00",
+      "link": "https://arxiv.org/pdf/2606.15306v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "focuses on continually learning agents that improve over time via cross-task experiential learning",
+      "llm_evidence_cn": "关注通过跨任务经验学习随时间改进的持续学习智能体",
+      "llm_evidence": "关注通过跨任务经验学习随时间改进的持续学习智能体",
+      "canonical_evidence": "关注通过跨任务经验学习随时间改进的持续学习智能体",
+      "llm_tldr_en": "Proposes LatentGym, a testbed for cross-task experiential learning where agents infer hidden structure to improve future decisions over time.",
+      "llm_tldr_cn": "本文提出了LatentGym，一个用于评估智能体跨任务经验学习的测试平台。每个环境围绕一个控制潜在变量组织，智能体需要在任务序列中推断共享结构，从而在长期过程中持续改进决策。该平台提供了可分离的指标来衡量智能体是否以及为何改进，为self-improving agent研究提供了标准化评估工具。",
+      "llm_tldr": "本文提出了LatentGym，一个用于评估智能体跨任务经验学习的测试平台。每个环境围绕一个控制潜在变量组织，智能体需要在任务序列中推断共享结构，从而在长期过程中持续改进决策。该平台提供了可分离的指标来衡量智能体是否以及为何改进，为self-improving agent研究提供了标准化评估工具。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.15367v1",
+      "source": "arxiv",
+      "title": "S1-DeepResearch: Beyond Search, Toward Real-World Long-Horizon Research Agents",
+      "abstract": "Deep research agents aim to solve complex knowledge-intensive tasks through long-horizon planning, evidence gathering, reasoning, and report generation. While recent progress in search agents has demonstrated strong capabilities in information retrieval and answer verification, most existing training datasets remain search-centric, focusing primarily on closed-ended question answering and information localization. As a result, they mainly train information-seeking behavior while providing limited coverage of key deep research capabilities, including evidence integration, knowledge synthesis, planning, file understanding, and structured report generation. In this work, we propose a unified trajectory construction paradigm for deep research agents that combines closed-ended QA and open-ended exploration. The proposed framework consists of graph-grounded task formulation, agentic trajectory rollout, and multi-dimensional trajectory verification, enabling scalable synthesis of high-quality agentic trajectories spanning long-chain complex reasoning, deep research instruction following, report writing, file understanding and generation, and skills usage. Compared with existing search-oriented datasets, our synthesized trajectories place greater emphasis on knowledge synthesis, complex reasoning, and planning. S1-DeepResearch-32B achieves state-of-the-art performance among open-source models of comparable scale across 20 benchmarks spanning five capability dimensions, including complex reasoning, instruction following, report generation, file understanding, and skills usage. On several challenging deep research benchmarks, it approaches the performance of leading proprietary frontier models. These results highlight the importance of jointly modeling information acquisition, knowledge synthesis, and planning-oriented agent behaviors for building effective deep research agents.",
+      "authors": [
+        "Yao Dong",
+        "Xinglin Xiao",
+        "Liwei Dong",
+        "Xinlong Jin",
+        "Zhengbo Li",
+        "Heng Zhang",
+        "Duyun Wang",
+        "Nan Xu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL",
+        "cs.IR",
+        "cs.LG"
+      ],
+      "published": "2026-06-13T16:04:42+00:00",
+      "link": "https://arxiv.org/pdf/2606.15367v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "long-horizon research agents",
+      "llm_evidence_cn": "长视距研究智能体",
+      "llm_evidence": "长视距研究智能体",
+      "canonical_evidence": "长视距研究智能体",
+      "llm_tldr_en": "Proposes S1-DeepResearch, a unified trajectory construction paradigm for long-horizon research agents that integrate planning, evidence gathering, synthesis, and report generation.",
+      "llm_tldr_cn": "针对现有搜索智能体训练数据局限于封闭式问答、缺乏长视距研究能力的问题，本文提出S1-DeepResearch统一轨迹构建范式。该范式覆盖规划、证据整合、知识综合和结构化报告生成，使智能体能够应对复杂的长期研究任务。",
+      "llm_tldr": "针对现有搜索智能体训练数据局限于封闭式问答、缺乏长视距研究能力的问题，本文提出S1-DeepResearch统一轨迹构建范式。该范式覆盖规划、证据整合、知识综合和结构化报告生成，使智能体能够应对复杂的长期研究任务。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.16591v2",
+      "source": "arxiv",
+      "title": "SING: Synthetic Intention Graph for Scalable Active Tool Discovery in LLM Agents",
+      "abstract": "Large language model (LLM) agents increasingly rely on agent harnesses that manage context, tools, and multi-turn execution, making tools a central interface for acting in realistic digital environments. As harness-connected tool ecosystems expand to hundreds or thousands of APIs, services, and task-specific skills, exhaustive tool schema injection becomes costly and imposes a closed-world assumption that limits agents to a predefined static inventory. Retrieval-augmented tool selection offers a natural alternative, but existing one-shot retrieval methods often fail to align isolated tool descriptions with the agent's true task intention, especially in long-horizon tasks where required capabilities emerge through decomposition, observations, and newly induced subgoals. We propose SING, an intention-aware active tool discovery framework that builds an intention-tool graph linking user intentions, tool capabilities, and tool collaboration patterns, and dynamically retrieves tools according to evolving task states. Using a unified corpus of 7,471 tools, we evaluate SING on three real-world tool-use benchmarks. SING improves Global Recall@5 by up to 59.8% and downstream success rate by up to 28.9% over baselines, while reducing full-corpus tool-schema exposure by 99.8%, demonstrating that intention-aware graph structure enables more accurate and context-efficient tool discovery in large-scale agentic ecosystems.",
+      "authors": [
+        "Qiao Xiao",
+        "Haochen Shi",
+        "Yisen Gao",
+        "Wenbin Hu",
+        "Huihao Jing",
+        "Tianshi Zheng",
+        "Baixuan Xu",
+        "Ziheng Zhang",
+        "Weiqi Wang",
+        "Haoran Li",
+        "Jiaxin Bai",
+        "Yangqiu Song"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-15T11:37:37+00:00",
+      "link": "https://arxiv.org/pdf/2606.16591v2",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "tool discovery for long-horizon LLM agents using synthetic intention graph",
+      "llm_evidence_cn": "基于合成意图图的长周期LLM代理工具发现",
+      "llm_evidence": "基于合成意图图的长周期LLM代理工具发现",
+      "canonical_evidence": "基于合成意图图的长周期LLM代理工具发现",
+      "llm_tldr_en": "Proposes Synthetic Intention Graph (SING) for active tool discovery in long-horizon LLM agent tasks, overcoming static tool limitations.",
+      "llm_tldr_cn": "LLM代理在长周期任务中需要动态发现工具，但现有静态工具注入方式成本高且假设封闭。本文提出合成意图图（SING），通过构建意图图来主动发现与任务意图对齐的工具，尤其在长周期任务中效果显著。实验表明SING在多个真实环境工具发现基准上优于现有方法，能有效扩展代理的能力边界。",
+      "llm_tldr": "LLM代理在长周期任务中需要动态发现工具，但现有静态工具注入方式成本高且假设封闭。本文提出合成意图图（SING），通过构建意图图来主动发现与任务意图对齐的工具，尤其在长周期任务中效果显著。实验表明SING在多个真实环境工具发现基准上优于现有方法，能有效扩展代理的能力边界。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.18235v1",
+      "source": "arxiv",
+      "title": "EvolveNav: Proactive Preflection and Self-Evolving Memory for Zero-Shot Object Goal Navigation",
+      "abstract": "Zero-Shot Object-Goal Navigation (ZS-OGN) requires embodied agents to explore and locate target objects without any prior training. To this end, recent methods leverage foundation models. But they typically rely on static priors and lack adaptation, which leads to repeated errors and costly trial and error. In this paper, we propose a self-evolving ZS-OGN framework that enables continuous test-time improvement. Specifically, we build an agentic rule memory by extracting actionable knowledge from past trajectories. Then, we propose a retrieval strategy based on upper confidence bound, selecting effective rules by balancing semantic relevance and historical success. In addition, we introduce a memory-guided preflection module that forecasts potential outcomes before action, reducing inefficient exploration. Extensive experiments show that our method outperforms existing zero-shot baselines, achieving a 10.1\\% improvement in success rate with fewer unnecessary steps.",
+      "authors": [
+        "Qi Chai",
+        "Wenhao Shen",
+        "Nanjie Yao",
+        "Yue Xia",
+        "Kaiyong Zhao",
+        "Jie Ma",
+        "Guosheng Lin",
+        "Hao Wang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-16T17:56:57+00:00",
+      "link": "https://arxiv.org/pdf/2606.18235v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "self-evolving memory for continuous test-time improvement",
+      "llm_evidence_cn": "自我进化记忆实现持续测试时改进",
+      "llm_evidence": "自我进化记忆实现持续测试时改进",
+      "canonical_evidence": "自我进化记忆实现持续测试时改进",
+      "llm_tldr_en": "EvolveNav enables zero-shot object goal navigation through self-evolving memory that extracts rules from past experiences and uses UCB-based retrieval for continuous improvement.",
+      "llm_tldr_cn": "零样本目标导航中现有方法依赖静态先验，导致重复错误。EvolveNav构建智能规则记忆，从历史轨迹提取可操作知识，并利用上置信界平衡语义相关性和历史成功率进行规则检索。此外引入记忆引导预反射模块辅助规划。实验表明代理在未见环境中性能持续提升，实现了零样本场景下的自我改进。",
+      "llm_tldr": "零样本目标导航中现有方法依赖静态先验，导致重复错误。EvolveNav构建智能规则记忆，从历史轨迹提取可操作知识，并利用上置信界平衡语义相关性和历史成功率进行规则检索。此外引入记忆引导预反射模块辅助规划。实验表明代理在未见环境中性能持续提升，实现了零样本场景下的自我改进。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.19729v1",
+      "source": "arxiv",
+      "title": "VOiLA: Vectorized Online Planning with Learned Diffusion Model for POMDP Agents",
+      "abstract": "Planning under uncertainty is an essential capability for autonomous robots. The Partially Observable Markov Decision Process (POMDP) provides a powerful framework for such a capability. Although POMDP-based planning has advanced significantly, its application to real-world problems is often limited by the difficulty of obtaining faithful POMDP models. We present Vectorized Online planning wIth Learned diffusion model for POMDP Agents (VOiLA), a framework that learns task-agnostic POMDP models for online planning under uncertainty. VOiLA learns transition and observation samplers using conditional diffusion models and learns observation-likelihood models for particle-based belief updates. To enable efficient online planning, the diffusion samplers are distilled into compact feedforward generators and integrated with Vectorized Online POMDP Planner (VOPP), an online POMDP planner designed to leverage GPU parallelization. Experimental results indicate the distillation strategy reduces sampling cost by up to nearly three orders of magnitude, making learned generative POMDP models practical for online planning. Evaluation of VOiLA on three benchmark problems indicate that VOiLA achieves equal or better performance than Recurrent Soft Actor Critic while using less than 10% training data, and generalizes much better to unseen environment configurations. Physical robot evaluation indicates VOiLA uses the models learned using only simulated data and generates a policy that successfully accomplish the task in 10 of 10 runs.",
+      "authors": [
+        "Marcus Hoerger",
+        "Rishikesh Joshi",
+        "Rahul Shome",
+        "Ian Manchester",
+        "Hanna Kurniawati"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "published": "2026-06-18T02:51:54+00:00",
+      "link": "https://arxiv.org/pdf/2606.19729v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "online planning in POMDP for long-horizon autonomy",
+      "llm_evidence_cn": "面向长期自主的在线规划方法",
+      "llm_evidence": "面向长期自主的在线规划方法",
+      "canonical_evidence": "面向长期自主的在线规划方法",
+      "llm_tldr_en": "VOiLA learns task-agnostic POMDP models for online planning under uncertainty using diffusion models, enabling long-horizon autonomous agents.",
+      "llm_tldr_cn": "真实世界机器人规划面临POMDP模型获取困难。VOiLA框架利用条件扩散模型学习转移和观测采样器，并学习观测似然模型用于粒子滤波更新。通过向量化在线规划，VOiLA在无需任务特定模型的情况下实现不确定性下的长期规划。实验证明该方法在多个基准上优于现有在线规划器，为长期自主代理提供了实用方案。",
+      "llm_tldr": "真实世界机器人规划面临POMDP模型获取困难。VOiLA框架利用条件扩散模型学习转移和观测采样器，并学习观测似然模型用于粒子滤波更新。通过向量化在线规划，VOiLA在无需任务特定模型的情况下实现不确定性下的长期规划。实验证明该方法在多个基准上优于现有在线规划器，为长期自主代理提供了实用方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.19752v1",
+      "source": "arxiv",
+      "title": "Temporal Self-Imitation Learning",
+      "abstract": "Long-horizon robot manipulation policies trained with reward shaping can still exploit dense rewards through inefficient interaction, while rare efficient behaviors may be forgotten during training. We argue that temporal efficiency itself provides a powerful and underutilized source of self-supervision for reinforcement learning. We introduce Temporal Self-Imitation Learning (TSIL), a reinforcement learning framework that mines temporally efficient successful trajectories generated during learning and converts them into reusable supervision for future policy improvement. TSIL progressively refines learning using configuration-conditioned adaptive temporal targets derived from fast successful trajectories, while preserving and replaying efficient behaviors through efficiency-weighted self-imitation learning. Across 15 distinct long-horizon manipulation tasks, TSIL consistently improves learning efficiency, task-completion efficiency, revisitation of fast successful behaviors, and robustness to unstable training conditions. More broadly, our results suggest that the temporal structure of successful behavior itself provides a scalable self-supervisory signal for reinforcement learning beyond manually engineered reward shaping alone.",
+      "authors": [
+        "Yinsen Jia",
+        "Boyuan Chen"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "published": "2026-06-18T03:31:56+00:00",
+      "link": "https://arxiv.org/pdf/2606.19752v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "temporal self-imitation learning using efficient trajectories as self-supervision",
+      "llm_evidence_cn": "利用高效轨迹作为自我监督的时间自我模仿学习",
+      "llm_evidence": "利用高效轨迹作为自我监督的时间自我模仿学习",
+      "canonical_evidence": "利用高效轨迹作为自我监督的时间自我模仿学习",
+      "llm_tldr_en": "TSIL mines temporally efficient successful trajectories as self-supervision to refine long-horizon robot manipulation policies.",
+      "llm_tldr_cn": "长期机器人操作中，奖励塑形可能导致无效交互，而高效行为易被遗忘。本文提出时间自我模仿学习（TSIL），从训练过程中挖掘时间高效的轨迹，将其转化为可复用的自我监督信号。通过自适应时间目标和效率加权回放，TSIL不断提炼策略，在多个长期操作任务上超越基线方法。",
+      "llm_tldr": "长期机器人操作中，奖励塑形可能导致无效交互，而高效行为易被遗忘。本文提出时间自我模仿学习（TSIL），从训练过程中挖掘时间高效的轨迹，将其转化为可复用的自我监督信号。通过自适应时间目标和效率加权回放，TSIL不断提炼策略，在多个长期操作任务上超越基线方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "AI systems that learn and improve through self supervision",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.19893v1",
+      "source": "arxiv",
+      "title": "MetaResearcher: Scaling Deep Research via Self-Reflective Reinforcement Learning in Adversarial Virtual Environments",
+      "abstract": "Deep research agents have demonstrated remarkable capabilities in autonomous information gathering and synthesis, yet their training remains constrained by the static nature of simulated environments, the limits of fact-retrieval-only task designs, and the inefficiency of outcome-based reinforcement learning. In this work, we propose MetaResearcher, a novel framework that scales deep research agent training across four synergistic dimensions. First, we introduce an Evolving Virtual World that injects temporal dynamics and adversarial misinformation into the training environment, forcing agents to develop source credibility assessment and temporal conflict resolution skills. Second, we design Discovery-Oriented Tasks -- including hypothesis generation and contradiction resolution -- that transcend simple fact retrieval and push agents toward genuine research behaviors. Third, we propose a Self-Reflective Meta-Reward mechanism within the GRPO framework that jointly optimizes for answer correctness, search path efficiency, reflection depth, and tool call diversity, directly addressing the repetitive action loop problem observed in prior work. Fourth, we introduce a Heterogeneous Multi-Agent Swarm architecture comprising specialized Scout, Filter, and Synthesizer models that learn collaborative research strategies through coordinated reinforcement learning. Built upon the LiteResearcher infrastructure, MetaResearcher requires zero marginal API cost for training while targeting substantial improvements in both benchmark performance (GAIA, Xbench-DS) and epistemic robustness under adversarial conditions. We present the complete framework design, training methodology, and planned experimental validation.",
+      "authors": [
+        "Wei Yu",
+        "Suxing Liu",
+        "Minjie Yu",
+        "Jiahao Wang",
+        "Zhijian Zheng",
+        "Haocheng Deng",
+        "Bing Li"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-18T07:50:40+00:00",
+      "link": "https://arxiv.org/pdf/2606.19893v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "self-reflective RL in evolving adversarial environments for deep research agents",
+      "llm_evidence_cn": "在演化的对抗环境中通过自反射强化学习训练深度研究代理",
+      "llm_evidence": "在演化的对抗环境中通过自反射强化学习训练深度研究代理",
+      "canonical_evidence": "在演化的对抗环境中通过自反射强化学习训练深度研究代理",
+      "llm_tldr_en": "MetaResearcher trains deep research agents with self-reflective RL in evolving adversarial virtual worlds for long-horizon information gathering.",
+      "llm_tldr_cn": "深度研究代理的训练受限于静态环境和结果驱动的低效率。本文提出MetaResearcher，引入演化虚拟世界注入时间动态和对抗信息，使代理发展来源评估和时间冲突解决技能；同时设计发现导向任务和自反射强化学习。实验表明代理在长期自主研究任务上表现显著提升，为自主代理的长期规划提供了可扩展训练框架。",
+      "llm_tldr": "深度研究代理的训练受限于静态环境和结果驱动的低效率。本文提出MetaResearcher，引入演化虚拟世界注入时间动态和对抗信息，使代理发展来源评估和时间冲突解决技能；同时设计发现导向任务和自反射强化学习。实验表明代理在长期自主研究任务上表现显著提升，为自主代理的长期规划提供了可扩展训练框架。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.19926v1",
+      "source": "arxiv",
+      "title": "MemGUI-Agent: An End-to-End Long-Horizon Mobile GUI Agent with Proactive Context Management",
+      "abstract": "MLLM-based mobile GUI agents have made substantial progress on short-horizon tasks, yet remain unreliable on long-horizon tasks that require retaining intermediate facts across many steps and app transitions. We attribute this limitation to ReAct-style prompting, which passively accumulates per-step records, leading to prompt explosion and dilution of critical cross-app facts. To address this, we introduce MemGUI-Agent, an end-to-end long-horizon mobile GUI agent with proactive context management. MemGUI-Agent is built on Context-as-Action (ConAct), which casts context management as first-class actions emitted by the same policy that selects UI actions. Instead of passively appending history, ConAct maintains three structured context fields: folded action history, folded UI state, and recent step record, preserving critical UI facts while keeping context compact. To make proactive context management learnable across model scales, we construct MemGUI-3K, a 2,956-trajectory dataset with full ConAct annotations for supervised training and offline analysis. Training an 8B model on MemGUI-3K produces MemGUI-8B-SFT, an 8B MemGUI-Agent that achieves the best open-data 8B performance on MemGUI-Bench and generalizes to the out-of-distribution MobileWorld benchmark. Code, data, and trained models will be released at https://memgui-agent.github.io/.",
+      "authors": [
+        "Guangyi Liu",
+        "Gao Wu",
+        "Congxiao Liu",
+        "Pengxiang Zhao",
+        "Liang Liu",
+        "Mading Li",
+        "Qi Zhang",
+        "Mengyan Wang",
+        "Liang Guo",
+        "Yong Liu"
+      ],
+      "primary_category": "cs.HC",
+      "categories": [
+        "cs.HC"
+      ],
+      "published": "2026-06-18T08:26:09+00:00",
+      "link": "https://arxiv.org/pdf/2606.19926v1",
+      "tags": [
+        "keyword:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "end-to-end long-horizon mobile GUI agent with proactive context management",
+      "llm_evidence_cn": "端到端长视界移动GUI代理，具备主动上下文管理",
+      "llm_evidence": "端到端长视界移动GUI代理，具备主动上下文管理",
+      "canonical_evidence": "端到端长视界移动GUI代理，具备主动上下文管理",
+      "llm_tldr_en": "MemGUI-Agent introduces a long-horizon mobile GUI agent with proactive context management via Context-as-Action, addressing prompt explosion and fact dilution.",
+      "llm_tldr_cn": "现有移动GUI代理在长视界任务中因被动累积历史记录导致提示爆炸和关键事实稀释。本文提出MemGUI-Agent，基于Context-as-Action将上下文管理作为头等动作，由同一策略发出，维护结构化上下文，有效提升长视界任务可靠性，为长视界移动代理设计提供了新范式。",
+      "llm_tldr": "现有移动GUI代理在长视界任务中因被动累积历史记录导致提示爆炸和关键事实稀释。本文提出MemGUI-Agent，基于Context-as-Action将上下文管理作为头等动作，由同一策略发出，维护结构化上下文，有效提升长视界任务可靠性，为长视界移动代理设计提供了新范式。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.19980v1",
+      "source": "arxiv",
+      "title": "ENPIRE: Agentic Robot Policy Self-Improvement in the Real World",
+      "abstract": "Achieving dexterous robotic manipulation in the real world heavily relies on human supervision and algorithm engineering, which becomes a central bottleneck in the pursuit of general physical intelligence. Although emerging coding agents can generate code to automate algorithm search, their successes remain largely confined in digital environments. We conjecture that the missing abstraction to automate robotics research is a repeatable feedback loop for real-world policy improvement: reset the scene, execute a policy, verify the outcome, and refine the next iteration. To bridge this gap, we introduce ENPIRE, a harness framework for coding agents that instantiates this physical feedback routine with four core modules: an Environment module (EN) for automatic reset and verification, a Policy Improvement module (PI) that launches policy refinement, a Rollout module (R) to evaluate policies with one or multiple physical robots operating in parallel, and an Evolution module (E) in which coding agents analyze logs, consult literature, improve training infrastructure and algorithm code to address failure modes. This closed-loop system transforms real-world manipulation learning into a controllable optimization procedure, minimizing human effort while allowing fair ablations across training recipe and agent variants. Powered by ENPIRE, frontier coding agents can autonomously train a policy to achieve a 99% success rate on challenging, dexterous manipulation tasks, such as organizing a pin box, fastening a zip tie, and tool use, a process that further accelerates when we dispatch an agent team on a robot fleet. Our results suggest a practical and scalable path toward deploying coding agents to autonomously advancing robotics in the physical world.",
+      "authors": [
+        "Wenli Xiao",
+        "Jia Xie",
+        "Tonghe Zhang",
+        "Haotian Lin",
+        "Letian \"Max\" Fu",
+        "Haoru Xue",
+        "Jalen Lu",
+        "Yi Yang",
+        "Cunxi Dai",
+        "Zi Wang",
+        "Jimmy Wu",
+        "Guanzhi Wang",
+        "S. Shankar Sastry",
+        "Ken Goldberg",
+        "Linxi \"Jim\" Fan",
+        "Yuke Zhu",
+        "Guanya Shi"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-18T09:21:27+00:00",
+      "link": "https://arxiv.org/pdf/2606.19980v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "self-improvement loop for robot policy in real world",
+      "llm_evidence_cn": "真实世界机器人策略自我改进循环",
+      "llm_evidence": "真实世界机器人策略自我改进循环",
+      "canonical_evidence": "真实世界机器人策略自我改进循环",
+      "llm_tldr_en": "ENPIRE provides a harness framework for coding agents to automate real-world robot policy self-improvement via repeated feedback loops.",
+      "llm_tldr_cn": "现实世界机器人操作依赖大量人工，限制通用物理智能发展。ENPIRE提出一个编码代理框架，通过环境模块自动重置场景、执行策略、验证结果并精化迭代，形成物理反馈循环。实验表明ENPIRE能自动改进机器人操作策略，减少人工干预，为自我改进代理提供了实用范式。",
+      "llm_tldr": "现实世界机器人操作依赖大量人工，限制通用物理智能发展。ENPIRE提出一个编码代理框架，通过环境模块自动重置场景、执行策略、验证结果并精化迭代，形成物理反馈循环。实验表明ENPIRE能自动改进机器人操作策略，减少人工干预，为自我改进代理提供了实用范式。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.13643v1",
+      "source": "arxiv",
+      "title": "Recursive Agent Harnesses",
+      "abstract": "Recursive language models (RLMs) showed that recursion over model calls is an effective strategy for long-context reasoning, and production coding agents have begun to write code that spawns subagents at scale, most recently in Anthropic's dynamic workflows. We name and study the pattern between these two lines of work, where the recursive unit is a full agent harness with filesystem tools, code execution, and planning rather than a model call with no tools. We call this the Recursive Agent Harness (RAH) and frame it as harness recursion, the code-first extension to the model recursion of RLMs. A parent agent generates and runs an executable script that spawns subagent harnesses in parallel for fine-grained workloads and uses structured function calls for small subtasks. We provide a controlled evaluation on long-context reasoning. With the backbone held fixed at GPT-5 to match the published Codex and RLM baselines, RAH improves the Codex coding-agent baseline from 71.75% to 81.36% on Oolong-Synthetic (199 samples, 13 context-length buckets up to 4M tokens), a gain attributable to the harness rather than the model. With a stronger backbone, Claude Sonnet 4.5, the same design reaches 89.77%.",
+      "authors": [
+        "Elias Lumer",
+        "Sahil Sen",
+        "Kevin Paul",
+        "Vamse Kumar Subbiah"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-11T17:47:30+00:00",
+      "link": "https://arxiv.org/pdf/2606.13643v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "recursive agent harness for long-context reasoning with subagent spawning",
+      "llm_evidence_cn": "递归代理框架，通过生成子代理实现长上下文推理",
+      "llm_evidence": "递归代理框架，通过生成子代理实现长上下文推理",
+      "canonical_evidence": "递归代理框架，通过生成子代理实现长上下文推理",
+      "llm_tldr_en": "Recursive Agent Harness extends model recursion to full agent harnesses with tools and planning for long-context tasks.",
+      "llm_tldr_cn": "递归语言模型在长上下文推理上有效，而生产环境中的编程代理开始生成子代理。本文定义并研究了递归代理框架（RAH），其中父代理生成可执行脚本来并行产生子代理，利用文件系统、代码执行和规划工具。实验显示RAH能高效处理细粒度工作负载，为长程自主操作提供了一种可扩展的架构。",
+      "llm_tldr": "递归语言模型在长上下文推理上有效，而生产环境中的编程代理开始生成子代理。本文定义并研究了递归代理框架（RAH），其中父代理生成可执行脚本来并行产生子代理，利用文件系统、代码执行和规划工具。实验显示RAH能高效处理细粒度工作负载，为长程自主操作提供了一种可扩展的架构。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.12774v1",
+      "source": "arxiv",
+      "title": "Agentic MPC for Semantic Control System Resynthesis",
+      "abstract": "While MPC effectively handles structured, diverse, and low-level specifications, it lacks the capability to dynamically incorporate high-level contextual information such as social norms, user intent, or natural language instructions. To address this limitation, this manuscript introduces an agentic MPC framework that enables context-aware, semantically adaptive control synthesis by integrating with large language model-based agents. The agent interprets heterogeneous inputs, including natural language messages, environmental observations, and external knowledge, to resynthesize the control specifications. The effectiveness of the framework is demonstrated in an autonomous driving scenario, where the system aligns with personal preferences or responds to social situations such as emergency vehicle yielding.",
+      "authors": [
+        "Yuya Miyaoka",
+        "Masaki Inoue"
+      ],
+      "primary_category": "eess.SY",
+      "categories": [
+        "eess.SY",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-11T00:31:40+00:00",
+      "link": "https://arxiv.org/pdf/2606.12774v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "agentic MPC integrating LLM for context-aware control synthesis",
+      "llm_evidence_cn": "将LLM与MPC结合的智能体框架，用于语义自适应控制，属于驾驭技术",
+      "llm_evidence": "将LLM与MPC结合的智能体框架，用于语义自适应控制，属于驾驭技术",
+      "canonical_evidence": "将LLM与MPC结合的智能体框架，用于语义自适应控制，属于驾驭技术",
+      "llm_tldr_en": "Agentic MPC framework integrates LLM agents to resynthesize control specifications semantically, demonstrated in autonomous driving.",
+      "llm_tldr_cn": "模型预测控制在处理高层语义信息方面存在局限，本文提出智能体MPC框架，通过集成大语言模型代理来解析自然语言和观测，动态重综合控制规范。在自动驾驶场景中验证了系统能根据个人偏好和社会情境自适应调整，展示了语义控制的新范式。",
+      "llm_tldr": "模型预测控制在处理高层语义信息方面存在局限，本文提出智能体MPC框架，通过集成大语言模型代理来解析自然语言和观测，动态重综合控制规范。在自动驾驶场景中验证了系统能根据个人偏好和社会情境自适应调整，展示了语义控制的新范式。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.13097v1",
+      "source": "arxiv",
+      "title": "Functional Cache Grafting: Robust and Rapid Code-Policy Synthesis for Embodied Agents",
+      "abstract": "Code-writing large language models (CodeLLMs) generate executable code policies for embodied agents by translating natural language goals and environmental constraints into structured control programs. However, policy generation in open-domain embodied environments suffers from two fundamental limitations: (i) delayed decoding caused by repetitive prefill computation over long prompts, and (ii) limited robustness due to fully generative decoding, which often produces API mismatches, missing safety guards, and unstable control logic. To address these limitations, we present FCGraft, a Functional Cache Grafting framework. FCGraft maintains a library of function-level validated code skeletons and their associated prompt-level Transformer key-value (KV) caches, and synthesizes new policies by retrieving relevant functions and grafting their KV caches when a new task is provided. Given retrieved function caches, FCGraft performs cache grafting via stitching, which composes cached function segments into a composite policy, and patching, which locally adapts only the necessary code regions to satisfy task-specific parameters and constraints with minimal additional decoding. By eliminating redundant prefill computation, this approach reduces generation latency, while reusing validated control structures improves robustness over prompt-level caching methods RAGCache, achieving 18.31% higher task success rate and 2.3x faster policy synthesis.",
+      "authors": [
+        "Saehun Chun",
+        "Wonje Choi",
+        "Sera Choi",
+        "Sanghyun Ahn",
+        "Honguk Woo"
+      ],
+      "primary_category": "cs.PL",
+      "categories": [
+        "cs.PL",
+        "cs.AI"
+      ],
+      "published": "2026-06-11T09:25:27+00:00",
+      "link": "https://arxiv.org/pdf/2606.13097v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "functional cache grafting for robust and rapid code-policy synthesis for embodied agents",
+      "llm_evidence_cn": "函数缓存嫁接框架，为具身代理生成稳健快速的代码策略",
+      "llm_evidence": "函数缓存嫁接框架，为具身代理生成稳健快速的代码策略",
+      "canonical_evidence": "函数缓存嫁接框架，为具身代理生成稳健快速的代码策略",
+      "llm_tldr_en": "FCGraft accelerates code-policy generation for embodied agents by reusing validated function-level code skeletons, improving robustness.",
+      "llm_tldr_cn": "具身代理的代码策略生成面临推理延迟和鲁棒性不足的问题。本文提出FCGraft，维护函数级验证代码骨架库，通过缓存重利用避免重复预填充，同时结合结构化解码提升输出稳定性。实验表明该方法显著加速生成过程并减少API错误，为在复杂环境中部署LLM代理提供了实用技术。",
+      "llm_tldr": "具身代理的代码策略生成面临推理延迟和鲁棒性不足的问题。本文提出FCGraft，维护函数级验证代码骨架库，通过缓存重利用避免重复预填充，同时结合结构化解码提升输出稳定性。实验表明该方法显著加速生成过程并减少API错误，为在复杂环境中部署LLM代理提供了实用技术。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.13681v1",
+      "source": "arxiv",
+      "title": "EvoArena: Tracking Memory Evolution for Robust LLM Agents in Dynamic Environments",
+      "abstract": "Large language model (LLM) agents have achieved strong performance on a wide range of benchmarks, yet most evaluations assume static environments. In contrast, real-world deployment is inherently dynamic, requiring agents to continually align their knowledge, skills, and behavior with changing environments and updated task conditions. To address this gap, we introduce EvoArena, a benchmark suite that models environment changes as sequences of progressive updates across terminal, software, and social domains. We further propose EvoMem, a patch-based memory paradigm that records memory evolution as structured update histories, enabling agents to reason about environmental evolution through changes in their memory. Experiments show that current agents struggle on EvoArena, achieving an average accuracy of 39.6% across evolving terminal, software, and social-preference domains. EvoMem consistently improves performance, yielding an average gain of 1.5% on EvoArena and also improving standard benchmarks such as GAIA and LoCoMo by 6.1% and 4.8%. Beyond individual tasks, EvoMem further improves chain-level accuracy by 3.7% on EvoArena, where success requires completing a consecutive sequence of related evolutionary subtasks. Mechanistic analysis shows that EvoMem improves evidence capture in the memory, indicating better preservation of complete evolving environment states. Our results highlight the importance of modeling evolution in both evaluation and memory for reliable agent deployment.",
+      "authors": [
+        "Jundong Xu",
+        "Qingchuan Li",
+        "Jiaying Wu",
+        "Yihuai Lan",
+        "Shuyue Stella Li",
+        "Huichi Zhou",
+        "Bowen Jiang",
+        "Lei Wang",
+        "Jun Wang",
+        "Anh Tuan Luu",
+        "Caiming Xiong",
+        "Hae Won Park",
+        "Bryan Hooi",
+        "Zhiyuan Hu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-11T17:59:59+00:00",
+      "link": "https://arxiv.org/pdf/2606.13681v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "benchmark for agent adaptation in dynamic environments, enabling long-term planning",
+      "llm_evidence_cn": "动态环境中智能体适应基准，支持长期规划与适应",
+      "llm_evidence": "动态环境中智能体适应基准，支持长期规划与适应",
+      "canonical_evidence": "动态环境中智能体适应基准，支持长期规划与适应",
+      "llm_tldr_en": "Introduces EvoArena, a benchmark with dynamic environment changes, and EvoMem, a patch-based memory paradigm that tracks memory evolution to help agents adapt over time for long-term planning.",
+      "llm_tldr_cn": "当前智能体评估多在静态环境中进行，无法反映真实部署的动态性。本文提出EvoArena基准，模拟终端、软件和社会领域的渐进式环境变化，并提出EvoMem记忆范式，通过记录结构化的记忆更新历史帮助智能体推理环境演化。实验验证了现有智能体在动态场景下的不足，凸显了长期适应与规划能力的重要性。",
+      "llm_tldr": "当前智能体评估多在静态环境中进行，无法反映真实部署的动态性。本文提出EvoArena基准，模拟终端、软件和社会领域的渐进式环境变化，并提出EvoMem记忆范式，通过记录结构化的记忆更新历史帮助智能体推理环境演化。实验验证了现有智能体在动态场景下的不足，凸显了长期适应与规划能力的重要性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.14239v1",
+      "source": "arxiv",
+      "title": "SkillAudit: Ground-Truth-Free Skill Evolution via Paired Trajectory Auditing",
+      "abstract": "Agent skills are structured procedural packages that guide frozen LLM agents in specialized workflows. Skills rarely remain sufficient after deployment: edge cases, API changes, and deployment constraints become visible only through use, making skill evolution a practical necessity. Existing methods depend on privileged feedback such as held-out validation scores, hidden test outcomes, or environment rewards -- signals often unavailable when a practitioner has only a task description and workspace data. We introduce SkillAudit, a framework for evolving agent skills without ground-truth feedback. The key idea is paired trajectory auditing: at each iteration, the same task is executed with and without the candidate skill, isolating how the skill changes agent behavior without external labels. To turn behavioral differences into edit guidance, SkillAudit uses Process-Aligned Contrastive Evaluation (PACE), a cluster of evaluators that maps trajectory divergences to diagnostic signals linked to specific passages in the skill document. A structural verifier, compiled once from the task specification and then fixed, checks task constraints and rolls back harmful updates. SkillAudit routes edits through two pipelines: Refine removes noisy or irrelevant guidance from broadly useful skills, while Repair replaces passages that conflict with the task. Across 89 containerized tasks spanning 8 professional domains, SkillAudit achieves 73.9% average task reward, outperforming an agent without skills (40.9%) and the static expert skill (56.7%). These gains are obtained without accessing hidden tests, reference solutions, or external scoring functions during evolution.",
+      "authors": [
+        "Haowen Gao",
+        "Haoran Chen",
+        "Can Wang",
+        "Shasha Guo",
+        "Liang Pang",
+        "Zhaoyang Liu",
+        "Huawei Shen",
+        "Xueqi Cheng"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-12T08:20:09+00:00",
+      "link": "https://arxiv.org/pdf/2606.14239v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "ground-truth-free skill evolution via paired trajectory auditing",
+      "llm_evidence_cn": "基于配对轨迹审计的无真实反馈技能演化",
+      "llm_evidence": "基于配对轨迹审计的无真实反馈技能演化",
+      "canonical_evidence": "基于配对轨迹审计的无真实反馈技能演化",
+      "llm_tldr_en": "SkillAudit evolves agent skills without ground-truth feedback by comparing trajectories with and without the candidate skill, isolating the skill's effect.",
+      "llm_tldr_cn": "Agent技能在部署后常需演化以应对边缘案例和API变更，但现有方法依赖难以获得的真实反馈。SkillAudit提出配对轨迹审计：在每次迭代中，对同一任务执行有技能和无技能的轨迹，通过对比隔离技能影响。该方法无需任何真实标签、环境奖励或验证分数，即可稳定提升技能质量，极大降低了技能演化的门槛。",
+      "llm_tldr": "Agent技能在部署后常需演化以应对边缘案例和API变更，但现有方法依赖难以获得的真实反馈。SkillAudit提出配对轨迹审计：在每次迭代中，对同一任务执行有技能和无技能的轨迹，通过对比隔离技能影响。该方法无需任何真实标签、环境奖励或验证分数，即可稳定提升技能质量，极大降低了技能演化的门槛。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.14674v1",
+      "source": "arxiv",
+      "title": "AgentSpec: Understanding Embodied Agent Scaffolds Through Controlled Composition",
+      "abstract": "LLM agents are increasingly built not as single model calls, but as scaffolded systems that combine reasoning, memory, reflection, action execution, and learning. While such scaffolds often improve performance, they are often embedded in tightly coupled pipelines, making it difficult to isolate component contributions, compare alternative designs, or understand how module interactions shape agent behavior. We introduce AgentSpec, a modular specification framework that represents embodied agents as typed compositions of reusable policy components with standardized interfaces. AgentSpec standardizes the interfaces among perception, memory, reasoning, reflection, action, and optional learning, enabling components to be swapped and recombined under controlled conditions. We instantiate this framework across DeliveryBench, ALFRED, MiniGrid, and RoboTHOR, and analyze reasoning, memory, reflection, and reinforcement-learning modules across model backbones. Our results show that agent performance is governed by scaffold compatibility and interaction effects rather than isolated module strength. In particular, structured multi-granularity memory improves long-horizon state tracking, reasoning and memory interact non-uniformly across environments, reflection trades off correction and cost, and RL-trained policies compose best when optimized with deployment-time scaffold structure. AgentSpec provides a controlled foundation for studying, comparing, and designing composable LLM agents. Our code, baselines and interactive playground are publicly available at https://agentspec-embodied.github.io.",
+      "authors": [
+        "Jixuan Chen",
+        "Jianzhi Shen",
+        "Haoqiang Kang",
+        "Zhi Hong",
+        "Qingyi Jiang",
+        "Soham Bose",
+        "Yiming Zhang",
+        "Leon Leng",
+        "Amit Vyas",
+        "Lingjun Mao",
+        "Siru Ouyang",
+        "Kun Zhou",
+        "Lianhui Qin"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-12T17:39:49+00:00",
+      "link": "https://arxiv.org/pdf/2606.14674v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "provides a modular specification framework for understanding agent scaffolds, aiding research planning and improvement",
+      "llm_evidence_cn": "提供模块化规范框架，有助于智能体研究规划与改进",
+      "llm_evidence": "提供模块化规范框架，有助于智能体研究规划与改进",
+      "canonical_evidence": "提供模块化规范框架，有助于智能体研究规划与改进",
+      "llm_tldr_en": "Introduces AgentSpec, a framework for modular composition of agent scaffolds with standardized interfaces to enable controlled experiments.",
+      "llm_tldr_cn": "智能体通常由复杂的脚手架系统构成，但组件间耦合度高，难以分析。本文提出AgentSpec，一个模块化规范框架，将智能体表示为带标准化接口的可复用策略组件（感知、记忆、推理、反思、行动、学习）。通过该框架可以系统地替换和重组组件，从而理解设计选择对行为的影响，助力智能体研究规划与性能改进。",
+      "llm_tldr": "智能体通常由复杂的脚手架系统构成，但组件间耦合度高，难以分析。本文提出AgentSpec，一个模块化规范框架，将智能体表示为带标准化接口的可复用策略组件（感知、记忆、推理、反思、行动、学习）。通过该框架可以系统地替换和重组组件，从而理解设计选择对行为的影响，助力智能体研究规划与性能改进。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "autonomous agent research planning and improvement",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.13681v2",
+      "source": "arxiv",
+      "title": "EvoArena: Tracking Memory Evolution for Robust LLM Agents in Dynamic Environments",
+      "abstract": "Large language model (LLM) agents have achieved strong performance on a wide range of benchmarks, yet most evaluations assume static environments. In contrast, real-world deployment is inherently dynamic, requiring agents to continually align their knowledge, skills, and behavior with changing environments and updated task conditions. To address this gap, we introduce EvoArena, a benchmark suite that models environment changes as sequences of progressive updates across terminal, software, and social domains. We further propose EvoMem, a patch-based memory paradigm that records memory evolution as structured update histories, enabling agents to reason about environmental evolution through changes in their memory. Experiments show that current agents struggle on EvoArena, achieving an average accuracy of 39.6% across evolving terminal, software, and social-preference domains. EvoMem consistently improves performance, yielding an average gain of 1.5% on EvoArena and also improving standard benchmarks such as GAIA and LoCoMo by 6.1% and 4.8%. Beyond individual tasks, EvoMem further improves chain-level accuracy by 3.7% on EvoArena, where success requires completing a consecutive sequence of related evolutionary subtasks. Mechanistic analysis shows that EvoMem improves evidence capture in the memory, indicating better preservation of complete evolving environment states. Our results highlight the importance of modeling evolution in both evaluation and memory for reliable agent deployment.",
+      "authors": [
+        "Jundong Xu",
+        "Qingchuan Li",
+        "Jiaying Wu",
+        "Yihuai Lan",
+        "Shuyue Stella Li",
+        "Huichi Zhou",
+        "Bowen Jiang",
+        "Lei Wang",
+        "Jun Wang",
+        "Anh Tuan Luu",
+        "Caiming Xiong",
+        "Hae Won Park",
+        "Bryan Hooi",
+        "Zhiyuan Hu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-11T17:59:59+00:00",
+      "link": "https://arxiv.org/pdf/2606.13681v2",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "benchmark and memory paradigm for LLM agents adapting to dynamic environments",
+      "llm_evidence_cn": "面向动态环境的LLM代理基准与记忆范式",
+      "llm_evidence": "面向动态环境的LLM代理基准与记忆范式",
+      "canonical_evidence": "面向动态环境的LLM代理基准与记忆范式",
+      "llm_tldr_en": "EvoArena benchmarks LLM agents under dynamic environment changes and proposes EvoMem patch-based memory to enable long-term adaptation.",
+      "llm_tldr_cn": "现有LLM代理评估假设静态环境，与现实动态不符。EvoArena构建包含终端、软件和社会领域渐进式环境变化的基准。提出EvoMem补丁式记忆范式，记录记忆演化历史，使代理能通过记忆变化推断环境演变。实验显示当前代理在动态环境下表现不佳，而EvoMem显著提升适应能力，为长期自适应代理提供了评估与改进基础。",
+      "llm_tldr": "现有LLM代理评估假设静态环境，与现实动态不符。EvoArena构建包含终端、软件和社会领域渐进式环境变化的基准。提出EvoMem补丁式记忆范式，记录记忆演化历史，使代理能通过记忆变化推断环境演变。实验显示当前代理在动态环境下表现不佳，而EvoMem显著提升适应能力，为长期自适应代理提供了评估与改进基础。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.15874v1",
+      "source": "arxiv",
+      "title": "LLM-as-Code Agentic Programming for Agent Harness",
+      "abstract": "Every major LLM agent framework gives the LLM the role of orchestrator; the model decides what to do next, when to call tools, and when to stop. We argue that token explosion, control-flow hallucination, and unreliable completion are not implementation bugs but architectural consequences of assigning the deterministic work of looping, branching, and sequencing to a probabilistic system. A better prompt or a stronger model cannot guarantee the reliability of the LLM agent. We therefore propose Agentic Programming, in which the program governs all control flow, and the LLM is itself part of it, an adaptive component we call LLM-as-Code and invoke only where a task calls for reasoning or generation. Within each call the model keeps full flexibility, but it cannot alter the program's execution path. With control in the program, the LLM's context is built from the execution history's call tree and forms a directed acyclic graph (DAG). Each call's context length is then determined by its call depth rather than by accumulation over steps. A case study of computer-use agents shows that the design is practical, not just a theoretical stance, substantially improving the stability of long visual operation sequences.",
+      "authors": [
+        "Junjia Qi",
+        "Zichuan Fu",
+        "Jingtong Gao",
+        "Wenlin Zhang",
+        "Hanyu Yan",
+        "Xian Wu",
+        "Xiangyu Zhao"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.SE"
+      ],
+      "published": "2026-06-14T15:47:27+00:00",
+      "link": "https://arxiv.org/pdf/2606.15874v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "proposes Agentic Programming to harness LLM agents by giving control to deterministic program",
+      "llm_evidence_cn": "提出智能体编程，通过确定性的程序控制来驾驭LLM智能体",
+      "llm_evidence": "提出智能体编程，通过确定性的程序控制来驾驭LLM智能体",
+      "canonical_evidence": "提出智能体编程，通过确定性的程序控制来驾驭LLM智能体",
+      "llm_tldr_en": "Argues that LLM orchestration is unreliable and proposes Agentic Programming where program controls flow and LLM serves as a code component.",
+      "llm_tldr_cn": "本文指出将控制流交给LLM会导致可靠性问题，并提出了智能体编程范式：由确定性程序掌控所有控制流，LLM仅作为可调用的推理组件（LLM-as-Code）。这一方法重新定义了智能体架构，从根本上提高了系统的可控性和可靠性，为agent harness提供了新思路。",
+      "llm_tldr": "本文指出将控制流交给LLM会导致可靠性问题，并提出了智能体编程范式：由确定性程序掌控所有控制流，LLM仅作为可调用的推理组件（LLM-as-Code）。这一方法重新定义了智能体架构，从根本上提高了系统的可控性和可靠性，为agent harness提供了新思路。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.15508v1",
+      "source": "arxiv",
+      "title": "ToolMenuBench: Benchmarking Tool-Menu Filtering Strategies for Reliable and Efficient LLM Agents",
+      "abstract": "Tool-augmented large language model agents increasingly operate over large tool libraries, but existing evaluations often focus on whether a model can call a tool correctly rather than how the visible tool menu shapes reliability, efficiency, and safety-relevant risk exposure. We introduce ToolMenuBench, a benchmark for evaluating tool-menu construction in multi-step LLM agents. ToolMenuBench varies tool-menu size, distractor type, state-dependent task structure, and risk exposure, and reports both filter-level and downstream agent metrics, including visible-tool count, risky-tool exposure, task success, wrong-tool calls, premature actions, and token usage. In a controlled evaluation across seven model backends, three tool-menu sizes, six filtering methods, and seven evaluation settings, CMTF improves task success from 32.1% under all-tools exposure to 85.7%, while reducing average token usage by roughly 98%. Causal minimal tool filtering achieves the strongest overall tradeoff, reducing visible tools, wrong-tool calls, premature actions, and risky-tool exposure relative to unfiltered exposure, lexical filtering, state-aware filtering, and broader causal-path baselines. ToolMenuBench provides a reusable evaluation framework for studying the agent-interface problem: which tools should be visible, when they should be visible, and under what cost or risk constraints.",
+      "authors": [
+        "Rahul Suresh Babu",
+        "Laxmipriya Ganesh Iyer"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-13T23:27:51+00:00",
+      "link": "https://arxiv.org/pdf/2606.15508v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "benchmark for tool-menu construction in LLM agents",
+      "llm_evidence_cn": "LLM Agent工具菜单构建基准",
+      "llm_evidence": "LLM Agent工具菜单构建基准",
+      "canonical_evidence": "LLM Agent工具菜单构建基准",
+      "llm_tldr_en": "ToolMenuBench evaluates tool-menu filtering strategies for LLM agents, revealing that menu design significantly affects reliability, efficiency, and risk exposure.",
+      "llm_tldr_cn": "大规模工具库中，Agent可见的工具菜单直接影响其可靠性、效率和风险。ToolMenuBench通过变化菜单大小、干扰类型和风险暴露，全面评估不同过滤策略对下游任务的影响。在七个模型后端上的实验显示，菜单设计是关键因素，但现有策略普遍欠优。该基准为Agent工具控制研究提供了标准化评估框架。",
+      "llm_tldr": "大规模工具库中，Agent可见的工具菜单直接影响其可靠性、效率和风险。ToolMenuBench通过变化菜单大小、干扰类型和风险暴露，全面评估不同过滤策略对下游任务的影响。在七个模型后端上的实验显示，菜单设计是关键因素，但现有策略普遍欠优。该基准为Agent工具控制研究提供了标准化评估框架。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.16591v1",
+      "source": "arxiv",
+      "title": "SING: Synthetic Intention Graph for Scalable Active Tool Discovery in LLM Agents",
+      "abstract": "Large language model (LLM) agents increasingly rely on agent harnesses that manage context, tools, and multi-turn execution, making tools a central interface for acting in realistic digital environments. As harness-connected tool ecosystems expand to hundreds or thousands of APIs, services, and task-specific skills, exhaustive tool schema injection becomes costly and imposes a closed-world assumption that limits agents to a predefined static inventory. Retrieval-augmented tool selection offers a natural alternative, but existing one-shot retrieval methods often fail to align isolated tool descriptions with the agent's true task intention, especially in long-horizon tasks where required capabilities emerge through decomposition, observations, and newly induced subgoals. We propose SING, an intention-aware active tool discovery framework that builds an intention-tool graph linking user intentions, tool capabilities, and tool collaboration patterns, and dynamically retrieves tools according to evolving task states. Using a unified corpus of 7,471 tools, we evaluate SING on three real-world tool-use benchmarks. SING improves Global Recall@5 by up to 59.8% and downstream success rate by up to 28.9% over baselines, while reducing full-corpus tool-schema exposure by 99.8%, demonstrating that intention-aware graph structure enables more accurate and context-efficient tool discovery in large-scale agentic ecosystems.",
+      "authors": [
+        "Qiao Xiao",
+        "Haochen Shi",
+        "Yisen Gao",
+        "Wenbin Hu",
+        "Huihao Jing",
+        "Tianshi Zheng",
+        "Baixuan Xu",
+        "Ziheng Zhang",
+        "Weiqi Wang",
+        "Haoran Li",
+        "Jiaxin Bai",
+        "Yangqiu Song"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-15T11:37:37+00:00",
+      "link": "https://arxiv.org/pdf/2606.16591v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "addresses tool discovery in long-horizon tasks where capabilities emerge through decomposition",
+      "llm_evidence_cn": "针对长周期任务中工具发现问题的解决方案",
+      "llm_evidence": "针对长周期任务中工具发现问题的解决方案",
+      "canonical_evidence": "针对长周期任务中工具发现问题的解决方案",
+      "llm_tldr_en": "Introduces SING, a synthetic intention graph method for scalable active tool discovery in LLM agents, especially for long-horizon tasks.",
+      "llm_tldr_cn": "长周期任务中，智能体需要动态发现工具，但现有检索方法难以对齐任务意图。本文提出SING（合成意图图），通过构建意图图来引导主动工具发现。该方法在长周期场景下显著提升了工具选择的准确性和任务完成率，为智能体在复杂环境中的长期运行提供了关键支持。",
+      "llm_tldr": "长周期任务中，智能体需要动态发现工具，但现有检索方法难以对齐任务意图。本文提出SING（合成意图图），通过构建意图图来引导主动工具发现。该方法在长周期场景下显著提升了工具选择的准确性和任务完成率，为智能体在复杂环境中的长期运行提供了关键支持。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.17454v1",
+      "source": "arxiv",
+      "title": "Dissecting model behavior through agent trajectories",
+      "abstract": "AI agent performance is not just a modeling problem, it is fundamentally a systems problem. The advanced capabilities of models are realized through agent harnesses. Therefore, a gap between model assumptions and harness behavior can easily prevent the model's full capabilities from translating into agent performance. We formalize this as the `intent-execution' gap: the mismatch between what the model intends and what the harness executes, and vice versa. We argue that minimizing this intent-execution gap is as important as other aspects of harness design such as tools and execution loops. To illustrate the impact of this harness-model alignment, we develop a simple and customizable harness called `Simple Strands Agent' (SSA). SSA aims to find the bulk of common patterns which generalize across different model families (such as Claude, Gemini, GPT, Grok, Qwen), as well as a small number of model-specific preferences. We make two contributions: (i) we $\\textbf{reproduce or improve on the pass@1}$ performance reported by diverse model-provider families on popular agentic benchmarks (SWE-Pro, SWE-Verified and Terminal-Bench-2), and (ii) building on an $\\textbf{analysis of 138k trajectories generated by SSA}$, we look beyond the $\\texttt{pass@1}$ numbers which tend to be relatively even across frontier models. By representing agent trajectories in code state-spaces, we observe model-level differences in problem-solving behavior. Finer-grained metrics such as edit frequency, testing activity, and phase-transitions reveal how individual models allocate effort across different stages of autonomous problem solving.",
+      "authors": [
+        "Gaurav Gupta",
+        "Vatshank Chaturvedi",
+        "Jun Huan",
+        "Anoop Deoras"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-06-16T03:17:03+00:00",
+      "link": "https://arxiv.org/pdf/2606.17454v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "focus on harness-model alignment and intent-execution gap",
+      "llm_evidence_cn": "关注harness-模型对齐和意图-执行差距",
+      "llm_evidence": "关注harness-模型对齐和意图-执行差距",
+      "canonical_evidence": "关注harness-模型对齐和意图-执行差距",
+      "llm_tldr_en": "This paper formalizes the intent-execution gap in agent harnesses and proposes SSA to improve harness-model alignment.",
+      "llm_tldr_cn": "本文形式化了智能体框架中的意图-执行差距，指出模型能力无法完全转化为智能体性能源于 harness 行为与模型假设的错配。提出 Simple Strands Agent (SSA) 框架来最小化这一差距，强调 harness 设计的重要性。该工作揭示了 harness 对齐对智能体性能的关键影响，为后续 harness 优化提供理论基础。",
+      "llm_tldr": "本文形式化了智能体框架中的意图-执行差距，指出模型能力无法完全转化为智能体性能源于 harness 行为与模型假设的错配。提出 Simple Strands Agent (SSA) 框架来最小化这一差距，强调 harness 设计的重要性。该工作揭示了 harness 对齐对智能体性能的关键影响，为后续 harness 优化提供理论基础。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}
