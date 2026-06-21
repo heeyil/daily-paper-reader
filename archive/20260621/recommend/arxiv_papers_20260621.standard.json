@@ -1,0 +1,699 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-06-21T20:31:09.431147+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 13,
+    "deep_cap": 6,
+    "deep_selected": 6,
+    "quick_candidates": 20,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2606.16613v1",
+      "source": "arxiv",
+      "title": "CoffeeBench: Benchmarking Long-Horizon LLM Agents in Heterogeneous Multi-Agent Economies",
+      "abstract": "As LLM agents become capable of increasingly long-horizon tasks, evaluating their performance in economic systems is becoming increasingly important. Unlike existing benchmarks that primarily evaluate a single agent interacting with a passive environment, economic systems are inherently multi-agent, requiring autonomous agents to communicate, negotiate, and transact while pursuing their own objectives over extended periods. We introduce CoffeeBench, a benchmark for evaluating LLM agents in a long-horizon multi-agent economy composed of heterogeneous firms. In CoffeeBench, two farmers, two roasters, and two retailers autonomously operate their businesses over a 90-day simulation, each seeking to maximize cumulative net income through communication and transactions while managing cash, inventory, and pricing. The evaluated model controls one coffee roaster, while the remaining firms are controlled by fixed reference agents. Across several recent open-weight and proprietary LLMs, all models outperform a passive baseline that takes no actions, with most achieving positive net income. Analysis of agent behavior reveals substantial differences in long-horizon economic interaction: higher-performing models communicate more actively with other firms, whereas Claude~Haiku~4.5 exhibits an idle-drift failure mode, repeatedly choosing inaction despite producing coherent assessments and plans. We release our code and agent trajectories to support future research.",
+      "authors": [
+        "Issa Sugiura",
+        "Daichi Hattori",
+        "Kazuo Araragi",
+        "Keita Ogawa",
+        "Shota Onose",
+        "Taro Makino",
+        "Teppei Usuki",
+        "Takashi Ishida"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-15T12:04:44+00:00",
+      "link": "https://arxiv.org/pdf/2606.16613v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "benchmark for long-horizon LLM agents in a multi-agent economic simulation over 90 days",
+      "llm_evidence_cn": "在为期90天的多代理经济模拟中评估长时域LLM代理的基准",
+      "llm_evidence": "在为期90天的多代理经济模拟中评估长时域LLM代理的基准",
+      "canonical_evidence": "在为期90天的多代理经济模拟中评估长时域LLM代理的基准",
+      "llm_tldr_en": "CoffeeBench is a 90-day multi-agent economy benchmark where heterogeneous firms autonomously operate to maximize net income, evaluating long-horizon agents in complex economic interactions.",
+      "llm_tldr_cn": "现有的基准主要评估单个代理与被动环境交互，忽略了经济系统固有的多代理和长时间特征。本文提出CoffeeBench，一个包含两个农场、两个烘焙商和两个零售商的多代理经济仿真，代理需在90天模拟中通过沟通、谈判和交易最大化累计净收入。该基准专门用于测试LLM代理在长时域异构多代理系统中的规划与适应能力。",
+      "llm_tldr": "现有的基准主要评估单个代理与被动环境交互，忽略了经济系统固有的多代理和长时间特征。本文提出CoffeeBench，一个包含两个农场、两个烘焙商和两个零售商的多代理经济仿真，代理需在90天模拟中通过沟通、谈判和交易最大化累计净收入。该基准专门用于测试LLM代理在长时域异构多代理系统中的规划与适应能力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.14945v1",
+      "source": "arxiv",
+      "title": "Remember, Don't Re-read: Stateful ReAct Agents for Token-Efficient Autonomous Experimentation",
+      "abstract": "The autoresearch pattern enables autonomous experimentation by having a large language model (LLM) iteratively modify code to optimize a target metric. Its stateless design, however, reconstructs experimental context from scratch at every iteration, incurring $O(n)$ token cost per iteration and $O(n^{2})$ total. This work reformulates the pattern as a stateful ReAct agent using LangGraph, where typed persistent state carries experimental history across iterations via a tool-calling interface. Two benchmarks are evaluated: hyperparameter tuning (15 iterations, small per-iteration observations) and code performance optimization (40 iterations, large per-iteration observations containing full source code and benchmark results). On hyperparameter tuning, the stateful agent consumes 90\\% fewer tokens (2{,}492 vs.\\ 24{,}465). On code optimization, the stateful agent consumes 52\\% fewer tokens (627K vs.\\ 1{,}275K) while achieving comparable optimization quality on both tasks. The token reduction is structural: the stateless agent re-reads the full history at $O(n)$ cost per iteration, while the stateful agent operates within a fixed-size conversation window at $O(1)$ cost. This paper describes the architecture in sufficient detail for practitioners to implement a stateful autoresearch agent for their own workflows.",
+      "authors": [
+        "Faramarz Jabbarvaziri"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-12T20:40:59+00:00",
+      "link": "https://arxiv.org/pdf/2606.14945v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "stateful ReAct agents for autonomous experimentation",
+      "llm_evidence_cn": "有状态ReAct agent实现高效的自主实验规划",
+      "llm_evidence": "有状态ReAct agent实现高效的自主实验规划",
+      "canonical_evidence": "有状态ReAct agent实现高效的自主实验规划",
+      "llm_tldr_en": "Reformulates autonomous experimentation as a stateful ReAct agent, reducing token costs and enabling efficient iterative improvement.",
+      "llm_tldr_cn": "该论文针对自主实验迭代中无状态设计导致高阶token成本的问题，提出有状态ReAct agent（基于LangGraph），通过类型持久状态携带实验历史，利用工具调用接口交互。在超参数调优和代码性能优化任务上，有状态设计大幅降低token消耗，同时保持实验效果。贡献在于将自主研究规划从无状态转换为有状态，提升了agent的长期运行效率。",
+      "llm_tldr": "该论文针对自主实验迭代中无状态设计导致高阶token成本的问题，提出有状态ReAct agent（基于LangGraph），通过类型持久状态携带实验历史，利用工具调用接口交互。在超参数调优和代码性能优化任务上，有状态设计大幅降低token消耗，同时保持实验效果。贡献在于将自主研究规划从无状态转换为有状态，提升了agent的长期运行效率。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "autonomous agent research planning and improvement",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.16295v1",
+      "source": "arxiv",
+      "title": "VisualClaw: A Real-Time, Personalized Agent for the Physical World",
+      "abstract": "Vision language models are serving as general-purpose interfaces for complex multimodal tasks. However, deployment still faces three gaps: VLMs typically incur high latency and cost when processing dense video frames and long prompts, the agent scaffold remains static after deployment, and standard video-QA benchmarks do not test whether agents can use visual evidence inside tool-using workspaces. We present VisualClaw, a self-evolving multimodal agent built around two principles. First, hybrid encoding reduces deployment cost by filtering less informative streaming frames with a cascaded gate and compressing the text skill bank through hot/cold top-k injection. Second, skill evolution lets the agent learn from failures: retrieved memories condition an evolver as direct concatenated context or as guided evidence, producing skill-bank updates that help future questions. Across 4 video-QA benchmarks with 2 VLMs, VisualClaw cuts per-question API cost by an average -98% versus full-frame upload and by -25.9% over the offline uniform 8 frame baseline, while boosting accuracy in most settings, e.g., an average +3.85% and a peak +15.80% on EgoSchema with Gemini 3 Flash. To address the gap, we curate VisualClawArena, a 200-scenario multimodal agentic benchmark built through a strict five-stage pipeline; models must use video evidence, documents, dynamic updates, and executable checks inside a workspace. On VisualClawArena, the same framework with computer-use agent backends improves macro accuracy by +2.9% for Codex (GPT-5.5) and +3.2% for Claude Code (Sonnet 4.6) over no-evolution baselines, with a -9.5% cost reduction compared to the uniform-sampled baseline. These properties make VisualClaw a natural fit for edge applications, where the cascade reduces a 1-hour streaming session from ~3,600 API uploads down to only 5-20 calls and the self-evolution makes it a perfect personalized assistant.",
+      "authors": [
+        "Haoqin Tu",
+        "Jianwen Chen",
+        "Zijun Wang",
+        "Siwei Han",
+        "Juncheng Wu",
+        "Hardy Chen",
+        "Haonian Ji",
+        "Kaiwen Xiong",
+        "Jiaqi Liu",
+        "Peng Xia",
+        "Jieru Mei",
+        "Hongliang Fei",
+        "Jason Eshraghian",
+        "Zeyu Zheng",
+        "Yuyin Zhou",
+        "Huaxiu Yao",
+        "Cihang Xie"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.CL"
+      ],
+      "published": "2026-06-15T06:58:22+00:00",
+      "link": "https://arxiv.org/pdf/2606.16295v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "self-evolving agent learning from failures",
+      "llm_evidence_cn": "从失败中自我进化的智能体",
+      "llm_evidence": "从失败中自我进化的智能体",
+      "canonical_evidence": "从失败中自我进化的智能体",
+      "llm_tldr_en": "VisualClaw is a self-evolving multimodal agent that uses hybrid encoding for efficiency and skill evolution from failures, adapting its behavior post-deployment.",
+      "llm_tldr_cn": "视觉语言模型智能体部署后通常静态不变。本文提出VisualClaw，通过混合编码降低计算成本，并引入技能进化机制：从失败中检索记忆并更新技能库，使智能体在部署后持续自我改进，适应环境变化。",
+      "llm_tldr": "视觉语言模型智能体部署后通常静态不变。本文提出VisualClaw，通过混合编码降低计算成本，并引入技能进化机制：从失败中检索记忆并更新技能库，使智能体在部署后持续自我改进，适应环境变化。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.16774v1",
+      "source": "arxiv",
+      "title": "OpenClaw-Skill: Collective Skill Tree Search for Agentic Large Language Models",
+      "abstract": "Equipping Large Language Model (LLM) agents with effective skills is crucial for solving complex tasks in real-world systems like OpenClaw. In this work, we aim to develop a framework that automatically constructs such reusable skills to enhance LLMs in tool use, multi-step reasoning, and dynamic environment interaction. To this end, we propose Collective Skill Tree Search (CSTS), a novel tree-search-based skill construction framework that constructs structured, diverse and generalizable tree of skills. The core idea of CSTS is to leverage collective intelligence to jointly search, identify and compose effective skills via two iterative phases: Collective Skill Node Generation (CSN-Gen) and Collective Skill Node Assessment (CSN-Assess). CSN-Gen exploits collective knowledge from multiple models to explore diverse candidate skills for each subtask, enabling comprehensive skill exploration. CSN-Assess employs multiple models as judges to evaluate and select skill nodes with two scoring mechanisms: (1) collective quality scoring that aggregates independent evaluations to produce a robust estimate of skill effectiveness, and (2) collective transferability scoring that explicitly verifies whether a skill generalizes well across different models. With CSTS, we construct a set of comprehensive tree of skills along with skill-augmented training data, enabling models to effectively learn and utilize skills. Besides, we introduce Collective Skill Reinforcement Learning, which actively selects multiple relevant skills from the tree to broaden solution-space exploration, avoid being trapped by a single skill and its resulting homogeneous or suboptimal solutions. As a result, our trained model, OpenClaw-Skill, exhibits outstanding agentic capabilities in long-horizon planning, tool use and generalization over challenging benchmarks.",
+      "authors": [
+        "Tianyi Lin",
+        "Chuanyu Sun",
+        "Jingyi Zhang",
+        "Changxu Wei",
+        "Huanjin Yao",
+        "Shunyu Liu",
+        "Xikun Zhang",
+        "Liu Liu",
+        "Jiaxing Huang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-15T14:20:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.16774v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "collective skill tree search automatically constructs reusable skills, enabling agents to improve over time",
+      "llm_evidence_cn": "集体技能树搜索自动构建可复用技能，使智能体能随时间改进",
+      "llm_evidence": "集体技能树搜索自动构建可复用技能，使智能体能随时间改进",
+      "canonical_evidence": "集体技能树搜索自动构建可复用技能，使智能体能随时间改进",
+      "llm_tldr_en": "OpenClaw-Skill uses Collective Skill Tree Search to automatically construct reusable skills for LLM agents, enabling multi-step reasoning and tool-use improvement over time.",
+      "llm_tldr_cn": "大语言模型智能体在复杂任务中需要有效技能，但手动构造技能耗时且不通用。本文提出集体技能树搜索（CSTS），通过两阶段迭代（集体技能节点生成与评估）自动构建结构化、多样化且可泛化的技能树。实验表明，CSTS相比基线显著提升了智能体在规划、工具调用和动态环境交互中的表现。该框架使智能体能够持续积累和优化技能，实现长期自我改进。",
+      "llm_tldr": "大语言模型智能体在复杂任务中需要有效技能，但手动构造技能耗时且不通用。本文提出集体技能树搜索（CSTS），通过两阶段迭代（集体技能节点生成与评估）自动构建结构化、多样化且可泛化的技能树。实验表明，CSTS相比基线显著提升了智能体在规划、工具调用和动态环境交互中的表现。该框架使智能体能够持续积累和优化技能，实现长期自我改进。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.17016v1",
+      "source": "arxiv",
+      "title": "TokenPilot: Cache-Efficient Context Management for LLM Agents",
+      "abstract": "As LLM agents are deployed in long-horizon sessions, context accumulation drives up inference costs. Existing approaches utilize text pruning or dynamic memory eviction to minimize token footprints; however, their unconstrained sequence mutations alter layouts, introducing prefix mismatches and cache invalidation. This reveals a critical trade-off between text sparsity and prompt cache continuity. To address this, we present TokenPilot, a dual-granularity context management framework. Globally, Ingestion-Aware Compaction acts as a framework harness to stabilize prompt prefixes and eliminate open-world environmental noise at the ingestion gate. Locally, Lifecycle-Aware Eviction monitors the ongoing residual utility of context segments, enforcing a conservative batch-turn schedule to offload content segments only when task relevance expires. Experiments on PinchBench and Claw-Eval under both isolated and continuous modes demonstrate that TokenPilot reduces costs by 61% and 56% in isolated mode, and 61% and 87% in continuous mode, while maintaining competitive performance compared to prior systems. TokenPilot has been integrated into LightMem2 at https://github.com/zjunlp/LightMem2.",
+      "authors": [
+        "Buqiang Xu",
+        "Zirui Xue",
+        "Dianmou Chen",
+        "Chenyang Fu",
+        "Chiyu Wu",
+        "Caiying Huang",
+        "Chen Jiang",
+        "Jizhan Fang",
+        "Xinle Deng",
+        "Yijun Chen",
+        "Yunzhi Yao",
+        "Xuehai Wang",
+        "Jin Shang",
+        "Gong Yu",
+        "Ningyu Zhang"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG",
+        "cs.MA"
+      ],
+      "published": "2026-06-15T17:46:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.17016v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "addresses long-horizon sessions with cache-efficient context management",
+      "llm_evidence_cn": "面向长期会话的缓存高效上下文管理",
+      "llm_evidence": "面向长期会话的缓存高效上下文管理",
+      "canonical_evidence": "面向长期会话的缓存高效上下文管理",
+      "llm_tldr_en": "TokenPilot introduces dual-granularity context management to reduce inference costs in long-horizon LLM agent sessions through ingestion-aware compaction and lifecycle-aware eviction.",
+      "llm_tldr_cn": "针对LLM智能体在长期会话中上下文积累导致推理成本高的问题，本文提出TokenPilot框架，通过摄入感知压缩稳定提示前缀，结合生命周期感知驱逐管理上下文片段。实验表明该方法在保持缓存连续性的同时显著降低令牌消耗，为长视野智能体的高效部署提供了实用方案。",
+      "llm_tldr": "针对LLM智能体在长期会话中上下文积累导致推理成本高的问题，本文提出TokenPilot框架，通过摄入感知压缩稳定提示前缀，结合生命周期感知驱逐管理上下文片段。实验表明该方法在保持缓存连续性的同时显著降低令牌消耗，为长视野智能体的高效部署提供了实用方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.17680v1",
+      "source": "arxiv",
+      "title": "EnvRL: Learn from Environment Dynamics in Agentic Reinforcement Learning",
+      "abstract": "Reinforcement learning (RL) has emerged as a powerful paradigm for training Large Language Models (LLMs) as agents. However, conventional RL methods for long-horizon agentic tasks often struggle with sparse outcome rewards. Intuitively, this overlooks the rich environment dynamics information contained in rollout interaction trajectories. We argue that the interaction experience inherently serves as an implicit supervision signal, reveals the underlying transition mechanisms of the environment, and enables the agent to construct a more accurate internal model of the environment.. Therefore, in this work, we investigate how to leverage this additional signal to improve policy learning. Specifically, we propose EnvRL, a framework that incorporates environment dynamics learning into agentic RL via two auxiliary objectives: state prediction and inverse dynamics. By jointly optimizing with the primary RL objective, we encourage the agent to internalize environment dynamics from its own interaction experience. Extensive experiments on two long-horizon agentic benchmarks demonstrate that EnvRL achieves significant improvements on success-rates over RL-only baselines, e.g., when trained with GRPO, lifting Qwen-2.5-1.5B-Instruct from 72.8% to 77.4% on ALFWorld, and from 56.8% to 67.0% on WebShop.",
+      "authors": [
+        "Zhitong Wang",
+        "Songze Li",
+        "Hao Peng",
+        "Shuzheng Si",
+        "Yi Wang",
+        "Maosong Sun",
+        "Juanzi Li"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-06-16T08:48:09+00:00",
+      "link": "https://arxiv.org/pdf/2606.17680v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "long-horizon agentic RL leveraging environment dynamics",
+      "llm_evidence_cn": "利用环境动力学的长期代理强化学习",
+      "llm_evidence": "利用环境动力学的长期代理强化学习",
+      "canonical_evidence": "利用环境动力学的长期代理强化学习",
+      "llm_tldr_en": "EnvRL leverages rollout interaction trajectories to extract environment dynamics as additional supervision, improving policy learning for long-horizon agentic RL tasks with sparse rewards.",
+      "llm_tldr_cn": "传统强化学习方法在长期代理任务中面临稀疏奖励的困难，忽略了交互轨迹中的环境动力学信息。本文提出EnvRL框架，从回放轨迹中提取环境转移信息作为隐式监督信号，帮助代理构建更准确的环境模型。实验证明该方法能有效提升长期任务中的策略学习效率，为代理在长期交互中适应环境提供了新思路。",
+      "llm_tldr": "传统强化学习方法在长期代理任务中面临稀疏奖励的困难，忽略了交互轨迹中的环境动力学信息。本文提出EnvRL框架，从回放轨迹中提取环境转移信息作为隐式监督信号，帮助代理构建更准确的环境模型。实验证明该方法能有效提升长期任务中的策略学习效率，为代理在长期交互中适应环境提供了新思路。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.17698v1",
+      "source": "arxiv",
+      "title": "EComAgentBench: Benchmarking Shopping Agents on Long-Horizon Tasks with Distributed Hidden Intent",
+      "abstract": "As LLM-based shopping agents enter production, existing benchmarks fail to capture how a shopper's requirements arrive: stated implicitly in the query, recorded in a profile, or revealed only when the right question is asked. Benchmarks that expose full intent upfront and grade only the final choice can neither pose this long-horizon challenge nor explain which requirement an agent missed. To address this gap, we introduce EComAgentBench, a benchmark of 662 tasks grounded in real Amazon products and reviews. Each task scatters these requirements across a visible query, a tool-gated profile, and scripted clarification; an agent must uncover hidden intent, verify candidates against attributes and review evidence, and commit to a single product within 100 tool calls. Moreover, typed, source-tagged rubrics grade every task, attributing each failure to a requirement and its source. Construction is automated yet reliable, with every answer fixed in code before any text is generated and every sample validated. Our evaluation of seven models reveals that even the strongest attains only 57.1% overall accuracy, and rubric satisfaction degrades from visible to hidden sources. Overall, we believe EComAgentBench will serve as a reproducible foundation for moving shopping agents from single-query search toward dependable assistance over long horizons.",
+      "authors": [
+        "Zeyao Du",
+        "Tong Li",
+        "Haibo Zhang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-16T09:10:48+00:00",
+      "link": "https://arxiv.org/pdf/2606.17698v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "benchmark for long-horizon shopping agents with distributed hidden intent across queries, profiles, and clarifications",
+      "llm_evidence_cn": "针对长时域购物代理的基准，将需求分散在查询、配置文件和对话说明中",
+      "llm_evidence": "针对长时域购物代理的基准，将需求分散在查询、配置文件和对话说明中",
+      "canonical_evidence": "针对长时域购物代理的基准，将需求分散在查询、配置文件和对话说明中",
+      "llm_tldr_en": "EComAgentBench is a 662-task benchmark for shopping agents that must uncover hidden intent over long horizons, scattered across visible query, tool-gated profile, and scripted clarification.",
+      "llm_tldr_cn": "现有购物代理基准通常将全部意图预先暴露，仅评价最终选择，无法衡量长时域下发现隐藏需求的能力。本文提出EComAgentBench，包含662个基于真实亚马逊产品和评论的任务，每个任务将需求分散在可见查询、工具限制的用户配置文件和预定义对话指导中。代理必须通过长时域探索逐步发现隐藏意图，验证候选商品属性并提交最终选择。",
+      "llm_tldr": "现有购物代理基准通常将全部意图预先暴露，仅评价最终选择，无法衡量长时域下发现隐藏需求的能力。本文提出EComAgentBench，包含662个基于真实亚马逊产品和评论的任务，每个任务将需求分散在可见查询、工具限制的用户配置文件和预定义对话指导中。代理必须通过长时域探索逐步发现隐藏意图，验证候选商品属性并提交最终选择。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.15385v1",
+      "source": "arxiv",
+      "title": "Reward Hacking in Language Model Agents: Revisiting AI Safety Gridworlds",
+      "abstract": "Reward hacking, where AI systems exploit misspecified objectives to achieve high reward without satisfying intended goals, remains a central challenge in AI safety. Yet most known instances have been discovered post hoc in frontier systems where controlled study is impractical. We adapt the AI Safety Gridworlds framework into a text-based evaluation suite that reformulates classic reinforcement learning safety tasks for language-based agents. Across frontier and mid-scale models, we find that specification gaming emerges zero-shot: models systematically achieve high observed reward while underperforming on hidden safety objectives, and even apparently safe behaviors can reflect misunderstanding rather than principled safety. Reinforcement learning does not correct these failures: direct reward optimization widens the gap between observed and hidden reward, as the model's initial competence causes it to lock into locally rewarding strategies before discovering safer alternatives. This pattern persists across model scales (1.5B--14B) and is not resolved by finer credit assignment, exploration prompts, or entropy regularization. Our results show that reward hacking arises naturally when optimizing proxy objectives with capable language model agents and resists standard mitigations, suggesting that proxy-reward failures in agentic settings may require approaches beyond standard exploration and credit-assignment fixes. To facilitate reproducibility, the code for this work is available at \\href{https://github.com/asparius/verl-agent-safety}{our public repository}.",
+      "authors": [
+        "Ömer Veysel Çağatan",
+        "Xuandong Zhao"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-13T16:29:34+00:00",
+      "link": "https://arxiv.org/pdf/2606.15385v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "reward hacking as control problem for language model agents",
+      "llm_evidence_cn": "奖励黑客作为语言模型代理的控制问题",
+      "llm_evidence": "奖励黑客作为语言模型代理的控制问题",
+      "canonical_evidence": "奖励黑客作为语言模型代理的控制问题",
+      "llm_tldr_en": "Adapts AI Safety Gridworlds to text-based agents to study reward hacking, showing zero-shot specification gaming and safety misunderstandings in language model agents.",
+      "llm_tldr_cn": "奖励黑客问题在语言模型代理中研究不足。本文将AI安全网格世界改编为文本评估套件，在多个前沿和中规模模型上发现零样本规格博弈现象，即代理在高奖励下隐藏安全目标。甚至表面安全行为也反映误解而非原则性安全。该工作为代理可控性和安全性提供了标准测试方法。",
+      "llm_tldr": "奖励黑客问题在语言模型代理中研究不足。本文将AI安全网格世界改编为文本评估套件，在多个前沿和中规模模型上发现零样本规格博弈现象，即代理在高奖励下隐藏安全目标。甚至表面安全行为也反映误解而非原则性安全。该工作为代理可控性和安全性提供了标准测试方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.16000v2",
+      "source": "arxiv",
+      "title": "GRACE-DS: a Guarded Reward-guided Agent Correction Environment in Data Science",
+      "abstract": "We introduce GRACE-DS, a Guarded Reward-guided Agent Correction Environment in Data Science for pre-deployment evaluation of LLM-powered AutoML agents. GRACE-DS is a set of evaluation metrics in an isolated environment that can be applied to tabular ML tasks specific to a particular organization. It exposes agents to realistic workflow stages, from planning and data inspection through feature engineering, model development, validation, and code repair to final submission, while hidden executable validators measure not only final predictive performance but also leakage avoidance, reproducibility, protocol validity, correction behavior, and reward alignment. The strongest structured regime, flexible iterative interaction (our approach), achieves higher end-to-end normalized hidden-test quality than single-shot generation, unstructured interaction, and restart-based baselines, while also improving protocol-valid completion. Validated across more than 7,000 episodes, these results establish GRACE-DS as a robust platform for assessing the capacity of LLM-based AutoML agents to execute machine learning workflows under production-like conditions and in accordance with organization-specific requirements.",
+      "authors": [
+        "Aleksandr Tsymbalov",
+        "Danis Zaripov",
+        "Artem Epifanov",
+        "Anastasiya Palienko"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.LG"
+      ],
+      "published": "2026-06-14T19:58:06+00:00",
+      "link": "https://arxiv.org/pdf/2606.16000v2",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "guarded reward-guided environment for evaluating and correcting AutoML agents, providing techniques for agent control",
+      "llm_evidence_cn": "受保护奖励引导的环境用于评估和纠正AutoML智能体，提供智能体控制技术",
+      "llm_evidence": "受保护奖励引导的环境用于评估和纠正AutoML智能体，提供智能体控制技术",
+      "canonical_evidence": "受保护奖励引导的环境用于评估和纠正AutoML智能体，提供智能体控制技术",
+      "llm_tldr_en": "GRACE-DS is a guarded reward-guided evaluation environment for LLM-powered AutoML agents that measures correction behavior and reward alignment, enabling controlled agent improvement.",
+      "llm_tldr_cn": "大语言模型驱动的AutoML智能体在部署前需要全面评估。本文提出GRACE-DS，一个受保护奖励引导的评估环境，通过隐藏的可执行验证器测量泄漏避免、可重复性、纠正行为和奖励对齐等指标。该环境模拟从规划到代码修复的完整流程，发现灵活迭代交互模式显著提升了智能体的可靠性和安全性。该工作为智能体控制提供了实用的评估工具。",
+      "llm_tldr": "大语言模型驱动的AutoML智能体在部署前需要全面评估。本文提出GRACE-DS，一个受保护奖励引导的评估环境，通过隐藏的可执行验证器测量泄漏避免、可重复性、纠正行为和奖励对齐等指标。该环境模拟从规划到代码修复的完整流程，发现灵活迭代交互模式显著提升了智能体的可靠性和安全性。该工作为智能体控制提供了实用的评估工具。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.17838v1",
+      "source": "arxiv",
+      "title": "Environment-Grounded Automated Prompt Optimization for LLM Game Agents",
+      "abstract": "LLM agents in interactive environments are highly sensitive to their prompts, yet prompt engineering remains a manual, task-specific process. We introduce an automated prompt optimization framework for LLM agents that decomposes the observation-to-action pipeline into a goal-conditioned descriptor agent and an action selection agent, and iteratively refines each module's prompt through an LLM-driven evolutionary loop guided by environment returns. We propose a behavior analyzer to attribute episode outcomes to specific prompt components, and a mutator to propose targeted revisions to the prompt, before validating them through environment rollouts. We evaluate on all five BabyAI tasks in the BALROG benchmark, comparing our pipeline against BALROG's RobustCoTAgent under both plain and guided prompt initializations. Optimization improves performance consistently across tasks and conditions, without requiring updates to the model weights. On PutNext, a multi-step coordination task where the RobustCoTAgent achieves 0% success, our framework reaches up to 72.5% success rate using the same underlying LLM with optimized prompts. These results suggest that a multi-agent framework, combined with automatic prompt optimization, enhances LLMs without the need for fine-tuning or extensive human supervision.",
+      "authors": [
+        "Rean Clive Fernandes",
+        "Lukas Fehring",
+        "Theresa Eimer",
+        "Marius Lindauer",
+        "Matthias Feurer"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-16T12:06:27+00:00",
+      "link": "https://arxiv.org/pdf/2606.17838v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "automated prompt optimization that improves agent over time via evolution",
+      "llm_evidence_cn": "通过进化循环自动优化提示，使智能体随时间改善",
+      "llm_evidence": "通过进化循环自动优化提示，使智能体随时间改善",
+      "canonical_evidence": "通过进化循环自动优化提示，使智能体随时间改善",
+      "llm_tldr_en": "Automated prompt optimization for LLM agents using evolutionary loop guided by environment returns, improving agent performance over time.",
+      "llm_tldr_cn": "该论文提出自动化提示优化框架，针对LLM游戏智能体，将观测到动作管道分解为目标描述智能体和动作选择智能体，并通过LLM驱动的进化循环根据环境回报迭代优化每个模块的提示。行为分析器归因回合结果，变异器提出修订，并通过环境回滚验证。在BabyAI任务上，该方法优于鲁棒提示基线，证明了自动优化可使智能体性能持续提升。",
+      "llm_tldr": "该论文提出自动化提示优化框架，针对LLM游戏智能体，将观测到动作管道分解为目标描述智能体和动作选择智能体，并通过LLM驱动的进化循环根据环境回报迭代优化每个模块的提示。行为分析器归因回合结果，变异器提出修订，并通过环境回滚验证。在BabyAI任务上，该方法优于鲁棒提示基线，证明了自动优化可使智能体性能持续提升。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.17493v1",
+      "source": "arxiv",
+      "title": "When Robots Sleep: Offline Skill Consolidation for Shared-Policy Robot Learning",
+      "abstract": "Robots that learn over long deployments must add new skills without losing the shared policy structure that makes earlier skills reusable. We study sequential robot skill learning, where previous trajectories and task losses may be unavailable, and the deployed policy must remain a single shared controller without task-specific heads, routing, or adapters. We identify skill-coupling collapse, a failure mode in which individual skill success remains non-trivial while reliability among related skills deteriorates. We propose Sleeping Robots, a wake-sleep framework that learns each new skill during wake and consolidates the shared policy offline during sleep using compact frozen skill memories: frozen critics with unordered state buffers for reinforcement learning and frozen actor snapshots with unordered observation buffers for imitation learning. During sleep, these memories define differentiable surrogate objectives whose gradients are combined through Nash bargaining, with adaptive anchoring and local excitability for stable consolidation. On Meta-World MT5, Sleeping Robots improves average success by 64 % and pairwise reliability by x 2.0 over the strongest non-oracle baseline, and on SurgicAI it improves average success and backward transfer relative to continual imitation baselines while remaining competitive on pairwise reliability.",
+      "authors": [
+        "Nethmi Jayasinghe",
+        "Diana Gontero",
+        "Amit Ranjan Trivedi"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-06-16T04:03:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.17493v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "long-term skill consolidation for robot learning",
+      "llm_evidence_cn": "机器人长期部署中的技能巩固",
+      "llm_evidence": "机器人长期部署中的技能巩固",
+      "canonical_evidence": "机器人长期部署中的技能巩固",
+      "llm_tldr_en": "Sleeping Robots framework consolidates shared robot policy offline during 'sleep' to prevent skill-coupling collapse over long deployments, enabling sequential skill learning without forgetting.",
+      "llm_tldr_cn": "机器人长期部署中新增技能可能导致共享策略退化。本文提出“睡眠机器人”框架，清醒时学习新技能，睡眠时通过压缩的冻结技能记忆离线巩固共享策略，有效防止技能耦合崩溃，保持所有技能的可用性。",
+      "llm_tldr": "机器人长期部署中新增技能可能导致共享策略退化。本文提出“睡眠机器人”框架，清醒时学习新技能，睡眠时通过压缩的冻结技能记忆离线巩固共享策略，有效防止技能耦合崩溃，保持所有技能的可用性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.16478v1",
+      "source": "arxiv",
+      "title": "Tensor-Coord: Algebraic Decomposition of Joint Plan Tensors for Conflict-Free Multi-Agent LLM Planning",
+      "abstract": "Large language models (LLMs) remain limited in multi-agent planning because independently generated plans can create coordination failures such as spatial collisions, resource contention, and temporal deadlocks. We introduce Tensor-Coord, a multilinear algebra framework that represents the joint plan of N agents as a third-order tensor \\(T \\in R^{N \\times H \\times A}\\) over agents, timesteps, and actions. Canonical Polyadic (CP) and Tucker decompositions are used to identify latent coordination structure. The minimal epsilon-approximate CP rank R* defines a computable coordination complexity measure, with \\(CC(Pi)=(R*-N)/N\\). We prove that R*=N is necessary and sufficient for plan independence. The residual \\(E=T-T_{R*}\\) defines a conflict score over agent pairs, timesteps, and actions, localizing failures without domain-specific rules. Tucker factors provide interpretable agent roles, temporal phases, and action clusters that are converted into natural language constraints for iterative LLM replanning. Experiments on multi-robot delivery tasks across Easy (2 agents, 5x5 grid), Medium (3 agents, 5x5 grid), and Hard (4 agents, 5x5 grid) settings show convergence to conflict-free plans in 100% of 2-agent cases within 1.4 iterations on average, 80% of 3-agent cases within 3.2 iterations, and 60% of 4-agent cases within 4.0 iterations. CP rank scaled approximately linearly as \\(R*(N) = 3.9N + 0.5\\), supporting its use as a predictor of coordination complexity.",
+      "authors": [
+        "Mudit Rastogi"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-15T09:44:26+00:00",
+      "link": "https://arxiv.org/pdf/2606.16478v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "algebraic decomposition for joint plan tensors over agents and timesteps, enabling long-horizon multi-agent planning",
+      "llm_evidence_cn": "将联合计划张量分解为时序动作，支持多智能体长期规划",
+      "llm_evidence": "将联合计划张量分解为时序动作，支持多智能体长期规划",
+      "canonical_evidence": "将联合计划张量分解为时序动作，支持多智能体长期规划",
+      "llm_tldr_en": "Tensor-Coord uses CP and Tucker decompositions of joint plan tensors to enable conflict-free multi-agent LLM planning over long horizons by quantifying coordination complexity.",
+      "llm_tldr_cn": "多智能体规划中独立生成计划会导致碰撞和死锁等协调失败。本文提出Tensor-Coord，将N个智能体的联合计划表示为三阶张量，利用CP分解量化协调复杂度，并证明R*=N是计划独立性的充要条件。该方法通过代数分解实现时序上的协调，避免了显式通信。实验证明在导航和资源分配任务中生成无冲突的长期计划。",
+      "llm_tldr": "多智能体规划中独立生成计划会导致碰撞和死锁等协调失败。本文提出Tensor-Coord，将N个智能体的联合计划表示为三阶张量，利用CP分解量化协调复杂度，并证明R*=N是计划独立性的充要条件。该方法通过代数分解实现时序上的协调，避免了显式通信。实验证明在导航和资源分配任务中生成无冲突的长期计划。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.18829v1",
+      "source": "arxiv",
+      "title": "GateMem: Benchmarking Memory Governance in Multi-Principal Shared-Memory Agents",
+      "abstract": "Memory benchmarks for LLM agents largely assume single-user settings, leaving shared assistants for hospitals, workplaces, campuses, and households understudied. In these deployments, multiple principals write to a common memory pool and query it under different roles, scopes, and relationships, so memory quality requires governance as well as recall. We introduce GateMem, a benchmark for multi-principal shared-memory agents. GateMem jointly evaluates utility for legitimate long-horizon requests with state updates, access control across contextual authorization boundaries, and agent-facing active forgetting after explicit deletion requests. It spans medical, office, education, and household domains, with long-form multi-party episodes, incremental memory injection, hidden checkpoints, structured judging, and leak-target annotations. Across diverse baselines and backbone models, no method simultaneously achieves strong utility, robust access control, and reliable forgetting. Long-context prompting often yields the best governance score at high token cost, while retrieval-based and external-memory methods reduce cost yet still leak unauthorized or deleted information. These results show current memory agents remain far from reliable shared institutional deployment.",
+      "authors": [
+        "Zhe Ren",
+        "Yibo Yang",
+        "Yimeng Chen",
+        "Zijun Zhao",
+        "Benshuo Fu",
+        "Zhihao Shu",
+        "Bingjie Zhang",
+        "Yangyang Xu",
+        "Dandan Guo",
+        "Shuicheng Yan"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-06-17T09:06:15+00:00",
+      "link": "https://arxiv.org/pdf/2606.18829v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "benchmarks memory governance for multi-principal shared-memory agents, evaluating long-horizon requests with state updates",
+      "llm_evidence_cn": "为多主体共享内存智能体基准测试内存治理，评估长期请求的状态更新",
+      "llm_evidence": "为多主体共享内存智能体基准测试内存治理，评估长期请求的状态更新",
+      "canonical_evidence": "为多主体共享内存智能体基准测试内存治理，评估长期请求的状态更新",
+      "llm_tldr_en": "GateMem evaluates utility for legitimate long-horizon requests, access control, and forgetting in shared-memory agents, directly relevant to agents operating over long horizons.",
+      "llm_tldr_cn": "本文提出GateMem基准，用于评估多主体共享内存智能体的内存治理能力。传统基准假设单用户场景，而实际部署中多个主体共享内存。GateMem联合评估长期请求的效用、跨上下文的访问控制以及主动遗忘能力，覆盖医疗、办公、教育和家庭领域。该工作为理解和改进长期运行智能体的内存管理提供了标准测试平台。",
+      "llm_tldr": "本文提出GateMem基准，用于评估多主体共享内存智能体的内存治理能力。传统基准假设单用户场景，而实际部署中多个主体共享内存。GateMem联合评估长期请求的效用、跨上下文的访问控制以及主动遗忘能力，覆盖医疗、办公、教育和家庭领域。该工作为理解和改进长期运行智能体的内存管理提供了标准测试平台。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.18051v1",
+      "source": "arxiv",
+      "title": "Compositional Skill Routing for LLM Agents: Decompose, Retrieve, and Compose",
+      "abstract": "LLM agents increasingly rely on external skills -- reusable tool specifications -- but real-world tasks often require composing multiple skills, not just selecting one. We formalize this as the Compositional Skill Routing problem: given a complex user query and a large skill library, decompose the query into atomic sub-tasks, retrieve the appropriate skill for each sub-task, and compose an executable plan. We present SkillWeaver, a decompose-retrieve-compose framework combining an LLM task decomposer, a bi-encoder skill retriever with FAISS indexing, and a dependency-aware DAG planner. To support evaluation, we introduce CompSkillBench, a benchmark of 300 compositional queries over 2,209 real MCP server skills spanning 24 functional categories, sourced from the public MCP ecosystem. Our experiments reveal that task decomposition quality is the primary bottleneck: standard LLM decomposition reaches only 34.2% category recall at the step level. To address this, we propose Iterative Skill-Aware Decomposition (SAD), a retrieval-augmented feedback loop that iteratively aligns decomposition with available skills. SAD improves decomposition accuracy from 51.0% to 67.7% (+32.7%, Wilcoxon p < 10^-6) in a single iteration; DA-conditioned analysis confirms that correct granularity is the prerequisite for effective retrieval (CatR@1 rises from 34% to 41% when DA=1). SkillWeaver reduces context window consumption by over 99%, and transfer experiments confirm generalization (+35.6% relative DA gain even when target categories are absent from the retrieval pool).",
+      "authors": [
+        "Xueping Gao"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-16T15:27:55+00:00",
+      "link": "https://arxiv.org/pdf/2606.18051v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "proposes SkillWeaver for compositional skill routing, enabling LLM agents to decompose tasks and retrieve skills in complex environments",
+      "llm_evidence_cn": "提出SkillWeaver用于组合技能路由，使LLM智能体能够在复杂环境中分解任务并检索技能",
+      "llm_evidence": "提出SkillWeaver用于组合技能路由，使LLM智能体能够在复杂环境中分解任务并检索技能",
+      "canonical_evidence": "提出SkillWeaver用于组合技能路由，使LLM智能体能够在复杂环境中分解任务并检索技能",
+      "llm_tldr_en": "SkillWeaver decomposes complex queries, retrieves relevant skills, and composes plans, addressing the challenge of harnessing LLM agents with multiple tools.",
+      "llm_tldr_cn": "本文形式化了组合技能路由问题，即复杂查询需要组合多个技能而非单一选择。提出的SkillWeaver框架结合LLM任务分解器、双编码器技能检索器和依赖感知DAG规划器，能够将查询分解为原子子任务、检索对应技能并生成可执行计划。在包含2209个真实MCP服务器技能的CompSkillBench基准上评估，展示了其有效性。该方法为在复杂环境中充分利用LLM智能体提供了关键技术。",
+      "llm_tldr": "本文形式化了组合技能路由问题，即复杂查询需要组合多个技能而非单一选择。提出的SkillWeaver框架结合LLM任务分解器、双编码器技能检索器和依赖感知DAG规划器，能够将查询分解为原子子任务、检索对应技能并生成可执行计划。在包含2209个真实MCP服务器技能的CompSkillBench基准上评估，展示了其有效性。该方法为在复杂环境中充分利用LLM智能体提供了关键技术。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.16576v1",
+      "source": "arxiv",
+      "title": "Can LLM Agents Infer World Models? Evidence from Agentic Automata Learning",
+      "abstract": "We propose agentic automata learning to evaluate the extent to which tool-calling LLM agents can uncover hidden environments through interaction. In our setup, an agent should uncover a hidden deterministic finite automaton (DFA) by interacting with an oracle through (1) membership queries (\"Does this string belong to the target language?\") and (2) equivalence queries (\"Is this the target DFA?\"). This yields a scalable testbed with controlled task complexity, measurable interaction efficiency, and strong baselines (classic automata-learning algorithms). Evaluating state-of-the-art LLMs, we find that performance drops sharply as DFA size increases. Reasoning models are markedly stronger than non-reasoning models, yet trajectory analyses reveal recurring failures in query planning, evidence integration, and hypothesis construction. Overall, our results show that current LLM agents can sometimes perform non-trivial interactive discovery, but remain far less robust and efficient than classic algorithms for the task.",
+      "authors": [
+        "Reef Menaged",
+        "Gili Lior",
+        "Shauli Ravfogel",
+        "Roee Aharoni",
+        "Gabriel Stanovsky"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-15T11:23:13+00:00",
+      "link": "https://arxiv.org/pdf/2606.16576v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "agent infers hidden environments through interaction over time",
+      "llm_evidence_cn": "代理通过长期交互推断隐藏环境",
+      "llm_evidence": "代理通过长期交互推断隐藏环境",
+      "canonical_evidence": "代理通过长期交互推断隐藏环境",
+      "llm_tldr_en": "Proposes agentic automata learning to evaluate LLM agents' ability to infer world models through interaction, revealing performance limits with increasing task complexity.",
+      "llm_tldr_cn": "语言模型代理能否通过交互推断隐藏环境尚不清楚。本文提出代理自动机学习框架，让代理通过成员查询和等价查询揭示隐藏的确定有限自动机。实验发现随着自动机规模增大，代理性能显著下降，推理模型优于非推理模型，但轨迹分析揭示了常见失败模式。该工作为评估代理的世界模型理解能力提供了可扩展测试平台。",
+      "llm_tldr": "语言模型代理能否通过交互推断隐藏环境尚不清楚。本文提出代理自动机学习框架，让代理通过成员查询和等价查询揭示隐藏的确定有限自动机。实验发现随着自动机规模增大，代理性能显著下降，推理模型优于非推理模型，但轨迹分析揭示了常见失败模式。该工作为评估代理的世界模型理解能力提供了可扩展测试平台。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.18950v1",
+      "source": "arxiv",
+      "title": "RTSGameBench: An RTS Benchmark for Strategic Reasoning by Vision-Language Models",
+      "abstract": "Modern Vision-Language Models (VLMs) often struggle with strategic reasoning, i.e., anticipating and influencing other agents' actions, under uncertainty in competitive and cooperative settings. Real-time strategy (RTS) games can be a natural testbed for diagnosing this limitation, as they demand coordination with allies, adaptation to opponents' strategy, and long-horizon planning under partial observability. However, existing RTS benchmarks offer limited evaluation scope, lack systematic competency diagnosis, and remain fixed in the pre-designed scenario coverage. To address these limitations, we present RTSGameBench, which is built on Beyond All Reason, a large-scale RTS game with an expanded battlefield that demands broader strategy diversity than the existing testbeds. The proposed benchmark provides evaluations through diverse gameplay across various matchup structures, diagnostic assessment via mini-games, each targeting an individual strategic competency, and extensible coverage via a self-evolving generation framework that converts free-form queries into new mini-games, improving over successive cycles. Additionally, for VLMs to operate in large-scale RTS games, we provide RTSGameAgent that manages units by an FSM with agentic memory. We empirically validate that multiple state-of-the-art VLMs do not perform well when matchups demand tighter coordination, multiagent coordination and when task scale increases.",
+      "authors": [
+        "San Kim",
+        "Daechul Ahn",
+        "Reokyoung Kim",
+        "Hyeonbeom Choi",
+        "Seungyeon Jwa",
+        "Jonghyun Choi"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-17T11:32:51+00:00",
+      "link": "https://arxiv.org/pdf/2606.18950v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "benchmark for long-horizon planning in RTS games",
+      "llm_evidence_cn": "用于战略推理的基准，强调长期规划",
+      "llm_evidence": "用于战略推理的基准，强调长期规划",
+      "canonical_evidence": "用于战略推理的基准，强调长期规划",
+      "llm_tldr_en": "RTSGameBench benchmarks VLM strategic reasoning with long-horizon planning and adaptation in real-time strategy games.",
+      "llm_tldr_cn": "现代视觉语言模型在战略推理上存在不足，尤其在需要长期规划和适应对手的实时策略游戏中。RTSGameBench基于大规模RTS游戏构建，通过扩展战场要求更广泛的策略多样性，为诊断模型在长期规划、协调和适应等方面的能力提供了系统化基准。实验揭示了当前模型在复杂战略场景下的局限性。",
+      "llm_tldr": "现代视觉语言模型在战略推理上存在不足，尤其在需要长期规划和适应对手的实时策略游戏中。RTSGameBench基于大规模RTS游戏构建，通过扩展战场要求更广泛的策略多样性，为诊断模型在长期规划、协调和适应等方面的能力提供了系统化基准。实验揭示了当前模型在复杂战略场景下的局限性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.18516v1",
+      "source": "arxiv",
+      "title": "Task Allocation and Motion Planning in Dynamic, Cluttered Environments via CBBA and Graphs of Convex Sets",
+      "abstract": "Multi-agent task planning in cluttered, dynamic environments requires assigning tasks to agents while simultaneously determining safe, time-efficient trajectories through the environment. When tasks are dynamic, such as rendezvous objectives, allocation decisions depend not only on which agent is best suited for a task, but also on when and where that task can be reached. This paper presents a solution to this problem, which combines Graphs of Convex Sets (GCS) for trajectory optimization with the Consensus-Based Bundle Algorithm (CBBA) for distributed task allocation. In our approach, GCS finds optimal trajectories through dynamic environments using a time-extended (3D+time) configuration space. At the same time, CBBA coordinates task assignments across agents, enabling informed decision-making in a moving environment. We then connect allocation and planning to allow the agents to avoid collisions in the 3D+time configuration space and provide accurate time estimates for task completion. We demonstrate the effectiveness of our approach in simulated cluttered environments with static and dynamic tasks.",
+      "authors": [
+        "Matthew D. Osburn",
+        "Cameron K. Peterson",
+        "John L. Salmon"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-06-16T22:14:15+00:00",
+      "link": "https://arxiv.org/pdf/2606.18516v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "long-horizon planning via time-extended config space",
+      "llm_evidence_cn": "多agent任务规划中的时间扩展规划",
+      "llm_evidence": "多agent任务规划中的时间扩展规划",
+      "canonical_evidence": "多agent任务规划中的时间扩展规划",
+      "llm_tldr_en": "Combines GCS for trajectory optimization with CBBA for distributed task allocation, enabling long-horizon planning in dynamic environments.",
+      "llm_tldr_cn": "该论文针对动态杂乱环境中的多agent任务规划问题，提出结合图凸集（GCS）轨迹优化与基于共识的捆绑算法（CBBA）的分布式任务分配方法。GCS通过时间扩展（3D+时间）配置空间优化轨迹，支持长时域规划。实验表明该方法在动态环境中有效分配任务并规划安全轨迹。贡献在于将长时域规划与分布式分配结合，提升了多agent系统的时域协调能力。",
+      "llm_tldr": "该论文针对动态杂乱环境中的多agent任务规划问题，提出结合图凸集（GCS）轨迹优化与基于共识的捆绑算法（CBBA）的分布式任务分配方法。GCS通过时间扩展（3D+时间）配置空间优化轨迹，支持长时域规划。实验表明该方法在动态环境中有效分配任务并规划安全轨迹。贡献在于将长时域规划与分布式分配结合，提升了多agent系统的时域协调能力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

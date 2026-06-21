@@ -1,0 +1,548 @@
+Title: When Robots Sleep: Offline Skill Consolidation for Shared-Policy Robot Learning
+
+URL Source: https://arxiv.org/pdf/2606.17493v1
+
+Published Time: Wed, 17 Jun 2026 00:33:30 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+> 1
+
+# When Robots Sleep: Offline Skill Consolidation for Shared-Policy Robot Learning 
+
+Nethmi Jayasinghe 1, Diana Gontero 1, Amit Ranjan Trivedi 1
+
+Abstract 
+
+Robots that learn over long deployments must add new skills without losing the shared policy structure that makes earlier skills reusable. We study sequential robot skill learning, where previous trajectories and task losses may be unavailable, and the deployed policy must remain a single shared controller without task-specific heads, routing, or adapters. We identify skill-coupling collapse , a failure mode in which individual skill success remains non-trivial while reliability among related skills deteriorates. We propose Sleeping Robots , a wake-sleep framework that learns each new skill during wake and consolidates the shared policy offline during sleep using compact frozen skill memories: frozen critics with unordered state buffers for reinforcement learning and frozen actor snapshots with unordered observation buffers for imitation learning. During sleep, these memories define differentiable surrogate objectives whose gradients are combined through Nash bargaining, with adaptive anchoring and local excitability for stable consolidation. On Meta-World MT5, Sleeping Robots improves average success by 64% and pairwise reliability by 2.0×
+
+over the strongest non-oracle baseline, and on SurgicAI it improves average success and backward transfer relative to continual imitation baselines while remaining competitive on pairwise reliability. 
+
+Index Terms 
+
+Continual Robot Learning, Offline Consolidation 
+
+I. I NTRODUCTION 
+
+Robots are moving from fixed-task deployment toward long-lived, adaptive operation. A household robot may personalize to a user’s routines, an assistive robot may adapt to changing motor abilities, and a manipulation robot may expand its repertoire as new objects and workflows appear. These settings require sequential skill learning under realistic constraints where earlier environments, rewards, demonstrations, or trajectories may no longer be accessible, yet the deployed robot must remain one coherent controller that can reuse and coordinate prior skills. This requirement goes beyond standard per-task retention. A policy may preserve non-trivial success on individual skills while losing the shared structure that makes related skills reliable together. For example, a manipulation policy may still reach or open in isolation, but fail to preserve the coordinated repertoire needed for reliable multi-step interaction. Continual robot learning should therefore evaluate not only whether individual skills survive, but whether they remain reliable inside one shared policy. We refer to this failure mode as skill-coupling collapse where shared-policy compatibility degrades under sequential learning even when isolated skill success remains nonzero. Unlike catastrophic forgetting, which measures loss of individual task performance, skill-coupling collapse asks whether related skills remain jointly reliable after being incorporated into the same parameterization. Average final success can therefore mask a less usable repertoire. We report average final success, backward transfer, and a Pairwise Reliability Score over pre-registered skill pairs to test whether the policy preserves coordinated skill structure rather than only partially retained behaviours. Existing continual-learning methods reduce interference, but they do not directly target this shared-repertoire objective. Regularization and gradient-projection methods constrain updates to protect previous tasks (Kirkpatrick et al., 2017; Chaudhry et al., 2018); replay methods revisit stored experience (Buzzega et al., 2020; Rolnick et al., 2019); and distillation methods preserve outputs from earlier models (Li and Hoiem, 2017; Schwarz et al., 2018). These methods typically act during new-skill acquisition and are evaluated mainly through per-task retention. Modular methods use task-specific heads, routing, adapters, or experts (Wan et al., 2024; Meng et al., 2025; Malagon et al., 2025), but shift part of coordination to module selection rather than maintaining one shared policy at inference. Multi-task gradient methods such as PCGrad and Nash-MTL coordinate objectives when all task losses are available (Yu et al., 2020a; Navon et al., 2022); sequential robot learning lacks this access because old task losses and trajectories may be unavailable after learning. We propose Sleeping Robots , an offline consolidation framework for continual robot skill learning with a single deployed policy. During wake , the policy learns the current skill using the substrate appropriate to the domain, such as reinforcement learning for state-based manipulation or imitation learning for vision-conditioned surgical control. At wake end, each skill is stored as a compact frozen memory, i.e., a value critic with an unordered state buffer and normalizer snapshot for reinforcement-learning actors, or an actor snapshot with an unordered observation buffer for imitation-trained policies. These memories do not store full trajectories for replay. During sleep , the shared policy is consolidated offline without additional environment 
+
+> 1
+
+Department of Electrical and Computer Engineering, University of Illinois at Chicago, Chicago, IL, USA. Correspondence: Nethmi Jayasinghe (wjayas3@uic.edu), Amit Ranjan Trivedi (amitrt@uic.edu).    
+
+> arXiv:2606.17493v1 [cs.RO] 16 Jun 2026 2
+> Fig. 1: Sleeping Robots overview. (a) Wake trains one shared policy on each new skill using only current-skill data. (b) The wake-end skill is stored as a compact frozen memory, using critic memories for RL and actor memories for imitation. (c) Sleep consolidates the shared policy offline by forming per-skill objectives from frozen memories, normalizing gradients, and combining them with Nash bargaining, with optional anchoring and homeostatic excitability, to obtain θsleep
+> kwithout environment interaction or trajectory replay. (d) The consolidated policy is evaluated across learned skills, and the wake-sleep cycle repeats for the next skill.
+
+interaction. Each memory defines a differentiable surrogate objective for the current policy, and the resulting per-skill gradients are combined through Nash bargaining so that no single memory dominates consolidation. Adaptive sleep anchoring adds a conservative pull toward the previous consolidated checkpoint when needed, while local homeostatic excitability stabilizes feedforward reinforcement-learning actors through activation-dependent gain regulation. The sleep analogy motivates the separation between online acquisition and offline consolidation, but the contribution is an algorithmic mechanism for preserving shared robot skill repertoires. We evaluate Sleeping Robots on two five-skill streams: Meta-World MT5 with SAC policies and critic memories, and SurgicAI with vision-conditioned ACT policies and actor memories. The evaluation tests whether offline consolidation preserves isolated success, backward transfer, and shared-repertoire reliability without task-specific heads, routing, adapters, or trajectory replay. On Meta-World MT5, Sleeping Robots improves final average success by +64% , pairwise reliability by 2.0 ×, and trajectory-structure preservation over the strongest non-oracle baseline. On SurgicAI, it achieves the best average success and backward transfer among continual methods while remaining competitive on pairwise reliability. Supplementary videos are provided. Our contributions are:  
+
+> •
+
+We identify skill-coupling collapse as a shared-policy reliability failure mode and evaluate it using pairwise reliability alongside average success and backward transfer.  
+
+> •
+
+We introduce compact frozen skill memories for offline consolidation across reinforcement-learning and imitation-learning policies without replaying prior trajectories.  
+
+> •
+
+We adapt Nash-bargained gradient coordination to sequential robot learning by replacing unavailable old-task losses with sleep-time gradients from frozen memories.  
+
+> •
+
+We validate offline consolidation on state-based manipulation and vision-conditioned surgical imitation, with ablations of Nash consolidation, adaptive anchoring, and local excitability. II. R ELATED WORK 
+
+Continual learning for robot policies. Continual-learning methods reduce interference through regularization, projection, replay, or distillation. EWC (Kirkpatrick et al., 2017), SI (Zenke et al., 2017), and MAS (Aljundi et al., 2018) penalize changes to parameters important for previous tasks, while GEM (Lopez-Paz and Ranzato, 2017) and A-GEM (Chaudhry et al., 2018) constrain new-task gradients using episodic memories. Replay methods such as DER (Buzzega et al., 2020) and CLEAR (Rolnick et al., 2019) revisit stored examples or transitions, and OWL (Kessler et al., 2022) uses task-specific output heads in continual RL. These methods mainly protect per-task retention during acquisition and often rely on stored examples, transitions, task outputs, or task-specific heads. Our setting instead targets cross-skill reliability in one shared policy, using compact frozen memories and unordered state or observation buffers. 
+
+Distillation, consolidation, and modular skills. LwF (Li and Hoiem, 2017) preserves prior outputs during new-task training, Progress & Compress (Schwarz et al., 2018) separates acquisition from compression, and Reset & Distill (Ahn et al., 2025) trains per-task experts before distilling them into a unified actor. Modular and skill-library methods, including PackNet (Mallya 3
+
+and Lazebnik, 2018), HAT (Serra et al., 2018), LOTUS (Wan et al., 2024), LEGION (Meng et al., 2025), AtomicVLA (Zhang et al., 2026), and CompoNet (Malagon et al., 2025), reduce interference through task-specific capacity, routing, adapters, or modules. These approaches can preserve individual skills, but they either constrain acquisition online or shift coordination to module selection. Sleeping Robots keeps one policy at inference and adds an offline phase in which frozen skill memories jointly consolidate the shared parameterization. In vision-conditioned imitation, this separates our approach from these prior works. 
+
+Gradient coordination under sequential access. Multi-task optimization methods address gradient conflict when all task objectives are available. PCGrad (Yu et al., 2020a) projects conflicting gradients, CAGrad (Liu et al., 2021) chooses conflict-averse directions, and Nash-MTL (Navon et al., 2022) formulates multi-task learning as bargaining over task gradients. Sleeping Robots also coordinates gradients, but in a sequential setting where old environments, demonstrations, trajectories, and losses may no longer be available. We replace direct old-task losses with frozen memories that generate sleep-time gradients, allowing previous skills to participate in consolidation after their original data are gone. 
+
+Offline and biologically inspired consolidation. Offline consolidation and sleep-like phases have been studied in biologically inspired learning. The wake-sleep algorithm (Hinton et al., 1995) alternates generative and recognition updates, while later continual-learning work uses generative replay or activity-dependent stabilization to reduce forgetting (Van de Ven et al., 2020; Tadros et al., 2022). Sleeping Robots differs in both domain and mechanism: it targets robot policies across reinforcement learning and imitation learning, avoids trajectory replay, and consolidates one shared policy through Nash-bargained optimization over frozen skill memories. Links to sleep, homeostatic plasticity, and shared motor adaptation (Tononi and Cirelli, 2014; Turrigiano, 2008; Wolpaw and Kamesar, 2022) serve as design motivation rather than claims of neural fidelity. III. M ETHOD : S LEEPING ROBOTS 
+
+Sequential shared-policy skill learning. We consider a robot learning an ordered skill sequence T1: K = {T 1, . . . , TK }. A single shared policy πθ is updated as skills arrive. During skill k, the learner accesses only data or interaction from Tk, and previous task trajectories are unavailable. The policy must retain a growing repertoire within one parameterization, without task-specific policy heads, routing, or adapters at inference. For reinforcement learning, each skill is an MDP with shared state and action spaces but skill-specific dynamics, rewards, and initial-state distributions. For imitation learning, each skill is specified by demonstrations over observations and expert actions. We denote parameters after wake training on skill k by 
+
+θwake  
+
+> k
+
+and after sleep consolidation by θsleep  
+
+> k
+
+.
+
+Wake phase and frozen skill memories. Sleeping Robots separates online skill acquisition from offline consolidation. During 
+
+wake , the policy learns the current skill using the substrate appropriate to the domain. For reinforcement-learning actors, wake uses only current-skill RL updates, stored memories are not consulted, previous trajectories are not replayed, and the policy receives no task identifier. For deterministic imitation-learning actors, wake uses current-skill behavior cloning, with output-space distillation on stored observation buffers when previous actor memories are available. This wake-time distillation uses the same frozen actor memories later used during sleep and introduces no trajectory, reward, or transition replay. At wake end, the learned skill is stored as a compact frozen memory Mk that provides a differentiable sleep objective. For reinforcement-learning actors, we train and freeze a skill critic MQk = ( Qϕk , Bk, ν k), where Bk is an unordered state buffer and νk is the critic normalizer snapshot. The buffer contains no actions, rewards, or transitions, and sleep evaluates the current policy through the frozen critic rather than replaying past trajectories. For imitation-learning actors, we freeze the wake-end policy and store Mπk = ( πθwake  
+
+> k
+
+, Bk), where Bk contains unordered observations such as robot states and images. After sleep, 
+
+θsleep  
+
+> k
+
+is stored as the consolidated checkpoint for future anchoring. Both substrates expose the same interface, where a frozen memory defines a skill objective while inference uses one shared policy. 
+
+Sleep objectives from frozen memories. After wake training on skill k, the learner enters sleep only when k ≥ 2. Sleep uses no environment interaction, performs no memory update, and accesses only the unordered buffers in the stored memory set Sk = {M i}ki=1 . Each memory defines a differentiable objective Li(θ) for the current shared policy. For reinforcement-learning memories, the frozen critic induces LQi (θ) = −Es∼B i
+
+Qϕi
+
+ νi(s), π θ (s) , where νi is the stored normalizer. For imitation-learning memories, sleep uses frozen-actor distillation Lπi (θ) = Eo∼B i
+
+h
+
+∥πθ (o) − πθwake  
+
+> i
+
+(o)∥22
+
+i
+
+, where o denotes the stored observation input. The skill-level gradient is gi = ∇θ Li(θ). Thus, frozen memories provide consolidation signals without replaying old actions, rewards, transitions, or rollouts. For RL memories, the critic-induced objective is evaluated only on stored late-wake states using the normalizer snapshot saved at wake end. We monitor frozen-critic value changes, Nash-gradient norms, and stopping iterations as diagnostics for critic extrapolation. 
+
+Nash-bargained sleep consolidation. Sleep must combine gradients from multiple frozen skill memories without letting one memory dominate the shared-policy update. A simple mean is sensitive to gradient scale and can move the policy toward high-magnitude memories even when other skills disagree. We therefore normalize each memory gradient as ˆgi = gi/(∥gi∥2 + ϵ)
+
+and choose convex weights α⋆ ∈ ∆k−1 by solving 
+
+α⋆ = arg max 
+
+> α∈∆k−1
+> k
+
+X
+
+> i=1
+
+log 
+
+*
+
+ˆgi,
+
+> k
+
+X
+
+> j=1
+
+αj ˆgj
+
++
+
++ ϵNash 
+
+ . (1) 4
+
+The resulting sleep direction is g⋆ = Pki=1 α⋆i ˆgi. The log-product objective favors directions that maintain agreement with all stored skill memories, giving a scale-invariant analogue of Nash-MTL for the sequential setting where old task losses are unavailable. The floor ϵNash prevents numerical failure when agreement is weak. We do not require g⋆ to descend every memory objective at every step; instead, it is a negotiated direction that limits domination by any single memory. We compute 
+
+α⋆ with warm-started Frank-Wolfe iterations and update the policy with θ ← Adam( θ, g ⋆, η sleep ) when anchoring is inactive. A fixed sleep budget, gradient normalization, the numerical floor, and early stopping keep offline updates controlled. 
+
+Adaptive sleep anchoring. Frozen-memory gradients can still move the policy too aggressively. We therefore use a wake-end proximity gate to decide when sleep should remain close to the previous consolidated checkpoint. At the start of sleep after skill k, we compute ci = ∥θ − θwake  
+
+> i
+
+∥2 for i < k . This quantity is used only as a conservative anchoring trigger, not as a behavioral shift estimate or memory-reliability certificate. The anchoring coefficient is 
+
+λk =
+
+(
+
+λ, if min i<k ci < τ, 
+
+0, otherwise , (2) where λ is fixed. Sleep then uses the anchored objective Lsleep (θ) = Pki=1 α⋆i Li(θ) + λk 
+
+> 2
+
+∥θ − θsleep  
+
+> k−1
+
+∥22, with update θ ←
+
+Adam( θ, g ⋆ + λk(θ − θsleep  
+
+> k−1
+
+), η sleep ). The anchor is used only during sleep. It does not constrain wake learning, remove any memory from bargaining, or replace the Nash-negotiated update. 
+
+Local excitability for feedforward RL actors. For feedforward RL actors, Sleeping Robots adds a local excitability variable 
+
+ei ∈ [emin , e max ] to each hidden neuron, giving activation yi = eiσ(w⊤ 
+
+> i
+
+x), where σ is ReLU. Unlike ordinary learnable gains, 
+
+ei is not updated by backpropagation. It changes only through local activation statistics: 
+
+¯ai ← (1 − β)¯ ai + βy i, ei ← clip [emin ,e max ] (ei + ηe(αtarget − ¯ai)) . (3) Here, ¯ai tracks activity and αtarget is a target activity level. Phase-specific rates ηwake  
+
+> e
+
+and ηsleep  
+
+> e
+
+are used during wake and sleep. Transformer-based imitation policies use the same memory and sleep components without excitability. Thus, in the RL setting, policy parameters are updated by RL during wake and Nash-bargained consolidation during sleep, while excitability changes only through local activity. Algorithm 1 in the appendix summarizes the wake-sleep lifecycle. Wake learns the current skill and freezes a compact memory. Sleep computes per-skill objectives from all stored memories, combines their gradients through Nash bargaining, and optionally applies adaptive anchoring toward the previous consolidated checkpoint. At inference, Sleeping Robots uses a single shared policy πθ with no task-specific routing, adapters, or separate policy heads. IV. E XPERIMENTS 
+
+Benchmarks. We evaluate Sleeping Robots on two five-skill streams using the same sleep-time consolidation algorithm with different policy substrates and memory types. Meta-World MT5 uses simulated Sawyer manipulation tasks (Yu et al., 2020b) with the stream REACH , DOOR -OPEN , DRAWER -OPEN , WINDOW -CLOSE , and BUTTON -PRESS . Policies are trained with SAC (Haarnoja et al., 2018), and each skill memory is a frozen critic with an unordered state buffer. SurgicAI uses a da Vinci-compatible suturing simulator (Wu et al., 2024) with the stream APPROACH , PLACE , INSERT , REGRASP , and PULLOUT .Policies are vision-conditioned ACT models (Zhao et al., 2023), and each skill memory is a frozen actor snapshot with an unordered observation buffer. Within each benchmark, all methods use the same skill order, policy substrate, wake-training budget, and evaluation protocol. 
+
+Metrics. After training through skill k, we evaluate the shared policy on every learned skill i ≤ k and record the success rate 
+
+S(k) 
+
+> i
+
+. We report average final success rate, 
+
+AFSR k = 1
+
+k
+
+> k
+
+X
+
+> i=1
+
+S(k) 
+
+> i
+
+, (4) which measures isolated retention. To measure shared-repertoire reliability, we use a Pairwise Reliability Score over pre-registered related skill pairs Ck:
+
+PRS k = 1
+
+|C k|
+
+X
+
+> (i,j )∈C k
+
+min 
+
+
+
+S(k) 
+
+> i
+
+, S (k)
+
+> j
+
+
+
+. (5) PRS is reported for k ≥ 2. The pairwise minimum penalizes cases where one skill in a related pair survives but the other collapses, which is the reliability failure targeted by skill-coupling collapse. For MT5, Ck contains pre-registered manipulation pairs that share reaching, contact, and object-interaction structure. For SurgicAI, Ck contains workflow-ordered pairs reflecting adjacent and skip-step dependencies in the suturing sequence. We also report backward transfer, where negative values indicate forgetting of earlier skills, and a Synergy Preservation Index measuring preservation of the reference-skill trajectory subspace after the full stream. Full definitions of BWT, SPI, pair lists, and memory accounting are provided in Appendices A and B. 
+
+Implementation details and fairness. All methods are evaluated under the same skill order, policy substrate, wake-training budget, and evaluation protocol within each benchmark. During wake, each method trains on the current skill under its specified continual-learning rule. No method receives previous trajectories or additional environment interaction. Sleeping 5 
+
+> Fig. 2: Continual learning dynamics on Meta-World MT5 and SurgicAI. Panels (a)–(d) report MT5 AFSR, PRS, BWT, and SPI; panels (f)–(i) report the same metrics for SurgicAI. Panels (e) and (j) show the corresponding five-skill streams. Higher AFSR, PRS, and SPI are better, while less negative BWT indicates less forgetting. Shaded regions denote standard error over three seeds; for SurgicAI, these are evaluation seeds.
+
+Robots performs sleep consolidation without environment interaction and updates only from stored skill memories. We evaluate after each skill and report final performance after the five-skill stream. MT5 results use three random seeds with N = 100 
+
+evaluation episodes per skill. SurgicAI uses three evaluation seeds with N = 20 episodes per skill due to simulator cost. Full optimizer settings, sleep hyperparameters, memory budgets, baseline configurations, and simulator details are provided in Appendix A. 
+
+Baselines. For Meta-World MT5, we compare against representative continual-learning and multi-skill coordination baselines. Stability-constrained methods include EWC (Kirkpatrick et al., 2017) and A-GEM (Chaudhry et al., 2018); replay-based methods include DER (Buzzega et al., 2020) and CLEAR (Rolnick et al., 2019); distillation-based methods include Reset & Dis-till (Ahn et al., 2025) and Progress & Compress (Schwarz et al., 2018); and coordination methods include Nash-MTL (Navon et al., 2022), PCGrad (Yu et al., 2020a), and CompoNet (Malagon et al., 2025). All use the same SAC actor architecture, skill order, training budget, and evaluation protocol as Sleeping Robots. For SurgicAI, all baselines use the same ACT policy substrate and five-skill stream. We compare against sequential behaviour cloning, EWC, LwF (Li and Hoiem, 2017), and M2Distill (Roy et al., 2025). We also include SR Wake-Only to isolate the effect of offline sleep consolidation, and MT-Joint as an oracle reference with joint access to all five subtasks rather than as a continual-learning baseline. 
+
+Meta-World MT5 results and ablations. Figure 2 shows learning dynamics on the five-skill MT5 stream, and Table I reports 6   
+
+> TABLE I: Final MT5 performance after sequentially learning five Meta-World skills. Results are mean ±standard error. Higher is better; bold and underline indicate best and second-best values.
+
+Category Method AFSR ↑ PRS ↑ BWT ↑ SPI ↑
+
+Stability-constrained EWC 0.210 ± 0.001 0.021 ± 0.000 −0.719 ± 0.008 0.229 ± 0.048 A-GEM 0.229 ± 0.007 0.023 ± 0.006 −0.949 ± 0.014 0.404 ± 0.022 Replay-based DER 0.323 ± 0.005 0.106 ± 0.004 −0.836 ± 0.002 0.214 ± 0.059 CLEAR 0.229 ± 0.004 0.003 ± 0.002 −0.949 ± 0.008 0.347 ± 0.038 Distillation-based R&D 0.353 ± 0.018 0.123 ± 0.013 −0.700 ± 0.025 0.504 ± 0.060 P&C 0.166 ± 0.000 0.034 ± 0.000 −0.312 ± 0.000 0.160 ± 0.000 Multi-skill coordination Nash-MTL 0.180 ± 0.000 0.020 ± 0.000 −0.985 ± 0.000 0.295 ± 0.000 PCGrad 0.237 ± 0.004 0.016 ± 0.020 +0.046 ± 0.005 0.288 ± 0.023 CompoNet 0.257 ± 0.011 0.048 ± 0.009 +0.012 ± 0.014 0.477 ± 0.073 
+
+Ours Sleeping Robots 0.578 ± 0.016 0.245 ± 0.020 −0.280 ± 0.020 0.767 ± 0.017    
+
+> TABLE II: Final SurgicAI performance after sequentially learning five surgical subtasks. MT-Joint is an oracle with joint access to all skills, not a continual-learning method. Results are mean ±standard error over three evaluation seeds. Higher is better; bold and underline indicate best and second-best values.
+
+Category Method AFSR ↑ PRS ↑ BWT ↑ SPI ↑
+
+Sequential BC BC 0.370 ± 0.013 0.129 ± 0.014 −0.713 ± 0.020 0.017 ± 0.010 CL baselines EWC 0.217 ± 0.020 0.057 ± 0.034 −0.613 ± 0.048 0.099 ± 0.007 LwF 0.200 ± 0.010 0.012 ± 0.020 −0.450 ± 0.022 0.228 ± 0.014 M2Distill 0.107 ± 0.012 0.099 ± 0.020 −0.688 ± 0.024 0.401 ± 0.095 
+
+Ours / ablation SR Wake-Only 0.200 ± 0.015 0.012 ± 0.010 −0.700 ± 0.020 0.101 ± 0.006 
+
+Sleeping Robots 0.410 ± 0.010 0.117 ± 0.012 −0.338 ± 0.024 0.326 ± 0.024 Oracle MT-Joint 0.510 ± 0.013 0.207 ± 0.014 −0.125 ± 0.017 0.693 ± 0.079 
+
+final performance. Across baselines, AFSR decreases as new skills arrive, while PRS often drops more sharply, indicating that shared policies can retain partial single-skill competence while losing reliability among related skills. Sleeping Robots achieves the best final AFSR, PRS, and SPI. It reaches AFSR 0.578 ± 0.016 , improving over the strongest non-oracle baseline, Reset & Distill at 0.353 ±0.018 , by more than 60% relative. The reliability gain is larger, with PRS 0.245 ±0.020 , approximately 
+
+2.0× the best baseline PRS of 0.123 ± 0.013 . Sleeping Robots also obtains the highest SPI, 0.767 ± 0.017 , compared with 
+
+0.504 ± 0.060 for the strongest baseline. Although PCGrad has the highest BWT, it has much lower AFSR, PRS, and SPI, showing that backward transfer alone can miss whether the shared policy preserves a reliable skill repertoire. Table III ablates the main components after the full MT5 stream. Wake-only performs worst, with low AFSR, zero PRS, and strongly negative BWT, confirming that sequential wake learning alone does not preserve pairwise reliability. Mean-gradient sleep improves over wake-only but remains below full Sleeping Robots, supporting the use of scale-normalized Nash negotiation. Removing the anchor lowers AFSR, PRS, and SPI. Removing excitability gives the highest PRS but reduces AFSR, BWT, and especially SPI, while disabling sleep-time excitability gives the best BWT but substantially reduces AFSR and PRS. Full Sleeping Robots gives the strongest overall balance, achieving the best AFSR and SPI with second-best PRS and BWT. We further evaluate order and length sensitivity using a reverse MT5 ordering and an eight-skill Meta-World stream, with details in Appendix E. As shown in Table IV, Sleeping Robots retains nontrivial final success, pairwise reliability, and trajectory-structure preservation under both variants, suggesting that the MT5 trends are not tied only to the original skill order.                     
+
+> TABLE IV: Meta-World order and length sensitivity. Final metrics for original MT5, reverse MT5, and MT8.
+> Metric MT5 Rev. MT5 MT8
+> AFSR ↑0.578 0.501 0.401
+> PRS ↑0.245 0.197 0.188
+> BWT ↑−0.280 −0.378 −0.363
+> SPI ↑0.767 0.659 0.583
+
+SurgicAI results. We next test whether the same consol-idation principle transfers from state-based RL to vision-conditioned surgical imitation. SurgicAI uses ACT policies with frozen actor memories instead of SAC policies with critic memories. Figure 2 shows learning dynamics, and Ta-ble II reports final performance after the five-subtask stream. Sleeping Robots achieves the highest AFSR among continual methods, 0.410 ± 0.010 , and the best BWT, −0.338 ± 0.024 .Relative to SR Wake-Only, offline sleep more than doubles AFSR and improves BWT from −0.700 ±0.020 to −0.338 ±0.024 ,showing that the gain is not explained by wake-time distillation alone. The compatibility metrics show a trade-off. Sequential BC has the highest non-oracle PRS, 0.129 ± 0.014 , while Sleeping Robots is close at 0.117 ± 0.012 . M2Distill has the highest non-oracle SPI, 0.401 ± 0.095 , but much lower AFSR and BWT. Overall, Sleeping Robots gives the strongest retention-reliability balance on SurgicAI where it achieves the best continual-method AFSR and BWT, while remaining close to the best non-oracle PRS, without task-specific heads, routing, or trajectory replay. 7                                           
+
+> TABLE III: MT5 ablations after learning all five skills ( k=5 ), using seed 42 and N=100 evaluation episodes per skill. Higher is better; bold and underline indicate best and second-best values.
+> Metric Wake-only Mean-grad No anchor No exc. Wake-exc off Sleep-exc off SR
+> AFSR ↑0.204 0.336 0.336 0.410 0.364 0.299 0.578
+> PRS ↑0.000 0.120 0.097 0.272 0.150 0.044 0.245 BWT ↑−0.970 −0.802 −0.605 −0.392 −0.688 −0.167 −0.280 SPI ↑0.342 0.426 0.296 0.233 0.479 0.492 0.812
+
+V. C ONCLUSION AND LIMITATIONS 
+
+We introduced Sleeping Robots, an offline consolidation framework for continual robot skill learning with a single shared policy. The main finding is that continual robot learning should not be evaluated only through isolated task retention. On MT5, several baselines retain partial single-skill success while pairwise reliability drops sharply, consistent with skill-coupling collapse. Sleeping Robots mitigates this failure by separating online acquisition from offline consolidation and using frozen skill memories to rebalance the shared policy after each wake phase. The ablations indicate that the gains come from the consolidation mechanism, especially Nash-bargained sleep updates, rather than memory storage alone. Across Meta-World MT5 and SurgicAI, the same principle applies across two substrates: critic memories for state-based reinforcement learning and actor memories for vision-conditioned imitation. The results show that average success, backward transfer, pairwise reliability, and trajectory-structure preservation capture complementary aspects of shared-policy learning. Sleeping Robots is most relevant when a robot must retain one deployable policy, prior environments or trajectories are unavailable, and offline periods are available for consolidation. 
+
+Limitations: Frozen memories are local surrogates for learned behaviours. Critic memories can extrapolate when the current policy leaves the wake-time action distribution, while actor memories can become less informative after substantial policy drift. This creates a recovery-conservatism trade-off: stronger sleep updates may improve recovery but can over-trust memories outside their reliable region. We mitigate this with stored state or observation buffers, gradient normalization, bounded sleep updates, early stopping, and adaptive anchoring. Future work should explore uncertainty-aware memories, conservative critic objectives, adaptive sleep schedules, on-policy buffer regeneration, and trajectory-level distillation. The evaluation is also limited to two primary five-skill streams, one extended MT8 stream, original/reverse MT5 skill orders, and PRS over pre-registered skill pairs. REFERENCES 
+
+J. Kirkpatrick, R. Pascanu, N. Rabinowitz, J. Veness, G. Desjardins, A. A. Rusu, K. Milan, J. Quan, T. Ramalho, A. Grabska-Barwinska et al. , “Overcoming catastrophic forgetting in neural networks,” Proceedings of the national academy of sciences ,vol. 114, no. 13, pp. 3521–3526, 2017. A. Chaudhry, M. Ranzato, M. Rohrbach, and M. Elhoseiny, “Efficient lifelong learning with a-gem,” arXiv preprint arXiv:1812.00420 , 2018. P. Buzzega, M. Boschini, A. Porrello, D. Abati, and S. Calderara, “Dark experience for general continual learning: a strong, simple baseline,” Advances in neural information processing systems , vol. 33, pp. 15 920–15 930, 2020. D. Rolnick, A. Ahuja, J. Schwarz, T. Lillicrap, and G. Wayne, “Experience replay for continual learning,” Advances in neural information processing systems , vol. 32, 2019. Z. Li and D. Hoiem, “Learning without forgetting,” IEEE transactions on pattern analysis and machine intelligence , vol. 40, no. 12, pp. 2935–2947, 2017. J. Schwarz, W. Czarnecki, J. Luketina, A. Grabska-Barwinska, Y. W. Teh, R. Pascanu, and R. Hadsell, “Progress & compress: A scalable framework for continual learning,” in International conference on machine learning . PMLR, 2018, pp. 4528–4537. W. Wan, Y. Zhu, R. Shah, and Y. Zhu, “Lotus: Continual imitation learning for robot manipulation through unsupervised skill discovery,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 537–544. Y. Meng, Z. Bing, X. Yao, K. Chen, K. Huang, Y. Gao, F. Sun, and A. Knoll, “Preserving and combining knowledge in robotic lifelong reinforcement learning,” Nature Machine Intelligence , vol. 7, no. 2, pp. 256–269, 2025. M. Malagon, J. Ceberio, and J. A. Lozano, “Self-composing policies for scalable continual reinforcement learning,” arXiv preprint arXiv:2506.14811 , 2025. T. Yu, S. Kumar, A. Gupta, S. Levine, K. Hausman, and C. Finn, “Gradient surgery for multi-task learning,” Advances in neural information processing systems , vol. 33, pp. 5824–5836, 2020. A. Navon, A. Shamsian, I. Achituve, H. Maron, K. Kawaguchi, G. Chechik, and E. Fetaya, “Multi-task learning as a bargaining game,” arXiv preprint arXiv:2202.01017 , 2022. F. Zenke, B. Poole, and S. Ganguli, “Continual learning through synaptic intelligence,” in International conference on machine learning . Pmlr, 2017, pp. 3987–3995. R. Aljundi, F. Babiloni, M. Elhoseiny, M. Rohrbach, and T. Tuytelaars, “Memory aware synapses: Learning what (not) to forget,” in Proceedings of the European conference on computer vision (ECCV) , 2018, pp. 139–154. D. Lopez-Paz and M. Ranzato, “Gradient episodic memory for continual learning,” Advances in neural information processing systems , vol. 30, 2017. 8
+
+S. Kessler, J. Parker-Holder, P. Ball, S. Zohren, and S. J. Roberts, “Same state, different task: Continual reinforcement learning without interference,” in Proceedings of the AAAI Conference on Artificial Intelligence , vol. 36, no. 7, 2022, pp. 7143–7151. H. Ahn, J. Hyeon, Y. Oh, B. Hwang, and T. Moon, “Reset & distill: A recipe for overcoming negative transfer in continual reinforcement learning,” 2025. A. Mallya and S. Lazebnik, “Packnet: Adding multiple tasks to a single network by iterative pruning,” in Proceedings of the IEEE conference on Computer Vision and Pattern Recognition , 2018, pp. 7765–7773. J. Serra, D. Suris, M. Miron, and A. Karatzoglou, “Overcoming catastrophic forgetting with hard attention to the task,” in 
+
+International conference on machine learning . PMLR, 2018, pp. 4548–4557. L. Zhang, T. Tang, Z. Zhan, X. Chen, Z. Chen, J. Han, J. Zhu, P. Xu, H. Xu, H. Wu et al. , “Atomicvla: Unlocking the potential of atomic skill learning in robots,” arXiv preprint arXiv:2603.07648 , 2026. B. Liu, X. Liu, X. Jin, P. Stone, and Q. Liu, “Conflict-averse gradient descent for multi-task learning,” Advances in neural information processing systems , vol. 34, pp. 18 878–18 890, 2021. G. E. Hinton, P. Dayan, B. J. Frey, and R. M. Neal, “The” wake-sleep” algorithm for unsupervised neural networks,” Science ,vol. 268, no. 5214, pp. 1158–1161, 1995. G. M. Van de Ven, H. T. Siegelmann, and A. S. Tolias, “Brain-inspired replay for continual learning with artificial neural networks,” Nature communications , vol. 11, no. 1, p. 4069, 2020. T. Tadros, G. P. Krishnan, R. Ramyaa, and M. Bazhenov, “Sleep-like unsupervised replay reduces catastrophic forgetting in artificial neural networks,” Nature communications , vol. 13, no. 1, p. 7742, 2022. G. Tononi and C. Cirelli, “Sleep and the price of plasticity: from synaptic and cellular homeostasis to memory consolidation and integration,” Neuron , vol. 81, no. 1, pp. 12–34, 2014. G. G. Turrigiano, “The self-tuning neuron: synaptic scaling of excitatory synapses,” Cell , vol. 135, no. 3, pp. 422–435, 2008. J. R. Wolpaw and A. Kamesar, “Heksor: the central nervous system substrate of an adaptive behaviour,” The Journal of Physiology , vol. 600, no. 15, pp. 3423–3452, 2022. T. Yu, D. Quillen, Z. He, R. Julian, K. Hausman, C. Finn, and S. Levine, “Meta-world: A benchmark and evaluation for multi-task and meta reinforcement learning,” in Conference on robot learning . PMLR, 2020, pp. 1094–1100. T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning . Pmlr, 2018, pp. 1861–1870. J. Wu, H. Zhou, P. Kazanzides, A. Munawar, and A. Liu, “Surgicai: A hierarchical platform for fine-grained surgical policy learning and benchmarking,” Advances in Neural Information Processing Systems , vol. 37, pp. 63 771–63 789, 2024. T. Z. Zhao, V. Kumar, S. Levine, and C. Finn, “Learning fine-grained bimanual manipulation with low-cost hardware,” arXiv preprint arXiv:2304.13705 , 2023. K. Roy, A. Dissanayake, B. Tidd, and P. Moghadam, “M2distill: Multi-modal distillation for lifelong imitation learning,” in 
+
+2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 1429–1435. 9
+
+APPENDIX 
+
+A. Meta-World MT5 
+
+Full procedure. Algorithm 1 summarizes the complete wake–sleep lifecycle used in both benchmarks. The algorithm first performs wake-phase training on the current skill, stores the resulting frozen skill memory, and then performs offline sleep consolidation over all stored memories when k ≥ 2. The benchmark-specific details below specify the wake optimizer, memory type, sleep hyperparameters, and evaluation protocol for MT5 and SurgicAI.                                                                   
+
+> Algorithm 1: Sleeping Robots
+> Require: Skills T1: K, policy πθ
+> 1: S ← ∅ ,θsleep 0←θ
+> 2: for k= 1 , . . . , K do
+> 3: Train πθon Tkusing the substrate-specific wake objective 4: Save θwake
+> k←θand store Mk
+> 5: S ← S ∪ {M k}
+> 6: if k≥2then
+> 7: Set λkby Eq. (2) 8: for n= 1 , . . . , N sleep do
+> 9: Compute {gi}ki=1 from S
+> 10: Compute Nash direction g⋆
+> 11: d←g⋆+λk(θ−θsleep
+> k−1)
+> 12: θ←Adam( θ, d, η sleep )
+> 13: Update eif used 14: Stop if sleep objective plateaus 15: end for
+> 16: end if
+> 17: θsleep
+> k←θ
+> 18: end for
+
+Environment. We use Meta-World v2 (Yu et al., 2020b) with the Sawyer robot arm. The observation space is 39-dimensional and includes end-effector state, gripper state, object state, and goal information. The action space is 4-dimensional and controls end-effector motion and gripper actuation. For each skill, we use 50 randomized task con-figurations and sample one configuration uniformly at the start of each episode. 
+
+Skill stream. The MT5 stream consists of five skills learned in a fixed order: R EACH → DOOR -O PEN → DRAWER -OPEN → WINDOW -C LOSE → BUTTON -P RESS -T OPDOWN .The skill order is fixed before training and is shared by all methods. 
+
+Policy and critic architecture. All MT5 methods use the same SAC policy substrate. The actor is a two-layer MLP with 256 hidden units per layer and ReLU activations. For Sleeping Robots, each hidden neuron additionally carries the homeostatic excitability variable described in Section III. The actor output parameterizes a diagonal Gaussian policy over the continuous action space. The log-standard-deviation bias is initialized to −1.0. The critic uses twin Q-networks, each implemented as a two-layer MLP with 256 hidden units, ReLU activations, and LayerNorm. 
+
+SAC training. Wake-phase skill learning uses Soft Actor-Critic (Haarnoja et al., 2018) with automatic entropy tuning. Table V summarizes the training hyperparameters used for MT5.  
+
+> TABLE V: SAC hyperparameters for Meta-World MT5 wake training.
+
+Setting Value 
+
+Actor/critic optimizer Adam, learning rate 3 × 10 −4
+
+Entropy coefficient Automatically tuned Entropy optimizer Adam, learning rate 3 × 10 −4
+
+log α clamp [−10 , 4] 
+
+Target entropy −2.0
+
+Reward scale 1.0
+
+Replay buffer size 1,000 ,000 
+
+Update-to-data ratio 5
+
+Batch size 256 
+
+Discount factor γ 0.99 
+
+Target-network update rate τ 0.005 
+
+Random warmup 5000 environment steps per skill Terminal handling Time-limit truncations are not treated as terminal 
+
+Wake budgets and early stopping. Each skill is trained with a fixed maximum episode budget and a skill-specific minimum budget before early stopping is allowed. Wake training stops when the 100-episode rolling mean reward fails to improve by more than 2% over the corresponding patience window. The budgets are given in Table VI.  
+
+> TABLE VI: Wake-phase budgets and early-stopping configuration for MT5.
+
+Skill Maximum episodes Minimum episodes Patience 
+
+REACH 1500 500 500 DOOR -O PEN 4000 1000 1000 DRAWER -O PEN 3000 1000 1000 WINDOW -C LOSE 2000 500 500 BUTTON -P RESS 2500 800 800 
+
+Homeostatic excitability. For Sleeping Robots, hidden-layer excitability variables are constrained to ei ∈ [0 .1, 5.0] and are updated only through the local homeostatic rule; they are not optimized by backpropagation. The excitability hyperparameters are listed in Table VII. 10                      
+
+> TABLE VII: Homeostatic excitability hyperparameters for MT5.
+> Setting Value
+> Excitability bounds [emin , e max ][0 .1,5.0]
+> Target activation αtarget 0.10
+> Wake excitability rate ηwake
+> e1×10 −3
+> Sleep excitability rate ηsleep
+> e1×10 −2
+> Activation EMA factor β0.01
+> Initial-skill novelty rate 5×10 −3for the first 500 episodes
+
+Sleep consolidation. After each wake phase with k ≥ 2, Sleeping Robots performs offline sleep consolidation using the frozen memories accumulated so far. Sleep is skipped for k = 1 because only one memory is available and no cross-skill bargaining is needed. For each skill, the sleep buffer contains 1000 raw states sampled uniformly from the final 20% of wake episodes. During sleep, the stored normalizer snapshot νk is used when evaluating the corresponding frozen critic, while the current actor uses its shared actor-side normalization. Sleep uses Nash bargaining with warm-started Frank–Wolfe iterations over normalized per-skill gradients. Hyperparameters are listed in Table VIII.                         
+
+> TABLE VIII: Sleep-consolidation hyperparameters for MT5.
+> Setting Value
+> Sleep optimizer Adam Sleep learning rate ηsleep 5×10 −4
+> Maximum sleep iterations Nsleep 4000
+> Early-stopping tolerance δ10 −3over a 100-iteration window Gradient norm constant ϵ10 −5
+> Frank–Wolfe iterations 50
+> Gradient normalization Per-skill ℓ2normalization Frank–Wolfe warm start Enabled State buffer size |B k|1000 per skill Sleep batch size 64
+
+Adaptive sleep anchoring. The anchoring diagnostic computes the distance ci = ∥θ − θwake  
+
+> i
+
+∥2 to each previous wake-end snapshot, for i < k . If min i<k ci < τ and k < K , the proximal anchor is activated with strength λ = 1 × 10 −2 toward the previous sleep-consolidated checkpoint θsleep  
+
+> k−1
+
+. We use τ = 150 for the MT5 experiments. The anchor is not applied after the final skill. 
+
+Frozen critic validation and diagnostics. Before freezing a skill critic, we evaluate it on a held-out batch from the cor-responding wake replay buffer. If the Bellman residual does not meet the validation threshold, additional critic updates are performed before the memory is stored. During sleep, we monitor implementation diagnostics on the stored MT5 state buffers, including frozen-critic value changes, Nash-gradient norms, and early-stopping iterations. These quantities are used only to detect unusually large or unstable sleep updates; they are not used as optimization targets or performance metrics. The sleep optimizer instead relies on the safeguards in Section III, including stored late-wake states, per-skill normalizer snapshots, gradient normalization, a fixed sleep budget, early stopping, and adaptive anchoring. In the MT5 runs, these diagnostics did not reveal unstable sleep updates or systematic behavioral collapse after consolidation. We observed one localized increase in frozen-critic value after the final sleep phase, driven primarily by the W INDOW -C LOSE 
+
+memory. However, the corresponding evaluated rollout success on W INDOW -C LOSE after sleep remained high ( 0.83 ), while the remaining memories showed value changes comparable to earlier sleep phases. We therefore treat frozen-critic value changes only as sanity-check diagnostics and base all behavioral conclusions on rollout evaluation through AFSR, PRS, BWT, and SPI. 
+
+Memory cost. Each MT5 skill memory consists of a frozen twin critic, a state buffer of 1000 raw states, and a normalizer snapshot. We compute memory from the stored float32 tensors used by each method’s continual-learning mechanism, excluding temporary training buffers and evaluation-only checkpoints. At K = 5 , Sleeping Robots stores frozen critics, state buffers, and normalizer snapshots for all skills, for a total of approximately 3.7 MB. This memory is larger than state-only methods such as A-GEM, but remains within the same small-memory regime as the other baselines and does not include previous actions, rewards, transitions, or full trajectories. 
+
+Evaluation protocol. After each skill, we evaluate the shared policy on all skills observed so far. For MT5, each skill is evaluated using N = 100 episodes with the same task-randomization protocol used during training. Final results are reported after the complete five-skill stream. For methods evaluated across multiple seeds, we report mean ± standard error; for single-seed ablations, we report point estimates. The MT5 PRS proxy uses the following six pre-registered skill pairs: REACH –D OOR -O PEN , D OOR -O PEN –D RAWER -O PEN , R EACH –D RAWER -O PEN , D OOR -O PEN –W INDOW -C LOSE , D RAWER -OPEN –B UTTON -P RESS , and W INDOW -C LOSE –B UTTON -P RESS . PRS is evaluated only for k ≥ 2.11 
+
+B. SurgicAI 
+
+Environment. We use the SurgicAI benchmark (Wu et al., 2024), which is built on the AMBF physics simulator for the da Vinci Research Kit (dVRK). The environment contains two patient-side manipulators operating on a simplified suturing phantom. We use the SurgicAI simulator configuration with the simple phantom, ghost objects, and both PSM arms with actuators enabled. Each episode terminates after 300 steps or when the subtask-specific success criterion is satisfied. 
+
+Skill stream. The SurgicAI stream consists of five surgical subtasks learned in a fixed order: A PPROACH → PLACE → INSERT 
+
+→ REGRASP → PULLOUT . These subtasks form a simplified suturing workflow, where the policy must approach the entry point, orient and insert the needle, transfer the needle, and pull it through the exit point. The skill order is fixed before training and is shared by all methods. 
+
+Observation and action spaces. Each policy receives a wrist-camera RGB image together with proprioceptive state. The wrist camera is attached to the PSM2 tool-yaw link and provides 640 × 480 RGB observations. We use the wrist camera as the visual input for all SurgicAI methods. The low-dimensional state contains the achieved pose, achieved-goal vector, and desired-goal vector. Actions are 7-dimensional incremental commands over Cartesian pose and jaw motion, scaled by the SurgicAI control step sizes. 
+
+Demonstrations. Each subtask uses 100 expert demonstrations collected from prepositioned-motion expert traces. Demonstra-tions include robot state, action, and synchronized wrist-camera frames. All methods use the same demonstration set, skill order, and evaluation protocol. 
+
+Policy architecture. All SurgicAI methods use the same vision-conditioned ACT policy substrate. The policy uses a ResNet-18 visual encoder and an Action Chunking Transformer with transformer encoder–decoder blocks, learned positional embeddings, a CVAE latent dimension of 32, and action chunk size 16. The KL coefficient is set to 10. Transformer-based imitation policies use the frozen-memory and sleep-consolidation components of Sleeping Robots, but do not use the homeostatic excitability mechanism, which is applied only to feedforward RL actors. 
+
+Wake training. Wake-phase learning uses supervised behavior cloning on the current subtask. Each skill is trained for up to 100 epochs with AdamW, using learning rate 10 −4 for the transformer, learning rate 10 −5 for the visual backbone, weight decay 10 −4, and batch size 8. We use early stopping based on an ℓ1 validation-loss plateau after a minimum of 30 epochs, and restore the best-ℓ1 checkpoint at the end of wake training. For Sleeping Robots, wake training on skill k ≥ 2 also includes output-space distillation from the frozen actor memories of previous skills: 
+
+Lwake = LBC + γk
+
+X
+
+> i<k
+
+Eo∼B i
+
+
+
+πθ (o) − πθwake  
+
+> i
+
+(o) 22
+
+
+
+. (6) We use γk = 1 .0 for k = 2 and γk = 0 .5 for k ≥ 3 to balance new-skill acquisition against preservation of previous actor outputs. The same frozen actor memories are later used during sleep.                                   
+
+> TABLE IX: ACT wake-training hyperparameters for SurgicAI.
+> Setting Value
+> Policy substrate ACT with ResNet-18 visual encoder Transformer learning rate 1×10 −4
+> Backbone learning rate 1×10 −5
+> Optimizer AdamW Weight decay 1×10 −4
+> Batch size 8
+> Maximum wake epochs 100 per skill Minimum epochs before early stopping 30
+> Early stopping criterion ℓ1validation-loss plateau Checkpoint selection Best-ℓ1wake checkpoint Action chunk size 16
+> CVAE latent dimension 32
+> KL weight 10
+> Wake distillation weight γk1.0for k= 2 ,0.5for k≥3
+
+Sleep consolidation. After each wake phase with k ≥ 2, Sleeping Robots performs offline sleep consolidation over the frozen actor memories accumulated so far. Each memory contains a frozen wake-end actor and an observation buffer. The sleep objective uses actor-snapshot distillation on stored observations: 
+
+Lπi (θ) = Eo∼B i
+
+
+
+πθ (o) − πθwake  
+
+> i
+
+(o) 22
+
+
+
+. (7) Per-skill gradients are combined using the same Nash-bargained consolidation procedure described in Section III. Sleep uses Adam with learning rate 10 −5, sleep batch size 8, at most 1000 sleep iterations, and early stopping when the sleep objective plateaus. The proximal sleep anchor uses strength λ = 10 −2 toward the previous sleep-consolidated checkpoint. Each skill memory stores 1024 observation samples for sleep. 12                           
+
+> TABLE X: Sleep-consolidation hyperparameters for SurgicAI.
+> Setting Value
+> Sleep optimizer Adam Sleep learning rate ηsleep 1×10 −5
+> Maximum sleep iterations Nsleep 1000
+> Early-stopping tolerance 10 −3objective-window change Frank–Wolfe iterations 5
+> Gradient normalization Per-skill ℓ2normalization Observation buffer size |B k|1024 per skill Sleep batch size 8
+> Anchor strength λ1×10 −2
+> Memory type Frozen actor snapshot + observation buffer Excitability Not used for transformer-based ACT policies
+
+Baselines. All SurgicAI baselines use the same ACT policy substrate, demonstrations, skill order, and wake-training budget as Sleeping Robots. Sequential BC trains on each new subtask without an explicit continual-learning or consolidation mechanism. LwF uses wake-time output distillation from a rolling previous actor. EWC applies a diagonal Fisher penalty to protect parameters from previous subtasks. M2Distill extends distillation to include intermediate visual features in addition to action outputs. SR Wake-Only is an ablation of our method that keeps wake-time multi-anchor distillation and frozen actor memories but removes the offline sleep phase. MT-Joint trains a single ACT policy on the union of all five subtask demonstration sets and is reported only as an oracle reference, not as a continual-learning method. 
+
+Evaluation protocol. After each skill, we evaluate the shared policy on every subtask observed so far. For SurgicAI, each subtask is evaluated using N = 20 episodes per skill in the main results. Final results are reported after the complete five-skill stream. AFSR is computed as the average success over learned subtasks. PRS is computed using the pairwise-min protocol over seven pre-registered workflow-ordered subtask pairs: A PPROACH –P LACE , P LACE –I NSERT , I NSERT –R EGRASP ,REGRASP –P ULLOUT , A PPROACH –I NSERT , P LACE –R EGRASP , and I NSERT –P ULLOUT . BWT is computed from the change in earlier-skill success after learning later subtasks. SPI measures preservation of the top-three PCA directions of the reference observation-space trajectory. 
+
+Compute. SurgicAI training and evaluation are more expensive than MT5 because each policy uses a vision-conditioned ACT model and rollouts are performed in AMBF. Training and evaluation are run on a single GPU. Due to simulator cost, SurgicAI evaluations use fewer episodes per skill than MT5, as described in Section IV. 
+
+C. Meta-World MT5 Baselines 
+
+All MT5 baselines use the same SAC backbone, actor architecture, skill order, wake-training budget, and evaluation protocol as Sleeping Robots unless stated otherwise. Each method is adapted to the sequential RL setting as follows. 
+
+EWC (Kirkpatrick et al., 2017). After each skill, we store a parameter snapshot θ⋆k and diagonal Fisher estimate Fk. During later wake phases, the actor loss includes λ
+
+2
+
+X
+
+> i<k
+
+Fi(θ − θ⋆i )2. (8) We use λ = 1 after tuning over {500 , 100 , 1}. Fisher estimates are computed from 2000 states per skill and normalized to unit Frobenius norm. 
+
+A-GEM (Chaudhry et al., 2018). We store 1000 raw states per past skill. During wake training, a reference gradient is recomputed every 30 update-to-data steps using the corresponding frozen critic. Conflicting actor gradients are projected onto the feasible half-space before the update. 
+
+DER (Buzzega et al., 2020). For each skill, we store 1000 states and the actor’s Gaussian mean and log-standard-deviation at storage time. During later wake phases, we add output-space distillation to the actor loss as below with αDER = 0 .1.
+
+αDER ∥μθ (s) − μstored (s)∥22, (9) 
+
+CLEAR (Rolnick et al., 2019). CLEAR stores 1000 transitions (s, a, r, s ′, done) per previous skill with behavioral-cloning targets. Each SAC update uses a 50/50 mixture of current-skill and replayed samples, with a BC loss coefficient αBC = 0 .01 .V-trace is disabled because SAC is off-policy. 
+
+Reset & Distill (Ahn et al., 2025). For each skill, the actor and critic are reset and trained from scratch. The trained actor is frozen as an expert. After each skill, all experts are distilled into a shared actor for 2000 iterations using batch size 256 and an MSE loss on Gaussian mean and log-standard-deviation, with 1000 states per expert. 
+
+Progress & Compress (Schwarz et al., 2018). An active column learns the current skill and is then compressed into a shared knowledge base. We use MSE distillation and EWC regularization with Frobenius-normalized Fisher estimates. The active column is reset at each skill. 13 
+
+Nash-MTL (Navon et al., 2022) adapted to sequential RL. We replace simultaneous task losses with frozen-critic surrogate gradients from stored skill memories. During wake training, per-skill gradients are normalized and combined with the same Frank–Wolfe Nash solver used by Sleeping Robots. Unlike Sleeping Robots, bargaining occurs during wake rather than offline sleep. 
+
+PCGrad (Yu et al., 2020a) adapted to sequential RL. PCGrad uses the same frozen-critic surrogate gradients as adapted Nash-MTL. Conflicting normalized gradients are projected orthogonally before the actor update, and the projected update is rescaled to the original gradient norm. 
+
+CompoNet (Malagon et al., 2025) adapted to SAC. Each skill adds an actor head and twin critic. A shared feature trunk is frozen after the first skill, and module outputs are combined by softmax attention. Attention is initialized with self-bias 
+
+αself = 2 .0.
+
+MT-joint oracle. The oracle trains multi-task SAC on all five MT5 skills simultaneously with uniform task sampling for 13,000 total episodes. It is not a continual-learning method and is reported only as an upper-bound reference; BWT is zero by definition. After training, the oracle achieves AFSR = 0.975 ± 0.007 and PRS = 0.958 ± 0.011 over three evaluation seeds with N = 100 episodes per skill. This confirms that high single-skill success and high pairwise reliability are achievable on the MT5 stream when all skills are available jointly, and contextualizes the gap faced by sequential methods. 
+
+D. Memory Budget 
+
+Table XI summarizes the method-specific memory used by each MT5 method. Our evaluation pipeline saves frozen critics and state buffers for diagnostic and evaluation purposes, but these objects are counted as continual-learning memory only for methods that explicitly use them during their update. The table therefore reports the storage used by each method’s own continual-learning mechanism. The goal is not exact byte-level matching, since different methods store different objects, but to clarify that all methods operate in a small-memory regime.                                                                    
+
+> TABLE XI: Method-specific memory stored in the MT5 experiments at K= 5 .✓indicates that the information is stored by the continual-learning mechanism, and ✗indicates that it is not stored.
+> Method States Actions Rewards/ CL-specific storage Size trans. (MB)
+> EWC ✗✗✗Fisher diagonal + θ⋆per skill 3.0 A-GEM ✓✗✗1000 states per skill 0.7 DER ✓✗✗1000 states + policy outputs per skill 1.6 CLEAR ✓✓✓1000 (s, a, r, s ′)+ behavior targets per skill 2.5 R&D ✓✗✗Frozen expert actor + states per skill 2.2 P&C ✗✗✗Knowledge base + Fisher diagonal 3.0 Nash-MTL ✓✗✗Frozen critics + states + normalizer snapshots 3.7 PCGrad ✓✗✗Frozen critics + states + normalizer snapshots 3.7 CompoNet ✗✗✗Frozen skill modules 4.0
+> Sleeping Robots ✓✗✗Frozen critics + states + normalizer snapshots 3.7
+
+Sleeping Robots stores unordered state buffers, frozen skill critics, and normalizer snapshots, but does not store previous actions, rewards, transitions, or full trajectories. Although Sleeping Robots is not the smallest-memory method, all methods remain within a comparable small-memory regime. Nash-MTL and PCGrad use the same frozen-critic memory interface as Sleeping Robots, so comparisons against these baselines isolate the consolidation mechanism rather than the stored information. The relevant distinction is therefore not storage capacity alone, but how the stored information is used: replay-based methods reuse transition-level data, whereas Sleeping Robots uses frozen skill memories for offline consolidation. 
+
+E. Robustness to Skill Order and Stream Length 
+
+We include two additional Meta-World robustness checks using the same SAC substrate, frozen-critic memory interface, and sleep-consolidation procedure as the main MT5 experiment. First, we evaluate a reverse-order MT5 stream, in which the original order R EACH → DOOR -O PEN → DRAWER -O PEN → WINDOW -C LOSE → BUTTON -P RESS is reversed while keeping the same five skills and evaluation protocol. This isolates sensitivity to acquisition order. Second, we evaluate an extended MT8 stream by continuing from the canonical MT5 checkpoint with three additional Meta-World tasks, W INDOW -O PEN ,DRAWER -C LOSE , and H ANDLE -P RESS . This tests sensitivity to a longer sequential stream. Final-policy metrics are reported in Table IV using N = 100 rollouts per skill. For the original and reverse MT5 streams, PRS uses the same six pre-registered skill pairs as the main experiment, indexed by skill identity rather than stream position. For MT8, PRS is computed over all  82
+
+ = 28 skill pairs, so PRS values should be interpreted as a stream-level robustness check rather than a one-to-one comparison with the MT5 pair set. SPI uses the same top-three PCA alignment protocol as the main results. The canonical MT5 result is averaged over three seeds, while the reverse MT5 and MT8 checks are single-seed.
