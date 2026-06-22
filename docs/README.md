@@ -6,71 +6,71 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-21
-- 运行时间：2026-06-21 20:43:20 UTC
+- 最新运行日期：2026-06-22
+- 运行时间：2026-06-22 22:37:34 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日共处理17篇论文，精读6篇速读11篇，核心聚焦多智能体长期协作与Token节省策略。最推荐精读9分《CoffeeBench》中的异构多智能体经济基准测试，以及8分《Remember, Don't Re-read》提出的有状态记忆代理新范式。建议优先研读这两篇，再速读《EComAgentBench》等长时程购物任务论文。
-- 详情：[/202606/21/README](/202606/21/README)
+今日精选6篇精读与11篇速读论文，聚焦零售场景LLM长期推理决策与智能体记忆管理两大核心方向。最值得关注的是满分论文《RetailBench》构建的现实零售环境长期推理基准，以及《AtomMem》提出的基于原子事实的简洁高效记忆系统。建议优先阅读RetailBench以了解复杂零售决策的评估框架，再结合AtomMem探索轻量级记忆系统在真实场景中的应用。
+- 详情：[/202606/22/README](/202606/22/README)
 
 ### 精读区论文标签
-1. [CoffeeBench: Benchmarking Long-Horizon LLM Agents in Heterogeneous Multi-Agent Economies](/202606/21/2606.16613v1-coffeebench-benchmarking-long-horizon-llm-agents-in-heterogeneous-multi-agent-economies)  
+1. [RetailBench: Benchmarking long horizon reasoning and coherent decision making of LLM agents in realistic retail environments](/202606/22/2606.15862v2-retailbench-benchmarking-long-horizon-reasoning-and-coherent-decision-making-of-llm-agents-in-realistic-retail-environments)  
+   标签：评分：10.0/10、query:agent-lsh
+   evidence：评估LLM智能体的长时推理能力
+2. [RetailBench: Benchmarking long horizon reasoning and coherent decision making of LLM agents in realistic retail environments](/202606/22/2606.15862v1-retailbench-benchmarking-long-horizon-reasoning-and-coherent-decision-making-of-llm-agents-in-realistic-retail-environments)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：在为期90天的多代理经济模拟中评估长时域LLM代理的基准
-2. [Remember, Don't Re-read: Stateful ReAct Agents for Token-Efficient Autonomous Experimentation](/202606/21/2606.14945v1-remember-dont-re-read-stateful-react-agents-for-token-efficient-autonomous-experimentation)  
+   evidence：专为长期推理设计的基准（千天级仿真）
+3. [Sovereign Execution Brokers: Enforcing Certificate-Bound Authority in Agentic Control Planes](/202606/22/2606.20520v1-sovereign-execution-brokers-enforcing-certificate-bound-authority-in-agentic-control-planes)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：运行时强制执行控制智能体基础设施
+4. [Beyond Domains: Reusing Web Skills via Transferable Interaction Patterns](/202606/22/2606.17645v1-beyond-domains-reusing-web-skills-via-transferable-interaction-patterns)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：有状态ReAct agent实现高效的自主实验规划
-3. [VisualClaw: A Real-Time, Personalized Agent for the Physical World](/202606/21/2606.16295v1-visualclaw-a-real-time-personalized-agent-for-the-physical-world)  
+   evidence：通过重用技能缩短行动视野
+5. [Beyond Reward Engineering: A Data Recipe for Long-Context Reinforcement Learning](/202606/22/2606.18831v1-beyond-reward-engineering-a-data-recipe-for-long-context-reinforcement-learning)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：从失败中自我进化的智能体
-4. [OpenClaw-Skill: Collective Skill Tree Search for Agentic Large Language Models](/202606/21/2606.16774v1-openclaw-skill-collective-skill-tree-search-for-agentic-large-language-models)  
+   evidence：面向自主智能体长轨迹的长上下文强化学习
+6. [Playful Agentic Robot Learning](/202606/22/2606.19419v1-playful-agentic-robot-learning)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：集体技能树搜索自动构建可复用技能，使智能体能随时间改进
-5. [TokenPilot: Cache-Efficient Context Management for LLM Agents](/202606/21/2606.17016v1-tokenpilot-cache-efficient-context-management-for-llm-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：面向长期会话的缓存高效上下文管理
-6. [EnvRL: Learn from Environment Dynamics in Agentic Reinforcement Learning](/202606/21/2606.17680v1-envrl-learn-from-environment-dynamics-in-agentic-reinforcement-learning)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：利用环境动力学的长期代理强化学习
+   evidence：代理通过玩耍自我改进
 
 ### 速读区论文标签
-1. [EComAgentBench: Benchmarking Shopping Agents on Long-Horizon Tasks with Distributed Hidden Intent](/202606/21/2606.17698v1-ecomagentbench-benchmarking-shopping-agents-on-long-horizon-tasks-with-distributed-hidden-intent)  
+1. [AtomMem: Building Simple and Effective Memory System for LLM Agents via Atomic Facts](/202606/22/2606.19847v1-atommem-building-simple-and-effective-memory-system-for-llm-agents-via-atomic-facts)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：针对长时域购物代理的基准，将需求分散在查询、配置文件和对话说明中
-2. [Environment-Grounded Automated Prompt Optimization for LLM Game Agents](/202606/21/2606.17838v1-environment-grounded-automated-prompt-optimization-for-llm-game-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：通过进化循环自动优化提示，使智能体随时间改善
-3. [GateMem: Benchmarking Memory Governance in Multi-Principal Shared-Memory Agents](/202606/21/2606.18829v1-gatemem-benchmarking-memory-governance-in-multi-principal-shared-memory-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：为多主体共享内存智能体基准测试内存治理，评估长期请求的状态更新
-4. [RTSGameBench: An RTS Benchmark for Strategic Reasoning by Vision-Language Models](/202606/21/2606.18950v1-rtsgamebench-an-rts-benchmark-for-strategic-reasoning-by-vision-language-models)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：用于战略推理的基准，强调长期规划
-5. [Reward Hacking in Language Model Agents: Revisiting AI Safety Gridworlds](/202606/21/2606.15385v1-reward-hacking-in-language-model-agents-revisiting-ai-safety-gridworlds)  
+   evidence：用于长时域代理的长期记忆
+2. [Kairos: A Native World Model Stack for Physical AI](/202606/22/2606.16533v1-kairos-a-native-world-model-stack-for-physical-ai)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：奖励黑客作为语言模型代理的控制问题
-6. [When Robots Sleep: Offline Skill Consolidation for Shared-Policy Robot Learning](/202606/21/2606.17493v1-when-robots-sleep-offline-skill-consolidation-for-shared-policy-robot-learning)  
+   evidence：世界模型维护长时间持久状态
+3. [Kairos: A Native World Model Stack for Physical AI](/202606/22/2606.16533v2-kairos-a-native-world-model-stack-for-physical-ai)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：机器人长期部署中的技能巩固
-7. [Compositional Skill Routing for LLM Agents: Decompose, Retrieve, and Compose](/202606/21/2606.18051v1-compositional-skill-routing-for-llm-agents-decompose-retrieve-and-compose)  
+   evidence：在长期时间跨度上维持持久状态，支持长期自主性
+4. [When Should a Robot Replan? Regret-Guided Update Scheduling in Time-Varying MDPs](/202606/22/2606.16972v1-when-should-a-robot-replan-regret-guided-update-scheduling-in-time-varying-mdps)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：提出SkillWeaver用于组合技能路由，使LLM智能体能够在复杂环境中分解任务并检索技能
-8. [Task Allocation and Motion Planning in Dynamic, Cluttered Environments via CBBA and Graphs of Convex Sets](/202606/21/2606.18516v1-task-allocation-and-motion-planning-in-dynamic-cluttered-environments-via-cbba-and-graphs-of-convex-sets)  
+   evidence：在有限预算下优化沿时间轴的再规划时机
+5. [Cordon: Semantic Transactions for Tool-Using LLM Agents](/202606/22/2606.17573v1-cordon-semantic-transactions-for-tool-using-llm-agents)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：多agent任务规划中的时间扩展规划
-9. [GRACE-DS: a Guarded Reward-guided Agent Correction Environment in Data Science](/202606/21/2606.16000v2-grace-ds-a-guarded-reward-guided-agent-correction-environment-in-data-science)  
+   evidence：控制和隔离代理影响的技术
+6. [Recover, Discover, Plan: Learning Skills and Concepts from Robot Failures](/202606/22/2606.18328v1-recover-discover-plan-learning-skills-and-concepts-from-robot-failures)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：机器人从失败中学习技能和概念以实现自我改进
+7. [Human-on-the-Loop Orchestration for AI-Assisted Legal Discovery](/202606/22/2606.19812v1-human-on-the-loop-orchestration-for-ai-assisted-legal-discovery)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：在复杂环境中利用LLM代理的技术
+8. [Hierarchical Control in Multi-Agent Games: LLM-based Planning and RL Execution](/202606/22/2606.20014v1-hierarchical-control-in-multi-agent-games-llm-based-planning-and-rl-execution)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：用于多代理控制的LLM规划
+9. [A Neuro-Symbolic Approach to Strategy Synthesis for Strategic Logics](/202606/22/2606.17962v1-a-neuro-symbolic-approach-to-strategy-synthesis-for-strategic-logics)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：受保护奖励引导的环境用于评估和纠正AutoML智能体，提供智能体控制技术
-10. [Tensor-Coord: Algebraic Decomposition of Joint Plan Tensors for Conflict-Free Multi-Agent LLM Planning](/202606/21/2606.16478v1-tensor-coord-algebraic-decomposition-of-joint-plan-tensors-for-conflict-free-multi-agent-llm-planning)  
+   evidence：多智能体系统的神经符号策略合成
+10. [Towards Scalable Customization and Deployment of Multi-Agent Systems for Enterprise Applications](/202606/22/2606.18502v1-towards-scalable-customization-and-deployment-of-multi-agent-systems-for-enterprise-applications)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：将联合计划张量分解为时序动作，支持多智能体长期规划
-11. [Can LLM Agents Infer World Models? Evidence from Agentic Automata Learning](/202606/21/2606.16576v1-can-llm-agents-infer-world-models-evidence-from-agentic-automata-learning)  
+   evidence：通过定制和微调实现智能体随时间改进
+11. [SAGE: Stochastic Prompt Optimization via Agent-Guided Exploration](/202606/22/2606.18902v1-sage-stochastic-prompt-optimization-via-agent-guided-exploration)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：代理通过长期交互推断隐藏环境
+   evidence：多智能体管道优化提示
 
 
 <div class="dpr-home-promo-card">

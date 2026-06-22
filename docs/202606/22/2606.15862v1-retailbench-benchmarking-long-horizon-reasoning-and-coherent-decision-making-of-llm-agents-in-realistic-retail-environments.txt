@@ -1,0 +1,816 @@
+Title: RetailBench: Benchmarking long horizon reasoning and coherent decision making of LLM agents in realistic retail environments
+
+URL Source: https://arxiv.org/pdf/2606.15862v1
+
+Published Time: Tue, 16 Jun 2026 01:40:22 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# RetailBench: Benchmarking long horizon reasoning and coherent decision making of LLM agents in realistic retail environments 
+
+Linghua Zhang 1 Jun Wang 2 Jingtong Wu 2 Zhisong Zhang †
+
+> 1
+
+Ant Group 2City University of Hong Kong 
+
+zlh20011228@gmail.com, nanrong.wj@ant-intl.com jingtong.wujt@ant-intl.com, zhisong.zhang@cityu.edu.hk 
+
+Abstract 
+
+Large language model (LLM) agents have made rapid progress on short-horizon, well-scoped tasks, yet their ability to sustain coher-ent decisions in dynamic long-horizon environ-ments remains uncertain. We introduce Retail-Bench, a data-grounded simulation benchmark for evaluating tool-using LLM agents in single-store supermarket operation. RetailBench mod-els retail management as a partially observable decision process and is designed to support thousand-day-scale simulations. In this envi-ronment, agents must manage pricing, replen-ishment, supplier selection, shelf assortment, inventory aging, customer feedback, external events, and cash-flow constraints. We evaluate seven contemporary LLMs under representa-tive agent frameworks over a 180-day evalu-ation horizon and compare them with a privi-leged oracle policy. Results show substantial variation across models: only a small subset survives the full evaluation horizon, and even the strongest LLM runs remain substantially behind the oracle policy in final net worth and sales outcomes. Behavioral analysis attributes these gaps to incomplete evidence acquisition, surface-level decision making, and the lack of a consistent long-horizon policy. RetailBench provides a controlled testbed for studying reli-able autonomy in economically grounded long-horizon decision-making. 
+
+1 Introduction 
+
+Large language models (LLMs), particularly when equipped with reasoning and tool-use capabilities, have achieved strong performance on short-horizon, structured tasks such as code editing, mathematical problem solving, complex information retrieval, and web interaction (Jimenez et al., 2024; Phan et al., 2025; Gao et al., 2024; Mialon et al., 2024; Wei et al., 2025; Zhou et al., 2024; Deng et al., 2023; Team, 2025). As these benchmarks become increasingly saturated, the central question in agent 
+
+Figure 1: Overview of the RetailBench simulation envi-ronment. Inventory, shelf assortment, customer demand, suppliers and orders, reviews and returns, news events, and finance and records are coupled in this environment. 
+
+evaluation is shifting from isolated task completion to sustained autonomy: can LLM agents pursue persistent objectives, adapt to evolving feedback, and recover from imperfect prior decisions over extended horizons? Existing evidence suggests that this remains a major challenge. Recent studies show that even state-of-the-art agents often fail to maintain coher-ent strategies across long interactions, especially when local errors compound through delayed con-sequences and reshape future state distributions (Amodei, 2024; Kwa et al., 2025; METR, 2025; Nof1.ai, 2025; Andon Labs, 2025; Backlund and Petersson, 2025). In response, benchmarks such as UltraHorizon, OdysseyBench, and HeroBench have begun to evaluate agents in temporally ex-tended and more realistic environments (Luo et al., 2025; Wang et al., 2025a; Anokhin et al., 2025). These efforts point to a broader methodological need: agent benchmarks should move beyond iso-lated task completion and evaluate whether agents can maintain persistent objective alignment and sta-ble behavioral consistency in realistic long-horizon settings. 
+
+> arXiv:2606.15862v1 [cs.AI] 14 Jun 2026
+
+Retail business operation provides a natural testbed for this form of long-horizon agency. A store operator must repeatedly monitor inventory and cash flow, interpret historical sales and cus-tomer feedback, forecast future demand, and de-cide pricing, replenishment, and assortment actions whose effects may emerge only after several days. Prior work has studied related components, includ-ing retail and promotion simulation (Xia et al., 2023, 2024), transaction and demand modeling (Wang et al., 2025b; Tkachuk et al., 2024), online shopping (Wang et al., 2026; Yao et al., 2022), and inventory or order-fulfillment control (Zhu et al., 2023; Shar et al., 2022; Leluc et al., 2023; Quan and Liu, 2025; Zhao et al., 2025). Yet these bench-marks typically isolate individual subproblems and do not capture the coupled, closed-loop dynamics of real business operation. As a result, the commu-nity lacks an open, real-data-grounded benchmark for evaluating tool-using LLM agents under diverse operational pressures over extended horizons. We introduce RetailBench , a controlled simula-tor for single-store supermarket operation grounded in real retail product and sales signals. In Retail-Bench , agents repeatedly make pricing, replenish-ment, supplier-selection, information-acquisition, memory-management, and day-termination deci-sions while facing delayed deliveries, inventory aging, stockouts, customer reviews, returns, and financial constraints. Our contributions are threefold: • A long-horizon retail environment. We intro-duce RetailBench , a data-grounded benchmark that evaluates LLM agents under coupled pric-ing, inventory, supplier, feedback, and financial dynamics. • An evaluation of current agent systems. We benchmark representative agent frameworks and state-of-the-art LLMs, showing that current agents remain far from stable, high-performing long-horizon operational policies. • A systematic failure analysis. We identify three recurring failure modes: incomplete evidence acquisition , surface-level decision making , and 
+
+lack of a consistent long-horizon policy .
+
+2 Environment Construction 
+
+2.1 Interface 
+
+Figure 2 summarizes RetailBench as an interac-tion between a tool-using agent and a partially ob-servable retail simulator. Formally, each step is modeled as a POMDP: 
+
+M = ( S, A, O, T, Ω, R ) (1) Here, S is the simulator state, A is the tool-action space, O is the exposed observation space, T is the transition model, Ω is the observation function, and 
+
+R records business outcomes. Appendix A.2 pro-vides the detailed state space S and action space A
+
+definitions. This abstraction matches Figure 2: the agent interacts only with tool-facing observations and actions, while the simulator privately main-tains delayed inventory, shelf visibility, demand, supplier, feedback, and cash-flow consequences. The latent state on day t and intra-day step k is factorized as: 
+
+St,k = ( Pt,k , I t,k , V t,k , C t,k , D t,k , E t,k , F t,k ) (2) Here, Pt,k stores product attributes and prices, It,k 
+
+stores inventory and pending orders, Vt,k stores the active shelf assortment, Ct,k stores supplier candi-dates and conditions, Dt,k stores demand factors, 
+
+Et,k stores external news, and Ft,k stores finan-cial accounting. These factors instantiate a single-store supermarket where pricing, replenishment, shelf placement, supplier choice, customer feed-back, and cash-flow pressure interact over multiple days. At each step, the agent selects a tool action from three tool groups: 
+
+at,k ∈ A ,
+
+A = Aread ∪ A other ∪ A act ,ot,k = Ω( St,k , a t,k ), at,k ∈ A read 
+
+zt,k = G(o≤t,k , a t,k ), at,k ∈ A other 
+
+St,k +1 = T (St,k , a t,k ), at,k ∈ A act 
+
+(3) The read-only subset Aread provides access to tools for querying funds, inventory levels, shelf status, product prices, inventory costs, sales and profit his-tories, supplier quotes and price histories, notes, and, when enabled, review ratings, supplier return rates, and news summaries. These tools expose ob-servations ot,k only; they do not disclose latent util-ities, hidden news-impact parameters, raw supplier-quality scores, or any other privileged simulator state. The auxiliary subset Aother contains constrained analysis tools, the memory tool, and execute_code .The memory tool allows the agent to write long-form memory entries, whereas execute_code can Figure 2: RetailBench interaction framework. A tool-using LLM agent operates a simulated retail store through read, action, memory, and code tools. The simulator state is partially observable, and time advances from day t to day t + 1 only when the agent invokes the end-today action. 
+
+aggregate observations and call read-only tools in-side a sandboxed environment. Neither tool can modify prices, orders, shelf placement, or inven-tory. The state-changing subset Aact comprises prod-uct price updates, replenishment orders, shelf-assortment updates, cross-day note writing, and day termination. Once the agent invokes end_today ,the simulator applies the following day-level tran-sition: 
+
+St+1 ,0 = T (St,k , end _today ) ≡ Tday (St,k ). (4) Here, Tday denotes the day-level transition induced by end_today . It processes deliveries, shelf-visible demand, sales, reviews, returns, expiration, rent, cash-flow updates, and supplier/news changes. The agent’s goal is to sustain store operation while im-proving sales, gross profit, net worth, and operating duration. 
+
+2.2 Data-Grounded Simulator 
+
+RetailBench is data-grounded in three complemen-tary ways. First, real grocery retail records define the product universe, category structure, histori-cal prices, sales trajectories, traffic patterns, and procurement-cost priors, providing empirical pri-ors for demand, pricing, and sourcing behavior. Second, dynamic feedback channels are grounded in external real-world corpora: review texts are sampled from category-specific review pools, and news events are adapted from financial news ar-ticles. Third, the simulator separates observable business-facing records from hidden state, using latent metadata to drive demand, returns, supplier costs, and cash-flow consequences. The primary retail source is the Dominick’s dataset (Kilts Center for Marketing, University of Chicago Booth School of Business, n.d.), which provides store-level grocery records on product cat-egories, product-level sales, prices, and cost-related signals. We use these records to define the prod-uct universe, initialize prices, estimate demand and traffic patterns, and construct procurement-cost pri-ors. From the 20 available categories, we select 96 products with sufficiently complete records for con-sistent estimation of price, sales, and category-level substitution patterns. Thus, product availability, baseline demand, price sensitivity, traffic scale, and cost assumptions are anchored in observed retail behavior rather than manually specified product profiles. Reviews and news introduce controlled but corpus-grounded dynamics. Amazon Reviews 2023 (Hou et al., 2024) provides category-specific review pools annotated with ratings, sentiment, and product-aspect dimensions. During simula-tion, realized sales trigger product-level reviews whose ratings depend on supplier quality, with com-ments sampled from the corresponding category– rating–aspect pool. The financial-news-articles dataset (ashraq, 2025) is used to construct neu-tral, category-level, and product-level news events. Agents observe only event titles, content, and his-torical records, while hidden metadata determines each event’s demand- or supply-side effects. Retail-Bench should therefore be interpreted as a repro-ducible, data-grounded stress test for long-horizon agent behavior, rather than as a full-fidelity simula-tor for forecasting real-store financial outcomes. 
+
+2.3 Modules 
+
+The simulator consists of the seven modules shown in Figure 1: Inventory, Suppliers & Orders, Shelf, Customer Demand, Reviews & Returns, News Events, and Finance & Records. These mod-ules share static product attributes and are coupled through daily transitions that jointly update delayed deliveries, shelf visibility, sales, feedback, news effects, inventory aging, and cash-flow account-ing. Appendix A.1 and Appendix A.2.6 provide the detailed module definitions, state variables, and day-level update equations. 
+
+2.4 Scope 
+
+RetailBench evaluates long-horizon, tool-using LLM agents in single-store supermarket opera-tion. Prior work has studied retail simulation and promotion optimization (Xia et al., 2023, 2024), transaction and demand modeling (Wang et al., 2025b; Tkachuk et al., 2024), web-based shopping agents (Wang et al., 2026; Yao et al., 2022), supply-chain and inventory control (Zhu et al., 2023; Shar et al., 2022; Leluc et al., 2023; Quan and Liu, 2025; Zhao et al., 2025), and long-running business-agent evaluation (Backlund and Petersson, 2025; Andon Labs, 2025). These benchmarks are valuable, but they typically expose narrower decision surfaces or isolate individual operational subproblems. Re-tailBench instead places agents in a closed-loop, data-grounded environment that requires coordi-nated decisions across pricing, inventory, suppli-ers, shelf placement, customer feedback, external events, and cash-flow survival. Appendix Table 2 provides a compact scope comparison with rep-resentative benchmarks, but our main design mo-tivation comes from the closed-loop operational requirements above. 
+
+3 Evaluation Protocol 
+
+3.1 Environment Configuration 
+
+All evaluations are conducted under a fixed Re-tailBench environment configuration. Specifically, the environment includes 96 products spanning 20 product categories, with five candidate suppliers for each product whose price–quality profiles evolve over time. It also incorporates customer review feedback and daily news events. The environment further specifies an initial budget of 30,000, a daily rent of 600, an inventory capacity of 15,000 units, and a shelf capacity of 40 products. The complete parameter settings are provided in Appendix A.3. 
+
+3.2 Models and Agent Frameworks 
+
+We instantiate LLM agents with three prompting-based frameworks when available: ReAct (Yao et al., 2023), Reflection (Shinn et al., 2023), and Plan-and-Act (Erdogan et al., 2025). These frame-works represent common tool-use patterns for LLM agents and interact with RetailBench through the same tool interface. All evaluations use a fixed RetailBench environ-ment configuration. We evaluate seven contempo-rary LLMs and report, for each model, its strongest completed run among the available framework set-tings. Because long-horizon agent performance varies substantially, this selected-run protocol sum-marizes each model by its best observed completed run rather than average framework-agnostic behav-ior. Due to API cost constraints, OpenAI GPT-5.5 is evaluated only under ReAct (Yao et al., 2023). We additionally include a privileged oracle policy as a non-agent reference; Appendix A.4 provides the full rule specification. 
+
+3.3 Metrics 
+
+We group the evaluation metrics into five categories, each capturing a distinct operational dimension of agent performance in RetailBench. We use ↑ and 
+
+↓ to indicate metrics for which higher and lower values are preferred, respectively; tool-use metrics are reported as diagnostic measures rather than direct optimization objectives. • Operational viability : Final Net Worth (↑), the terminal asset value including cash, on-hand inventory value, and pending-order value; and 
+
+Survival Days (↑), the number of days the agent keeps the store operational. • Sales effectiveness : Final Total Sales (↑), the cumulative number of units sold over the eval-uation horizon; Daily Sold Products (↑), the average number of distinct products sold per day; and Return Ratio (↓), the fraction of sold units that are returned. • Inventory control : Stockout Days (↓), the num-ber of days on which at least one product has insufficient inventory; and Expired Ratio (↓), the fraction of expired units among all units that are either sold or expired. • Tool-use behavior : Direct Tool Calls per Day 
+
+(↑), the number of top-level tool calls made out-side code execution, and Total Tool Calls per Day (↑), which additionally includes tool calls issued through code execution. These metrics characterize the agent’s reliance on direct tool interaction and code-mediated tool use. • Token use : Tokens per Day (↓), the average daily token consumption during evaluation. 
+
+4 Experiments 
+
+4.1 Main Benchmark Results 
+
+Table 1 reports the main results under our selected-run evaluation protocol. For each LLM, we select the best valid rollout according to a survival-first rule: we first choose the rollout with the longest survival horizon across the available agent frame-works, and use final net worth and total sales as tie-breakers when necessary. This protocol empha-sizes operational viability, which is necessary for all downstream store-management objectives in Re-tailBench, while still reporting business outcomes for the selected run. The oracle policy is included as a privileged reference rather than a directly com-parable language-agent baseline. It follows a man-ually specified quality-aware operating policy with access to structured simulator fields; Appendix A.4 provides the full rule specification. 
+
+4.2 Performance 
+
+The selected LLM runs exhibit substantial hetero-geneity in long-horizon operational performance. Under the survival-first selection protocol, survival ranges from 58 to 180 days, with an average of roughly 107 days. DeepSeek-V4-Pro and GPT-5.5 complete the full 180-day horizon, Kimi-K2.6 survives for 130 days, and the remaining selected runs terminate after 58 to 73 days. These results show that long-term operational viability remains difficult for most LLM agents. Among the two full-horizon LLM runs, GPT-5.5 is more token-efficient, using roughly one-third of DeepSeek-V4-Pro’s to-ken budget; apart from DeepSeek-V4-Pro, most open-source models terminate substantially earlier. Full-horizon survival, however, does not imply effective retail operation. The oracle-style policy reaches a final net worth of 131,510.42 and to-tal sales of 267,998, substantially outperforming the strongest LLM runs. GPT-5.5 achieves the highest selected LLM net worth, 24,350.98, while DeepSeek-V4-Pro achieves the highest selected LLM sales volume, 164,417. Relative to the oracle-style policy, these best LLM results fall short by 107,159.44 in net worth and 103,581 in sales, re-spectively, and also show clear gaps in return and expiration rates. These gaps suggest that current LLM agents may sustain operation over long hori-zons, but still struggle to convert operational con-tinuity into effective pricing, sourcing, inventory control, and sales outcomes. 
+
+5 Analysis 
+
+To understand systematic LLM failures in Retail-Bench, we analyze agent behavior through four op-erational diagnostics: product candidate selection ,
+
+evidence acquisition , action conversion , and tempo-ral follow-up . Together, these diagnostics capture the core operational loop of retail management: selecting products to manage, acquiring decision-relevant evidence, translating evidence into actions, and revisiting delayed consequences. The diagnostics reveal three recurring failure patterns: • Incomplete evidence acquisition. Agents often act on incomplete evidence, missing critical in-formation for orders or price updates even when the corresponding tools are available. • Weak evidence-to-action conversion. Agents rely on surface-level signals such as supplier price, while underweighting less visible but con-sequential factors such as supplier quality, prod-uct returns, expiration risk, and long-term prof-itability. • Lack of a consistent long-horizon policy. 
+
+Agents fail to maintain attention over important products and often do not follow up on delayed consequences of prior actions. Entry Framework Days ↑ Networth ↑ Sales ↑ Sold products/d ↑ Return ↓ Expired ↓ Stockout ↓ Direct tools/d ↑ Total tools/d ↑ Tokens/d ↓                                                                                   
+
+> DeepSeek-V4-Pro Plan-and-Act 180 10,120.90 164,417 32.57 0.0858 0.0144 116 23.23 62.35 508,516 GLM-5.1 ReAct 60 -2,134.36 7,016 3.97 0.1347 0.0297 14 37.58 39.98 1,054,511 GPT-5.5 ReAct 180 24,350.98 136,405 32.27 0.0646 0.0113 137 17.09 106.86 176,260
+> Grok-4.3 ReAct 58 828.40 11,305 6.74 0.1028 0.0577 24 9.50 10.36 144,582
+> Kimi-K2.6 ReAct 130 792.19 86,214 25.73 0.1226 0.0411 62 26.39 45.76 523,108 MiniMax-M2.5 Plan-and-Act 73 -397.95 23,521 12.08 0.1077 0.0049 52 18.67 40.19 484,698 Qwen3.5-397B-A17B Reflection 71 1,183.17 35,622 26.17 0.1047 0.0655 48 19.87 49.76 686,103 Oracle Policy Oracle 180 131,510.42 267,998 34.48 0.0201 0.0059 122 141.44 141.44 0
+
+Table 1: Main selected-run results under a single RetailBench environment configuration. Arrows indicate the preferred direction, and bold values mark the top two LLM-agent results for each metric. The Framework column reports the framework selected by the survival-first rule: longest survival horizon, with final net worth and total sales as tie-breakers. The oracle-style policy is a privileged non-LLM reference rather than a directly comparable language-agent baseline. 
+
+Detailed metric definitions are provided in Ap-pendix A.5. 
+
+5.1 Incomplete Evidence Acquisition 
+
+The first failure pattern is incomplete evidence ac-quisition. Agents often place orders or update prices without inspecting key information about demand, inventory, supplier conditions, reviews, and external events. We use two diagnostics: • Query depth (↑): the fraction of required evi-dence categories queried before an order or price update. • Evidence completeness (↑): the fraction of ac-tions for which all decision-critical evidence cat-egories have been queried before execution. Figure 3(a) shows large variation in evidence acquisition. GPT-5.5 performs best, with a query depth of 0.9922 and an evidence completeness of 0.9689. DeepSeek-V4-Pro and Kimi-K2.6 also achieve high query depth, at 0.9279 and 0.9052, re-spectively. In contrast, MiniMax-M2.5, Qwen3.5, and Grok-4.3 show lower evidence completeness, with Grok-4.3 reaching 0.0000. This pattern broadly aligns with Table 1, where agents with stronger evidence acquisition generally obtain bet-ter long-horizon outcomes. The result suggests that weakly structured evidence acquisition limits down-stream action quality, though evidence collection alone does not guarantee effective decisions. 
+
+5.2 Surface-Level Decision Making 
+
+The second failure pattern is surface-level decision making. Agents often rely on immediately visible signals rather than criteria that determine long-term outcomes. In RetailBench, supplier price is directly observable, whereas supplier quality is only indi-rectly reflected through return rates and customer reviews. As a result, agents may favor low-cost sup-pliers even when lower quality can increase returns, weaken customer feedback, and reduce long-term profitability. We use two diagnostics: • Price closeness score (↑): a normalized score derived from the distance between the chosen price and an estimated historical-profit optimum. • Supplier quality score (↑): a normalized rank-based score of the selected supplier among same-product candidates. Figure 3(b) shows that action conversion is the clearest bottleneck. On the price-closeness axis, the oracle policy corresponds to a mean raw price distance of 1.98%, while the closest selected LLM run, GPT-5.5, still has a raw distance of 17.92%. Supplier-quality scores remain consistently weak: in raw rank units, selected LLM mean quality ranks range from 2.55 to 3.89, and the best selected-run 
+
+QualityFirst rate is only 34.65%. Here, Quality-First denotes choosing the raw-quality-best sup-plier among same-product candidates, whereas 
+
+PriceFirst denotes choosing the cheapest supplier; Appendix A.5 and Figure 4 provide the detailed diagnostic definition and comparison. Across all LLM runs, QualityFirst is 21.5%, compared with 55.6% for PriceFirst .Thus, the bottleneck is not merely tool use, but evidence-to-action reasoning. Agents often query supplier prices, yet less consistently query or use supplier-quality proxies, limiting their ability to make quality-adjusted decisions with better long-term outcomes. 
+
+5.3 Lack of Consistent Long-Horizon Policy 
+
+The third failure pattern is the lack of a consistent stateful policy over long horizons. Long-horizon (a) Evidence acquisition (b) Action conversion  
+
+> (c) Product candidate selection (d) Temporal follow-up
+> Figure 3: Diagnostic analysis of the three failure patterns in RetailBench. Blue circles denote survival-first selected LLM runs, and the black star denotes the oracle policy. Better performance appears toward the upper-right region in each panel. Panels (a) and (b) diagnose incomplete evidence acquisition and surface-level decision making, respectively; panels (c) and (d) diagnose the lack of a consistent long-horizon policy.
+
+store operation is not a sequence of independent daily decisions: agents must maintain attention over important products, track prior actions, and up-date procurement, shelf, and pricing decisions after delayed feedback arrives. We diagnose this pattern from two complementary perspectives: product candidate selection and temporal follow-up. For product candidate selection, we use two di-agnostics: • Acted products per day (↑): the average number of products receiving information queries or man-agement actions, such as orders or price updates, per day. • High-demand coverage (↑): the extent to which daily top-sales or stockout products receive atten-tion. Figure 3(c) shows insufficient product-level at-tention across LLM agents. The oracle policy acts on 38.00 products per day and misses no retrospec-tive high-demand opportunities. Selected LLM runs, however, act on only 0.95 to 7.89 products per day and miss 32.86% to 88.18% of high-demand opportunities. Even the strongest selected LLM on this diagnostic, DeepSeek-V4-Pro, acts on only 7.89 products per day and misses 32.86% of high-demand opportunities. These results indicate that many failures arise before action quality is considered: although daily sales may span more than 30 distinct products, most sold products simply do not enter the daily ac-tion set. Persistent narrowness in product attention reflects weak portfolio-level management, rather than a one-step action error. For temporal follow-up, we use two diagnostics: • Follow-up action rate (↑): the fraction of acted products that receive another action within seven days. • Resolved-event rate (↑): one minus the rate of stockout, return, or expiration events left without later attention. Figure 3(d) shows substantial variation in follow-up quality. The oracle policy follows up on 0.9936 of acted products within seven days and leaves only 0.0040 of delayed events unresolved. DeepSeek-V4-Pro has the strongest selected-LLM follow-up action rate, 0.7316, and an unresolved-event rate of 0.0028, consistent with its 180-day survival. GPT-5.5 also keeps unresolved events low at 0.0042, but its follow-up action rate is lower at 0.4443. Together, product selection and temporal follow-up show that long-horizon failures are not merely poor one-step decisions. Agents lack persistent stateful policies that maintain product attention, re-visit delayed consequences, and revise operational decisions after feedback arrives. This explains why some agents make occasional reasonable local de-cisions but still fail to sustain stable store operation over the full horizon. Overall, systematic LLM failure in RetailBench arises from three interacting bottlenecks: in-complete evidence acquisition, weak evidence-to-action conversion, and inconsistent long-horizon policy. Improving long-horizon LLM agents there-fore requires more than increased tool use; it also requires better evidence selection, deeper evidence-to-action reasoning, and more reliable stateful de-cision policies. 
+
+6 Related Work 
+
+Retail, e-commerce, and supply-chain deci-sion benchmarks. Prior work has studied retail, e-commerce, and supply-chain decision-making through benchmarks for retail simulation and pro-motion optimization (Xia et al., 2023, 2024), de-mand recovery and transaction modeling (Wang et al., 2025b; Tkachuk et al., 2024), web-shopping agents (Wang et al., 2026; Yao et al., 2022), and supply-chain or inventory control (Zhu et al., 2023; Shar et al., 2022; Leluc et al., 2023; Quan and Liu, 2025; Zhao et al., 2025). These benchmarks cover important subproblems but typically isolate pro-motion, demand modeling, shopping, or inventory decisions. RetailBench instead evaluates tool-using LLM agents in a coupled retail environment where pricing, replenishment, supplier choice, shelf as-sortment, feedback, events, and cash flow interact over time. 
+
+Long-horizon agent benchmarks. Recent benchmarks increasingly evaluate LLM agents beyond isolated task completion, including ultra-long-horizon interaction, office workflows, virtual-world planning, lifelong experience reuse, workplace task execution, and long-running business operation (Luo et al., 2025; Wang et al., 2025a; Anokhin et al., 2025; Zheng et al., 2025; Xu et al., 2024; Backlund and Petersson, 2025; Andon Labs, 2025). They highlight persistence, memory, exploration, and workflow-level decision making, but generally do not model data-grounded retail dynamics over many days. RetailBench complements this line by grounding evaluation in closed-loop product-level operation and supporting diagnostic analysis of evidence acquisition, evidence-to-action conversion, and long-horizon policy consistency. 
+
+7 Conclusion 
+
+We introduced RetailBench , a data-grounded benchmark for evaluating long-horizon, tool-using LLM agents in closed-loop retail operation. Re-tailBench couples pricing, replenishment, supplier selection, shelf assortment, customer feedback, ex-ternal events, and financial constraints over ex-tended episodes. Our results show that current LLM agents still struggle to sustain effective op-eration: even models that survive the full horizon remain far below the oracle policy in net worth and sales outcomes. Failure analysis identifies three recurring bottlenecks: incomplete evidence acqui-sition, surface-level decision making, and lack of a consistent long-horizon policy. RetailBench there-fore serves not only as a performance benchmark, but also as a diagnostic testbed for whether agents can maintain operational state, revisit delayed con-sequences, and align local tool calls with long-term business outcomes. These findings suggest that future agents need stronger evidence selection, evidence-to-action reasoning, stateful policy main-tenance, and feedback adaptation before they can reliably operate in complex long-horizon environ-ments. 
+
+Code and data availability. Anonymized code, processed data, raw trajectories, and reproduction instructions are available at 
+
+https://anonymous.4open.science/r/ RetailBench_ARR-6253/README.md .
+
+8 Limitations 
+
+RetailBench has several limitations. It focuses on a single-store supermarket setting and therefore omits multi-store coordination, competitive mar-kets, strategic supplier behavior, labor constraints, promotions, and interactions among multiple au-tonomous agents. Although the environment is grounded in real product and sales signals, re-views, news events, supplier adaptation, returns, and parts of the demand model are synthetic or rule-based, so RetailBench should be viewed as a controlled stress test rather than a full-fidelity sim-ulator of retail economics. Our evaluation is also limited to prompting-based agents under a fixed environment configuration, and the selected-run protocol characterizes the strongest observed be-havior rather than average performance across all possible agent designs or environment settings. Fi-nally, the failure analysis is diagnostic rather than causal: the proposed metrics identify recurring bot-tlenecks but do not fully isolate each factor’s causal contribution. Future work should extend Retail-Bench to richer retail settings, multi-agent opera-tion, learning-based adaptation, counterfactual di-agnostics, and constraint-aware action control. 
+
+References 
+
+Dario Amodei. 2024. Machines of loving grace. https://www.darioamodei.com/essay/ machines-of-loving-grace . Accessed: 2025-12-01. Andon Labs. 2025. Vending-bench 2: A bench-mark for long-horizon business simulation. https: //andonlabs.com/evals/vending-bench-2 . Ac-cessed: 2025-12-10. Petr Anokhin, Roman Khalikov, Stefan Rebrikov, Viktor Volkov, Artyom Sorokin, and Vincent Bissonnette. 2025. Herobench: A benchmark for long-horizon planning and structured reasoning in virtual worlds. 
+
+Preprint , arXiv:2508.12782. ashraq. 2025. financial-news-articles. https: //huggingface.co/datasets/ashraq/ financial-news-articles . Accessed: 2025-12-01. Axel Backlund and Lukas Petersson. 2025. Vending-bench: A benchmark for long-term coherence of au-tonomous agents. Preprint , arXiv:2502.15840. Xiang Deng, Yu Gu, Boyuan Zheng, Shijie Chen, Sam Stevens, Boshi Wang, Huan Sun, and Yu Su. 2023. Mind2Web: Towards a generalist agent for the web. In Advances in Neural Information Processing Sys-tems , volume 36. Lutfi Eren Erdogan, Nicholas Lee, Sehoon Kim, Suhong Moon, Hiroki Furuta, Gopala Anumanchipalli, Kurt Keutzer, and Amir Gholami. 2025. Plan-and-act: Improving planning of agents for long-horizon tasks. 
+
+Preprint , arXiv:2503.09572. Bofei Gao, Feifan Song, Zhe Yang, Zefan Cai, Yibo Miao, Qingxiu Dong, Lei Li, Chenghao Ma, Liang Chen, Runxin Xu, Zhengyang Tang, Benyou Wang, Daoguang Zan, Shanghaoran Quan, Ge Zhang, Lei Sha, Yichang Zhang, Xuancheng Ren, Tianyu Liu, and Baobao Chang. 2024. Omni-math: A univer-sal olympiad level mathematic benchmark for large language models. Preprint , arXiv:2410.07985. Dhruv Grewal, Jens Nordfält, Anne Roggeveen, Rainer Olbrich, and Hans Christian Jansen. 2014. Price-quality relationship in pricing strategies for private labels. Journal of Product and Brand Management ,23(6):429–438. Yupeng Hou, Jiacheng Li, Zhankui He, An Yan, Xiusi Chen, and Julian McAuley. 2024. Bridging lan-guage and items for retrieval and recommendation. 
+
+Preprint , arXiv:2403.03952. Carlos E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik Narasimhan. 2024. SWE-bench: Can language mod-els resolve real-world GitHub issues? In Interna-tional Conference on Learning Representations .Kilts Center for Marketing, University of Chicago Booth School of Business. n.d. Dominick’s Dataset. 
+
+https://www.chicagobooth.edu/research/ kilts/research-data/dominicks . Accessed: 2025-11-01. Thomas Kwa, Ben West, Joel Becker, Amy Deng, Katharyn Garcia, Max Hasin, Sami Jawhar, Megan Kinniment, Nate Rush, Sydney Von Arx, Ryan Bloom, Thomas Broadley, Haoxing Du, Brian Goodrich, Nikola Jurkovic, Luke Harold Miles, Seraphina Nix, Tao Lin, Neev Parikh, and 6 others. 2025. Measuring ai ability to complete long tasks. 
+
+Preprint , arXiv:2503.14499. Rémi Leluc, Elie Kadoche, Antoine Bertoncello, and Sébastien Gourvénec. 2023. Marlim: Multi-agent reinforcement learning for inventory management. 
+
+Preprint , arXiv:2308.01649. Haotian Luo, Huaisong Zhang, Xuelin Zhang, Haoyu Wang, Zeyu Qin, Wenjie Lu, Guozheng Ma, Haiying He, Yingsha Xie, Qiyang Zhou, Zixuan Hu, Hongze Mi, Yibo Wang, Naiqiang Tan, Hong Chen, Yi R. Fung, Chun Yuan, and Li Shen. 2025. Ultrahori-zon: Benchmarking agent capabilities in ultra long-horizon scenarios. Preprint , arXiv:2509.21766. Daniel McFadden. 1974. Conditional logit analysis of qualitative choice behavior. In Paul Zarembka, editor, 
+
+Frontiers in Econometrics , pages 105–142. Academic press, New York. METR. 2025. Measuring ai ability to complete long tasks. METR blog. Grégoire Mialon, Clémentine Fourrier, Craig Swift, Thomas Wolf, Yann LeCun, and Thomas Scialom. 2024. GAIA: A benchmark for general AI assistants. In International Conference on Learning Representa-tions .Masao Nakanishi and Lee G. Cooper. 1974. Parame-ter estimation for a multiplicative competitive inter-action model—least squares approach. Journal of Marketing Research , 11(3):303–311. Nof1.ai. 2025. Alpha arena — exploring the limits of large language models as quant traders. https: //nof1.ai/blog/TechPost1 . Accessed: 2025-12-10. Long Phan, Alice Gatti, Ziwen Han, Nathaniel Li, Josephina Hu, Hugh Zhang, Chen Bo Calvin Zhang, Mohamed Shaaban, John Ling, Sean Shi, Michael Choi, Anish Agrawal, Arnav Chopra, Adam Khoja, Ryan Kim, Richard Ren, Jason Hausenloy, Oliver Zhang, Mantas Mazeika, and 1093 others. 2025. Hu-manity’s last exam. Preprint , arXiv:2501.14249. Yinzhu Quan and Zefang Liu. 2025. Invagent: Alarge language model based multi-agent system for inventory management in supply chains. Preprint ,arXiv:2407.11384. Ibrahim Shar, Wenhuan Sun, Haiyan Wang, and Chetan Gupta. 2022. Deep reinforcement learning toward ro-bust multi-echelon supply chain inventory optimiza-tion. In 2022 IEEE 18th International Conference on Automation Science and Engineering (CASE) , pages 1385–1391. Noah Shinn, Federico Cassano, Edward Berman, Ash-win Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. Reflexion: Language agents with verbal rein-forcement learning. In Advances in Neural Informa-tion Processing Systems , volume 36. The Terminal-Bench Team. 2025. Terminal-bench: A benchmark for ai agents in terminal environments. Sergiy Tkachuk, Szymon Lukasik, and Anna Wrob-lewska. 2024. Consumer transactions simulation through generative adversarial networks. Preprint ,arXiv:2408.03655. Jiangyuan Wang, Kejun Xiao, Qi Sun, Huaipeng Zhao, Tao Luo, Jian Dong Zhang, and Xiaoyi Zeng. 2026. ShoppingBench: A real-world intent-grounded shop-ping benchmark for LLM-based agents. In Proceed-ings of the AAAI Conference on Artificial Intelligence ,volume 40, pages 33521–33529. Weixuan Wang, Dongge Han, Daniel Madrigal Diaz, Jin Xu, Victor Rühle, and Saravan Rajmohan. 2025a. Odysseybench: Evaluating llm agents on long-horizon complex office application workflows. 
+
+Preprint , arXiv:2508.09124. Yangyang Wang, Jiawei Gu, Li Long, Xin Li, Li Shen, Zhouyu Fu, Xiangjun Zhou, and Xu Jiang. 2025b. Freshretailnet-50k: A stockout-annotated censored demand dataset for latent demand recovery and fore-casting in fresh retail. Preprint , arXiv:2505.16319. Jason Wei, Zhiqing Sun, Spencer Papay, Scott McK-inney, Jeffrey Han, Isa Fulford, Hyung Won Chung, Alex Tachard Passos, William Fedus, and Amelia Glaese. 2025. Browsecomp: A simple yet chal-lenging benchmark for browsing agents. Preprint ,arXiv:2504.12516. Yu Xia, Ali Arian, Sriram Narayanamoorthy, and Joshua Mabry. 2023. Retailsynth: Synthetic data gener-ation for retail ai systems evaluation. Preprint ,arXiv:2312.14095. Yu Xia, Sriram Narayanamoorthy, Zhengyuan Zhou, and Joshua Mabry. 2024. Simulation-based benchmarking of reinforcement learning agents for personalized retail promotions. Preprint ,arXiv:2405.10469. Frank F. Xu, Yufan Song, Boxuan Li, Yuxuan Tang, Kritanjali Jain, Mengxue Bao, Zora Z. Wang, Xuhui Zhou, Zhitong Guo, Murong Cao, Mingyang Yang, Hao Yang Lu, Amaad Martin, Zhe Su, Leander Maben, Raj Mehta, Wayne Chi, Lawrence Jang, Yiqing Xie, and 2 others. 2024. Theagentcom-pany: Benchmarking llm agents on consequential real world tasks. Preprint , arXiv:2412.14161. Shunyu Yao, Howard Chen, John Yang, and Karthik Narasimhan. 2022. WebShop: Towards scalable real-world web interaction with grounded language agents. In Advances in Neural Information Processing Sys-tems , volume 35. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations .Xuhua Zhao, Yuxuan Xie, Caihua Chen, and Yuxiang Sun. 2025. Aim-bench: Evaluating decision-making biases of agentic llm as inventory manager. Preprint ,arXiv:2508.11416. Junhao Zheng, Xidi Cai, Qiuke Li, Duzhen Zhang, ZhongZhi Li, Yingying Zhang, Le Song, and Qianli Ma. 2025. Lifelongagentbench: Evalu-ating llm agents as lifelong learners. Preprint ,arXiv:2505.11942. Shuyan Zhou, Frank F. Xu, Hao Zhu, Xuhui Zhou, Robert Lo, Abishek Sridhar, Xianyi Cheng, Tianyue Ou, Yonatan Bisk, Daniel Fried, Uri Alon, and Gra-ham Neubig. 2024. WebArena: A realistic web envi-ronment for building autonomous agents. In Interna-tional Conference on Learning Representations .Yiheng Zhu, Yang Zhan, Xuankun Huang, Yuwei Chen, yujie Chen, Jiangwen Wei, Wei Feng, Yinzhi Zhou, Haoyuan Hu, and Jieping Ye. 2023. Ofcourse: A multi-agent reinforcement learning environment for order fulfillment. In Advances in Neural Information Processing Systems , volume 36, pages 34765–34777. Curran Associates, Inc. Benchmark Decision maker Data grounded Horizon Price– Inv. Perish./ Stockout Shelf Reviews Supplier News Finance RetailSynth                                                                                                                       
+
+> (Xia et al., 2023)
+> Policy ✗Medium ✓✗✗✗✗✗✗
+> Promo-RL
+> (Xia et al., 2024)
+> Policy ✗Medium ✓✗✗✗✗✗✗
+> FreshRetailNet
+> (Wang et al., 2025b)
+> None ✓Static ✗✓✗✗✗✗✗
+> Transaction sim.
+> (Tkachuk et al., 2024)
+> None ✓Static ✗✓✗✗✗✗✗
+> ShoppingBench
+> (Wang et al., 2026)
+> Agents ✓Medium ✗✗✗✓✗✗✗
+> WebShop
+> (Yao et al., 2022)
+> Agents ✓Medium ✗✗✗✓✗✗✗
+> OFCOURSE
+> (Zhu et al., 2023)
+> Policy ✗Long ✗✓✗✗✗✗✗
+> Inventory opt.
+> (Shar et al., 2022)
+> Policy ✗Long ✗✓✗✗✗✗✗
+> MARLIM
+> (Leluc et al., 2023)
+> Policy ✗Long ✗✓✗✗✗✗✗
+> InvAgent
+> (Quan and Liu, 2025)
+> Agents ✗Medium ✗✓✗✗✗✗✗
+> AIM-Bench
+> (Zhao et al., 2025)
+> Agents ✗Medium ✗✓✗✗✗✗✗
+> VendingBench
+> (Backlund and Petersson, 2025; Andon Labs, 2025)
+> Agents ✗Long ✓✗✗✗✓✗✓
+> RetailBench Agents ✓Long ✓✓✓✓✓✓✓
+
+Table 2: Comparison with related retail, supply-chain, e-commerce, and long-horizon agent benchmarks. The table emphasizes the decision surface exposed to the decision maker. “Agents” denotes LLM/tool-using agents, “Policy” denotes learned optimization or RL policies, and “None” denotes datasets or simulators without an autonomous decision maker. A checkmark indicates that the corresponding axis is explicitly modeled as an environment state, action, or evaluation target. 
+
+A Environment Configuration Details 
+
+A.1 Simulator Modules 
+
+RetailBench follows the seven-module organiza-tion shown in Figure 1: Inventory, Suppliers & Or-ders, Shelf, Customer Demand, Reviews & Returns, News Events, and Finance & Records. Static prod-uct attributes, including identity, category, shelf life, retail price, historical sales summaries, and review summaries, are shared across these modules. The modules are coupled through the daily transition process: orders create delayed deliveries, shelf-assortment decisions determine customer-facing availability, demand is realized as sales, reviews and returns update feedback signals, news changes demand or supply conditions, and finance records cash-flow outcomes and store viability. 
+
+Inventory. The inventory module tracks physi-cal stock state, including on-hand units, item age, sellable quantity, capacity constraints, stockouts, expirations, and waiting items that cannot yet enter inventory because of capacity limits. It determines the feasibility constraints for procurement, shelv-ing, and sales. 
+
+Shelf. The shelf module enforces shelf-capacity constraints and determines the customer-facing as-sortment. At each day t, it maintains an active assortment Vt ⊆ J subject to the capacity con-straint |Vt| ≤ Cshelf . Stocked products outside Vt
+
+remain in inventory but are not visible to customers and therefore cannot generate demand. 
+
+Suppliers & Orders. The suppliers-and-orders module provides five procurement candidates per product, each with cost, quality, and delivery-time profiles. Costs are grounded in Dominick’s, and quality tiers follow documented price–quality re-lationships in private-label retailing (Grewal et al., 2014); supplier choices affect procurement expen-diture, delivery timing, return risk, reviews, and future inventory availability. Replenishment orders are converted into delayed deliveries that enter in-ventory on later days when capacity allows. 
+
+Customer Demand. Following RetailSynth (Xia et al., 2023), customer choice follows an MNL model (McFadden, 1974). Daily traffic comes from Dominick’s (Kilts Center for Marketing, Univer-sity of Chicago Booth School of Business, n.d.). The simulator first samples category demand from power-aggregated shelf-visible attraction (Nakan-ishi and Cooper, 1974), then allocates it across vis-ible products. The corresponding update equations are given in Appendix A.2.6. 
+
+Reviews & Returns. The reviews-and-returns module converts realized sales and supplier quality into post-sale feedback. Sold items can generate product-level reviews, which update rating sum-maries and later demand through ρrev  
+
+> jt
+
+. Returned units are sampled from supplier-quality-dependent return probabilities, logged at the product and sup-plier level, and deducted from realized revenue. Thus, supplier quality affects both customer feed-back and return pressure. 
+
+News Events. The news-events module samples observable news text with hidden simulator meta-data specifying impact scope, target category or product, direction, strength, affected side, and dura-tion. Demand-side news changes product attraction through ρnews  
+
+> jt
+
+, while supply-side news changes supplier costs through δsup  
+
+> jt
+
+.
+
+Finance & Records. The finance-and-records module tracks revenue, procurement cost, returns, rent, cash, inventory value, pending-order value, net worth, and persistent sales, supplier, review, return, and news records. At each day transition, the simulator applies deliveries, shelf-constrained demand realization, sales, feedback updates, expi-ration, rent, cash-flow updates, and next-day sup-plier/news changes. 
+
+A.2 State and Action Spaces 
+
+We construct the environment using real-world re-tail data from the Dominick’s dataset (Kilts Center for Marketing, University of Chicago Booth School of Business, n.d.). From the 20 available product categories, we select 96 products with the most complete and informative sales records. The rich-ness of these observations enables reliable model-ing of the relationship between pricing decisions and realized demand. 
+
+Key Symbols. Let J denote the set of selected products, with cardinality |J | = J (where J = 96 
+
+in our experiments). Each product j ∈ J belongs to a product category cat( j) ∈ { 1, . . . , 20 }. For each product j, let K(j) denote its associated sup-plier set, with |K (j)| = 5 . Let Vt ⊆ J denote the product set placed on shelf on day t.
+
+State and action spaces. The simulator state space is S = Sprod × S inv × S shelf × S sup ×Sdem × S ext × S fin , covering product attributes and prices, inventory and pending deliveries, shelf assortment, supplier candidates, demand signals, external news, and financial accounting. The ac-tion space is A = Aread ∪ A other ∪ A act : Aread 
+
+contains observation tools for funds, inventory, shelf status, product prices, costs, sales/profit his-tory, supplier quotes, notes, review-rating sum-maries, supplier-return-rate summaries, and news; 
+
+Aother contains constrained analysis tools such as 
+
+execute_code ; and Aact contains place_order ,
+
+modify_product_price , set_shelf_products ,
+
+add_note , remove_note , and end_today .
+
+A.2.1 Product State Sprod 
+
+> t
+
+For each product j, we maintain a set of static attributes together with time-varying operational signals: 
+
+Sprod  
+
+> t,j
+
+=  id j , desc j , L j , p jt , hsales  
+
+> j,t
+
+, rj,t 
+
+. (5) Here, id j and desc j denote the unique identifier and textual description of product j, respectively. 
+
+Lj denotes the shelf life (in days), and pjt is the retail price on day t. The term hsales  
+
+> j,t
+
+encodes his-torical sales statistics, while rj,t summarizes ag-gregated customer review signals, such as average rating and review volume. 
+
+Data grounding. The product set and cost pri-ors are constructed from the Dominick’s dataset (Kilts Center for Marketing, University of Chicago Booth School of Business, n.d.). Historical sales records from the same source are used to calibrate the demand model. 
+
+A.2.2 Inventory State Sinv 
+
+> t
+
+Inventory is represented at the product level with age tracking. Let Ijt denote the on-hand units of product j at the beginning of day t. To support shelf-life constraints and depreciation, we track the arrival time and remaining shelf life of each unit. 
+
+Capacity constraint and pending queue. Let 
+
+Cap denote the total inventory capacity of the store. If incoming replenishment orders would violate this constraint, excess units are placed into a first-in-first-out (FIFO) pending queue Qt and become available only after sufficient inventory space is released: 
+
+X
+
+> j∈J
+> Lj
+
+X
+
+> a=0
+
+I(a) 
+
+> jt
+
+≤ Cap . (6) Stockout signal. When realized demand exceeds the available sellable inventory of product j on day 
+
+t, a stockout indicator is triggered. This signal is recorded at the end of day t and exposed to the agent as explicit operational feedback. 
+
+Expiration and destruction. At each day transi-tion, inventory units whose residence time exceeds their shelf life are removed from the system. 
+
+Shelf assortment. RetailBench additionally tracks an active shelf assortment Vt. The shelf has finite product capacity: 
+
+Vt ⊆ J , |Vt| ≤ Cshelf . (7) Only products in Vt are visible to customer demand; newly delivered inventory remains off shelf until the agent updates Vt through the shelf-assortment action. 
+
+A.2.3 Supply Chain State Ssup 
+
+> t
+
+Each product j is associated with a set of suppliers 
+
+k ∈ K (j). The supplier state includes procure-ment price cjk , quality level qjk , and delivery-time distribution: 
+
+Ssup  
+
+> t,j
+
+= (cjk , q jk , Ljk ) : k ∈ K (j) . (8) Delivery time ℓjk ∼ L jk is sampled when an order is placed. Procurement prices are discretized into tiers using Dominick’s cost signals (Kilts Center for Marketing, University of Chicago Booth School of Business, n.d.), following empirically observed positive correlations between price tier and quality level (Grewal et al., 2014). 
+
+Enforced diversity. To avoid degenerate sup-plier configurations, we enforce that each prod-uct has (i) one supplier with maximal quality, (ii) one supplier with minimal price and minimal qual-ity, and remaining suppliers spanning intermediate price–quality levels. 
+
+A.2.4 Demand Signals and Demand Generation 
+
+Demand-related components capture customer traf-fic, shelf-visible choice sets, and stochastic sales generation. We define 
+
+Sdem  
+
+> t
+
+=  Nt, {A0
+
+> jt
+
+}j∈J , {ρrev  
+
+> jt
+
+}j∈J , {ρnews  
+
+> jt
+
+}j∈J 
+
+,
+
+(9) where Nt denotes daily customer traffic, A0 
+
+> jt
+
+is the calibrated base attraction, and ρrev  
+
+> jt
+
+and ρnews 
+
+> jt
+
+are bounded demand-side effects from reviews and news. 
+
+Customer traffic. Daily customer traffic is de-rived from the Dominick’s dataset (Kilts Center for Marketing, University of Chicago Booth School of Business, n.d.). 
+
+Consumer choice and demand generation. 
+
+Given traffic Nt, prices {pjt }j∈J , shelf assort-ment Vt, review signals, and active news, Retail-Bench uses the attraction model in Equations 12– 14. The current implementation aggregates shelf-visible product attractions within each category us-ing a power mean, samples category-level demand against an outside option, allocates category de-mand with a multinomial draw over relative prod-uct attractions, and caps realized sales by sellable inventory. If j / ∈ Vt, then product j cannot receive demand on that day. 
+
+A.2.5 External Information Sext  
+
+> t
+
+(News Module) 
+
+We maintain a set of active news events Et. Each event e ∈ E t is represented as 
+
+e = ( type , scope , target ,
+
+side , sign , η, 
+
+text , ttl )
+
+(10) where scope ∈{macro , category , product , neutral }, side 
+
+∈ {demand , supply , both }, sign ∈ {+1 , −1},
+
+η denotes impact magnitude, and ttl is the time-to-live in days. News texts are grounded in financial-news-articles (ashraq, 2025) and expanded into retail-relevant events through LLM-assisted rewriting and metadata annotation. 
+
+Impact application. News impacts are incorpo-rated into (i) demand utilities and/or (ii) supplier prices depending on side and scope . Neutral news has η = 0 by design. 
+
+A.2.6 Simulator Update Equations 
+
+This section gives the detailed equations summa-rized in Section 2.3. 
+
+Supply price update. Let ¯cjkt be the base pro-curement price for supplier k and product j on day 
+
+t, and let δsup  
+
+> jt
+
+be the active supply-side news effect matched to product j, its category, or the macro scope. The daily procurement price exposed to the agent is 
+
+cjkt = ¯ cjkt 
+
+ 1 − δsup 
+
+> jt
+
+. (11) Positive supply news lowers procurement cost, while negative supply news raises it. Attraction and sales. The base product attrac-tion combines historical preference, seasonality, price sensitivity, and stochastic demand noise: 
+
+A0 
+
+> jt
+
+= exp 
+
+
+
+αj +  βj + βsj sin(2 πw t/52) + βcj cos(2 πw t/52) pjt + ϵjt 
+
+
+
+.
+
+(12) Reviews and news multiplicatively adjust this at-traction: 
+
+Ajt = A0
+
+> jt
+
+ 1 + ρrev  
+
+> jt
+
++ ρnews 
+
+> jt
+
+. (13) Let Vct = {j ∈ Vt : cat( j) = c} be the shelf-visible product set in category c. Given daily traffic 
+
+Nt, RetailBench samples category-level purchase volume and allocates it by relative attraction among shelf-visible products: 
+
+Gct =
+
+ X
+
+> j∈Vct
+
+Aρjt 
+
+
+
+> 1/ρ
+
+,
+
+˜Yct ∼ Binomial 
+
+
+
+Nt, Gct 
+
+1 + Gct 
+
+
+
+,πjt |c = Ajt 
+
+P 
+
+> i∈Vct
+
+Ait 
+
+, j ∈ Vct ,
+
+ˆyct ∼ Multinomial 
+
+ ˜Yct , πct 
+
+
+
+,yjt = min 
+
+
+
+ˆyjt , I sellable 
+
+> jt
+
+
+
+.
+
+(14) 
+
+Review effect. Review text is grounded in Ama-zon Reviews 2023 (Hou et al., 2024). During simu-lation, sold units can generate reviews; the rating is sampled from supplier quality and the text is sam-pled from the matching category–rating–dimension pool. The demand effect is computed from the dif-ference between recent and initial rating: 
+
+ρrev  
+
+> jt
+
+= gcat( j)(¯ rjt ) − gcat( j)(r0 
+
+> j
+
+), (15) where gcat( j)(·) is a category-specific smooth rating-gain function, ¯rjt is the recent average rating, and r0 
+
+> j
+
+is the initial rating. 
+
+News effect. Each news event is stored as 
+
+e = ( m, τ, side , direction , s, text , ttl ), (16) where m is event mode, τ is target scope, side 
+
+specifies demand, supply, or both, s is impact strength, and ttl controls how long the event re-mains active. Demand-side news contributes 
+
+ρnews  
+
+> jt
+
+= λ X 
+
+> e∈E t:e∼j
+
+wm(e) sgn( e) se, (17) where e ∼ j indicates that the event matches the product, its category, or the macro scope; wm(e)
+
+is the mode weight; and λ is the global impact scale. Supply-side events analogously define δsup 
+
+> jt
+
+in Equation 11. 
+
+A.2.7 Financial State Sfin 
+
+> t
+
+Let Ft denote available funds at the start of day t.Net worth is computed as 
+
+NW t = Ft + X
+
+> j∈J
+> Lj
+
+X
+
+> a=0
+
+I(a) 
+
+> jt
+
+· vj (a), (18) where vj (a) denotes the per-unit value at age a. We adopt linear shelf-life depreciation: 
+
+vj (a) = cj · max 
+
+
+
+0, 1 − aLj
+
+
+
+, (19) with cj denoting a reference procurement cost (e.g., the mean or realized supplier cost). 
+
+A.2.8 Action Space Details 
+
+RetailBench exposes actions through typed tools. Read-only tools instantiate Ω and do not modify simulator state; other tools provide constrained analysis over observations; state-changing tools instantiate T .
+
+Read-only tools. 
+
+• view_funds_and_date : returns current funds, date, and rent context. • view_inventory : reports on-hand units, waiting-capacity items, incoming quantities, and open supplier orders. • view_shelf_status : reports active shelf assort-ment, shelf capacity, and on-shelf product sum-maries. • view_product_prices : returns current selling prices for selected products. • view_product_inventory_cost : summarizes average procurement cost and inventory age. • view_sales_profit_history : returns histor-ical sales, average selling price, and realized profit. • view_current_date_supplier_prices : re-turns current supplier quotes. • view_supplier_price_history : returns his-torical supplier prices for a product. • view_notes : returns the agent’s stored cross-day notes. Conditional observation tools. 
+
+• view_product_avg_ratings : exposes product-level average ratings when review feedback is enabled. • view_supplier_returns_avg_rate : exposes supplier-level return rates, optionally restricted to selected products. • view_today_news : lists current news IDs and titles when news is enabled. • view_news_detail : returns the observable con-tent of a selected news item. • view_news_history : returns news records over a date range. 
+
+Other/analysis tools. 
+
+• execute_code : runs constrained Python for read-only analysis over observations. It can com-pute summaries, rank products, and compare sup-pliers, but mutation tools are unavailable inside the sandbox. 
+
+State-changing tools. 
+
+• place_order : places a multi-product order through a selected supplier, deducts procurement cost, samples delivery time, and schedules future inventory arrivals. • modify_product_price : updates the retail price pjt of product j.• set_shelf_products : replaces the active shelf assortment subject to |V ′| ≤ Cshelf .• add_note and remove_note : update cross-day notes. • end_today : applies Tday over deliveries, shelf-visible demand, sales, reviews, returns, expira-tion, rent, cash-flow updates, and next-day sup-plier/news changes. 
+
+A.3 Environment Setting 
+
+RetailBench provides a single released environ-ment configuration for all reported evaluations. • Time Range: – Data begin time: 06/06/91 
+
+– Data end time: 12/31/95 
+
+– Store begin time: 09/07/91 
+
+– Store ID: 15 • Financial Parameters: – Initial funds: 30,000 
+
+– Daily rent: 600 
+
+– Inventory capacity: 15,000 
+
+– Shelf capacity: 40 products • Feature Enablement: – Review enabled: True 
+
+– Review ratio: 0.05 
+
+– News enabled: True 
+
+– Shelf constraint enabled: True 
+
+• News Configuration: – News impact base scale: 0.4 
+
+– News daily count: 20 
+
+– News random seed: 42 
+
+– News sample ratios: * Neutral: 0.9 * Single category: 0.02 * Macro all: 0.03 * product level: 0.05 
+
+– News impact mode weights: * Neutral: 0.0 * Macro all: 1.0 * Single category: 1.0 * product level: 1.2 • Selected Categories (20 categories): – Bathroom_Tissues, Beer, Bottled_Juices, Canned_Soup, Canned_Tuna 
+
+– Cereals, Cheeses, Cigarettes, Cookies, Crackers 
+
+– Dish_Detergent, Fabric_Softeners, Front_end_candies, Frozen_Entrees 
+
+– Frozen_Juices, Oatmeal, Paper_Towels, Snack_Crackers 
+
+– Soft_Drinks, Toothpastes • Category Effects: All categories have a uni-form effect of -0.1 • Random Seed: 42 
+
+A.4 Oracle Policy 
+
+The oracle policy is a deterministic, quality-based store-operation rule used as a privileged non-agent reference. It is not an optimal policy and should not be interpreted as a language-agent baseline: it has direct access to structured simulator fields such as supplier quality scores and news impact values, and it does not face prompt length, tool-selection, memory, or action-formatting constraints. The reported run uses the released environment with ncat = 2 products per category, shelf capacity 
+
+Cshelf = 40 , and replenishment multiplier B =6, selected by a parameter sweep over the shelf-constrained setting. Algorithm 1 Oracle quality-based policy                                                                                                                                                   
+
+> Require: Horizon T, categories C, products J, shelf capacity
+> Cshelf , per-category product count ncat , bulk multiplier
+> B.1: Select U ← ∅ .2: for each category c∈ C do
+> 3: Rank products in cby historical total profit before the store start date. 4: Add the top ncat products to U.5: end for
+> 6: Set shelf assortment V0to a category-diverse subset of U
+> with |V0| ≤ Cshelf .7: for day t= 1 , . . . , T do
+> 8: if funds are negative for 10 consecutive days then
+> 9: Terminate the rollout. 10: end if
+> 11: Observe funds, news, inventory, shelf status, recent sales, and supplier quotes. 12: for each product j∈ U do
+> 13: Ij←on-hand units plus waiting-capacity units for product j.14: Choose supplier k⋆= arg max k(qjk ,−cjkt ).15: Estimate price p⋆jby maximizing mean 30-day historical profit:
+> p⋆j= arg max pmean {(p−cjk ⋆t)yjτ :pjτ =p}.16: Let ˆdjbe the mean historical sales at p⋆j; use
+> ˆdj= 10 if no record is available. 17: Compute news multiplier mj=clip((1 +
+> ηneed
+> j)(1 + ηsup
+> j),0.5,2.0) .18: Set target demand ˜dj←mjˆdj.19: if p⋆jexists then
+> 20: Call modify_product_price (j, p ⋆j).21: end if
+> 22: Let Qjbe the pending order quantity for product
+> j.23: Let Rj←B˜djand Oj←max(1 ,⌊B˜dj⌋).24: if Ij≤Rjand Qj< O jthen
+> 25: aj←min( Oj−
+> Qj,available inventory capacity −100) .26: if aj>0then
+> 27: Call place_order for ajunits of product
+> jfrom supplier k⋆.28: end if
+> 29: end if
+> 30: end for
+> 31: Call end_today .32: end for
+
+A.5 Four-Stage Diagnostic Metrics 
+
+This section defines the stage-level diagnostics used in Section 5. The metrics are computed af-ter each rollout by aligning three sources: tool-call traces, simulator records, and realized delayed events. They are diagnostic rather than reward functions. In particular, some quantities use ret-rospective information or hidden simulator fields to explain agent behavior; they should not be in-terpreted as information available to the agent at decision time. We evaluate the daily operational loop in four stages. Stage 1 asks whether important products entered the agent’s action set. Stage 2 asks whether the agent gathered the evidence needed before act-ing. Stage 3 asks whether the gathered evidence was converted into quality-adjusted prices and sup-plier choices. Stage 4 asks whether the agent later revisited products affected by delayed con-sequences. Unless otherwise noted, we use a seven-day follow-up window and a three-day lookback window for high-demand coverage. 
+
+Stage 1: Product candidate selection. This stage measures whether the agent allocates atten-tion to a sufficiently broad and relevant product set. From the tool traces, we extract executed state-changing product actions, including replenishment orders and price updates. Let Ut be the set of prod-ucts receiving at least one such action on day t. Let 
+
+Ht be the retrospective high-demand set, formed by the top-10 realized-sales products on day t to-gether with products that experienced stockout on that day. We report 
+
+Acted /day = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+|U t|, (20) 
+
+HighDemandCov = 1 −
+
+P 
+
+> t
+
+|H t \ U t−w:t|
+
+P 
+
+> t
+
+|H t| , (21) where Ut−w:t = Stτ =max(1 ,t −w) Uτ and w = 3 .
+
+Acted/day captures action breadth. HighDemand-Cov captures whether high-demand or stockout-affected products received recent operational at-tention. Auxiliary diagnostics include the number of distinct acted products, category coverage, ac-tion concentration, the top-10 product action share, and whether an acted product sells within seven days. These auxiliary quantities help distinguish a genuinely broad policy from a narrow policy that repeatedly acts on only a few products. 
+
+Stage 2: evidence acquisition. This stage mea-sures whether a product action is supported by rele-vant same-day observations. Let B denote the eval-uated executed product actions. For each action 
+
+a ∈ B , we define a required evidence set R(a). Re-plenishment orders require inventory, recent sales, supplier prices, and supplier-quality proxies such as customer ratings or supplier return rates. Price updates require current price, cost, inventory, and recent sales/profit history. Let Q(a) be the evi-dence categories queried earlier on the same day before a, and let ma = 1 if at least one required category is missing. We report 
+
+QDepth = 1
+
+|B| 
+
+X
+
+> a∈B
+
+|Q (a) ∩ R (a)||R (a)| . (22) Completeness = 1 − 1
+
+|B| 
+
+X
+
+> a∈B
+
+ma. (23) 
+
+QDepth measures partial evidence coverage, while 
+
+Completeness requires all action-critical evidence categories to be present. We also record the average gap between the last relevant query and the action, the number of distinct evidence tools used before an action, and same-day query–action overlap. For the oracle policy, QDepth and Completeness are set to 1 because the policy is a structured rule sys-tem whose inputs explicitly include the required inventory, demand, supplier, and price fields. 
+
+Stage 3: action conversion. This stage measures whether evidence is converted into economically meaningful actions. For price actions, let pa be the selected price and p⋆a be the historical-profit opti-mum estimated from visible sales and cost records. We first compute the absolute percentage distance 
+
+da = 100 · |pa − p⋆a|
+
+p⋆a
+
+. (24) The text reports the run-level mean distance ¯dr
+
+directly. For the normalized diagnostic plot in Fig-ure 3(b), we convert distance into an upper-right-is-better run-level score: 
+
+PriceClose r = 1 − ¯dr
+
+max r′ ¯dr′
+
+, (25) where the maximum is taken over valid plotted runs. Thus larger values indicate prices closer to the historical-profit optimum. For supplier actions, let rqa be the rank of the chosen supplier by raw quality among K(a) same-product candidates, where rank 1 is best. We report 
+
+SupplierQual( a) = K(a) − rqa
+
+K(a) − 1 . (26) Because each product has five suppliers in our envi-ronment, this score maps the best-quality supplier to 1 and the worst-quality supplier to 0. We ad-ditionally report PriceFirst , the fraction of order lines choosing the cheapest supplier, and Quality-First , the fraction choosing the raw-quality-best supplier. These two rates are post-hoc diagnos-tics: raw supplier quality is part of the simulator state and is not directly exposed to LLM agents, although agents can observe proxies such as return rates and customer ratings. A high PriceFirst rate with a low QualityFirst rate indicates a low-cost sourcing tendency that may increase returns and harm future reviews. All LLM    
+
+> orders
+> Survival-best
+> LLM orders
+> Oracle
+> policy
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Order lines (%)
+> 21.5 24.1
+> 100.0
+> 55.6 55.8
+> 5.9
+> QualityFirst PriceFirst
+
+Figure 4: Supplier-selection diagnostic used in Stage 3. QualityFirst is the fraction of order lines choosing the raw-quality-best supplier among candidates for the same product, while PriceFirst is the fraction choosing the cheapest supplier. The comparison shows that LLM orders are more price-first than quality-first, whereas the oracle policy explicitly prioritizes supplier quality. 
+
+Stage 4: temporal follow-up. This stage mea-sures whether the agent maintains stateful attention after actions and delayed consequences. Let P
+
+be the set of acted product-day pairs. For each 
+
+(j, t ) ∈ P , let bjt = 1 if product j receives an-other state-changing action within seven days, and otherwise bjt = 0 . We also collect delayed event records D, including stockout, return, and expira-tion events. Let ue = 1 if event e ∈ D receives no later query or action within the seven-day analysis window, and otherwise ue = 0 . We report 
+
+FollowUp = 1
+
+|P| 
+
+X
+
+> (j,t )∈P
+
+bjt , (27) 
+
+Resolved = 1 − 1
+
+|D| 
+
+X
+
+> e∈D
+
+ue. (28) 
+
+FollowUp captures whether products that received actions remain in the operational loop. Resolved 
+
+captures whether delayed negative signals are later attended to through either a query or another state-changing action. Additional diagnostics track later query/action revisits, response latency in days, re-peated events without intervention, and adjacent-day action-set continuity. Together, these metrics distinguish a one-shot daily policy from a policy that maintains product-level state across delayed feedback.
