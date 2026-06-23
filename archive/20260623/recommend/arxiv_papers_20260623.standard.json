@@ -1,0 +1,898 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-06-23T21:52:49.746053+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 18,
+    "deep_cap": 6,
+    "deep_selected": 11,
+    "quick_candidates": 21,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2606.20954v1",
+      "source": "arxiv",
+      "title": "Learning What Not to Forget: Long-Horizon Agent Memory from a Few Kilobytes of Learning",
+      "abstract": "Long-running language-model systems accumulate interaction history that outgrows the context window, so they must continually evict. When an eviction policy drops a load-bearing detail, for example an access token issued at login or a path the next call needs, the action fails. We present LRE (Learned Relevance Eviction), a few kilobytes, CPU-only, language-model-free scorer that learns which units of history are load-bearing and keeps them by verbatim extraction. Under a matched-budget comparison, in our experiment, no baseline dominates LRE on the accuracy-cost plane. On agents, LRE matches the accuracy of keeping the entire history overall. On the simplest tasks, it exceeds that no-eviction baseline by 27%, while requiring zero compressor calls and reducing peak context size by up to 52%. A controlled study trace shows LRE completes tasks where the others loop, finishing one such task in 37% fewer calls than keeping everything and solving 14 tasks where no other run policy does. On conversational memory, LRE outranks dense and token-pruning encoders at zero neural cost. In downstream evaluation, LRE gives the best budgeted answer quality on LoCoMo reading 68% fewer tokens. Its supervision can also be annotation-free: training only on the system's own behavior recovers 95% of the supervised scorer's effectiveness. We argue that, because memory eviction in LLM agents is a fidelity problem, it requires a deployable proactive policy where the future query is unavailable and exact state is decisive, and that cheap learned relevance can be sufficient.",
+      "authors": [
+        "Nusrat Jahan Lia",
+        "Aritra Mazumder"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-06-18T21:39:10+00:00",
+      "link": "https://arxiv.org/pdf/2606.20954v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "long-horizon agent memory via learned relevance eviction",
+      "llm_evidence_cn": "通过学习的相关性驱逐实现长周期Agent记忆",
+      "llm_evidence": "通过学习的相关性驱逐实现长周期Agent记忆",
+      "canonical_evidence": "通过学习的相关性驱逐实现长周期Agent记忆",
+      "llm_tldr_en": "LRE learns which history units are critical for long-horizon agents, matching full-history accuracy with minimal memory.",
+      "llm_tldr_cn": "长周期语言模型系统面临上下文窗口限制，需不断舍弃历史。LRE（学习式相关性驱逐）是一个仅需几KB、CPU运行、不依赖语言模型的评分器，它学习哪些历史单元是关键信息并逐字保留。在同等预算下，LRE在准确率-成本平面上优于所有基线；在Agent任务上，其总体准确率与保留全部历史相当，在简单任务上甚至超出27%，且无需压缩。",
+      "llm_tldr": "长周期语言模型系统面临上下文窗口限制，需不断舍弃历史。LRE（学习式相关性驱逐）是一个仅需几KB、CPU运行、不依赖语言模型的评分器，它学习哪些历史单元是关键信息并逐字保留。在同等预算下，LRE在准确率-成本平面上优于所有基线；在Agent任务上，其总体准确率与保留全部历史相当，在简单任务上甚至超出27%，且无需压缩。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.21144v1",
+      "source": "arxiv",
+      "title": "AdaMem: Learning What to Remember for Personalized Long-Horizon LLM Agents",
+      "abstract": "Long-term memory systems for Large Language Model (LLM) agents typically try to \\emph{remember everything}, extracting memories uniformly to retain as many facts as possible. In production, however, inference cost and finite context budgets make this untenable: beyond consolidating raw dialogue into memory, an agent must exert \\emph{write control}, efficiently keeping only the information each user actually cares about. Otherwise, long-horizon personalized interactions suffer \\emph{memory bloat}, where irrelevant trivia crowds out useful information and steadily erodes question-answering (QA) accuracy. We argue that what is worth remembering is role-dependent, and propose \\textbf{AdaMem} (Adaptive Memory), a method that \\emph{learns what to remember} for each user from feedback. AdaMem maintains a structured, role-specific Memory Policy and refines it from weekly QA feedback through a lightweight, patch-style self-reflection step with failure rollback. To study this setting, we build \\textbf{AdaMem-Bench}, a benchmark that simulates weeks of interaction with week-by-week QA. Across two extraction models and two feedback modes, AdaMem improves QA accuracy by up to \\textbf{+9.0\\%} over the uniform Mem0 baseline while shrinking memory volume by \\textbf{9\\%}.",
+      "authors": [
+        "Xingyu Chen",
+        "Rui Wang",
+        "Zhaopeng Tu",
+        "Liefeng Bo"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-06-19T06:35:52+00:00",
+      "link": "https://arxiv.org/pdf/2606.21144v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "personalized long-horizon LLM agents with memory control",
+      "llm_evidence_cn": "面向个性化长时LLM智能体的记忆控制",
+      "llm_evidence": "面向个性化长时LLM智能体的记忆控制",
+      "canonical_evidence": "面向个性化长时LLM智能体的记忆控制",
+      "llm_tldr_en": "AdaMem learns what to remember for personalized long-horizon LLM agents, directly addressing long-horizon operation.",
+      "llm_tldr_cn": "本文针对长时互动中记忆膨胀导致有用信息被掩盖的问题，提出AdaMem，学习根据用户角色选择性记忆关键信息。该方法通过自适应控制写入内容，缓解内存膨胀效应。实验显示，AdaMem在个性化长时问答任务中显著提升准确率，同时降低推理成本。该工作为长时智能体的高效记忆管理提供了实用方案。",
+      "llm_tldr": "本文针对长时互动中记忆膨胀导致有用信息被掩盖的问题，提出AdaMem，学习根据用户角色选择性记忆关键信息。该方法通过自适应控制写入内容，缓解内存膨胀效应。实验显示，AdaMem在个性化长时问答任务中显著提升准确率，同时降低推理成本。该工作为长时智能体的高效记忆管理提供了实用方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.21228v1",
+      "source": "arxiv",
+      "title": "Sakana Fugu Technical Report",
+      "abstract": "The capabilities of frontier Large Language Models (LLMs) continue to advance, with different providers increasingly specializing in distinct domains. This raises a natural next objective: how to combine the individual specializations of various LLMs into a collectively intelligent system. To this end, we report the development of Sakana Fugu, a family of orchestrator models that harness and amplify the capabilities of an LLM agent team. Fugu models are themselves language models trained to understand user queries and dynamically devise agentic scaffolds to solve them. Through these adaptive scaffolds, Fugu accesses performance beyond any individual LLM agent, achieving state-of-the-art results compared to other publicly accessible models across a range of challenging tasks, including SWE-Bench Pro, Terminal Bench, LiveCodeBench, GPQA-Diamond, Humanity's Last Exam, and CharXiv Reasoning. We release two models: Fugu, which balances performance with latency for everyday use, and Fugu-Ultra, which prioritizes answer quality on the hardest problems. We describe our training paradigm, which encompasses large-scale fine-tuning, evolutionary algorithms, and reinforcement learning approaches, along with the infrastructure and core design principles that turn these methods into a production system. We hope this report encourages further research into multi-agent systems and dynamic, query-adaptive agentic scaffolds as a path toward the next frontier of AI capabilities, accessed through collective intelligence.",
+      "authors": [
+        "Yujin Tang",
+        "Edoardo Cetin",
+        "Jinglue Xu",
+        "Qi Sun",
+        "Stefan Nielsen",
+        "Vincent Richard",
+        "Haruto Goda",
+        "Iaroslav Tymchenko",
+        "Nhan Nguyen",
+        "Hyunin Lee",
+        "Mari Ashiga",
+        "Shashank Kotyan",
+        "So Kuroki",
+        "Tarin Clanuwat"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-19T08:47:40+00:00",
+      "link": "https://arxiv.org/pdf/2606.21228v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "orchestrator models that harness LLM agent team capabilities",
+      "llm_evidence_cn": "编排模型利用LLM代理团队的能力",
+      "llm_evidence": "编排模型利用LLM代理团队的能力",
+      "canonical_evidence": "编排模型利用LLM代理团队的能力",
+      "llm_tldr_en": "Sakana Fugu introduces orchestrator models that dynamically devise agentic scaffolds to harness multiple LLMs, achieving state-of-the-art results on challenging tasks like SWE-Bench.",
+      "llm_tldr_cn": "前沿大语言模型各有专长，如何组合它们形成集体智能成为关键问题。本文报告了Sakana Fugu系列编排模型，这些模型本身是语言模型，能够理解用户查询并动态设计代理支架来解决问题。通过自适应支架，Fugu超越了任何单个LLM代理的性能，在SWE-Bench等任务上达到最先进水平，展示了一种有效利用和掌控LLM代理团队的方法。",
+      "llm_tldr": "前沿大语言模型各有专长，如何组合它们形成集体智能成为关键问题。本文报告了Sakana Fugu系列编排模型，这些模型本身是语言模型，能够理解用户查询并动态设计代理支架来解决问题。通过自适应支架，Fugu超越了任何单个LLM代理的性能，在SWE-Bench等任务上达到最先进水平，展示了一种有效利用和掌控LLM代理团队的方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.21775v1",
+      "source": "arxiv",
+      "title": "Beyond the Next Step: Variable-Length Latent World Models for Long-Horizon Planning",
+      "abstract": "Recently, world models have emerged as a promising paradigm for building intelligent agents by learning predictive models that estimate future environment states conditioned on observations and actions. In particular, JEPA-style latent world models provide an efficient alternative to pixel space prediction by learning action-conditioned dynamics in compact representation spaces. However, existing latent world models typically rely on one-step prediction and must be recursively rolled out for long-horizon planning, which leads to compounding errors and a mismatch between training objectives and downstream planning tasks. To address this limitation, we propose Variable-length Latent World Models (VLWMs), a framework that learns to predict future latent states conditioned on action sequences of variable lengths. Instead of training only on one-step transitions, VLWMs directly model temporally extended dynamics, allowing the same predictor to evaluate action plans over different horizons. We further introduce a curriculum training strategy that progressively expands the action horizon, stabilizing optimization from short-range dynamics to long-range prediction. At test time, we design planning methods tailored to VLWMs to better exploit their variable-length predictive capabilities. Experiments on long-horizon control tasks show that VLWMs significantly improve latent space world models, achieving 13\\% average improvement over the state-of-the-art LeWM across different datasets, with especially large gains on tasks requiring extended planning. These results suggest that VLWM provides a simple yet effective paradigm for improving long-horizon prediction and planning in latent world models.",
+      "authors": [
+        "Tianqi Du",
+        "Qi Zhang",
+        "Yifei Wang",
+        "Yisen Wang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-06-19T21:50:15+00:00",
+      "link": "https://arxiv.org/pdf/2606.21775v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "variable-length latent world models for long-horizon planning",
+      "llm_evidence_cn": "变长潜世界模型用于长程规划",
+      "llm_evidence": "变长潜世界模型用于长程规划",
+      "canonical_evidence": "变长潜世界模型用于长程规划",
+      "llm_tldr_en": "VLWMs learn to predict future latent states over variable horizons, avoiding compounding errors of recursive one-step world models for long-horizon planning.",
+      "llm_tldr_cn": "现有潜世界模型依赖单步预测递归展开进行长程规划，导致误差累积和训练与规划目标不匹配。该工作提出变长潜世界模型（VLWMs），学习直接预测多个未来步骤的潜状态，提高了长程规划的性能和效率。实验证明VLWMs在多个规划任务中优于基线方法。",
+      "llm_tldr": "现有潜世界模型依赖单步预测递归展开进行长程规划，导致误差累积和训练与规划目标不匹配。该工作提出变长潜世界模型（VLWMs），学习直接预测多个未来步骤的潜状态，提高了长程规划的性能和效率。实验证明VLWMs在多个规划任务中优于基线方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.21856v1",
+      "source": "arxiv",
+      "title": "Harness-MU: A Safe, Governed, and Effective Harness for Multi-User LLM Agents",
+      "abstract": "The increasing deployment of large language model (LLM) agents in collaborative workflows demands robust multi-user, multi-principal interaction mechanisms capable of enforcing access permissions, resolving authoritative conflicts, and preventing unauthorized data disclosure. However, a fundamental mismatch exists between the single-user training paradigm of contemporary LLMs and the hard constraints required for multi-principal governance, rendering probabilistic, prompt-based safeguards vulnerable under multi-turn adversarial interactions.Our key insight is that governance constraints -- who is authorized, what is restricted, and whose instructions take precedence -- are deterministic runtime variables that should be enforced by execution hooks rather than entrusted to the LLM. We present \\textbf{Harness-MU}, the first model-agnostic, zero-tuning infrastructure framework for multi-user LLM agents. By decoupling language generation from safety orchestration, Harness-MU guarantees unbreakable permission boundaries while maximizing compliant demand satisfaction. Across four frontier open-weight and proprietary models on the \\textit{Muses-Bench} benchmark, Harness-MU achieves the goal of privacy preservation across all access-control attacks, outperforming the standard baseline by 0.28--0.39 in utility score and improving instruction-following accuracy by up to 48.9 percentage points. Harness-MU advances the philosophy of \\textit{Harness Engineering}, establishing that systematic infrastructure is essential for solving LLM multi-principal governance challenges. The code and data are available at https://github.com/YuanJrShiuan/Harness-MulUser.",
+      "authors": [
+        "Wangxuan Fan",
+        "Xiaoyu Nie",
+        "Zhongxiang Dai"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-06-20T03:24:24+00:00",
+      "link": "https://arxiv.org/pdf/2606.21856v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "safe governed harness for multi-user LLM agents with access control",
+      "llm_evidence_cn": "面向多用户LLM智能体的安全受控框架，具有访问权限控制",
+      "llm_evidence": "面向多用户LLM智能体的安全受控框架，具有访问权限控制",
+      "canonical_evidence": "面向多用户LLM智能体的安全受控框架，具有访问权限控制",
+      "llm_tldr_en": "Harness-MU enforces deterministic governance constraints via execution hooks for multi-user LLM agents, preventing unauthorized access and resolving conflicts.",
+      "llm_tldr_cn": "该工作针对多用户LLM智能体协作中的权限管理和冲突解决需求，提出Harness-MU框架，通过执行钩子强制实施确定性治理约束，包括谁被授权、什么被限制以及谁的指令优先。该方法解决了概率性提示安全机制在多轮对抗交互中的脆弱性。实验表明Harness-MU能有效防止未授权数据泄露和权威冲突。",
+      "llm_tldr": "该工作针对多用户LLM智能体协作中的权限管理和冲突解决需求，提出Harness-MU框架，通过执行钩子强制实施确定性治理约束，包括谁被授权、什么被限制以及谁的指令优先。该方法解决了概率性提示安全机制在多轮对抗交互中的脆弱性。实验表明Harness-MU能有效防止未授权数据泄露和权威冲突。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22388v1",
+      "source": "arxiv",
+      "title": "PlanBench-XL: Evaluating Long-Horizon Planning of LLM Tool-Use Agents in Large-Scale Tool Ecosystems",
+      "abstract": "LLM agents increasingly operate in large tool ecosystems, where real-world tasks require discovering relevant tools, inferring implicit sub-goals, and adapting to dynamic environments over long horizons. However, existing benchmarks rarely evaluate planning under retrieval-limited tool visibility. To address this gap, we introduce PlanBench-XL, an interactive benchmark of 327 retail tasks over 1,665 tools that tests whether agents can iteratively retrieve usable tools, invoke them to uncover intermediate evidence for subsequent calls toward the final goal. PlanBench-XL further features an optional blocking mechanism that simulates real-world unpredictability through missing, failing, or distracting tool functions, forcing agents to detect disrupted paths and adapt at runtime. Experiments on ten leading LLMs show that massive-tool planning remains challenging: while GPT-5.4 achieves 51.90% accuracy in block-free settings, it collapses to 11.36% under the most severe blocking condition. Further analysis shows that agents are especially vulnerable when failures lack explicit error signals or when recovery requires longer alternative tool-use paths. These results establish PlanBench-XL as a testbed for diagnosing agentic planning failures and highlight the need for robust adaptive planning in long-horizon tasks with large, imperfect tool environments.",
+      "authors": [
+        "Jiayu Liu",
+        "Qihan Lin",
+        "Cheng Qian",
+        "Rui Wang",
+        "Emre Can Acikgoz",
+        "Xiaocheng Yang",
+        "Jiateng Liu",
+        "Zhenhailong Wang",
+        "Xiusi Chen",
+        "Heng Ji",
+        "Dilek Hakkani-Tür"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-21T08:29:12+00:00",
+      "link": "https://arxiv.org/pdf/2606.22388v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "benchmark for long-horizon planning of LLM tool-use agents",
+      "llm_evidence_cn": "LLM工具使用agent长程规划基准",
+      "llm_evidence": "LLM工具使用agent长程规划基准",
+      "canonical_evidence": "LLM工具使用agent长程规划基准",
+      "llm_tldr_en": "PlanBench-XL evaluates long-horizon planning under retrieval-limited tool visibility with 327 retail tasks over 1665 tools.",
+      "llm_tldr_cn": "现有基准很少评估大语言模型agent在受限工具检索下的长程规划能力。本文提出PlanBench-XL，包含327个零售任务和1665个工具，要求agent迭代检索并调用工具，并通过阻塞机制模拟不可预测性。实验揭示了现有agent在长程规划中的不足。",
+      "llm_tldr": "现有基准很少评估大语言模型agent在受限工具检索下的长程规划能力。本文提出PlanBench-XL，包含327个零售任务和1665个工具，要求agent迭代检索并调用工具，并通过阻塞机制模拟不可预测性。实验揭示了现有agent在长程规划中的不足。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22509v1",
+      "source": "arxiv",
+      "title": "Imagine to Ensure Safety in Hierarchical Reinforcement Learning",
+      "abstract": "This work investigates the safe exploration problem in reinforcement learning, where an agent must maximize cumulative performance while simultaneously satisfying safety constraints. This challenge becomes even more pronounced in long-horizon tasks, where existing safe methods face fundamental limitations due to compounding estimation errors and restricted exploration capabilities. To address this problem, we propose a method that combines a learnable world model with two complementary policies a high-level policy and a low-level policy to promote safety at both hierarchical levels. The high-level policy generates intermediate subgoals that bias exploration toward safe regions, while the low-level policy uses imagined rollouts in the learned world model to reduce unsafe behaviors when reaching these subgoals. The proposed method was evaluated on challenging long-horizon navigation and manipulation tasks with high-dimensional action spaces, where it significantly outperforms existing Safe RL baselines in both success rate and strong empirical constraint satisfaction, consistently meeting the prescribed safety budget across seeds, while prior approaches fail to effectively solve these complex long-horizon scenarios.",
+      "authors": [
+        "Gregory Gorbov",
+        "Artem Latyshev",
+        "Aleksandr I. Panov"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-21T14:04:04+00:00",
+      "link": "https://arxiv.org/pdf/2606.22509v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "safe exploration in long-horizon tasks with hierarchical RL and world models",
+      "llm_evidence_cn": "长视野任务中的安全探索，结合层级强化学习和世界模型",
+      "llm_evidence": "长视野任务中的安全探索，结合层级强化学习和世界模型",
+      "canonical_evidence": "长视野任务中的安全探索，结合层级强化学习和世界模型",
+      "llm_tldr_en": "This paper addresses safe exploration in long-horizon RL by combining a world model with hierarchical policies (high-level subgoals, low-level imagined rollouts), promoting safety.",
+      "llm_tldr_cn": "强化学习中长视野任务的安全探索面临估计误差累积和探索受限的根本挑战。本文提出结合可学习世界模型与两层互补策略的方法：高层策略生成中间子目标引导安全区域探索，低层策略利用世界模型中的想象轨迹验证安全性。该方法有效提升了长视野任务中的安全性，为长期自主代理的安全决策提供了可行方案。",
+      "llm_tldr": "强化学习中长视野任务的安全探索面临估计误差累积和探索受限的根本挑战。本文提出结合可学习世界模型与两层互补策略的方法：高层策略生成中间子目标引导安全区域探索，低层策略利用世界模型中的想象轨迹验证安全性。该方法有效提升了长视野任务中的安全性，为长期自主代理的安全决策提供了可行方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22528v1",
+      "source": "arxiv",
+      "title": "Governance Decay: How Context Compaction Silently Erases Safety Constraints in Long-Horizon LLM Agents",
+      "abstract": "Modern LLM agents increasingly rely on context compaction, summarization, or eviction to keep long-running sessions within a token budget. We show that this context-management layer is a safety-critical failure surface: in-context governance constraints that agents reliably obey while visible can be silently removed by compaction, causing the same agent to perform prohibited tool actions later in the session. We call this failure mode Governance Decay. We introduce ConstraintRot, a benchmark of long-horizon agent scenarios with deterministic tool-call grading, and measure compaction-induced violations across seven model families. Across 1,323 episodes, violation rises from 0% with the policy in full context to 30% after compaction, reaching 59% for some models; when the constraint survives the summary, violation remains 0%, but when it is dropped, violation reaches 38%. We further study a Compaction-Eviction Attack, in which adversarial in-context content biases the summarizer to omit a legitimate policy, and show that optimized injections defeat every evaluated model. Finally, we propose Constraint Pinning, a simple training-free mitigation that quarantines governance constraints from lossy compaction and restores violation to 0% in our benchmark. These results identify context management as a first-class governance surface for deployed LLM agents.",
+      "authors": [
+        "Shiyang Chen"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-21T14:30:20+00:00",
+      "link": "https://arxiv.org/pdf/2606.22528v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "long-horizon LLM agents, context compaction erases safety constraints",
+      "llm_evidence_cn": "长程大语言模型智能体，上下文压缩移除安全约束",
+      "llm_evidence": "长程大语言模型智能体，上下文压缩移除安全约束",
+      "canonical_evidence": "长程大语言模型智能体，上下文压缩移除安全约束",
+      "llm_tldr_en": "Shows that context compaction in long-horizon LLM agents silently removes in-context safety constraints, causing prohibited actions; introduces ConstraintRot benchmark measuring violation rates up to 30%.",
+      "llm_tldr_cn": "该论文揭示了长程LLM智能体中上下文压缩机制的安全隐患：当安全策略在完整上下文中时智能体遵守，但压缩后约束被悄然移除，导致违规行为。作者引入ConstraintRot基准，包含确定性工具调用评分的长程智能体场景，并在7个模型家族上测量，发现违规率从0%升至30%以上。该发现强调了上下文管理层是安全关键失效面。",
+      "llm_tldr": "该论文揭示了长程LLM智能体中上下文压缩机制的安全隐患：当安全策略在完整上下文中时智能体遵守，但压缩后约束被悄然移除，导致违规行为。作者引入ConstraintRot基准，包含确定性工具调用评分的长程智能体场景，并在7个模型家族上测量，发现违规率从0%升至30%以上。该发现强调了上下文管理层是安全关键失效面。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22948v1",
+      "source": "arxiv",
+      "title": "ENVS: Environment-Native Verified Search for Long-Horizon GUI Agents",
+      "abstract": "As multimodal agents move from interface understanding to real software control, successful trajectory discovery in live desktop environments becomes a key challenge. GUI tasks require long-horizon sequences of precise mouse and keyboard actions, while feedback is sparse, delayed, and costly to obtain through VM rollouts. We propose Environment-Native Verified Search (ENVS), a training-time search-and-filter pipeline that uses the environment to construct verified supervision before policy optimization: it branches over behaviorally distinct GUI actions in live OSWorld VMs, verifies successful leaves, and trains from globally balanced step-level supervision. To evaluate robustness under realistic desktop interruptions, we also introduce OSWorld-Noisy, a dynamic benchmark for recoverable desktop interruptions that preserves the original tasks while testing whether agents can refocus, dismiss, wait, or recover under live perturbations. On the 300-task OSWorld pool, ENVS reaches 30.3 pass@8 on original evaluations and 29.0 on OSWorld-Noisy, outperforming matched ARPO-style online RL while reducing compute from 184-192 to 138-153 GPU-hours; even with only 30% of its search data, ENVS reaches 27.0 pass@8, exceeding ARPO from the base model. Training from noisy environments also better preserves visual-reasoning abilities on auxiliary benchmarks, including OSWorld-G Refusal (16.7 vs. 1.9) and BLINK Functional Correspondence (26.2 vs. 23.1).",
+      "authors": [
+        "Yincheng Zhou",
+        "Athena Zhuoming Zhong",
+        "Shijie Zhang",
+        "Kevin Zhang",
+        "Teresa Xiaotao Shang",
+        "Shanghang Zhang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CV"
+      ],
+      "published": "2026-06-22T07:28:55+00:00",
+      "link": "https://arxiv.org/pdf/2606.22948v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "explicitly addresses long-horizon GUI agent tasks",
+      "llm_evidence_cn": "明确处理长时域GUI代理任务",
+      "llm_evidence": "明确处理长时域GUI代理任务",
+      "canonical_evidence": "明确处理长时域GUI代理任务",
+      "llm_tldr_en": "ENVS proposes a training-time search-and-filter pipeline for long-horizon GUI agents, using environment supervision to improve trajectory discovery.",
+      "llm_tldr_cn": "本文提出环境原生验证搜索（ENVS），针对长时域GUI代理的轨迹发现难题。ENVS在训练时通过分支行为不同的动作、验证成功路径并提供平衡的步骤级监督，从而在策略优化前构建验证信号。在OSWorld-Noisy基准上评估了鲁棒性。该方法直接解决了长时域代理的操作和适应问题，具有重要实用价值。",
+      "llm_tldr": "本文提出环境原生验证搜索（ENVS），针对长时域GUI代理的轨迹发现难题。ENVS在训练时通过分支行为不同的动作、验证成功路径并提供平衡的步骤级监督，从而在策略优化前构建验证信号。在OSWorld-Noisy基准上评估了鲁棒性。该方法直接解决了长时域代理的操作和适应问题，具有重要实用价值。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22995v1",
+      "source": "arxiv",
+      "title": "Group-Graph Policy Optimization for Long-Horizon Agentic Reinforcement Learning",
+      "abstract": "Group-based Reinforcement Learning (RL) has significantly enhanced Large Language Models (LLMs) in agentic scenarios. To achieve finer-grained policy updates, recent agentic RL frameworks have shifted from trajectory-level to step-level training. However, long-horizon agentic RL suffers from severe reward sparsity and delay, as feedback is often deferred for dozens of interaction steps. While existing step-level frameworks refine training granularity, their credit assignment remains coarse-grained and still treats agent exploration as isolated, linear trajectories. This oversimplified perspective ignores the inherent graph structure of state transitions, leading to high-variance state-value estimation and myopic, localized credit assignment. To overcome these critical bottlenecks, we propose Group-Graph Policy Optimization (G2PO), a novel group-based RL algorithm tailored for multi-turn agentic tasks. G2PO explicitly transforms linear interaction trajectories into a global state-transition graph. By aggregating identical observations across different trajectories, we introduce group-aggregation state-value estimation that reduces sampling variance and trajectory-dependent bias. Furthermore, we redefine agent actions as transitions between state nodes and propose an edge-centric advantage estimation strategy. By globally standardizing Temporal Difference (TD) errors across the entire graph, G2PO explicitly identifies and prioritizes critical transitions that drive absolute task progress. Extensive experiments on representative long-horizon benchmarks-WebShop, ALFWorld, and AppWorld-demonstrate that G2PO substantially outperforms state-of-the-art prompt-based and RL baselines, achieving remarkable success rate improvements of up to 22.2% over GRPO.",
+      "authors": [
+        "Yunan Wang",
+        "Minghui Song",
+        "Zihan Zhang",
+        "Shaohan Huang",
+        "Haizhen Huang",
+        "Furu Wei",
+        "Weiwei Deng",
+        "Feng Sun",
+        "Qi Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-22T08:12:47+00:00",
+      "link": "https://arxiv.org/pdf/2606.22995v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "group-graph policy optimization for long-horizon agentic RL",
+      "llm_evidence_cn": "组图策略优化用于长程智能体强化学习",
+      "llm_evidence": "组图策略优化用于长程智能体强化学习",
+      "canonical_evidence": "组图策略优化用于长程智能体强化学习",
+      "llm_tldr_en": "GGPO models state transitions as graphs to improve credit assignment in long-horizon agentic RL, mitigating reward sparsity and delay.",
+      "llm_tldr_cn": "长程智能体强化学习面临奖励稀疏和延迟问题，现有步级方法仍然以线性轨迹方式处理，忽略了状态转移的图结构。该工作提出组图策略优化（GGPO），将状态转移建模为图，实现细粒度、全局化的信用分配。实验证明GGPO在长程任务中显著提升了策略学习效果。",
+      "llm_tldr": "长程智能体强化学习面临奖励稀疏和延迟问题，现有步级方法仍然以线性轨迹方式处理，忽略了状态转移的图结构。该工作提出组图策略优化（GGPO），将状态转移建模为图，实现细粒度、全局化的信用分配。实验证明GGPO在长程任务中显著提升了策略学习效果。",
+      "llm_tags": [
+        "query:agent-lsh:composite"
+      ],
+      "matched_query_tag": "query:agent-lsh:composite",
+      "matched_query_text": "Papers central to 请帮我找agent相关的论文，方向侧重为Long-Horizon、self-improving、Harness, especially work that connects or combines: agent that operates over long horizons; agent that improves itself over time; techniques for harnessing and controlling agents; autonomous agent research planning and improvement; agent capable of long term planning and adaptation; AI systems that learn and improve through self supervision; Research papers on autonomous agents with long horizon planning capabilities; Self improving agents that evolve their strategies over extended time scales; Techniques for harnessing large language model agents in complex environments.",
+      "matched_requirement_id": "req-composite-agent-lsh",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.23112v1",
+      "source": "arxiv",
+      "title": "Self-Evolution for Multi-Turn Tool-Calling Agents via Divergence-Point Preference Learning",
+      "abstract": "Multi-turn tool-using agents must coordinate long-horizon tool sequences while tracking dialogue state and policy constraints. Existing approaches often separate inference-time orchestration from parameter-level learning, leaving tool selection weakly structured and preference updates vulnerable to train--deployment prompt mismatch. For within-benchmark self-improvement, ToolGraph combines schema-derived topology, transition weights estimated from successful rollouts, and history-aware controls for write prerequisites and repeated-search loops. We then construct 161 preference pairs by locating divergence points via state-based matching and prefix-based alignment, filtered through action-correctness annotations, and train DPO under the same ToolGraph context used at inference. Across 375 tau2-bench tasks, ToolGraph raises the weighted average reward from 0.304 to 0.338 (+11.2% relative), while ToolGraph+DPO reaches 0.355 (+16.8% over the baseline), with the DPO gain concentrated in airline and retail. Fine-grained diagnostics further show that roughly half of telecom trajectories exhaust the step budget before action execution and that chosen reward positivity is the most useful checkpoint signal across our 16 evaluated DPO configurations.",
+      "authors": [
+        "Jiaqiang Tang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-22T09:56:44+00:00",
+      "link": "https://arxiv.org/pdf/2606.23112v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "self-improving multi-turn tool agents via divergence-point preference learning",
+      "llm_evidence_cn": "通过分歧点偏好学习实现多轮工具Agent的自我改进",
+      "llm_evidence": "通过分歧点偏好学习实现多轮工具Agent的自我改进",
+      "canonical_evidence": "通过分歧点偏好学习实现多轮工具Agent的自我改进",
+      "llm_tldr_en": "ToolGraph and DPO enable within-benchmark self-improvement for long-horizon tool-using agents.",
+      "llm_tldr_cn": "多轮工具Agent需协调长周期工具序列，现有方法将推理与参数学习分离导致工具选择弱结构化。本文提出ToolGraph，利用模式拓扑和过渡权重结合历史控制，构建161个偏好对，通过分歧点匹配和DPO训练实现自我改进。实验表明该方法在benchmark内有效提升性能。",
+      "llm_tldr": "多轮工具Agent需协调长周期工具序列，现有方法将推理与参数学习分离导致工具选择弱结构化。本文提出ToolGraph，利用模式拓扑和过渡权重结合历史控制，构建161个偏好对，通过分歧点匹配和DPO训练实现自我改进。实验表明该方法在benchmark内有效提升性能。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.19752v2",
+      "source": "arxiv",
+      "title": "Temporal Self-Imitation Learning",
+      "abstract": "Long-horizon robot manipulation policies trained with reward shaping can still achieve high return through inefficient interactions, while rare efficient behaviors discovered during training may be forgotten. We argue that temporal efficiency itself provides a powerful and underutilized source of self-supervision for reinforcement learning. We introduce Temporal Self-Imitation Learning (TSIL), a reinforcement learning framework that mines temporally efficient successful trajectories generated during learning and converts them into reusable supervision for future policy improvement. TSIL progressively refines learning using configuration-conditioned adaptive temporal targets derived from fast successful trajectories, while preserving and replaying efficient behaviors through efficiency-weighted self-imitation learning. Across 15 distinct long-horizon manipulation tasks, TSIL consistently improves learning efficiency, task-completion efficiency, revisitation of fast successful behaviors, and robustness to unstable training conditions. More broadly, our results suggest that the temporal structure of successful behavior itself provides a scalable self-supervisory signal for reinforcement learning beyond manually engineered reward shaping alone.",
+      "authors": [
+        "Yinsen Jia",
+        "Boyuan Chen"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "published": "2026-06-18T03:31:56+00:00",
+      "link": "https://arxiv.org/pdf/2606.19752v2",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "self-supervision from temporal efficiency, long-horizon robot manipulation",
+      "llm_evidence_cn": "利用时间效率作为自我监督，长程机器人操作",
+      "llm_evidence": "利用时间效率作为自我监督，长程机器人操作",
+      "canonical_evidence": "利用时间效率作为自我监督，长程机器人操作",
+      "llm_tldr_en": "Proposes Temporal Self-Imitation Learning (TSIL) that mines temporally efficient successful trajectories as self-supervision for long-horizon robot manipulation, preventing efficient behaviors from being forgotten.",
+      "llm_tldr_cn": "该论文针对长程机器人操作任务中高效行为易被遗忘的问题，提出时间自我模仿学习（TSIL）。该方法从训练过程中产生的时间高效成功轨迹中挖掘可重用的自我监督信号，通过自适应时间目标逐步优化策略，并利用效率加权重放保留高效行为。TSIL将时间效率本身作为强大的自我监督源，有效提升了长期任务的样本效率和策略质量。",
+      "llm_tldr": "该论文针对长程机器人操作任务中高效行为易被遗忘的问题，提出时间自我模仿学习（TSIL）。该方法从训练过程中产生的时间高效成功轨迹中挖掘可重用的自我监督信号，通过自适应时间目标逐步优化策略，并利用效率加权重放保留高效行为。TSIL将时间效率本身作为强大的自我监督源，有效提升了长期任务的样本效率和策略质量。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "AI systems that learn and improve through self supervision",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.21129v1",
+      "source": "arxiv",
+      "title": "AgenticOS: An Intent-Oriented Secure Operating System Architecture for Autonomous AI Agents",
+      "abstract": "Traditional OS security models based on \"resource exposure plus permission checks\" face structural challenges as LLM-driven autonomous agents acquire capabilities for planning, tool use, network access, and code execution. Once an agent runtime is compromised through prompt injection or malicious tool outputs, an attacker can compose POSIX-style resource primitives into behaviors far beyond the user's task authorization. To address this, we propose AgenticOS, an intent-oriented secure OS architecture that consolidates delegable, auditable software capabilities into OS-native ones rather than replacing all applications. The core insight is to reframe the OS from a \"resource manager\" into an \"intent filter\": instead of requesting low-level resources directly, agents submit structured intent declarations, from which the system synthesizes a least-privilege environment with mandatory mediation, auditing, and information-flow constraints. At the implementation level, we introduce a four-layer architecture -- Ghost Kernel, Logic Shutter, Agent Capsule, and Semantic Boundary Gateway -- together with the Intent ABI, Manifest-Only Runtime, Weaver-based capability generation, and an admission model for AgenticOS-native Skills.",
+      "authors": [
+        "Zhen Zhao",
+        "Yu Zhang",
+        "Yanpeng Zhu",
+        "Jia Wang",
+        "Songqiao Tao",
+        "Xin Cheng",
+        "Jiexin Gao"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.OS"
+      ],
+      "published": "2026-06-19T06:14:37+00:00",
+      "link": "https://arxiv.org/pdf/2606.21129v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "OS architecture for securing and controlling autonomous LLM agents",
+      "llm_evidence_cn": "用于安全保障和控制自主LLM智能体的操作系统架构",
+      "llm_evidence": "用于安全保障和控制自主LLM智能体的操作系统架构",
+      "canonical_evidence": "用于安全保障和控制自主LLM智能体的操作系统架构",
+      "llm_tldr_en": "Proposes AgenticOS, an intent-oriented secure OS architecture that reframes the OS from resource manager to intent filter, consolidating delegable capabilities into OS-native ones to control agent behavior and prevent attacks beyond user authorization.",
+      "llm_tldr_cn": "传统OS安全模型面临LLM自主智能体的结构挑战。本文提出AgenticOS，一种意图导向的安全OS架构，将OS从资源管理器重构为意图过滤器，将可委托的软件能力整合为OS原生能力，从而限制智能体行为范围。核心思想是通过意图过滤而非权限检查来控制智能体。",
+      "llm_tldr": "传统OS安全模型面临LLM自主智能体的结构挑战。本文提出AgenticOS，一种意图导向的安全OS架构，将OS从资源管理器重构为意图过滤器，将可委托的软件能力整合为OS原生能力，从而限制智能体行为范围。核心思想是通过意图过滤而非权限检查来控制智能体。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.16287v1",
+      "source": "arxiv",
+      "title": "Dynamic Malicious Skills in Agentic AI",
+      "abstract": "Skills are a key enabling component of agentic AI. While they enhance agents' capabilities, they also introduce new attack surfaces. In this work, we investigate one such attack surface by demonstrating dynamic malicious skills. By embedding malicious instructions in natural-language documentation (e.g., SKILL.md), an attacker can induce an agent to dynamically inject malicious logic into an otherwise benign skill during execution. We evaluate this attack across agentic frameworks such as OpenHands and Claude Code, showing that dynamic malicious skills can successfully introduce a range of malicious behaviors at runtime with non-trivial success rates. To mitigate this vulnerability, we propose a system-level defense that prevents dynamic modification of skills using operating system kernel-enforced read-only mounts. Our evaluation demonstrates that this defense effectively blocks dynamic malicious skills while preserving the functionality of benign skills.",
+      "authors": [
+        "Tianhao Chen",
+        "Zhengyuan Jiang",
+        "Yuepeng Hu",
+        "Yebei Gou",
+        "Neil Zhenqiang Gong"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-06-15T06:51:28+00:00",
+      "link": "https://arxiv.org/pdf/2606.16287v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "techniques for harnessing agents: vulnerability and defense",
+      "llm_evidence_cn": "驾驭Agent的技术：漏洞与防御",
+      "llm_evidence": "驾驭Agent的技术：漏洞与防御",
+      "canonical_evidence": "驾驭Agent的技术：漏洞与防御",
+      "llm_tldr_en": "Demonstrates dynamic malicious skills attack and proposes system-level defense for agentic frameworks.",
+      "llm_tldr_cn": "技能是Agent的关键组成部分，但也引入攻击面。本文展示动态恶意技能攻击：通过恶意指令嵌入文档，诱导Agent运行时注入恶意逻辑。在OpenHands等框架上评估，并提出了基于操作系统权限的系统级防御。",
+      "llm_tldr": "技能是Agent的关键组成部分，但也引入攻击面。本文展示动态恶意技能攻击：通过恶意指令嵌入文档，诱导Agent运行时注入恶意逻辑。在OpenHands等框架上评估，并提出了基于操作系统权限的系统级防御。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.21005v1",
+      "source": "arxiv",
+      "title": "Building Agent Harnesses for Scientific Curation from Multimodal Sources",
+      "abstract": "Scientific discovery workflows often depend on structured curation from the literature. This is difficult for current agents because the key evidence is scattered across long text, dense tables, and figures, and the final records often require reasoning across multiple evidence fragments rather than copying a single span. We study scientific curation from multimodal sources and introduce Beaver, an agent harness that extracts structured information from scientific papers while preserving provenance to the supporting evidence. Beaver combines a frontier agent with multimodal evidence tooling, task scaffolding, and artifact-grounded autoresearch. These components turn curation into a staged, auditable workflow and enable an iterative evaluate--diagnose--revise loop, where persistent run artifacts expose stage-localized failures and guide harness updates. Experiments show that Beaver reaches 81.0 on Gold-Referenced Attribute Score (GRAS), an attribute-level measure of agreement with gold curated records, outperforming frontier agents by over 23 absolute points. Ablations show that task scaffolding, multimodal evidence tooling, and provenance traces each contribute meaningfully to performance, while attribute-level analysis shows the largest gains on high-value attributes that require cross-modal reasoning and normalization. These results show that, for scientific curation from papers with multimodal evidence, harness design is a central determinant of agent performance.",
+      "authors": [
+        "Sheng Zhang",
+        "Qin Liu",
+        "Renqian Luo",
+        "Shufang Xie",
+        "Reuben Tan",
+        "Sean Hayes",
+        "Gregory Bryman",
+        "Wendong Ge",
+        "Roxy Zhang",
+        "Oluwaseun Egbelowo",
+        "Kelly Yee",
+        "Hoifung Poon"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-19T00:36:34+00:00",
+      "link": "https://arxiv.org/pdf/2606.21005v1",
+      "tags": [
+        "keyword:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "explicitly builds agent harness for scientific curation",
+      "llm_evidence_cn": "明确构建代理框架用于科学策展",
+      "llm_evidence": "明确构建代理框架用于科学策展",
+      "canonical_evidence": "明确构建代理框架用于科学策展",
+      "llm_tldr_en": "Beaver agent harness extracts structured information from multimodal scientific papers with provenance tracking.",
+      "llm_tldr_cn": "本文提出Beaver代理框架（harness），用于从多模态科学论文中提取结构化信息并保留证据来源。Beaver结合前沿代理与多模态证据工具、任务脚手架和人工制品引导的自动研究，将策展转化为分阶段可审计的工作流。该工作直接对应代理驾驭技术，为控制代理行为提供了方法。",
+      "llm_tldr": "本文提出Beaver代理框架（harness），用于从多模态科学论文中提取结构化信息并保留证据来源。Beaver结合前沿代理与多模态证据工具、任务脚手架和人工制品引导的自动研究，将策展转化为分阶段可审计的工作流。该工作直接对应代理驾驭技术，为控制代理行为提供了方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.21262v1",
+      "source": "arxiv",
+      "title": "ARCO: Adaptive Rubric with Co-Evolution for Multi-Step LLM-Based Agents",
+      "abstract": "Reinforcement learning for multi-step LLM agents often relies on scalar rewards that indicate success but cannot explain why a trajectory is good or bad. Rubric-based rewards improve interpretability through natural-language criteria, but existing methods score at the trajectory level and freeze the scorer behind a closed-source judge, leaving step-level credit assignment unresolved and the judge itself static. We propose ARCO (Adaptive Rubric CO-evolution), a rubric framework in which a same-scale model $μ$ shares a backbone with two heads: a generation head that produces per-step criteria, and a score head that predicts rubric-conditioned step-level rewards. A trajectory decomposition constraint ties the sum of step rewards to the terminal outcome, enabling credit assignment without step-level labels, while $μ$ and the policy $π$ are jointly updated on on-policy data so that the rubric content and the scoring function co-evolve at the parameter level. Across HotpotQA, 2WikiMultiHopQA, and MuSiQue with two open-source backbones, ARCO improves the best EM in every setting over strong outcome-, rubric-, and process-reward baselines, and analyses show that its rubrics are step-specific, robust to design choices, and useful for diagnosing agent behavior. Codes and data are available at https://github.com/zihangtian/ARCO.",
+      "authors": [
+        "Zihang Tian",
+        "Jingsen Zhang",
+        "Rui Li",
+        "Xiaohe Bo",
+        "Yuanzi Li",
+        "Xu Chen"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-19T09:38:02+00:00",
+      "link": "https://arxiv.org/pdf/2606.21262v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "adaptive rubric co-evolution improves agent via step-level rewards",
+      "llm_evidence_cn": "自适应评标共进化通过步骤级奖励改进代理",
+      "llm_evidence": "自适应评标共进化通过步骤级奖励改进代理",
+      "canonical_evidence": "自适应评标共进化通过步骤级奖励改进代理",
+      "llm_tldr_en": "ARCO improves multi-step LLM agents via co-evolving rubric-based step-level rewards and trajectory decomposition.",
+      "llm_tldr_cn": "本文提出ARCO框架，用于改进多步LLM代理。通过自适应评标共进化，用同规模模型生成每步标准并预测步骤级奖励，并用轨迹分解约束确保连接。该方法解决了奖励稀疏和信用分配问题，使代理能够自我改进。实验表明ARCO能有效提升多步推理性能。",
+      "llm_tldr": "本文提出ARCO框架，用于改进多步LLM代理。通过自适应评标共进化，用同规模模型生成每步标准并预测步骤级奖励，并用轨迹分解约束确保连接。该方法解决了奖励稀疏和信用分配问题，使代理能够自我改进。实验表明ARCO能有效提升多步推理性能。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.16432v1",
+      "source": "arxiv",
+      "title": "ACCORD: Action-Conditioned Contextual Grounding for Language Agents",
+      "abstract": "User instructions are often underspecified because humans rely on implicit assumptions about the surrounding environment. For large language model (LLM) agents operating in information-rich digital and physical environments, these assumptions cannot be inferred from the instruction alone; they must be recovered from the current state of tools, data, interfaces, and observations. Effective execution therefore requires agents to identify missing context, ground it in observed evidence, and carry it forward into subsequent actions. We show that current agents often fail to do so. They act from assumed rather than observed specifics, overlook information they could have gathered, and fail to incorporate evidence that has already been returned. Building on this insight, we propose ACCORD (Action-Conditioned Contextual Grounding), a simple and effective agent framework for adaptive grounding. Before each action, ACCORD actively probes the environment for missing information and integrates relevant context from the agent's trajectory that would otherwise be overlooked. Requiring no additional training or task-success signals, ACCORD improves task-goal completion on AppWorld by up to +20.6 points with GPT-5-mini, from 42.0% to 62.6%, compared to strong baselines. These gains persist with a substantially stronger base model (+10.8 with Claude-4.5-sonnet), an open-weight model (+10.1 with Qwen3.5-27B-FP8), and on the embodied AlfWorld benchmark (+7.4 success rate with GPT-5-mini).",
+      "authors": [
+        "Lai Jiang",
+        "Cheng Qian",
+        "Zhenhailong Wang",
+        "Pan Lu",
+        "Heng Ji",
+        "Hao Peng"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-06-15T09:05:55+00:00",
+      "link": "https://arxiv.org/pdf/2606.16432v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "grounding agent actions in observed evidence",
+      "llm_evidence_cn": "将agent动作锚定在观察到的证据中",
+      "llm_evidence": "将agent动作锚定在观察到的证据中",
+      "canonical_evidence": "将agent动作锚定在观察到的证据中",
+      "llm_tldr_en": "ACCORD identifies and addresses the failure of LLM agents to recover implicit context from the environment, proposing a method to ground actions in observed evidence.",
+      "llm_tldr_cn": "用户指令常因隐含假设而不明确，LLM agent却常从假设而非观察中行动。本文系统揭示了该失败模式，并基于此提出ACCORD框架，通过动作条件上下文锚定，迫使agent利用当前环境证据补全缺失信息，确保后续动作基于事实。实验显示ACCORD能显著提高指令执行成功率。",
+      "llm_tldr": "用户指令常因隐含假设而不明确，LLM agent却常从假设而非观察中行动。本文系统揭示了该失败模式，并基于此提出ACCORD框架，通过动作条件上下文锚定，迫使agent利用当前环境证据补全缺失信息，确保后续动作基于事实。实验显示ACCORD能显著提高指令执行成功率。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.21136v1",
+      "source": "arxiv",
+      "title": "Horizon Adaptive Offline Policy Learning via Value Stitching",
+      "abstract": "Learning accurate value functions plays a decisive role for reinforcement learning (RL) agents to solve long-horizon, complex tasks. Conventional temporal-difference (TD) learning objectives suffer from value-estimation bias that accumulates over the horizon, while extended-horizon modeling methods, such as n-step TD backups and Q-chunking, adopt a rigid, fixed-horizon value-modeling recipe that is often not flexible enough to capture complex value structures in long-horizon, multi-stage tasks. In this paper, we show that enabling value updates with dynamic horizon composition can yield a strong offline policy learning scheme. Our method, Horizon Adaptive Offline Policy Learning via VAlue STitching (VAST), replaces fixed-horizon backups with recursive, horizon-adaptive value composition. Its key ingredient is to couple value optimization with a future state- and horizon-length-conditioned auxiliary value function that is learned through direct data supervision, and a stitching policy that optimally selects the reward-maximizing horizon length and future sub-goal to achieve horizon-adaptive value stitching. This design enables direct estimation and compositional \"stitching\" of variable-length returns grounded in actionable sub-goal states, providing an accurate and greedily exploitable value-supervision signal for offline policy optimization. Across 50 tasks on OGBench, VAST outperforms fixed-step, extended-horizon methods, and generative-value offline RL baselines, achieving strong performance particularly in high-complexity, long-horizon decision-making tasks.",
+      "authors": [
+        "Kexin Zheng",
+        "Xianyuan Zhan",
+        "Xintao Yan"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.RO"
+      ],
+      "published": "2026-06-19T06:20:45+00:00",
+      "link": "https://arxiv.org/pdf/2606.21136v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "adaptive horizon value stitching for long-horizon offline RL",
+      "llm_evidence_cn": "自适应视界值拼接用于长视界离线强化学习",
+      "llm_evidence": "自适应视界值拼接用于长视界离线强化学习",
+      "canonical_evidence": "自适应视界值拼接用于长视界离线强化学习",
+      "llm_tldr_en": "VAST method replaces fixed-horizon backups with recursive horizon-adaptive value stitching to improve offline policy learning in long-horizon tasks.",
+      "llm_tldr_cn": "该工作针对长视界任务中值函数估计偏差累积的问题，提出VAST方法，通过动态视界组合的递归值拼接取代固定视界备份，使得离线策略学习能更好地捕获多阶段任务中的复杂值结构。实验表明该方法在多个长视界基准上优于传统TD和n-step方法。",
+      "llm_tldr": "该工作针对长视界任务中值函数估计偏差累积的问题，提出VAST方法，通过动态视界组合的递归值拼接取代固定视界备份，使得离线策略学习能更好地捕获多阶段任务中的复杂值结构。实验表明该方法在多个长视界基准上优于传统TD和n-step方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.22557v1",
+      "source": "arxiv",
+      "title": "MacAgentBench: Benchmarking AI Agents on Real-World macOS Desktop",
+      "abstract": "Computer use agents (CUAs) have advanced rapidly in desktop automation, and a growing number of users deploy CUAs such as OpenClaw on Mac Mini for always-on automation. However, existing benchmarks, including those for macOS, evaluate agents without framework augmentation and rely on binary evaluation. As a result, they fail to capture both the framework capabilities leveraged by modern CUAs and the partial progress on long-horizon, multi-application tasks. We present MacAgentBench, a comprehensive macOS agent benchmark comprising 676 tasks across 25 applications, with nearly 60% involving both GUI and CLI interaction. The benchmark adopts deterministic rule-based evaluation and introduces fine-grained multi-checkpoint scoring with capability annotations for multi-application tasks. Experiments across three frameworks and 16 models show that the best configuration, Claude Opus 4.6 on OpenClaw, attains 73.7% Pass@1, while this advantage is primarily driven by the skill library rather than by framework design. Fine-grained metrics further reveal that models with similar Pass@1 can differ substantially in sub-goal completion. Our code and data are publicly available at https://github.com/JetAstra/MacAgentBench.",
+      "authors": [
+        "Yikun Fu",
+        "Bowen Fu",
+        "Zhenyu Wu",
+        "Shuang Cheng",
+        "Xiaowei Sun",
+        "Bowen Yang",
+        "Zehao Li",
+        "Yibo Zhao",
+        "Zichen Ding",
+        "Zhoumianze Liu",
+        "Shijie Wang",
+        "Biqing Qi",
+        "Bowen Zhou"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL",
+        "cs.HC"
+      ],
+      "published": "2026-06-21T15:32:57+00:00",
+      "link": "https://arxiv.org/pdf/2606.22557v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "benchmark for long-horizon multi-application tasks on macOS",
+      "llm_evidence_cn": "针对macOS上长时程多应用任务的基准测试",
+      "llm_evidence": "针对macOS上长时程多应用任务的基准测试",
+      "canonical_evidence": "针对macOS上长时程多应用任务的基准测试",
+      "llm_tldr_en": "Presents MacAgentBench, a comprehensive macOS agent benchmark with 676 tasks across 25 applications, 60% involving both GUI and CLI, using deterministic rule-based evaluation and fine-grained multi-checkpoint scoring with capability annotations.",
+      "llm_tldr_cn": "现有macOS基准缺乏对框架能力和长时程多应用任务的评估。本文提出MacAgentBench，包含676个任务，覆盖25个应用，近60%涉及GUI和CLI交互。采用确定性规则评估和细粒度多检查点评分，并带有能力注释，为长时程桌面智能体提供了标准化评估平台。",
+      "llm_tldr": "现有macOS基准缺乏对框架能力和长时程多应用任务的评估。本文提出MacAgentBench，包含676个任务，覆盖25个应用，近60%涉及GUI和CLI交互。采用确定性规则评估和细粒度多检查点评分，并带有能力注释，为长时程桌面智能体提供了标准化评估平台。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.18121v1",
+      "source": "arxiv",
+      "title": "On the Reliability of Networks of AI Agents: Density Evolution, Stopping Sets, and Architecture Optimization",
+      "abstract": "Modern AI systems increasingly solve a task not with a single model call but with several imperfect agents working together: some propose pieces of a solution, others verify them, and the results are combined. These systems often outperform any single model, yet it is rarely clear why they succeed or when they will fail. We model such a system as message passing on a sparse graph, the structure that underlies low-density parity-check (LDPC) codes, and extend the density-evolution machinery of coding theory to this richer setting. In our model a task is a set of coupled binary subclaims, and an agent architecture is a sparse, role-typed factor graph whose check nodes are noisy Boolean verifier nodes, each computing a local Boolean function of the subclaims it touches. Three distinct failure modes, all modeled as erasures (an agent abstaining, a verifier returning no usable output, and a message lost between two agents), propagate as the agents exchange set-valued messages. The check agents combine these messages by a single logical-forcing rule that specializes to XOR, AND, OR, implication, and Horn constraints. This is more than a relabeling of LDPC theory: the verifier functions are nonlinear and value-asymmetric, and the three failure modes do not reduce to a single effective channel, so they require new threshold, finite-length, and converse results rather than a direct reuse of parity-check density evolution. We prove a density-evolution theorem that predicts the asymptotic fraction of unresolved subclaims on random role-typed architectures, with an extension to deterministic, locally tree-like graph sequences. The XOR case recovers the classical LDPC recursion on the binary erasure channel (BEC); the AND case exposes an asymmetry between positive and negative verifier certificates.",
+      "authors": [
+        "Ehsan Aghazadeh",
+        "Hossein Pishro-Nik"
+      ],
+      "primary_category": "cs.MA",
+      "categories": [
+        "cs.MA",
+        "cs.IT"
+      ],
+      "published": "2026-06-16T16:21:52+00:00",
+      "link": "https://arxiv.org/pdf/2606.18121v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "reliability analysis of networks of AI agents for architecture optimization",
+      "llm_evidence_cn": "AI代理网络的可靠性分析与架构优化",
+      "llm_evidence": "AI代理网络的可靠性分析与架构优化",
+      "canonical_evidence": "AI代理网络的可靠性分析与架构优化",
+      "llm_tldr_en": "This paper models networks of AI agents as message passing on sparse graphs, extending density evolution to analyze reliability and optimize architecture for multi-agent systems.",
+      "llm_tldr_cn": "多代理系统常胜过单模型，但失败原因不明确。本文将AI代理网络建模为稀疏图上的消息传递，扩展编码理论中的密度演化机制以分析可靠性。通过引入停止集和角色类型因子图，为代理架构优化提供了理论工具，帮助理解和设计更可靠的AI代理网络。",
+      "llm_tldr": "多代理系统常胜过单模型，但失败原因不明确。本文将AI代理网络建模为稀疏图上的消息传递，扩展编码理论中的密度演化机制以分析可靠性。通过引入停止集和角色类型因子图，为代理架构优化提供了理论工具，帮助理解和设计更可靠的AI代理网络。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.22495v1",
+      "source": "arxiv",
+      "title": "Grounded Scaling: Why Agentic AI Needs Deterministic Environments",
+      "abstract": "Long-chain agent execution fails exponentially in environments designed for human tolerance: with per-step determinism $δ< 1$, $k$-step chain success degrades as $δ^k$. The AGI-to-ASI scaling debate (Genewein et al., 2026) has so far framed progress as a race between compute growth and a list of frictions (data wall, abstraction barrier, embodied bottleneck, multi-agent trust); we argue that environment determinism is a complementary binding axis cutting across all four, for the broad class of agentic AI tasks whose outcomes are verifiable economically, physically, or through multi-party settlement. Three formal results pin down the regime: a Determinism-Efficiency Bound on chain-task success, a Verifier-Goodharting Floor on flywheel ceilings under imperfect rewards, and a convergence condition for environment-side skill evolution. We operationalise the framework as a Supply Certainty Index (SCI) over five measurable properties, a five-level Determinism Maturity Model (DMM) as adoption ladder, and a falsifiable open-question programme (OQ1-OQ5) with explicit null results that would force retraction. The position is platform-agnostic. We engage three competing positions: sim-to-real sufficiency, alignment sufficiency, and AI-as-normal-technology.",
+      "authors": [
+        "Liang Ding",
+        "Xintong Wang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-21T13:34:18+00:00",
+      "link": "https://arxiv.org/pdf/2606.22495v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "long-chain agent execution and need for deterministic environments",
+      "llm_evidence_cn": "长链代理执行及确定性环境需求",
+      "llm_evidence": "长链代理执行及确定性环境需求",
+      "canonical_evidence": "长链代理执行及确定性环境需求",
+      "llm_tldr_en": "Argues that agentic AI needs deterministic environments to avoid exponential failure in long-chain tasks; provides formal bounds.",
+      "llm_tldr_cn": "本文论证了长链代理执行在非确定性环境中会指数失败，因此代理需要确定性环境。通过三个形式结果明确了确定性效率界限、验证器好哈丁下限和扩展条件。该工作强调了环境确定性对于长时域代理规划与适应的重要性，为代理设计与部署提供了理论指导。",
+      "llm_tldr": "本文论证了长链代理执行在非确定性环境中会指数失败，因此代理需要确定性环境。通过三个形式结果明确了确定性效率界限、验证器好哈丁下限和扩展条件。该工作强调了环境确定性对于长时域代理规划与适应的重要性，为代理设计与部署提供了理论指导。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.22673v1",
+      "source": "arxiv",
+      "title": "AgentLens: Interpretable Safety Steering via Mechanistic Subspaces for Multi-Turn Coding Agent",
+      "abstract": "Coding agents based on large language models (LLMs) demonstrate remarkable autonomous capabilities, but they also introduce significant safety and misuse risks during multi-turn interactions with external environments. Existing safety mechanisms mainly rely on external guardrails, which have a limited ability to perform fine-grained behavioral control during execution. Meanwhile, recent mechanistic interpretability methods for LLM safety are mostly confined to single-turn or jailbreak-style QA settings, limiting their ability to capture the evolving risk dynamics of multi-turn agent execution. In this paper, we investigate the safety of multi-turn coding agents from an internal perspective. We propose AgentLens (Mechanistic Subspace Intervention and Steering), a white-box defense framework that performs runtime safety detection and representation-level mitigation for coding agents. Unlike conventional agent guardrails, AgentLens detect harmful execution states from step-level hidden representations and mitigate unsafe behavior by intervening in a 10-dimensional subspace within a single layer. To support this research, we introduce the Mechanistic Agent Safety (MAS) benchmark, comprising comprehensively annotated multi-turn execution trajectories across 194 tasks using LLaMA-3.1-8B, Qwen-2.5-7B, and Gemma-2-9B. Extensive experiments show that AgentLens achieves strong safety detection performance, provides preliminary evidence for lookahead risk anticipation, and substantially reduces harmful actions of the coding agent, establishing a foundation for applying mechanistic interpretability to dynamic LLM agent safety. The code is available at: https://github.com/EddyLuo1232/AgentLens",
+      "authors": [
+        "Weidi Luo",
+        "Qiming Zhang",
+        "Yihao Quan",
+        "Mingyu Jin",
+        "Jie Cai",
+        "Chaowei Xiao",
+        "Jingcheng Niu",
+        "Zhen Xiang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.SE"
+      ],
+      "published": "2026-06-21T21:13:55+00:00",
+      "link": "https://arxiv.org/pdf/2606.22673v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "techniques for controlling multi-turn coding agents via mechanistic interpretability",
+      "llm_evidence_cn": "通过机械可解释性控制多轮编码智能体的技术",
+      "llm_evidence": "通过机械可解释性控制多轮编码智能体的技术",
+      "canonical_evidence": "通过机械可解释性控制多轮编码智能体的技术",
+      "llm_tldr_en": "Proposes AgentLens, a mechanistic subspace method to steer safety behavior of multi-turn coding agents from internal model perspective.",
+      "llm_tldr_cn": "针对多轮编码智能体的安全风险，现有外部护栏无法细粒度控制的问题，本文提出AgentLens，利用机械可解释性方法从模型内部构建安全子空间，实现执行过程中的行为调控。该方法通过分析内部表示来检测和引导安全行为，在复杂编码任务中有效降低风险，同时保持自主能力。",
+      "llm_tldr": "针对多轮编码智能体的安全风险，现有外部护栏无法细粒度控制的问题，本文提出AgentLens，利用机械可解释性方法从模型内部构建安全子空间，实现执行过程中的行为调控。该方法通过分析内部表示来检测和引导安全行为，在复杂编码任务中有效降低风险，同时保持自主能力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    }
+  ]
+}
