@@ -6,58 +6,77 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-15 ~ 2026-06-24
-- 运行时间：2026-06-24 02:02:14 UTC
+- 最新运行日期：2026-06-24
+- 运行时间：2026-06-24 22:15:57 UTC
 - 运行状态：成功
-- 本次总论文数：12
+- 本次总论文数：19
 - 精读区：7
-- 速读区：5
+- 速读区：12
 
 ### 今日简报（AI）
-本期日报聚焦LLM在线选择与MoE路由优化，精读7篇、速读5篇，其中两篇获满分10分。  
-最值得关注两个方向：基于时变需求的约束赌博机在线LLM选择，以及软可微路由的SoftMoE架构。  
-建议普通读者优先阅读这两篇精读论文，了解大模型部署中的高效选型与专家路由前沿。
-- 详情：[/20260615-20260624/README](/20260615-20260624/README)
+今日19篇论文聚焦Agent系统与LLM优化，精读7篇含在线LLM选择与自进化Agent两项高分研究。最值得关注在线LLM选择的约束bandit方法及Metis自进化Agent的文本代码记忆桥接技术。建议优先阅读这两篇精读论文，并速读EARS多Agent可靠子模型与CalVerT验证器增强知识任务。
+- 详情：[/202606/24/README](/202606/24/README)
 
 ### 精读区论文标签
-1. [Online LLM Selection via Constrained Bandits with Time-Varying Demand](/20260615-20260624/2606.17489v1-online-llm-selection-via-constrained-bandits-with-time-varying-demand)  
-   标签：评分：10.0/10、query:moe-routing
-   evidence：在线LLM选择即为动态模型路由
-2. [SoftMoE: Soft Differentiable Routing for Mixture-of-Experts in LLMs](/20260615-20260624/2606.17952v1-softmoe-soft-differentiable-routing-for-mixture-of-experts-in-llms)  
-   标签：评分：10.0/10、query:moe-routing
-   evidence：用于大语言模型混合专家模型的软可微路由
-3. [RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing](/20260615-20260624/2606.18774v2-routejudge-an-open-platform-for-reproducible-and-preference-aware-llm-routing)  
-   标签：评分：10.0/10、query:moe-routing
-   evidence：LLM路由评估平台
-4. [DecoSearch: Complexity-Aware Routing and Plan-Level Repair for Text-to-SQL](/20260615-20260624/2606.17821v1-decosearch-complexity-aware-routing-and-plan-level-repair-for-text-to-sql)  
+1. [Online LLM Selection via Constrained Bandits with Time-Varying Demand](/202606/24/2606.17489v1-online-llm-selection-via-constrained-bandits-with-time-varying-demand)  
    标签：评分：9.0/10、query:moe-routing
-   evidence：面向复杂度的查询路由
-5. [RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing](/20260615-20260624/2606.18774v1-routejudge-an-open-platform-for-reproducible-and-preference-aware-llm-routing)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：LLM路由评估平台
-6. [Does the Same Token Mean the Same State? MoE Routing as Signal for Reasoning Control](/20260615-20260624/2606.22798v1-does-the-same-token-mean-the-same-state-moe-routing-as-signal-for-reasoning-control)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：MoE路由作为推理控制信号
-7. [Agent-as-a-Router: Agentic Model Routing for Coding Tasks](/20260615-20260624/2606.22902v1-agent-as-a-router-agentic-model-routing-for-coding-tasks)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：面向编码任务的代理式模型路由
+   evidence：通过约束赌博机在线选择LLM，时变需求，直接针对模型路由
+2. [Metis: Bridging Text and Code Memory for Self-Evolving Agents](/202606/24/2606.24151v1-metis-bridging-text-and-code-memory-for-self-evolving-agents)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：自演进代理随时间改进
+3. [LemonHarness Technical Report](/202606/24/2606.24311v1-lemonharness-technical-report)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：长程代理执行框架
+4. [Escaping the Self-Confirmation Trap: An Execute-Distill-Verify Paradigm for Agentic Experience Learning](/202606/24/2606.24428v1-escaping-the-self-confirmation-trap-an-execute-distill-verify-paradigm-for-agentic-experience-learning)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：智能体通过经验学习实现自我进化
+5. [SAFARI: Scaling Long Horizon Agentic Fault Attribution via Active Investigation](/202606/24/2606.24626v1-safari-scaling-long-horizon-agentic-fault-attribution-via-active-investigation)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：明确针对长时域智能体任务，提出主动故障归因框架
+6. [Scaling Enterprise Agent Routing: Degradation, Diagnosis, and Recovery](/202606/24/2606.17519v1-scaling-enterprise-agent-routing-degradation-diagnosis-and-recovery)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：企业级智能体路由的扩展、诊断与恢复
+7. [Sakana Fugu Technical Report](/202606/24/2606.21228v2-sakana-fugu-technical-report)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：编排器模型用于利用和增强LLM智能体团队能力
 
 ### 速读区论文标签
-1. [Tying the Loop -- Tied Expert Layers in Mixture-of-Experts Language Models](/20260615-20260624/2606.16825v1-tying-the-loop----tied-expert-layers-in-mixture-of-experts-language-models)  
+1. [EARS: Explanatory Abstention for Reliable Sub-Agent Modeling in Large-scale Multi-Agent Systems](/202606/24/2606.18668v1-ears-explanatory-abstention-for-reliable-sub-agent-modeling-in-large-scale-multi-agent-systems)  
    标签：评分：8.0/10、query:moe-routing
-   evidence：MoE语言模型中的专家绑定与独立路由
-2. [Geometric and Stochastic Analysis of Discontinuities in Sparse Mixture-of-Experts](/20260615-20260624/2606.19036v1-geometric-and-stochastic-analysis-of-discontinuities-in-sparse-mixture-of-experts)  
+   evidence：多代理系统中带解释性弃权的路由
+2. [CalVerT: Augmenting Agents with Calibrated Verifier Telemetry Improves Action and Learning in Knowledge-Intensive Tasks](/202606/24/2606.21777v1-calvert-augmenting-agents-with-calibrated-verifier-telemetry-improves-action-and-learning-in-knowledge-intensive-tasks)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：通过校准验证器遥测增强代理学习
+3. [Deeper is Not Always Better: Mitigating the Alignment Tax via Confident Layer Decoding](/202606/24/2606.21906v1-deeper-is-not-always-better-mitigating-the-alignment-tax-via-confident-layer-decoding)  
    标签：评分：8.0/10、query:moe-routing
-   evidence：稀疏混合专家路由的不连续性分析
-3. [ARIADNE: Agnostic Routing for Inference-time Adapter DyNamic sElection](/20260615-20260624/2606.19079v1-ariadne-agnostic-routing-for-inference-time-adapter-dynamic-selection)  
-   标签：评分：8.0/10、query:moe-routing
-   evidence：推理时动态适配器选择，无需训练的路由
-4. [SAFE-Cascade: Cost-Adaptive Vision-Language Routing for Chart Question Answering](/20260615-20260624/2606.19646v1-safe-cascade-cost-adaptive-vision-language-routing-for-chart-question-answering)  
+   evidence：提出Confident Decoding，一种在LLM推理中动态选择最可靠近最终层的无训练解码策略
+4. [AOHP: An Open-Source OS-Level Agent Harness for Personalized, Efficient and Secure Interaction](/202606/24/2606.23449v1-aohp-an-open-source-os-level-agent-harness-for-personalized-efficient-and-secure-interaction)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：操作系统级智能体管理工具用于控制和交互
+5. [Qwen-RobotNav Technical Report: A Scalable Navigation Model Designed for an Agentic Navigation System](/202606/24/2606.18112v1-qwen-robotnav-technical-report-a-scalable-navigation-model-designed-for-an-agentic-navigation-system)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：用于长程智能体导航系统的可扩展导航模型
+6. [Decoupling Search from Reasoning: A Vendor-Agnostic Grounding Architecture for LLM Agents](/202606/24/2606.18947v1-decoupling-search-from-reasoning-a-vendor-agnostic-grounding-architecture-for-llm-agents)  
    标签：评分：7.0/10、query:moe-routing
-   evidence：图表问答中的成本自适应视觉-语言路由
-5. [Query-aware Routing for Filtered Approximate Nearest Neighbors Search](/20260615-20260624/2606.19898v1-query-aware-routing-for-filtered-approximate-nearest-neighbors-search)  
+   evidence：LLM代理接地架构中的供应商路由
+7. [Trip+: Benchmarking Agents in Personalized Interactive Travel Planning](/202606/24/2606.21169v1-trip-benchmarking-agents-in-personalized-interactive-travel-planning)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：多轮交互旅行规划代理基准
+8. [SwarmX: Agentic Scheduling for Low-Latency Agentic Systems](/202606/24/2606.21401v1-swarmx-agentic-scheduling-for-low-latency-agentic-systems)  
    标签：评分：7.0/10、query:moe-routing
-   evidence：过滤近似最近邻搜索中的查询感知路由
+   evidence：智能体调度系统，使用调度特定神经预测器进行路由和缩放决策
+9. [Distributed General-Purpose Agent Networks: Architecture, Key Mechanisms, and Prototypes](/202606/24/2606.17368v1-distributed-general-purpose-agent-networks-architecture-key-mechanisms-and-prototypes)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：分布式智能体网络用于控制和利用智能体
+10. [Knowledge Reutilization in Meta-Reinforcement Learning](/202606/24/2606.18132v1-knowledge-reutilization-in-meta-reinforcement-learning)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：跨智能体适应的元知识重用
+11. [Data Intelligence Agents: Interpreting, Modeling, and Querying Enterprise Data via Autonomous Coding Agents](/202606/24/2606.19319v1-data-intelligence-agents-interpreting-modeling-and-querying-enterprise-data-via-autonomous-coding-agents)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：自主编码代理通过生成、执行、验证、修复工件并共享记忆来学习和改进
+12. [Multi-Agent Transactive Memory](/202606/24/2606.19911v1-multi-agent-transactive-memory)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：检索代理轨迹用于跨群体知识重用，支持代理研究和改进
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,1529 @@
+Title: Online LLM Selection via Constrained Bandits with Time-Varying Demand
+
+URL Source: https://arxiv.org/pdf/2606.17489v1
+
+Published Time: Wed, 17 Jun 2026 00:29:10 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+> 1
+
+# Online LLM Selection via Constrained Bandits with Time-Varying Demand 
+
+Yin Huang Student Member, IEEE Qingsong Liu Member, IEEE Jie Xu Senior Member, IEEE 
+
+Abstract —Large Language Models (LLMs) are increasingly deployed in edge–cloud inference systems to handle diverse user tasks with heterogeneous accuracy, latency, and cost profiles. Selecting the appropriate LLM for each incoming task is critical for ensuring service quality and efficient resource utilization. However, model heterogeneity, stochastic and unknown performance characteristics, and time-varying task demands make static selection strategies inadequate. Real-world deployments often impose hard resource budgets such as monetary expenditure limits, along with soft service-level requirements such as latency guarantees. These constraints introduce additional challenges for online decision-making. We formulate this problem as a constrained stochastic bandit learning task, where the learner sequentially selects models under both packing-type (hard) and covering-type (soft) constraints, while adapting to time-varying task demand. The learner operates without access to the underlying reward, cost, or latency distributions and must rely on partial feedback. We develop a novel online learning algorithm that leverages confidence-bound estimates and demand predictions to balance reward maximization with long-term constraint satisfaction. We provide theoretical guarantees showing sublinear regret and sublinear covering constraint violations compared to an offline benchmark with full information. Experimental results on synthetic workloads demonstrate the effectiveness and robustness of our approach in dynamic, resource-constrained environments. 
+
+Index Terms —Collaborative Edge Inference, Multi-armed Bandits, LLM Selection, Bandits Constraints. 
+
+✦
+
+1 INTRODUCTION 
+
+# LArge language models (LLMs) are increasingly de-ployed in real-world systems to support tasks such as generation, summarization, and question answering. In collaborative edge-cloud inference systems, a mobile de-vice offloads incoming requests to a cloud server, where it can select from a pool of pre-deployed LLMs. A central challenge is choosing the most appropriate model to serve incoming tasks, given the heterogeneity in model capa-bilities. Most existing approaches rely on static selection, fixing one LLM throughout deployment [1], [2]. However, in new or evolving scenarios, such one-size-fits-all approach often underperform. Due to generation diversity [3], smaller models may be better suited for certain prompts, while data drift [4] may alter task characteristics over time. These issues call for an online model selection [5] approach that adapts to the current workload. Importantly, different LLMs often exhibit varying and uncertain accuracy, latency, and monetary cost. This makes the online model selection prob-lem a natural fit for a bandit learning framework, where the system must balance exploration and exploitation while adapting to stochastic reward and cost feedback. An additional challenge in online LLM selection lies in satisfying multiple resource constraints, which often vary in both form and severity. These constraints can be broadly classified along two dimensions. First, a constraint can be 
+
+• Y. Huang and J. Xu are with the Department of Electrical and Computer Engineering, University of Florida. Email: {yin.huang, jie.xu }@ufl.edu. 
+
+• Q. Liu is with the Manning College of Information and Com-puter Sciences, University of Massachusetts Amherst. Email: qing-songliu@umass.edu. 
+
+hard, meaning it must be satisfied at all times, or else the system halts or soft, meaning occasional violations are allowed as long as performance remains acceptable on aver-age. Second, constraints can be of packing or covering type: a packing constraint enforces that cumulative resource us-age does not exceed a fixed budget (i.e., ≤), while a covering constraint requires that cumulative service provision meets a minimum threshold (i.e., ≥) [6], [7]. Our problem involves both types. First, LLMs typically incur monetary cost based on the number of tokens they generate this cost is stochastic, as token counts vary across tasks and models [8], [9]. In many deployments, users or providers face a fixed budget, and exceeding it may terminate service. This defines a hard packing constraint. Second, many applications impose a la-tency Service-Level Agreement (SLA), which demands that a certain fraction of tasks be completed within a target dead-line [10]. Occasional violations are tolerable, but too many missed deadlines degrades user experience. This defines a soft covering constraint. These bidirectional constraints reflect fundamentally different goals, cost containment vs. service quality, and demand tailored algorithmic handling. A third challenge arises from the dynamic and un-certain nature of task arrival rates across time. In edge-cloud inference systems, the number of tasks arriving in each time slot may vary significantly due to user activity, temporal patterns, or external conditions [11]. To ensure low overhead and reduce cold-start delays, a single model is typically selected at the start of each slot to serve all tasks that arrive during that interval. While this preselection avoids per-task switching costs, it makes model decisions 
+
+> arXiv:2606.17489v1 [cs.LG] 16 Jun 2026 2
+
+particularly sensitive to variations in task volume. Ignor-ing such fluctuations can lead to degraded performance: lightweight load may tolerate slower or cheaper models, whereas heavy load may require faster, more costly ones to meet latency constraints. Fortunately, forecast information is often available in practice for example, from historical workload traces or predictive demand models and can be leveraged to anticipate demand sizes before decision-making. Integrating such predictions into the learning al-gorithm allows more informed and robust model selection as conditions change, particularly under budget constraints or time-sensitive SLAs. In this paper, we formulate the online LLM model se-lection problem for a task offloading scenario in a hetero-geneous edge-cloud inference system, explicitly address-ing the aforementioned challenges. We consider a setting with multiple available LLMs (e.g., different model sizes or providers at edge and cloud), where tasks arrive con-tinuously over time and must be assigned to appropriate models for inference. Our formulation captures three key aspects: (i) the need to dynamically select among candidate models at each decision point rather than committing to a static allocation, (ii) the existence of a hard budget constraint on token-based inference costs alongside a soft latency SLA that ensures quality of service, and (iii) the presence of time-varying task volumes that influence both cost and responsiveness. By integrating these elements, the proposed framework generalizes classical offloading and scheduling formulations to the setting of LLM inference, where mon-etary efficiency and latency guarantees are primary design considerations. To solve this online model selection problem, we cast it as a constrained stochastic multi-armed bandit instance, akin to the bandits with knapsacks framework, where the system faces both a hard budget constraint and a soft latency SLA, corresponding to packing- and covering-type constraints, respectively.We develop a new learning algo-rithm, COPAC-UCB, which integrates confidence-guided estimation, being optimistic (via upper confidence bounds or UCB) for reward and covering-type constraints, and pessimistic (via lower confidence bounds, or LCB) for packing-type constraints with Lagrangian regularization to adaptively balance performance and feasibility under un-certainty. To improve responsiveness under demand vari-ability, COPAC-UCB incorporates a forecasting component that estimates the cumulative task load using a black-box predictor. These demand estimates help augment decisions to more effectively satisfy constraints. Meanwhile, the al-gorithm updates dual variables (virtual prices) for each constraint via online gradient descent, effectively discour-aging models that risk violating the budget or SLA. By combining predictive guidance with optimistic exploration and adaptive cost signals, COPAC-UCB balances reward maximization with safe resource usage over time. The key contributions of this paper are summarized as follows:  
+
+> •
+
+We formulate a new online LLM model selection problem in edge-cloud collaborative inference sys-tems, explicitly incorporating time-varying task de-mand, monetary and latency constraints, and model heterogeneity.  
+
+> •
+
+We cast this problem as a stochastic bandit with both packing and covering constraints, and propose a novel algorithm, COPAC-UCB, which combines confidence-bound estimates with Lagrangian-based resource balancing. The algorithm also leverages predictions of future task load to guide cost-aware model selection under dynamic demand.  
+
+> •
+
+We theoretically show that COPAC-UCB achieves sublinear regret while satisfying budget and latency constraints with high probability, ensuring safe and efficient decision-making over time.  
+
+> •
+
+We evaluate our algorithm through simulations on realistic workload traces, demonstrating that COPAC-UCB achieves higher utility and better la-tency compliance under budget than several com-petitive baselines. 
+
+2 RELATED WORK 
+
+Inference Selection and Offloading Optimization Recent years have seen growing interest in improving LLM infer-ence efficiency via adaptive selection and offloading. Tradi-tional methods [1], [2], [12], [13] often adopt a static model, chosen offline by benchmark scores or perplexity, but ignore input-dependent variability across LLMs. More recent work proposes online learning-based model selection to balance accuracy, latency, and monetary cost under uncertainty. For example, [5] models dynamic performance drift via a time-varying bandit framework. In parallel, offloading methods decide whether to run tasks locally, at the edge, or in the cloud, optimizing for latency, energy, or budget [14], [15], [16], [17], [18], [19], [20], [21], [22]. Among them, [17] introduces a combinatorial bandit approach for LLM place-ment under cost constraints. These lines of work underscore the value of principled online decision-making for LLM inference in dynamic, resource-constrained settings. How-ever, none of these works jointly address both packing and covering constraints or explicitly incorporate time-varying demand, which are central to our formulation. 
+
+Bandits with Arm Selection Constraints Bandits with arm selection constraints model online decision-making where each action yields a reward while consuming re-sources or satisfying additional constraints. A canonical ex-ample is the Bandits with budget constraint framework [23], where each arm incurs stochastic rewards and resource con-sumption, and the goal is to maximize cumulative reward before exhausting a fixed budget. Subsequent work [24] de-veloped primal-dual and UCB-based algorithms with sub-linear regret guarantees under stationary settings. More re-cent extensions introduce covering-type constraints to cap-ture fairness or service-level guarantees. For instance, [25], [26], [27] enforce long-term proportionality across arms or 3
+
+coverage of service across groups, modeled as soft con-straints that require cumulative satisfaction over time. These settings typically balance reward maximization with con-straint violation minimization. Other lines of work explore adversarial [28], [29], non-stationary [30], and time-varying settings with oracle predictions [31], [32], showing that side information can improve performance. However, existing models rarely address both packing and covering con-straints simultaneously, and do not consider time-varying, stochastic demand. Our work fills this gap by formulating and analyzing a setting that integrates all three dimensions. 
+
+Learning-augmented online algorithm design Our work connects to the literature on learning-augmented on-line algorithms, which leverage machine-learned predic-tions to enhance online decision-making [33], [34]. These methods improve performance by incorporating predictions on latent parameters, while maintaining robustness to ad-versarial inputs. Applications span caching [33], scheduling [34], [35], rent-or-buy [36], set cover [37], [38], and matching [39], often assuming a static prediction known at the start of the horizon. Recent work explores sequential predictions updated at each round [40], [41], [42], [43], primarily in full-feedback or contextual bandit settings. However, these models do not incorporate resource constraints. We extend this paradigm by combining sequential predictions with mixed hard and soft constraints, introducing new algorith-mic challenges. 
+
+3 SYSTEM MODEL 
+
+We consider a mobile edge–cloud inference system where a user device offloads LLM inference tasks to a cloud-based service. Due to limited on-device compute and memory, the device cannot run large-scale LLMs locally and relies on the cloud for inference. The system proceeds in discrete rounds indexed by t = 1, 2, . . . , T , each representing a fixed-duration time slot. At the start of each round t, the system selects a single LLM at ∈ A from a pool of pre-deployed models to handle tasks arriving during the slot. This preselection avoids frequent model switches and re-duces cold-start overhead. The task load qt in round t is unknown at selection time and may fluctuate with user activity or application demand. Although the learner must adapt without knowing qt in advance, such variations often follow structured patterns (e.g., time-of-day or seasonal trends) and can be predicted from historical data or exter-nal signals [40], [41]. These predictions help guide model selection and resource planning. 
+
+Model Performance and Cost. Each model a ∈ A in the cloud has a stochastic cost and performance profile that is only revealed after it is selected. In each round t, the system selects a model at to serve tasks arriving during the time slot. The selected model then yields a random per-task re-ward rt(at) ∈ [0 , 1] , capturing task accuracy or success rate, and a latency ℓt(at), which includes model inference time and system delay. Recall that qt is the received number of tasks during round t, the total reward and latency incurred in this round are qt · rt(at) and qt · ℓt(at), respectively. Each model a incurs a monetary cost based on a fixed per-token price ρa > 0, specified by the service provider. The number of tokens generated per task varies with prompt complexity and decoding behavior. Let τ it (a) denote the token usage of model a on task i in round t, drawn from a bounded distribution with unknown mean [9]. The total token usage in round t is τt(a) = Pqt 
+
+> i=1
+
+τ it (a), and the corresponding cost is ρat · τt(at), revealed only after execution. The learner must choose models without prior knowledge of realized reward, latency, or token usage, rely-ing on historical feedback (rt(at), ℓ t(at), τ t(at)) to balance accuracy, latency, and cost. 
+
+Constraints. The system operates under two global con-straints that govern model selection throughout the decision horizon. First, a hard monetary budget constraint limits the cumulative token-based cost. Formally, the total incurred cost must satisfy PTt=1 ρat · τt(at) ≤ B. This reflects opera-tional or financial limits, such as API usage quotas or cloud usage budgets. Once the budget is exhausted, meaning the cumulative cost exceeds B, the system is prohibited from using any LLMs. It continues to process incoming workloads until round T , but can only select a default no-operation action that produces zero reward and incurs zero cost. This represents a fallback mode where the system remains functional but consumes no additional resources. Second, a soft latency service-level agreement imposes a covering constraint on user-perceived responsiveness [10]. At least a fraction α ∈ (0 , 1] of all tasks must complete within a latency deadline d0. Since all qt tasks in round 
+
+t share the same model latency ℓt(at), the SLA constraint is: PTt=1 qt · 1{ℓt(at) ≤ d0} ≥ α · PTt=1 qt. The indicator is treated as zero when a no-operation action is selected, ensuring only effective decisions contribute to SLA compli-ance. While occasional violations are permitted, persistent delays significantly degrade user experience. As latency is stochastic and only observed after selection, the learner must balance responsiveness against reward and cost. See Fig. 1 for a system overview. 
+
+Objective. The goal of the system is to maximize the expected cumulative user-perceived reward over a fixed decision horizon of T rounds, while satisfying both a hard monetary budget constraint and a soft latency SLA. For-mally, the learner seeks to solve the following constrained online optimization problem: 
+
+max 
+
+> a1,...,a T
+
+E
+
+" TX
+
+> t=1
+
+qt · rt(at)
+
+#
+
+subject to 
+
+> T
+
+X
+
+> t=1
+
+ρat · τt(at) ≤ B, (monetary budget) 
+
+> T
+
+X
+
+> t=1
+
+qt·1{ℓt(at) ≤ d0} ≥ α ·
+
+> T
+
+X
+
+> t=1
+
+qt. (latency SLA) As described earlier, any no-operation decision contributes zero reward and is excluded from SLA satisfaction. 4
+
+> Fig. 1. Online LLM selection under Budget Constraint
+
+The expectation is taken over both the learner’s internal randomness and the stochasticity of reward, latency, and to-ken generation. This formulation captures the core trade-off between reward maximization and constraint satisfaction under uncertainty. Since the performance and cost profiles of each model are unknown and revealed only through interaction, the problem aligns naturally with a constrained bandit framework. The learner must explore model behav-ior, adapt to time-varying task loads, and make decisions under partial feedback, all while respecting the budget and service constraints. 
+
+4 TIME VARYING DEMANDS BANDIT FORMULA - 
+
+> TION WITH
+
+GENERAL CONSTRAINTS .
+
+We formulate the model selection problem as a Time Vary-ing Demands Bandit Formulation with General Constraints. While this framework is motivated by the above model selection problem, it is more general and can be applied to a broader class of constrained online decision-making prob-lems with time-varying demand, making it of independent interest. In each round t ∈ { 1, . . . , T }, the learner selects an action at ∈ A from a finite set of LLM models to process the incoming tasks. The learner then observes a stochastic reward rt(at) ∈ [0 , 1] , capturing average task utility such as accuracy or success rate. While our system specifically involves inference latency and monetary cost, many practical deployments also face other resource pressures, such as energy usage, memory access, or bandwidth limitations. To capture this broader class of constraints in a unified manner, we introduce a 
+
+d-dimensional cost vector zt(at) ∈ [0 , 1] d, where each co-ordinate represents the per-task consumption of a specific resource type. The total cost in round t is scaled by the realized task load as qt · zt(at). This abstraction allows us to handle heterogeneous system costs within a single learning framework and sets the stage for constraint-aware decision-making. 
+
+Constraint Structure. We categorize the d-dimensional cost vector zt(at) ∈ [0 , 1] d into two types of constraints: packing constraints Ipack = {1, . . . , d 1} with hard budgets 
+
+Bi > 0; and covering constraints Icov = {d1 +1 , . . . , d } with soft lower thresholds, where d = d1 + d2. For each packing constraint i ∈ I pack , the system halts if the cumulative usage exceeds budget Bi at any round τ , i.e., Pτt=1 qt · z(i) 
+
+> t
+
+(at) >Bi. For each covering constraint i ∈ I cov , the learner must ensure the cumulative usage satisfies PTt=1 qt · z(i) 
+
+> t
+
+(at) ≥
+
+Bi. For instance, the latency SLA introduced earlier can be represented as a special case where z(i) 
+
+> t
+
+(at) := 1{ℓt(at) ≤
+
+d0}, and Bi = α · PTt=1 qt.
+
+Objective. The learner does not observe the underly-ing reward or cost distributions, nor the future demand sequence {qt}Tt=1 . It must adaptively select actions based only on past observations. The goal is to maximize the total cumulative reward over rounds {1, . . . , τ − 1}, where τ
+
+denotes the first round in which any packing constraint is violated, while ensuring all covering constraints are satis-fied over the horizon. 
+
+Benchmark. To evaluate algorithm performance, we benchmark against a clairvoyant offline policy that knows all latent distributions {rt(a), z (i) 
+
+> t
+
+(a)} and the entire de-mand sequence {qt}Tt=1 in advance. Let OPT denote the expected total reward achieved by this dynamic oracle policy, which can adaptively choose the best action in each round using full information, including future outcomes. Given an online learner that selects actions at without access to latent reward or cost distributions, we define the regret at horizon T as the gap between the offline dynamic oracle and the learner’s cumulative expected reward: Regret (T ) := OPT − E
+
+"τ −1X
+
+> t=1
+
+qt · rt(at)
+
+#
+
+, (1) where τ is the first round that violates any packing con-straint. To facilitate analysis, we upper bound OPT by introduc-ing a linear programming (LP) relaxation based on a static randomized policy. Let u ∈ ∆|A| be a fixed probability distribution over actions, r ∈ R|A| the vector of expected per-task rewards (i.e. r = E[rt(a)] ), and z(i) ∈ R|A| the expected per-task consumption along dimension i ∈ [d] (i.e., 
+
+z(i)(a) = E[z(i) 
+
+> t
+
+(a)] ). Let Q := PTt=1 qt be the total task volume. Then the LP relaxation benchmark is defined as: OPT LP = max 
+
+> u∈∆|A|
+
+Q · r⊤u
+
+s.t. Q · z(i)⊤u ≤ B, ∀i ∈ I pack 
+
+Q · z(i)⊤u ≥ B, ∀i ∈ I cov , (2) For simplicity, here we assume all per-dimension bud-gets are equal to B. Our formulation and results can be extended to heterogeneous budgets with minimal changes. This LP solution provides an upper bound on the perfor-mance of any dynamic policy, as formalized by the follow-ing lemma: 
+
+Lemma 1. OPT LP ≥ OPT .
+
+Proof Sketch. We begin by considering the relaxed LP form: OPT ′ 
+
+> LP
+
+:= max   
+
+> xt∈∆|A| ,∀t∈[T]
+> T
+
+X
+
+> t=1
+
+qt · r⊤xt5
+
+s.t. 
+
+> T
+
+X
+
+> t=1
+
+qt · (z(i))⊤xt ≤ B, ∀i ∈ I pack ,
+
+> T
+
+X
+
+> t=1
+
+qt · (z(i))⊤xt ≥ B, ∀i ∈ I cov ,
+
+where xt ∈ ∆|A| is a probability distribution over actions at time t. Any policy π achieving OPT induces a feasible so-lution to OPT ′ 
+
+> LP
+
+by setting xt,a := Eat∼π [1{at = a}], which implies OPT ′ 
+
+> LP
+
+≥ OPT. Conversely, any feasible solution 
+
+{xt}Tt=1 to OPT ′ 
+
+> LP
+
+yields a static distribution u :=   
+
+> PTt=1 qtxt
+> PTt=1 qt
+
+,which is feasible for OPT LP and achieves the same value. Hence, OPT ′ 
+
+> LP
+
+= OPT LP ≥ OPT. This benchmark enables tractable regret analysis, while preserving fidelity to the original problem. Any regret bound relative to OPT LP directly implies a bound relative to OPT. 
+
+Constraint Violation Metric. To unify the treatment of covering-type constraints, we define the cumulative viola-tion for each covering resource i ∈ I cov as 
+
+Vi(T ) := 
+
+"
+
+B −
+
+> T
+
+X
+
+> t=1
+
+qt · z(i) 
+
+> t
+
+(at)
+
+#
+
+> +
+
+,
+
+The learner aims to simultaneously achieve sublinear re-gret Regret (T ) and ensure vanishing average violation:   
+
+> Vi(T)
+> T
+
+= o(1) , ∀i ∈ I cov . This formulation captures both reward maximization and long-term covering constraint satisfaction under model uncertainty. 
+
+5 ALGORITHM DESIGN 
+
+We propose COPAC-UCB (Constrained Prediction-Aware Covering and Packing UCB), a learning algorithm for our framework. It selects actions being pessimistic about packing-type costs while optimistic about reward and covering-type costs. In each round, COPAC-UCB computes a UCB for expected reward, an LCB for packing-type costs, and a UCB for covering-type costs. The action is chosen to maximize a regularized utility objective with the reward of each candidate action scaled by constraint amplification multipliers that boost perceived reward when the corre-sponding constraints have previously been violated. To handle task load variability, COPAC-UCB uses a predicted cumulative demand ˆQt to approximate the total number of tasks. This estimate normalizes resource usage by divided by total budget B, aiding cost-aware decision-making. Its construction is detailed in subsection 5.2. 
+
+5.1 Confidence Bound Estimation 
+
+Let Nt(a) denote the number of times model a ∈ A
+
+has been selected before round t. We define the empirical mean reward and consumption for each action a as fol-lows: ˆrt(a) := 1
+
+> Nt(a)
+
+Pt−1 
+
+> s=1
+
+1{as = a} · rs(a), ˆz(i) 
+
+> t
+
+(a) := 
+
+> 1
+> Nt(a)
+
+Pt−1 
+
+> s=1
+
+1{as = a}· z(i) 
+
+> s
+
+(a), ∀i ∈ [d]. To facilitate explo-ration, we adopt the confidence radius function from [31]: rad (v, N, δ ) := 
+
+q 2v log(1 /δ ) 
+
+> N
+
++ 4 log(1 /δ ) 
+
+> N
+
+.
+
+We then construct the following confidence bounds: UCB r,t (a) := min {ˆrt(a) + rad (ˆ rt(a), N t(a), δ ), 1} , (3) LCB (i)
+
+> c,t
+
+(a) := max 
+
+n
+
+ˆz(i) 
+
+> t
+
+(a) − rad (ˆ z(i) 
+
+> t
+
+(a), N t(a), δ ), 0
+
+o
+
+,
+
+for i ∈ I pack , (4) UCB (i)
+
+> c,t
+
+(a) := min 
+
+n
+
+ˆz(i) 
+
+> t
+
+(a) + rad (ˆ z(i) 
+
+> t
+
+(a), N t(a), δ ), 1
+
+o
+
+,
+
+for i ∈ I cov . (5) These confidence intervals ensure, with high probability, that the true reward and costs lie within the bounds. The following guarantee formalizes this: 
+
+Lemma 2. With probability at least 1 − 3KT dδ , for all a ∈A, we have UCB r,t (a) ≥ r(a), and i ∈ I pack , LCB (i)
+
+> c,t
+
+(a) ≤
+
+z(i)(a), and i ∈ I cov , UCB (i)
+
+> c,t
+
+(a) ≤ z(i)(a).
+
+Proof Sketch. The result follows from the argument of [44], [45] by applying concentration bounds to the empirical means of rewards and costs. With high probability, the constructed UCB and LCB terms respectively upper and lower bound the true values, completing the proof. 
+
+5.2 Prediction of Task Demands 
+
+To accommodate time-varying task demand, the learner employs a time-series predictor P to estimate the total task volume Q := PTt=1 qt from historical data. At each round 
+
+t, the learner observes {qs}t−1 
+
+> s=1
+
+and produces a forecast 
+
+ˆQt = Pt(q1, . . . , q t−1). In practice, P can be any black-box model that supports one-step or multi-step predic-tion. For example, it may recursively generate forecasts 
+
+ˆqt, ˆqt+1 , . . . , ˆqT using past and previously predicted values, and define ˆQt := Pt−1 
+
+> s=1
+
+qs + PTs=t ˆqs as the estimated total demand. These predictors can incorporate statistical techniques or deep models widely used in time-series fore-casting [46], [47], [48]. We define the prediction error at round t as εt := 
+
+|Q − ˆQt|, which captures the deviation between true and estimated cumulative demand. This estimate is used by the learner to adapt cost-aware decisions to upcoming load variability, enabling dynamic adjustment under uncertainty. Without loss of generality, we also assume that qt ≤ ¯q for all 
+
+t, where ¯q is a known constant upper bound on task load. This upper bound enables the learner to gett worst-case cost scaling and construct confidence intervals that account for demand uncertainty. 
+
+5.3 Algorithm Description 
+
+Algorithm 1 presents the COPAC-UCB algorithm. At each round t ∈ [T ], the learner uses a predicted cumulative task volume ˆQt from a forecasting oracle Pt, based on 6
+
+historical demands {qs}t−1
+
+> s=1
+
+. Using this forecast, COPAC-UCB constructs high-probability confidence intervals for reward and per-task resource consumption. Specifically, for each action a ∈ A , COPAC-UCB com-putes a UCB UCB r,t (a) on the expected per-task reward. For each resource dimension i ∈ [d], it constructs a one-sided confidence bound on the unit resource consumption 
+
+z(i) 
+
+> t
+
+(a): a lower bound LCB (i)
+
+> c,t
+
+(a) if i ∈ I pack := [1 , d 1], and an upper bound UCB (i)
+
+> c,t
+
+(a) if i ∈ I cov := [ d1 + 1 , d ].We define a unified confidence vector for each action 
+
+a ∈ A :
+
+h
+
+zconf  
+
+> t
+
+(a)
+
+i 
+
+> i
+
+:= 
+
+(
+
+LCB (i)
+
+> c,t
+
+(a), if i ∈ I pack 
+
+−UCB (i)
+
+> c,t
+
+(a), if i ∈ I cov 
+
+∈ Rd. (6) Based on these estimates, the algorithm selects an action 
+
+at ∈ A that maximizes: 
+
+at = arg max 
+
+> a∈A
+
+(
+
+UCB r,t (a) − λ⊤
+
+> t
+
+ˆQt
+
+B · zconf  
+
+> t
+
+(a)
+
+!) 
+
+, (7) where λt ∈ Rd is the dual price vector (i.e., Lagrange multipliers) maintained by the algorithm and defined later. This Lagrangian-regularized rule balances reward max-imization and constraint satisfaction, penalizing consump-tion of scarce packing resources via lower bounds, while encouraging usage of underutilized covering resources via upper bounds, approximating the dual form of the static LP in Eq. (2), where dual weights λt ∈ Rd encode the opportunity cost of constrained resources. Packing resource usage is penalized via LCBs to avoid overestimation, while covering resource usage is incentivized via UCBs to pro-mote conservative compliance. The normalization factor 
+
+ˆQt/B reflects the marginal value of a unit resource under predicted load. After choosing At, the system observes the realized demand size qt, receives reward qt · rt(at), and consumes 
+
+qt · z(i) 
+
+> t
+
+(at) units of each resource i ∈ [d]. If any packing resource exceeds its budget, i.e., if Pts=1 qs · z(i) 
+
+> s
+
+(as) >B for some i ∈ I pack , then the algorithm halts and pulls a null arm a0 for all subsequent rounds. To adaptively track the cost of each resource, COPAC-UCB maintains a dual weight vector λt ∈ Rd that is updated via Online Gradient Descent. At each round t, it solves the convex minimization problem: 
+
+λt+1 = Π S (λt − ηt · ∇ ft(λt)) , (8) where the projection ΠS is onto the feasible set S := {λ ∈
+
+Rd : ∥λ∥1 ≤ T 1/4, λ ≥ 0d}, and the objective function is defined using the signed confidence vector zconf  
+
+> t
+
+(at) as: 
+
+ft(λ) = qt ˆQt
+
+B ·
+
+ B
+
+ˆQt
+
+· s − zconf  
+
+> t
+
+(at)
+
+!⊤
+
+λ
+
+ ,
+
+where s ∈ Rd is a direction vector with components 
+
+[s]i := 
+
+(
+
+1, if i ∈ I pack 
+
+−1, if i ∈ I cov 
+
+.
+
+This dual update encourages the algorithm to prioritize constraint satisfaction by dynamically adjusting weights based on observed feedback and demand forecasts. This update increases the dual weight λt(i) for pack-ing resources i ∈ Ipack when consumption is high (i.e., LCB (i)
+
+> c,t
+
+(a) is large), discouraging future overuse. Con-versely, it increases λt(i) for covering resources i ∈ I cov 
+
+when usage is low (i.e., UCB (i)
+
+> c,t
+
+(a) is small), thereby en-couraging future allocation. This dual feedback mechanism enables the learner to balance reward maximization and long-term constraint satisfaction. 
+
+Algorithm 1 COPAC-UCB  
+
+> 1:
+
+Initialize λ1 = 1 
+
+> d
+
+1 ∈ Rd, ηt = 2  
+
+> M√t
+
+, M = (¯ q + ¯q2 
+
+> b
+
+),
+
+B = ( B)i∈[d]. 
+
+> 2:
+
+for t = 1 , 2, . . . , T do  
+
+> 3:
+
+Use demand predictior ˆQt = Pt(q1, . . . , q t−1). 
+
+> 4:
+
+For all a ∈ A , compute UCB r,t (a) using (3);  
+
+> 5:
+
+for i ∈ I pack , compute LCB (i)
+
+> c,t
+
+(a) using (4);  
+
+> 6:
+
+for i ∈ I cover , compute UCB (i)
+
+> c,t
+
+(a) using (5).  
+
+> 7:
+
+Select action at according to (7).  
+
+> 8:
+
+if ∃i ∈ I pack such that Pts=1 qs · z(i) 
+
+> s
+
+(as) > B then  
+
+> 9:
+
+break and pull null arm a0 all the way.  
+
+> 10:
+
+end if  
+
+> 11:
+
+Observe qt, realized reward qtrt(at), and cost 
+
+qtz(i) 
+
+> t
+
+(at) for all i ∈ [d]. 
+
+> 12:
+
+Update budgets: B ← B − qt · z(i) 
+
+> t
+
+(at), for i ∈ I pack . 
+
+> 13:
+
+Update dual vector: λt+1 using Eq. (8).  
+
+> 14:
+
+end for 
+
+6 MAIN RESULTS 
+
+In this section, we give the theoretical analysis of COPAC-UCB. Let u∗ ∈ ∆|A| be an optimal solution to the LP problem (2). Before giving an upper bound on the cumu-lative regret and constraint violation of COPAC-UCB, we first begin with several auxiliary lemmas. 
+
+Lemma 3 (Cumulative Arm Selection Gap with OGD Bound) . Define the residual term: 
+
+Rt := qt bQt
+
+B · λ⊤
+
+> t
+
+B
+
+bQt
+
+· s − zconf  
+
+> t
+
+(u∗)
+
+!
+
+,
+
+Then, by applying Online Gradient Descent with step size ηt = 2  
+
+> M√t
+
+, we have with probability at least 1 − 3KT δ : 
+
+> τ−1
+
+X
+
+> t=1
+
+qt · UCB r,t ⊤u∗ − 
+
+> τ−1
+
+X
+
+> t=1
+
+qt · UCB r,t (at) +  
+
+> τ−1
+
+X
+
+> t=1
+
+Rt
+
+≤ 
+
+> τ−1
+
+X
+
+> t=1
+
+ft(λ) + O
+
+
+
+M T 3/4
+
+, ∀λ ∈ S. 
+
+Proof Sketch. We compare the algorithm’s selected action 
+
+at against the fixed benchmark u∗, which yields a per-round reward difference and a cost-weighted deviation. 7
+
+This motivates a regret decomposition that includes an arm selection gap and a dual-weighted cost gap. UCB ⊤
+
+> r,t
+
+u∗ − UCB r,t (at) + ˆQt
+
+B λ⊤
+
+> t
+
+B
+
+ˆQt
+
+s − zconf  
+
+> t
+
+(u∗)
+
+!
+
+≤ ˆQt
+
+B λ⊤
+
+> t
+
+B
+
+ˆQt
+
+· s − zconf  
+
+> t
+
+(at)
+
+!
+
+.
+
+Rewriting and summing over t = 1 to τ − 1, and mul-tiplying by qt. By defining a sequence of convex functions, i.e. ft(λ) encoding the dual-adjusted budget residual, we frame the second term as a regret bound in online convex optimization. Applying standard OGD guarantees over the simplex S := {λ ∈ Rd : ∥λ∥1 ≤ T 1/4, λ ≥ 0d}, we bound the cumulative difference between the algorithm’s decisions and the best fixed dual variable in hindsight. This yields the desired upper bound. 
+
+Lemma 4 (Budget Residual Lower Bound) . At any stopping time τ ≤ T , with probability at least 1−3KT δ , it holds that:  
+
+> τ−1
+
+X
+
+> t=1
+
+Rt ≥ 
+
+> τ−1
+
+X
+
+> t=1
+
+qt · bQt
+
+B
+
+B
+
+bQt
+
+− BQ
+
+!
+
+∥λt∥1. (9) 
+
+Proof Sketch. Applying Lemma 2 ensures that with high probability, the lower confidence bound of packing cost vector in Rt is upper bounded by the true cost vec-tor. We first decompose the residual Rt by sepa-rating B
+
+> bQt
+
+1d1 −
+
+
+
+LCB [1: d1]
+
+> c,t
+
+⊤
+
+μ∗ into 
+
+ B
+
+> bQt
+
+− BQ
+
+
+
+1d1 +
+
+ 
+
+> BQ
+
+1d −
+
+
+
+LCB [1: d1]
+
+> c,t
+
+⊤
+
+μ∗
+
+
+
+, and bound the latter using the definition of u∗ and non-negativity of all terms. The covering constraint analysis follows similarly by symmetry. Then by dropping non-negative slack terms and summing across t = 1 to τ − 1, we obtain the desired lower bound involving the norm ∥λt∥1.
+
+Lemma 5 (Budget Violation Decomposition and Upper Bound) . Assume that at some stopping time τ ≤ T ,there exists a budget dimension j0 ∈ Ipack such that: 
+
+Pτ −1 
+
+> t=1
+
+qtz(j0) 
+
+> t
+
+(at) > B . Define the dual variable as λ = αej0 ,with α ∈ [0 , T 1/4]. Then, with probability at least 1 − 3KT δ ,it holds that:  
+
+> τ−1
+
+X
+
+> t=1
+
+ft(λ) =  
+
+> τ−1
+
+X
+
+> t=1
+
+ft(αej0 ) ≤ α
+
+
+
+Qτ −1 − Q + QB ¯q
+
++ QB 
+
+> τ−1
+
+X
+
+> t=1
+
+qt
+
+
+
+z(j0) 
+
+> t
+
+(at) − [LCB c,t (at)] (j0) 
+
++ 
+
+> τ−1
+
+X
+
+> t=1
+
+qtα · bQt
+
+B
+
+B
+
+bQt
+
+− BQ
+
+!
+
++ O α
+
+ 1
+
+Q + 1
+
+B
+
+ τ −1X
+
+> t=1
+
+qtεt
+
+!
+
+,
+
+Proof Sketch. We consider a stopping time τ ≤ T such that a budget constraint is violated in coordinate j0 ∈ I pack ,i.e., Pτ −1 
+
+> t=1
+
+qtz(j0) 
+
+> t
+
+(at) > B. Letting λ = αej0 for some 
+
+α ∈ [0 , T 1/4], we analyze the cumulative dual-adjusted cost residual. We decompose the expression into: (i) the normalization error from B
+
+> bQt
+
+− BQ , (ii) the empirical bud-get violation P 
+
+> t
+
+qt
+
+
+
+z(j0) 
+
+> t
+
+(at) − [LCB c,t (at)] (j0)
+
+, and (iii) prediction errors εt. Using standard concentration bounds and boundedness assumptions, we derive the stated upper bound. Then the following theorem provides a high-probability regret upper bound for Algorithm 1: 
+
+Theorem 1 (High-Probability Regret Bound under Time– Varying Demand) . With probability at least 1 − 3KT δ , the algorithm satisfies the following regret bound: 
+
+OPT LP − 
+
+> τ−1
+
+X
+
+> t=1
+
+qtRt ≤ O
+
+
+
+log 
+
+ 1
+
+δ
+
+ 
+
+OPT LP 
+
+r ¯qK B
+
++ p¯qK · OPT LP 
+
+
+
++
+
+ 1
+
+Q + 1
+
+B
+
+ τ −1X
+
+> t=1
+
+qtϵt + M T 3/4
+
+
+
+,
+
+where Q = PTt=1 qt, ¯q = max t qt, and ϵt = | ˆQt − Q|.
+
+Proof Sketch. We consider two cases depending on whether any budget constraint is violated before horizon T .
+
+Case 1: τ ≤ T (some budget is violated before the horizon ends). In this case,  
+
+> τ−1
+
+X
+
+> t=1
+
+qt · UCB ⊤
+
+> r,t
+
+u∗ ≥ 
+
+> τ−1
+
+X
+
+> t=1
+
+qtr⊤ 
+
+> t
+
+u∗ = OPT LP · Qτ −1
+
+Q ,
+
+We begin by decomposing the regret between the LP benchmark and the cumulative reward of the algorithm: 
+
+OPT LP · Qτ −1
+
+Q − 
+
+> τ−1
+
+X
+
+> t=1
+
+qtUCB r,t (at).
+
+Choosing λ = OPT LP /Q · 1 ≤ 1, and combining Lem-mas 3–5, and rearranging terms, we can derive the results of Theorem 1. 
+
+Case 2: τ = T + 1 (no packing budget is violated and all rounds are used). With probability ≥ 1−3KT δ , we have  
+
+> τ−1
+
+X
+
+> t=1
+
+qt · UCB ⊤
+
+> r,t
+
+u∗ ≥ 
+
+> τ−1
+
+X
+
+> t=1
+
+qtr⊤ 
+
+> t
+
+u∗ = OPT LP 
+
+By primal-dual optimality, we know that  
+
+> τ−1
+
+X
+
+> t=1
+
+qtr⊤ 
+
+> t
+
+u∗ = OPT and  
+
+> τ−1
+
+X
+
+> t=1
+
+qtz⊤ 
+
+> t
+
+u∗ ≤ B. 
+
+Using Lemma 3 to control the gap between UCB r,t (at) and 
+
+UCB ⊤
+
+> r,t
+
+u∗, and Lemma 4 with μ = 0, we obtain: 
+
+OPT − 
+
+> τ−1
+
+X
+
+> t=1
+
+qtUCB r,t (at) ≤ O 1
+
+Q 
+
+> τ−1
+
+X
+
+> t=1
+
+qtεt + M T 3/4
+
+!
+
+.
+
+Further combining two cases, we arrive at the final high-probability regret bound. The following theorem provides a high-probability con-straint violation upper bound for Algorithm 1: 8
+
+Theorem 2. Consider the COPAC-UCB algorithm, that is provided with predictions that satisfy | bQt − Q| ≤ εt for all 
+
+t ∈ [τ − 1] . With probability ≥ 1 − 3KT dδ , for all i ∈ I cover ,
+
+max 0, B − 
+
+> τ−1
+
+X
+
+> t=1
+
+qtz(i) 
+
+> t
+
+(at)
+
+!
+
+≤ O T −1/4Q + M T 3/4 + 1
+
+B 
+
+> τ−1
+
+X
+
+> t=1
+
+qtεt + QB
+
+√T
+
+!
+
+.
+
+Proof Sketch. Fix i ∈ I cover such that [λ]i = T 1/4 and all other coordinates are zero. Lemma 3 can then be rewritten as:  
+
+> τ−1
+
+X
+
+> t=1
+
+"
+
+qt bQt
+
+B UCB (i)
+
+> c,t
+
+(at) − qt bQt
+
+B · B
+
+bQt
+
+#
+
++ O(M T 3/4)
+
+≥ 
+
+> τ−1
+
+X
+
+> t=1
+
+
+
+qt⟨μ∗, rt⟩ − qt · UCB r,t (at) + qt bQt
+
+B · λt
+
+− λtqt + qt bQt
+
+B λt⟨μ∗, z[Icover ] 
+
+> t
+
+⟩
+
+
+
+. (10) For the left-hand side of (10), we can upper bound:  
+
+> τ−1
+
+X
+
+> t=1
+
+qt bQt
+
+B
+
+"
+
+UCB (i)
+
+> c,t
+
+(at) − B
+
+bQt
+
+#
+
+≥ 
+
+> τ−1
+
+X
+
+> t=1
+
+
+
+qt − qtQB z(i) 
+
+> t
+
+(at) + QB O(∥LCB (i) 
+
+> c,t
+
+− z(i) 
+
+> t
+
+∥) (11) 
+
++ O
+
+ ¯qε t
+
+B
+
+ 
+
+= 
+
+> τ−1
+
+X
+
+> t=1
+
+ QB O(∥LCB (i) 
+
+> c,t
+
+− z(i) 
+
+> t
+
+∥) + O
+
+ ¯qε t
+
+B
+
+ 
+
++ QB
+
+"
+
+B − 
+
+> τ−1
+
+X
+
+> t=1
+
+qtz(i) 
+
+> t
+
+(at)
+
+#
+
+. (12) For the right-hand side, we have: 
+
+− T −1/4 (qt⟨μ∗, rt⟩ − qt · UCB r,t (at)) 
+
+≥ − T −1/4qtUCB (i)
+
+> c,t
+
+(at) ≥ − T −1/4qt. (13) The term λtqt − qt bQt 
+
+> B
+
+λt⟨μ∗, z[Icover ] 
+
+> t
+
+⟩ can be bounded as: 
+
+λtqt − qt bQt
+
+B λt⟨μ∗, z[Icover ] 
+
+> t
+
+⟩≥ λtqt · εt
+
+B ⟨μ∗, z[Icover ] 
+
+> t
+
+⟩ = O 1
+
+B 
+
+> τ−1
+
+X
+
+> t=1
+
+qtεt
+
+!
+
+. (14) Combining Lemma 2, (12), (13), and (14), we derive the violation bound for all i ∈ I cover .
+
+Remark: Theorem 1 (regret bound) and Theorem 2(constraint violation bound) both reveal the key factors contributing to learning performance. In particular, the es-timation error ϵt from demand forecasting directly affects the regret and constraint violation through the predicted task volume ˆQt. The eO(M 3/4) term arises from the regret of the OGD used to update the dual variables. The remaining terms are governed by the confidence bounds for r and z.These components jointly reflect how uncertainty in system dynamics and predictive advice influences online decision-making. 
+
+7 EXPERIMENT 
+
+7.1 Experimental Setup 
+
+Collaborative inference setting: We evaluate the pro-posed online constrained offloading algorithm in a collab-orative inference system with four candidate LLM fam-ilies: Gemma2_2b , Llama3.2_1b , Qwen2.5_0.5b , and 
+
+Qwen2.5_1.5b . At each decision round t, the system re-ceives a batch of qt tasks and selects an inference option (i.e., one of the candidate LLMs, or its quantized variant) to serve the tasks. Each option exhibits heterogeneous and uncertain trade-offs in (i) task accuracy, (ii) inference latency (in seconds), (iii) cost per 1k tokens (USD), and (iv) the average response length (in tokens), which together induce time-varying constrained decision making. 
+
+Trace-driven model profiling from edge measurements: 
+
+Rather than relying on hand-crafted or synthetic model profiles, we build a trace-driven simulator grounded in real measurements reported in [9]. The measurement traces pro-vide dataset-specific accuracy, end-to-end inference latency, and output-length statistics for a diverse set of quantized variants drawn from commonly deployed lightweight LLM families. We use these traces to instantiate the stochastic reward-and-cost model in our evaluation: for each infer-ence option, task correctness is modeled according to the measured accuracy, the per-request delay is sampled from the corresponding empirical latency distribution, and the token-level output length follows the measured response-length statistics. The monetary cost of each request is then computed under a unified cost-per-1k-tokens accounting rule based on the sampled output length. This trace-driven construction preserves realistic accuracy–latency–cost trade-offs observed in edge deployments, enabling a faithful evaluation of online decisions under uncertainty. 
+
+Constraints: We consider a budget-constrained and delay-sensitive deployment scenario reflecting practical service-level objectives. The system operates under a pack-ing constraint of a maximum total monetary budget of $8,000, which limits the total cumulative cost of serving all tasks. Concurrently, we impose a covering constraint on inference latency: at least 80% of all tasks must be served within 180s, enforcing that more than half of the responses meet low-latency requirements typical for user-facing applications. 
+
+Dynamic Workloads: We construct a dynamic task workload based on the HumanEval benchmark, which con-tains 164 code-generation tasks and is used without subsam-pling. At each round t, a batch of qt tasks arrives and must be served by the selected inference option. To capture both stationary and temporally correlated demand variations, we evaluate our algorithm under two arrival patterns: (i) i.i.d. 9
+
+arrivals, where {qt} are independently generated across rounds, and (ii) autoregressive arrivals following an AR(1) process, where the current demand depends on the previous round to emulate bursty or persistent traffic. Across all settings, we adopt a unified demand esti-mation strategy to approximate the total demand ˆQt. The estimator combines historical observations {qs}t−1 
+
+> s=1
+
+with forecasts of future demands {ˆqs} produced by standard time-series prediction methods. To reduce computational overhead, we employ a “power-of-two” update rule: ˆQt is updated only when t is a power of two (i.e., t = 2 k for some k ∈ N+); otherwise, the previous estimate is reused. When an update is triggered, ˆQt is computed by aggre-gating the realized past demand and the predicted future demand, providing an efficient yet stable approximation that supports online decision making under time-varying workloads. 
+
+7.2 Benchmark Algorithms 
+
+We compare our COPAC-UCB algorithm with three repre-sentative baselines, all extended to handle both packing and covering constraints but without demand prediction:  
+
+> •
+
+AD-UCB: A UCB-based algorithm for BwCR that formulates the problem as an online convex program and uses optimistic estimates to balance exploration and exploitation under convex constraints [45]. In our setting, AD-UCB handles both packing and cov-ering constraints as linear constraints but lacks the ability to predict future demand fluctuations.  
+
+> •
+
+PD-BwK: A primal-dual algorithm for BwK that maintains resource prices via multiplicative up-dates and selects arms greedily based on estimated reward-to-cost ratios [23]. Although efficient and competitive in stationary settings, it is conservative and adapts poorly to non-stationary or covering-constrained environments.  
+
+> •
+
+SW-UCB: SW-UCB extends the classical UCB frame-work to Non-Stationary Bandits with Knapsacks by employing a sliding-window estimator that focuses only on recent observations [49]. This enables SW-UCB to adapt to abruptly changing environments, but its short memory can lead to overly cautious re-source utilization and suboptimal SLA compliance in predictable, gradually changing scenarios like ours. These baselines collectively illustrate the trade-offs between optimism, conservatism, and short-term adaptability in con-strained bandit learning. 
+
+7.3 Performance with i.i.d. Demand 
+
+We first evaluate the algorithms under an i.i.d. demand set-ting, where each qt is independently drawn from a Gaussian distribution with mean 2 and variance 0.5. The experimental results are presented in Fig 2, which reports the estimation error of Q over time (Fig. 2a), cumulative regret (Fig. 2b), and constraint violation (Fig. 2c).                  
+
+> TABLE 1 Collaborative Inference Symstem Parameters
+> LLM Accuracy (%) Delay (s) Cost ($ 1k tokens) Average response length Gemma2 2b 0.77 281.92 0.005 168.29 Llama3.2 1b 0.84 84.43 0.015 124.67 Qwen2.5 0.5b 0.54 41.05 0.001 209.98 Qwen2.5 1.5b 0.27 111.53 0.003 130.84
+
+In Fig. 2a, we observe that the estimation error of Q
+
+decreases rapidly as time progresses, benefiting from the stability of the i.i.d. demand sequence. The power-of-two update policy allows the estimation to converge quickly and maintain low error with negligible computational overhead. Fig. 2b compares the cumulative regret of the four algo-rithms. COPAC-UCB achieves the lowest regret throughout the horizon, highlighting the advantage of incorporating predictive estimation and explicitly optimizing for covering constraints. AD-UCB performs second best, leveraging its optimistic convex optimization design, though it lacks fore-sight and reacts more slowly to constraint trade-offs. PD-BwK exhibits higher regret due to its conservative, primal-dual updates, which underexploit available resources in a stationary setting. SW-UCB performs worst, accumulat-ing the highest regret as its short-memory sliding-window mechanism discards useful long-term information and un-derutilizes resources unnecessarily. Fig. 2c shows the average constraint violation over time. COPAC-UCB consistently achieves the smallest (and slightly negative) violation, indicating it not only satisfies the covering constraint but often slightly over-achieves it. AD-UCB maintains moderate violations, while PD-BwK remains more conservative, with higher violations than COPAC-UCB. SW-UCB again performs the worst, with per-sistently large violations due to its inability to exploit the stationary nature of the environment and its overly cautious allocation strategy. Overall, these results confirm that in an i.i.d. setting, COPAC-UCB successfully balances exploration, exploita-tion, and constraint satisfaction through predictive demand estimation and constraint-aware decision-making, outper-forming the baselines on both regret minimization and SLA compliance. 
+
+Performance with AR (1) Linear Demand 
+
+We evaluate algorithm performance under a time-correlated AR(1) demand model, qt = α + βq t−1 + εt, with α = 2 , β =0.5. Fig 3 summarizes the results: estimation error (Fig. 3a), cumulative regret (Fig. 3b), and constraint violation (Fig. 3c). As shown in Fig. 3a, the estimation error of cumulative demand Q remains higher and decays more slowly under AR(1) demand compared to the i.i.d. setting (Fig. 2a). This is because temporal correlation causes forecasting errors to propagate across rounds, one inaccurate prediction can distort subsequent estimates. As a result, all algorithms suffer from higher cumulative regret (Fig. 3b) and increased 10 0 2000 4000 6000 8000 10000 
+
+> Time Step
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.10
+> 0.12
+> |Qt Q|
+> Estimation Error over Time
+
+(a) Estimation Error 0 2500 5000 7500 10000 
+
+Timeslot  
+
+> 0
+> 2000
+> 4000
+> 6000
+> Accumulated Regret
+> COPAC-UCB
+> SW-UCB
+> AD-UCB
+> PD-BwK
+
+(b) Cumulative Regret 0 2500 5000 7500 10000 
+
+Timeslot  
+
+> 0.5
+> 0.0
+> 0.5
+> 1.0
+> Constraint Violation  COPAC-UCB
+> SW-UCB
+> AD-UCB
+> PD-BwK
+
+(c) Constraint Violation 
+
+Fig. 2. Performance with i.i.d model. 0 2000 4000 6000 8000 10000 
+
+> Time Step
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> |Qt Q|
+> Estimation Error over Time
+
+(a) Estimation Error 0 2500 5000 7500 10000 
+
+Timeslot  
+
+> 0
+> 10000
+> 20000
+> Accumulated Regret
+> COPAC-UCB
+> SW-UCB
+> AD-UCB
+> PD-BwK
+
+(b) Cumulative Regret 0 2500 5000 7500 10000 
+
+Timeslot  
+
+> 2
+> 0
+> 2
+> Constraint Violation  COPAC-UCB
+> SW-UCB
+> AD-UCB
+> PD-BwK
+
+(c) Constraint Violation 
+
+Fig. 3. Performance with AR (1) model. 
+
+constraint violations (Fig. 3c). While COPAC-UCB continues to outperform the baselines in both cumulative reward and SLA satisfaction, its performance advantage narrows in the AR setting, especially during the early rounds. This is ex-pected: time-correlated demand requires longer adaptation before accurate prediction stabilizes, and the dual update mechanism becomes more conservative. Interestingly, the performance gap between AD-UCB, PD-BwK, and SW-UCB also shrinks, suggesting that none of these baselines effec-tively exploit temporal structure. Their respective update rules, whether multiplicative (PD-BwK) or sliding-window-based (SW-UCB), lack mechanisms to anticipate future de-mand shifts, often leading to mismatches between allocation and actual task volume. In summary, the i.i.d. scenario allows all algorithms (ex-cept SW-UCB) to achieve lower regret, likely with sublinear growth due to stationarity, and smaller constraint violations. In contrast, the AR scenario highlights the importance of prediction: COPAC-UCB retains an advantage by leverag-ing estimation, while the baselines degrade more uniformly. 
+
+8 CONCLUSION 
+
+We studied the problem of online LLM selection in an of-floading system with time-varying task demand. Each LLM has unknown, stochastic accuracy, latency, and cost, and decisions must satisfy hard budget and soft service-level constraints. We modeled this as a stochastic bandit problem with mixed packing and covering constraints under non-stationary demand. Based on this, we proposed a learning-augmented online algorithm that combines confidence-based exploration with sequential prediction to balance reward and constraint satisfaction. We provided theoretical guarantees on regret and constraint violations, and vali-dated our approach through experiments on both synthetic and real-world workloads. Future directions include han-dling richer prediction feedback, more complex constraints, and adversarial demand. 
+
+REFERENCES 
+
+[1] A. T. Owodunni and C. C. Emezue, “Koya: A recommender system for large language model selection,” in 4th Workshop on African Natural Language Processing , 2023. [2] B. Peng, M. Galley, P. He, H. Cheng, Y. Xie, Y. Hu, Q. Huang, L. Liden, Z. Yu, W. Chen et al. , “Check your facts and try again: Improving large language models with external knowledge and automated feedback,” arXiv preprint arXiv:2302.12813 , 2023. [3] L. Chen, M. Zaharia, and J. Zou, “Frugalgpt: How to use large lan-guage models while reducing cost and improving performance,” 
+
+arXiv preprint arXiv:2305.05176 , 2023. [4] R. Bhardwaj, Z. Xia, G. Ananthanarayanan, J. Jiang, Y. Shu, N. Karianakis, K. Hsieh, P. Bahl, and I. Stoica, “Ekya: Continuous learning of video analytics models on edge compute servers,” in 
+
+19th USENIX Symposium on Networked Systems Design and Imple-mentation (NSDI 22) , 2022, pp. 119–135. [5] Y. Xia, F. Kong, T. Yu, L. Guo, R. A. Rossi, S. Kim, and S. Li, “Which llm to play? convergence-aware online model selection with time-increasing bandits,” in Proceedings of the ACM Web Conference 2024 ,2024, pp. 4059–4070. 11 
+
+[6] F. Li, J. Liu, and B. Ji, “Combinatorial sleeping bandits with fairness constraints,” IEEE Transactions on Network Science and Engineering , vol. 7, no. 3, pp. 1799–1813, 2019. [7] A. Slivkins, K. A. Sankararaman, and D. J. Foster, “Contextual ban-dits with packing and covering constraints: A modular lagrangian approach via regression,” in The Thirty Sixth Annual Conference on Learning Theory . PMLR, 2023, pp. 4633–4656. [8] G. Sun, Z. Wang, X. Zhao, B. Tian, Z. Shen, Y. He, J. Xing, and A. Li, “Invisible tokens, visible bills: The urgent need to audit hidden operations in opaque llm services,” arXiv preprint arXiv:2505.18471 , 2025. [9] E. J. Husom, A. Goknil, M. Astekin, L. K. Shar, A. K˚ asen, S. Sen, B. A. Mithassel, and A. Soylu, “Sustainable llm inference for edge ai: Evaluating quantized llms for energy efficiency, output accuracy, and inference latency,” arXiv preprint arXiv:2504.03360 ,2025. [10] H. Yu, T. Taleb, and J. Zhang, “Deterministic latency/jitter-aware service function chaining over beyond 5g edge fabric,” IEEE Transactions on Network and Service Management , vol. 19, no. 3, pp. 2148–2162, 2022. [11] S. Balseiro, C. Kroer, and R. Kumar, “Online resource allocation under horizon uncertainty,” in Abstract Proceedings of the 2023 ACM SIGMETRICS International Conference on Measurement and Modeling of Computer Systems , 2023, pp. 63–64. [12] J. Salazar, D. Liang, T. Q. Nguyen, and K. Kirchhoff, “Masked language model scoring,” arXiv preprint arXiv:1910.14659 , 2019. [13] K. Huang, Y. Shi, D. Ding, Y. Li, Y. Fei, L. Lakshmanan, and X. Xiao, “Thriftllm: On cost-effective selection of large language models for classification queries,” arXiv preprint arXiv:2501.04901 ,2025. [14] C. Liu and J. Zhao, “Resource allocation for stable llm training in mobile edge computing,” in Proceedings of the Twenty-fifth Inter-national Symposium on Theory, Algorithmic Foundations, and Protocol Design for Mobile Networks and Mobile Computing , 2024, pp. 81–90. [15] G. Al-Atat, P. Datta, S. Moharir, and J. P. Champati, “Regret bounds for online learning for hierarchical inference,” in Proceed-ings of the Twenty-fifth International Symposium on Theory, Algorith-mic Foundations, and Protocol Design for Mobile Networks and Mobile Computing , 2024, pp. 281–290. [16] L. Yuan, D.-J. Han, S. Wang, and C. G. Brinton, “Local-cloud inference offloading for llms in multi-modal, multi-task, multi-dialogue settings,” arXiv preprint arXiv:2502.11007 , 2025. [17] X. Dai, J. Li, X. Liu, A. Yu, and J. Lui, “Cost-effective online multi-llm selection with versatile reward models,” arXiv preprint arXiv:2405.16587 , 2024. [18] C. Ling, K. Peng, S. Wang, X. Xu, and V. C. Leung, “A multi-agent drl-based computation offloading and resource allocation method with attention mechanism in mec-enabled iiot,” IEEE Transactions on Services Computing , 2024. [19] N. Yang, J. Wen, M. Zhang, and M. Tang, “Generalizable pareto-optimal offloading with reinforcement learning in mobile edge computing,” IEEE Transactions on Services Computing , 2025. [20] X. Dai, Z. Xiao, H. Jiang, M. Lei, G. Min, J. Liu, and S. Dustdar, “Offloading dependent tasks in edge computing with unknown system-side information,” IEEE Transactions on Services Computing ,vol. 16, no. 6, pp. 4345–4359, 2023. [21] Y. Huang, L. Zhang, and J. Xu, “Adversarial group linear bandits and its application to collaborative edge inference,” in IEEE INFO-COM 2023-IEEE Conference on Computer Communications . IEEE, 2023, pp. 1–10. [22] ——, “Learning the optimal path and dnn partition for collabora-tive edge inference,” IEEE Transactions on Mobile Computing , 2025. [23] A. Badanidiyuru, R. Kleinberg, and A. Slivkins, “Bandits with knapsacks,” Journal of the ACM (JACM) , vol. 65, no. 3, pp. 1–55, 2018. [24] S. Agrawal and N. R. Devanur, “Bandits with global convex constraints and objective,” Operations Research , vol. 67, no. 5, pp. 1486–1502, 2019. [25] M. Joseph, M. Kearns, J. H. Morgenstern, and A. Roth, “Fairness in learning: Classic and contextual bandits,” Advances in neural information processing systems , vol. 29, 2016. [26] S. Gillen, C. Jung, M. Kearns, and A. Roth, “Online learning with an unknown fairness metric,” Advances in neural information processing systems , vol. 31, 2018. [27] H. Xu, Y. Liu, W. C. Lau, and R. Li, “Combinatorial multi-armed bandits with concave rewards and fairness constraints.” in IJCAI ,2020, pp. 2554–2560. [28] N. Immorlica, K. Sankararaman, R. Schapire, and A. Slivkins, “Adversarial bandits with knapsacks,” Journal of the ACM , vol. 69, no. 6, pp. 1–47, 2022. [29] Y. Huang, Q. Liu, and J. Xu, “Adversarial combinatorial bandits with switching cost and arm selection constraints,” in IEEE INFO-COM 2024-IEEE Conference on Computer Communications . IEEE, 2024, pp. 371–380. [30] W. C. Cheung, D. Simchi-Levi, and R. Zhu, “Learning to optimize under non-stationarity,” in The 22nd International Conference on Artificial Intelligence and Statistics . PMLR, 2019, pp. 1079–1087. [31] L. Lyu and W. C. Cheung, “Bandits with knapsacks: advice on time-varying demands,” in International Conference on Machine Learning . PMLR, 2023, pp. 23 212–23 238. [32] Y. Huang, L. Wang, and J. Xu, “Quantum entanglement path se-lection and qubit allocation via adversarial group neural bandits,” 
+
+IEEE Transactions on Networking , vol. 33, no. 2, pp. 583–594, 2024. [33] T. Lykouris and S. Vassilvitskii, “Competitive caching with ma-chine learned advice,” Journal of the ACM (JACM) , vol. 68, no. 4, pp. 1–25, 2021. [34] M. Mitzenmacher and S. Vassilvitskii, “Algorithms with predic-tions,” Communications of the ACM , vol. 65, no. 7, pp. 33–35, 2022. [35] S. Lattanzi, T. Lavastida, B. Moseley, and S. Vassilvitskii, “Online scheduling via learned weights,” in Proceedings of the Fourteenth Annual ACM-SIAM Symposium on Discrete Algorithms . SIAM, 2020, pp. 1859–1877. [36] M. Purohit, Z. Svitkina, and R. Kumar, “Improving online algo-rithms via ml predictions,” Advances in Neural Information Process-ing Systems , vol. 31, 2018. [37] E. Bamas, A. Maggiori, and O. Svensson, “The primal-dual method for learning augmented algorithms,” Advances in Neural Information Processing Systems , vol. 33, pp. 20 083–20 094, 2020. [38] M. Almanza, F. Chierichetti, S. Lattanzi, A. Panconesi, and G. Re, “Online facility location with multiple advice,” Advances in neural information processing systems , vol. 34, pp. 4661–4673, 2021. [39] A. Antoniadis, T. Gouleakis, P. Kleer, and P. Kolev, “Secretary and online matching problems with machine learned advice,” 
+
+Advances in Neural Information Processing Systems , vol. 33, pp. 7933– 7944, 2020. [40] A. Rakhlin and K. Sridharan, “Online learning with predictable sequences,” in Conference on Learning Theory . PMLR, 2013, pp. 993–1019. [41] S. Rakhlin and K. Sridharan, “Optimization, learning, and games with predictable sequences,” Advances in Neural Information Pro-cessing Systems , vol. 26, 2013. [42] J. Steinhardt and P. Liang, “Adaptivity and optimism: An im-proved exponentiated gradient algorithm,” in International confer-ence on machine learning . PMLR, 2014, pp. 1593–1601. [43] A. Jadbabaie, A. Rakhlin, S. Shahrampour, and K. Sridharan, “Online optimization: Competing with dynamic comparators,” in 
+
+Artificial Intelligence and Statistics . PMLR, 2015, pp. 398–406. [44] M. Babaioff, S. Dughmi, R. Kleinberg, and A. Slivkins, “Dynamic pricing with limited supply,” 2015. [45] S. Agrawal and N. R. Devanur, “Bandits with concave rewards and convex knapsacks,” in Proceedings of the fifteenth ACM confer-ence on Economics and computation , 2014, pp. 989–1006. [46] R. H. Shumway and D. S. Stoffer, Time Series Analysis and Its Applications . Springer, 2017. [47] R. J. Hyndman and G. Athanasopoulos, Forecasting: principles and practice . OTexts, 2021. [48] B. Lim and S. Zohren, “Time series forecasting with deep learning: A survey,” in Philosophical Transactions of the Royal Society A , 2021. [49] S. Liu, J. Jiang, and X. Li, “Non-stationary bandits with knap-sacks,” Advances in Neural Information Processing Systems , vol. 35, pp. 16 522–16 532, 2022.
