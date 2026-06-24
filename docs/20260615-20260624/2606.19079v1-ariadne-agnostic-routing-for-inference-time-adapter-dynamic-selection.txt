@@ -1,0 +1,388 @@
+Title: ARIADNE: Agnostic Routing for Inference-time Adapter DyNamic sElection
+
+URL Source: https://arxiv.org/pdf/2606.19079v1
+
+Published Time: Thu, 18 Jun 2026 00:59:47 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+## ARIADNE: Agnostic Routing for Inference-time Adapter DyNamic sElection 
+
+Enrico Cassano 1,2, Michał Brzozowski 2,Zuzanna Dubanowska 2, Paolo Mandica 2, Neo Christopher Chung 21University of Turin, 2Samsung AI Center, Warsaw, Poland  
+
+> Correspondence: enrico.cassano@unito.it
+
+Abstract 
+
+The increasing deployment of parameter-efficient fine-tuning (PEFT) has led to model ecosystems in which a single backbone is paired with many task-specialized adapters. In this setting, inference-time queries often arrive without task labels, requiring the system to au-tomatically select the most appropriate adapter from a growing and heterogeneous adapter pool. Existing routing methods either depend on ac-cess to adapter internals, such as weight de-compositions or gradient-based statistics, or require additional router training, which limits scalability and portability as new adapters are added. We introduce ARIADNE, a training-free, adapter-agnostic routing framework for dynamic adapter selection at inference time. ARIADNE represents each adapter through a set of centroids computed from embeddings of its training set, capturing the data distribution associated with that adapter. Given an unla-beled input, it selects an adapter by measuring proximity to these centroids in latent space. Be-cause routing is performed entirely in the input embedding space, ARIADNE is compatible with arbitrary PEFT methods and requires no modification to the adapters or training proce-dures. Primarily evaluated with Llama 3.2 1B Instruct on 23 diverse NLP tasks, ARIADNE recovers 97.44% of the upper bound perfor-mance. Scaling to 44 tasks, it achieves 89.7% average selection accuracy, without additional training or access to adapter internals. 
+
+1 Introduction 
+
+The proliferation of parameter-efficient fine-tuning (PEFT) methods has fundamentally altered the landscape of language model adaptation. Rather than fine-tuning monolithic models end-to-end, practitioners now maintain growing libraries of lightweight adapters (Hu et al., 2022; Houlsby et al., 2019), each specializing a shared backbone for a particular task or domain. This modular paradigm offers compelling advantages in terms of HellaSwag MNLI MRPC QQP SST-2   
+
+> 0
+> 25
+> 50
+> 75
+> 100
+> Accuracy (%)
+> Arrow SpectR ARIADNE
+
+Figure 1: Adapter SA comparison between ARIADNE and spectral routing methods Arrow and SpectR. ARI-ADNE consistently outperforms both across all tasks. 
+
+storage, compute, and composability. Yet it intro-duces a critical challenge: given an input without task label and a library of n specialized adapters, how does one select the most appropriate one with-out the overhead of additional training, labeled data, or privileged access to adapter internals? Existing approaches to this routing problem can be broadly divided into two families. The first employs retrieval-based mechanisms trained on la-beled task data. LoraRetriever (Zhao et al., 2024) fine-tunes a sentence embedding model via con-trastive learning to align inputs with adapter repre-sentations, achieving strong performance but re-quiring an additional supervised training phase and access to each adapter’s training distribution. A second family of methods uses spectral rout-ing , deriving routing signals directly from adapter weights. Representative examples include Ar-row (Ostapenko et al., 2024) and SpectR (Flesh-man and Van Durme, 2025), which build proto-types from the SVD of each LoRA weight matrix and assign inputs based on the alignment between these prototypes and the model’s hidden states. Al-though these approaches operate in a zero-shot set-ting, they are strictly designed around the LoRA formulation and do not naturally generalize to other PEFT methods (Kopiczko et al., 2023; Liu et al., 2024). Moreover, empirical results show that these 
+
+> arXiv:2606.19079v1 [cs.AI] 17 Jun 2026
+
+methods struggle when adapters are similar, with Arrow performing close to random chance on sev-eral benchmarks (Fleshman and Van Durme, 2025). We propose ARIADNE (Agnostic Routing for 
+
+Inference-time Adapter DyNamic s Election), a zero-shot routing framework for dynamic adapter selection compatible with any PEFT architecture. The key insight is framing adapter routing as an 
+
+input classification problem : the latent geometry of a frozen, off-the-shelf text encoder is sufficient to distinguish task distributions, without relying on adapter weights or gradients. Inputs from the same task naturally cluster in this space, making it a reliable signal for routing. For each task, we construct a set of m representative centroids by clustering embeddings of samples drawn from its training set. At inference time, an input is pro-jected into the same space, and the adapter whose centroids set yields the highest cosine similarity is selected. We instantiate ARIADNE on top of Llama 3.2 1B Instruct and Qwen2.5 3B Instruct, and evaluate it end-to-end on 23 diverse NLP tasks, measuring both adapter Selection Accuracy (SA) and Task Performance (TP) against an oracle up-per bound. ARIADNE achieves an average TP of 54.74%, recovering 97.44% of the average oracle performance (56.18%). On the 5-task subset shared with Arrow and SpectR, ARIADNE consistently outperforms both baselines in adapter SA. An ex-tended scalability study on 44 tasks confirms that routing performance remains stable as the adapter library grows, reaching an average SA of 89.7%. Our main contributions are: • We reframe adapter routing as an input clas-sification problem and propose a zero-shot centroid-based routing mechanism that oper-ates entirely in the input embedding space. • Thanks to its reliance solely on the input space rather than adapter weight decompositions, ARIADNE is, by construction, compatible with any PEFT architecture. • We show empirically that input geometry alone provides a strong signal for effective adapter selection, outperforming spectral rout-ing methods while scaling robustly. • We conduct a systematic analysis of routing failure modes and show that errors are concen-trated within semantically related task clusters, leading to graceful rather than catastrophic degradation. 
+
+2 Related Work 
+
+Parameter-Efficient Fine-Tuning. The growth of large pretrained language models has made full fine-tuning increasingly impractical. Parameter-efficient fine-tuning (PEFT) methods address this by updating only a small subset of parameters while keeping the backbone frozen (Houlsby et al., 2019; Hu et al., 2022; Li and Liang, 2021; Liu et al., 2022). Among these, Low-Rank Adaptation (LoRA) (Hu et al., 2022) has emerged as the domi-nant paradigm: for each weight matrix W ∈ Rd×k,it introduces a residual update ∆W = BA with 
+
+B ∈ Rd×r, A ∈ Rr×k, and r ≪ min (d, k ), re-ducing the number of trainable parameters by or-ders of magnitude while preserving competitive downstream performance. Subsequent variants in-cluding VeRA (Kopiczko et al., 2023), DoRA (Liu et al., 2024), AdaLoRA (Zhang et al., 2023), and GPart (Mandica et al., 2026) further improve pa-rameter efficiency and flexibility. Our work does not modify or extend any specific PEFT method; instead, it provides routing that operates indepen-dently of the adapter implementation. 
+
+Adapter Selection. Existing approaches vary con-siderably in the resources and assumptions they require, ranging from methods that train dedicated routing components to fully zero-shot, data-free alternatives. LoRARetriever (Zhao et al., 2024) frames adapter selection as a retrieval and compo-sition problem, but requires training a dedicated retrieval component on top of each adapter’s train-ing data, a costly overhead that ARIADNE avoids entirely. More closely related to our approach are methods that perform zero-shot routing by ex-ploiting the internal structure of adapter weights. ARROW (Ostapenko et al., 2024) uses the first right singular vector of each adapter’s weight prod-uct matrix, obtained via SVD, as a proxy for its training distribution, while SpectR (Fleshman and Van Durme, 2025) extends this idea by leveraging the full covariance spectrum. Both methods require white-box access to adapter internals, and their re-liance on the SVD of LoRA weight matrices ties them architecturally to the LoRA family and, im-plicitly, to the underlying base model. Furthermore, Fleshman and Van Durme (2025) show that these spectral proxies can be unreliable: ARROW de-grades to near-random routing accuracy on highly similar task pairs, while SpectR falls even below the random threshold in the same setting. Like ARROW and SpectR, ARIADNE requires no training of additional components. Unlike these methods, however, it grounds routing entirely in the latent geometry of a frozen, off-the-shelf en-coder, decoupling the routing mechanism from both adapter internals and the underlying PEFT architecture. As a result, ARIADNE is agnostic to both adapter type and base model, enabling the same routing method to transfer across model fam-ilies and scales. This design is further motivated by recent evidence that internal model represen-tations are unreliable as general-purpose routing signals, with spectral approaches often degrading out-of-distribution (Dubanowska et al., 2025). 
+
+3 Methodology 
+
+Routing Without Adapter Access. A central de-sign choice in ARIADNE is to ground routing decisions exclusively in the latent geometry of a text encoder, rather than on adapter internals. This decoupling is both principled and practical: adapter weights encode the output of a training process whose data distribution and optimization trajec-tory are opaque at deployment time, and weight-space signals offer no guarantee of correspondence with task boundaries in input space (Fleshman and Van Durme, 2025; Dubanowska et al., 2025). By operating only on inputs, ARIADNE offers three properties that spectral routing methods cannot pro-vide: compatibility with any PEFT architecture by design, straightforward extension to new tasks by simply computing centroids from training samples, and independence from the underlying backbone, enabling the same routing infrastructure transfers across model families and scales. 
+
+Problem Formulation. Let T = {T1, . . . , T n}
+
+denote a set of n tasks. Each task Ti is associ-ated with a dataset Di = {(xi,k , y i,k )}Ni
+
+> k=1
+
+, where 
+
+Ni is the number of examples in task Ti, xi,k is the k-th input, and yi,k is its corresponding la-bel. The full multi-task dataset is then defined as D = Sni=1 Di. We consider a base language model L and a library of n task-specific adapters 
+
+Φ = {ϕ1, . . . , ϕ n}, where each ϕi is optimized for 
+
+Ti. Under a mixed-task scenario, an input x is sub-mitted to L without a task label, and the objective is to select the adapter best suited to process it. 
+
+Adapter Library. We train LoRA adapters on state-of-the-art tasks that span four semantic cat-egories. These adapters are fundamental to our evaluation: they enable end-to-end measurement of routing quality under realistic conditions, and allow us to characterize what happens when routing fails. Full details on tasks and training are provided in Appendix A.3. 
+
+Dynamic Selection. For each task Ti, we rep-resent its input distribution with a set of m task-representative centroids Ci = {ci,j }mj=1 , computed in the embedding space of a frozen auxiliary en-coder e(·). To construct these centroids, we sample 
+
+m subsets Si,j ⊂ D i with different strategies (Ap-pendix A.10), and average the embeddings of their inputs. Formally, for each j ∈ { 1, . . . , m }, the j-th centroid for task Ti is defined as 
+
+ci,j = 1
+
+|Si,j |
+
+X
+
+> (x,y )∈Si,j
+
+e(x). (1) This multi-centroid representation captures intra-task variability more effectively than a single global prototype. At inference time, an unlabeled input 
+
+x is embedded in the same space, and the routing function selects the adapter associated with the most similar task centroid: 
+
+i∗ = arg max 
+
+> i
+
+
+
+max 
+
+> c∈C i
+
+cos( e(x), c )
+
+
+
+. (2) The selected adapter is then ϕi∗ .
+
+4 Experiments 
+
+Setup. We evaluate ARIADNE on top of Llama 3.2 1B Instruct (Grattafiori et al., 2024) and Qwen2.5 3B Instruct (Team, 2024) (results in Appendix A.2). We use a library of 23 LoRA adapters, each trained independently on a single task in the span of four semantic categories: NLI, QA, Similarity, and Reasoning, covering estab-lished benchmarks. The frozen embedder e(·)
+
+is intfloat/e5-large-v2 (Wang et al., 2022). We report the motivation for this choice in Ap-pendix A.5. Our main results are computed with up to 500 samples per centroid and centroids num-ber m = 5 . A robustness study training samples number is in Appendix A.9, and the selection of the m value is in Appendix A.6. 
+
+Comparison with Spectral Routing. We com-pare adapter SA against Arrow (Ostapenko et al., 2024) and SpectR (Fleshman and Van Durme, 2025) on the 5-task intersection shared across evaluations (HellaSwag (Zellers et al., 2019), MNLI (Williams et al., 2018), MRPC (Wang et al., 2018), QQP (Wang et al., 2018), SST-2 (Socher et al., 2013)). Category SA Base Model Oracle ARIADNE Recoup % NLI 81% 23.37% 60.16% 58.06% 96.51%                     
+
+> QA 83% 22.91% 51.55% 49.14% 95.32%
+> Similarity 96% 19.42% 66.60% 65.20% 97.92%
+> Reasoning 100% 23.38% 46.40% 46.40% 100.0%
+> Avg. 85% 22.27% 56.18% 54.74% 97.44%
+> Table 1: End-to-end performance across 23 tasks grouped by seman-tic category. SA: adapter Selection Accuracy; TP: Task Performance; Recoup: TP recovered relative to Oracle.
+
+Adapter Selection and End-to-End Performance. 
+
+For each of the 23 selected tasks, we assess the SA on 50 random test samples. We then evaluate the pipeline end-to-end by testing the adapter selected by ARIADNE and measuring the TP against an Oracle. This Oracle is defined as a configuration that always uses the correct adapter. The gap be-tween these two metrics directly quantifies the per-formance cost attributable to routing errors. Fi-nally, to assess scalability, we report SA across an extended set of 44 tasks. 
+
+5 Results 
+
+Comparison with Spectral Routing. Figure 1 compares ARIADNE with Arrow and SpectR on the 5-task benchmark shared across all three meth-ods. The approaches differ in their underlying as-sumptions: Arrow and SpectR do not need training data but require white-box access to LoRA weight matrices, whereas ARIADNE uses training sam-ples without requiring access to adapter internals. ARIADNE achieves the best performance on ev-ery task, with the largest gains on MRPC and QQP, where spectral methods degrade to near-random routing accuracy, consistent with their known fail-ure mode (Fleshman and Van Durme, 2025). 
+
+Adapter Selection and Performance. Table 1 summarizes results on 23 tasks grouped by seman-tic category. ARIADNE achieves a zero-shot av-erage SA of 85%, translating to an average TP of 54.74% and recovering 97.44% of Oracle perfor-mance. Routing is most reliable in the Similarity and Reasoning categories, where near-perfect se-lection closes the gap to the Oracle. NLI is the most challenging category, with 81% SA, largely due to the high similarity. Even in this setting, how-ever, ARIADNE recovers 96.51% of oracle perfor-mance, indicating that routing errors tend to select semantically related adapters rather than causing catastrophic degradation. Full per-task results are reported in Appendix A.1. In Appendix A.2, are reported the end-to-end performances with an addi-tional backbone, Qwen2.5 3B Instruct. We report the overhead of ARIADNE in Appendix A.7. 
+
+Scalability. SA degrades gracefully as the adapter library grows, stabilizing at an average SA of 89.7% across 44 tasks. As shown in Figure 2, the initial drop reflects the increasing difficulty of distinguish-ing semantically proximate tasks as the candidate pool expands. Crucially, performance plateaus be-yond approximately 20 adapters rather than contin-uing to degrade. This trend is consistent with our failure mode analysis, which shows that routing errors are concentrated within semantic clusters. The SA for each task is reported in Appendix A.8. 1 6 11 16 21 26 31 36 41 
+
+> Number of Tasks
+> 0.0
+> 0.5
+> 1.0
+> Accuracy
+> Figure 2: SA trend for up to 44 tasks.
+
+Graceful Degradation. Severe routing failure occurs on SQuAD V1 (Rajpurkar et al., 2016), which achieves 0% SA because it is consistently routed to the SQuAD V2 (Rajpurkar et al., 2018) adapter. ARIADNE still recovers 85% of Oracle performance (64% vs 75% TP), since the two tasks are semantically close and their adapters transfer well. This behavior highlights a major advantage of ARIADNE: since routing is performed in a semantically - structured space, errors tend to result in graceful degradation, making routing errors eas-ier to diagnose (Appendix A.4). 
+
+6 Conclusions 
+
+We introduced ARIADNE, a zero-shot framework for dynamic adapter selection that reframes rout-ing as an input classification problem. By oper-ating in the latent space of a frozen text encoder rather than relying on adapter weight decompo-sitions, ARIADNE is, by construction, compati-ble with arbitrary PEFT architectures. Evaluated across 23 tasks, it recovers 97.44% of Oracle perfor-mance and outperforms spectral routing methods on shared tasks, suggesting that input geometry provides an effective signal for adapter selection. Limitations 
+
+The primary limitation of ARIADNE is that it requires access to training data to compute task centroids. As a result, it is not directly applicable to decentralized adapter ecosystems where training data is proprietary or unavailable. A promising di-rection for future work is to combine ARIADNE with knowledge extraction in order to derive task-descriptive signals directly from the adapters, en-abling the construction of input-space fingerprints without requiring access to training samples. This would make our approach fully data-free while pre-serving its adapter-agnostic nature. At the same time, in many practical PEFT settings, adapters are released together with at least some information about their training data or task domain. 
+
+References 
+
+Marta Bañón, Pinzhen Chen, Barry Haddow, Kenneth Heafield, Hieu Hoang, Miquel Esplà-Gomis, Mikel L. Forcada, Amir Kamran, Faheem Kirefu, Philipp Koehn, Sergio Ortiz Rojas, Leopoldo Pla Sempere, Gema Ramírez-Sánchez, Elsa Sarrías, Marek Strelec, Brian Thompson, William Waites, Dion Wiggins, and Jaume Zaragoza. 2020. ParaCrawl: Web-scale acqui-sition of parallel corpora. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 4555–4567, Online. Association for Computational Linguistics. Yonatan Bisk, Rowan Zellers, Ronan Le Bras, Jianfeng Gao, and Yejin Choi. 2020. Piqa: Reasoning about physical commonsense in natural language. In Thirty-Fourth AAAI Conference on Artificial Intelligence .Ond rej Bojar, Rajen Chatterjee, Christian Federmann, Yvette Graham, Barry Haddow, Matthias Huck, An-tonio Jimeno Yepes, Philipp Koehn, Varvara Lo-gacheva, Christof Monz, Matteo Negri, Aurelie Neveol, Mariana Neves, Martin Popel, Matt Post, Raphael Rubino, Carolina Scarton, Lucia Specia, Marco Turchi, and 2 others. 2016. Findings of the 2016 conference on machine translation. In Proceed-ings of the First Conference on Machine Translation ,pages 131–198, Berlin, Germany. Association for Computational Linguistics. Ondrej Bojar, Christian Buck, Christian Federmann, Barry Haddow, Philipp Koehn, Johannes Leveling, Christof Monz, Pavel Pecina, Matt Post, Herve Saint-Amand, Radu Soricut, Lucia Specia, and Ale s Tam-chyna. 2014. Findings of the 2014 workshop on statistical machine translation. In Proceedings of the Ninth Workshop on Statistical Machine Translation ,pages 12–58, Baltimore, Maryland, USA. Associa-tion for Computational Linguistics. Samuel R. Bowman, Gabor Angeli, Christopher Potts, and Christopher D. Manning. 2015. A large anno-tated corpus for learning natural language inference. In Proceedings of the 2015 Conference on Empiri-cal Methods in Natural Language Processing , pages 632–642, Lisbon, Portugal. Association for Compu-tational Linguistics. Daniel Cer, Mona Diab, Eneko Agirre, Inigo Lopez-Gazpio, and Lucia Specia. 2017. Semeval-2017 task 1: Semantic textual similarity multilingual and crosslingual focused evaluation. In Proceedings of the 11th international workshop on semantic evalua-tion (SemEval-2017) , pages 1–14. Clark Christopher, Lee Kenton, Chang Ming-Wei, Kwiatkowski Tom, Collins Michael, and Toutanova Kristina. 2019. Boolq: Exploring the surprising diffi-culty of natural yes/no questions. In NAACL .Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and Oyvind Tafjord. 2018. Think you have solved question answering? try arc, the ai2 reasoning challenge. 
+
+arXiv:1803.05457v1 .Yiheng Dong, Yi Lin, and Xin Yang. 2025. Copa: Hier-archical concept prompting and aggregating network for explainable diagnosis. In International Confer-ence on Medical Image Computing and Computer-Assisted Intervention , pages 67–76. Springer. Dheeru Dua, Yizhong Wang, Pradeep Dasigi, Gabriel Stanovsky, Sameer Singh, and Matt Gardner. 2019. DROP: A reading comprehension benchmark requir-ing discrete reasoning over paragraphs. In Proc. of NAACL .Zuzanna Dubanowska, Maciej ˙ Zelaszczyk, Michał Br-zozowski, Paolo Mandica, and Michal P. Karpow-icz. 2025. Representation-based broad hallucination detectors fail to generalize out of distribution. In 
+
+Findings of the Association for Computational Lin-guistics: EMNLP 2025 , pages 17563–17575, Suzhou, China. Association for Computational Linguistics. Ondˇ rej Dušek, Jekaterina Novikova, and Verena Rieser. 2020. Evaluating the State-of-the-Art of End-to-End Natural Language Generation: The E2E NLG Chal-lenge. Computer Speech & Language , 59:123–156. William Fleshman and Benjamin Van Durme. 2025. SpectR: Dynamically composing LM experts with spectral routing. arXiv preprint arXiv:2504.03454 .Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, and 1 others. 2024. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 .Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone, Quentin De Laroussilhe, Andrea Gesmundo, Mona Attariyan, and Sylvain Gelly. 2019. Parameter-efficient transfer learning for nlp. In In-ternational conference on machine learning , pages 2790–2799. PMLR. Edward J Hu, yelong shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. 2022. LoRA: Low-rank adaptation of large language models. In International Conference on Learning Representations .Mandar Joshi, Eunsol Choi, Daniel Weld, and Luke Zettlemoyer. 2017. triviaqa: A Large Scale Distantly Supervised Challenge Dataset for Reading Compre-hension. arXiv e-prints , arXiv:1705.03551. Daniel Khashabi, Snigdha Chaturvedi, Michael Roth, Shyam Upadhyay, and Dan Roth. 2018. Looking beyond the surface:a challenge set for reading com-prehension over multiple sentences. In Proceedings of North American Chapter of the Association for Computational Linguistics (NAACL) .Dawid J Kopiczko, Tijmen Blankevoort, and Yuki M Asano. 2023. Vera: Vector-based random matrix adaptation. arXiv preprint arXiv:2310.11454 .Tom Kwiatkowski, Jennimaria Palomaki, Olivia Red-field, Michael Collins, Ankur Parikh, Chris Alberti, Danielle Epstein, Illia Polosukhin, Matthew Kelcey, Jacob Devlin, Kenton Lee, Kristina N. Toutanova, Llion Jones, Ming-Wei Chang, Andrew Dai, Jakob Uszkoreit, Quoc Le, and Slav Petrov. 2019. Natu-ral questions: a benchmark for question answering research. Transactions of the Association of Compu-tational Linguistics .Hector Levesque, Ernest Davis, and Leora Morgenstern. 2012. The winograd schema challenge. In Thir-teenth International Conference on the Principles of Knowledge Representation and Reasoning . Citeseer. Xiang Lisa Li and Percy Liang. 2021. Prefix-tuning: Optimizing continuous prompts for generation. In 
+
+Proceedings of the 59th Annual Meeting of the Asso-ciation for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers) , pages 4582– 4597. Bill Yuchen Lin, Wangchunshu Zhou, Ming Shen, Pei Zhou, Chandra Bhagavatula, Yejin Choi, and Xiang Ren. 2020. CommonGen: A constrained text gen-eration challenge for generative commonsense rea-soning. In Findings of the Association for Computa-tional Linguistics: EMNLP 2020 , pages 1823–1840, Online. Association for Computational Linguistics. Haokun Liu, Derek Tam, Mohammed Muqeeth, Jay Mo-hta, Tenghao Huang, Mohit Bansal, and Colin A Raf-fel. 2022. Few-shot parameter-efficient fine-tuning is better and cheaper than in-context learning. Ad-vances in Neural Information Processing Systems ,35:1950–1965. Shih-Yang Liu, Chien-Yi Wang, Hongxu Yin, Pavlo Molchanov, Yu-Chiang Frank Wang, Kwang-Ting Cheng, and Min-Hung Chen. 2024. Dora: Weight-decomposed low-rank adaptation. In Forty-first In-ternational Conference on Machine Learning .Andrew L. Maas, Raymond E. Daly, Peter T. Pham, Dan Huang, Andrew Y. Ng, and Christopher Potts. 2011. Learning word vectors for sentiment analysis. In Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies , pages 142–150, Portland, Oregon, USA. Association for Computational Lin-guistics. Paolo Mandica, Michał Brzozowski, Zuzanna Dubanowska, and Neo Christopher Chung. 2026. Gpart: End-to-end isometric fine-tuning via global parameter partitioning. Preprint , arXiv:2605.14841. Linyong Nan, Dragomir Radev, Rui Zhang, Amrit Rau, Abhinand Sivaprasad, Chiachun Hsieh, Xian-gru Tang, Aadit Vyas, Neha Verma, Pranav Krishna, Yangxiaokang Liu, Nadia Irwanto, Jessica Pan, Fa-iaz Rahman, Ahmad Zaidi, Mutethia Mutuma, Yasin Tarabar, Ankit Gupta, Tao Yu, and 5 others. 2021. DART: Open-domain structured data record to text generation. In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 432–447, Online. Association for Computational Linguistics. Yixin Nie, Adina Williams, Emily Dinan, Mohit Bansal, Jason Weston, and Douwe Kiela. 2020. Adversarial nli: A new benchmark for natural language under-standing. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics . As-sociation for Computational Linguistics. Oleksiy Ostapenko, Zhan Su, Edoardo Maria Ponti, Lau-rent Charlin, Nicolas Le Roux, Matheus Pereira, Lu-cas Caccia, and Alessandro Sordoni. 2024. Towards modular llms by building and reusing a library of loras. arXiv preprint arXiv:2405.11157 .Altaf Rahman and Vincent Ng. 2012. Resolving com-plex cases of definite pronouns: the winograd schema challenge. In Proceedings of the 2012 Joint Confer-ence on Empirical Methods in Natural Language Processing and Computational Natural Language Learning , pages 777–789. Association for Computa-tional Linguistics. Pranav Rajpurkar, Robin Jia, and Percy Liang. 2018. Know what you don’t know: Unanswerable ques-tions for SQuAD. In Proceedings of the 56th Annual Meeting of the Association for Computational Lin-guistics (Volume 2: Short Papers) , pages 784–789, Melbourne, Australia. Association for Computational Linguistics. Pranav Rajpurkar, Jian Zhang, Konstantin Lopyrev, and Percy Liang. 2016. SQuAD: 100,000+ questions for machine comprehension of text. In Proceedings of the 2016 Conference on Empirical Methods in Natu-ral Language Processing , pages 2383–2392, Austin, Texas. Association for Computational Linguistics. Rishi Sharma, James Allen, Omid Bakhshandeh, and Nasrin Mostafazadeh. 2018. Tackling the story end-ing biases in the story cloze test. In Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers) ,pages 752–757, Melbourne, Australia. Association for Computational Linguistics. Richard Socher, Alex Perelygin, Jean Wu, Jason Chuang, Christopher D. Manning, Andrew Ng, and Christopher Potts. 2013. Recursive deep models for semantic compositionality over a sentiment treebank. In Proceedings of the 2013 Conference on Empiri-cal Methods in Natural Language Processing , pages 1631–1642, Seattle, Washington, USA. Association for Computational Linguistics. Qwen Team. 2024. Qwen2.5: A party of foundation models. Alex Wang, Amanpreet Singh, Julian Michael, Felix Hill, Omer Levy, and Samuel Bowman. 2018. Glue: A multi-task benchmark and analysis platform for natural language understanding. In Proceedings of the 2018 EMNLP workshop BlackboxNLP: Analyzing and interpreting neural networks for NLP , pages 353– 355. Liang Wang, Nan Yang, Xiaolong Huang, Binxing Jiao, Linjun Yang, Daxin Jiang, Rangan Majumder, and Furu Wei. 2022. Text embeddings by weakly-supervised contrastive pre-training. arXiv preprint arXiv:2212.03533 .Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, and Furu Wei. 2024. Multilin-gual e5 text embeddings: A technical report. arXiv preprint arXiv:2402.05672 .Adina Williams, Nikita Nangia, and Samuel Bowman. 2018. A broad-coverage challenge corpus for sen-tence understanding through inference. In Proceed-ings of the 2018 Conference of the North American Chapter of the Association for Computational Lin-guistics: Human Language Technologies, Volume 1 (Long Papers) . Association for Computational Lin-guistics. Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. 2019. Hellaswag: Can a machine really finish your sentence? In Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics .Qingru Zhang, Minshuo Chen, Alexander Bukharin, Nikos Karampatziakis, Pengcheng He, Yu Cheng, Weizhu Chen, and Tuo Zhao. 2023. Adalora: Adap-tive budget allocation for parameter-efficient fine-tuning. arXiv preprint arXiv:2303.10512 .Sheng Zhang, Xiaodong Liu, Jingjing Liu, Jianfeng Gao, Kevin Duh, and Benjamin Van Durme. 2018. Record: Bridging the gap between human and ma-chine commonsense reading comprehension. arXiv preprint arXiv:1810.12885 .Xiang Zhang, Junbo Zhao, and Yann LeCun. 2015. Character-level convolutional networks for text classi-fication. Advances in neural information processing systems , 28. Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. 2025. Qwen3 embedding: Advancing text embedding and reranking through foundation models. 
+
+arXiv preprint arXiv:2506.05176 .Yuan Zhang, Jason Baldridge, and Luheng He. 2019. PAWS: Paraphrase Adversaries from Word Scram-bling. In Proc. of NAACL .Ziyu Zhao, Leilei Gan, Guoyin Wang, Wangchunshu Zhou, Hongxia Yang, Kun Kuang, and Fei Wu. 2024. Loraretriever: Input-aware lora retrieval and compo-sition for mixed tasks in the wild. In Findings of the Association for Computational Linguistics: ACL 2024 , pages 4447–4462. A Appendix 
+
+A.1 Full Results for adapters oracle and dynamic selection 
+
+In Table 2, we report, for each task, the perfor-mance evaluated on Llama 3.2 1B Instruct (Base), the Oracle (the base model with the adapter trained on that specific task) and the base model with the Dynamically selected adapter through ARIADNE. For all the tasks, the performance is computed as Exact Match, with the exception of the Common-Gen task, measured with Rouge.                                                                            
+
+> Dataset Base Oracle Dynamic WSC 0.0200 0.5133 0.5133 DPR 0.3365 0.6154 0.6154 PAWS WIKI 0.4580 0.8980 0.8838 Trivia QA 0.1400 0.3000 0.3000 QQP 0.0000 1.0000 1.0000 MRPC 0.2647 0.6961 0.6961 STS-B 0.0000 0.1100 0.1100 CB 0.3214 0.4286 0.4268 WNLI 0.4225 0.4366 0.4104 ANLI R1 0.1560 0.3780 0.4240 ANLI R2 0.2100 0.4360 0.3928 ANLI R3 0.2420 0.4360 0.4318 MNLI Matched 0.1920 0.8520 0.7232 MNLI Mismatched 0.1980 0.8580 0.8580 SNLI 0.2980 0.8840 0.8840 RTE 0.2816 0.5560 0.5560 CommonGen 0.2470 0.4117 0.4117 SQuAD V1 0.5420 0.7480 0.6398 SQuAD V2 0.1700 0.6480 0.6221 BoolQ 0.3700 0.7120 0.7045 NQ 0.0340 0.1140 0.1140 ARC-Easy 0.1060 0.5580 0.5418 ARC-Challenge 0.1137 0.3311 0.3311 Average 0.2227 0.5618 0.5474
+
+Table 2: Full table for the TP comparison between the 23 selected tasks for Llama3.2 1B Instruct. For all the tasks, the metric employed is Exact Match, with the exception of the CommonGen task, which is measured with Rouge. This table expands the results presented in Table 1 
+
+A.2 Performances on other backbones 
+
+Even if ARIADNE is completely decoupled from the backbone and the adapters architec-ture, for experimental completeness, we report the full pipeline performances for Qwen2.5 3B In-struct (Team, 2024) in Table 3. 
+
+A.3 Adapters Training Details 
+
+The adapters were instantiated with a bottleneck rank of r = 64 and a scaling factor α = 128 .Training was performed for 3 epochs with a batch size of 4 and a learning rate of 5 × 10 −5, while                                                                            
+
+> Dataset Base Oracle Dynamic WSC 0.6000 0.6200 0.6200 DPR 0.6200 0.6200 0.6200 PAWS WIKI 0.7400 0.9000 0.8280 Trivia QA 0.1600 0.2000 0.2000 QQP 0.7000 1.0000 1.0000 MRPC 0.6400 0.6400 0.6016 STS-B 0.0000 0.0200 0.0200 CB 0.3400 0.2800 0.2352 WNLI 0.3400 0.3400 0.3196 ANLI R1 0.5400 0.6600 0.3036 ANLI R2 0.3400 0.4400 0.1672 ANLI R3 0.2600 0.5800 0.5452 MNLI Matched 0.7000 0.8800 0.6336 MNLI Mismatched 0.7600 0.9000 0.9000 SNLI 0.8800 0.9200 0.9200 RTE 0.5800 0.8600 0.8600 CommonGen 0.3130 0.4358 0.4358 SQuAD V1 0.7200 0.8000 0.7300 SQuAD V2 0.2400 0.6600 0.5940 BoolQ 0.7000 0.8600 0.7224 NQ 0.1000 0.1600 0.1600 ARC-Easy 0.8600 0.9000 0.8280 ARC-Challenge 0.8400 0.9000 0.9000 Average 0.5206 0.6337 0.5715
+
+Table 3: Full table for the TP comparison between the 23 selected tasks for Qwen2.5 3B model. For all the tasks, the metric employed is Exact Match, with the exception of the CommonGen task, which is measured with Rouge. 
+
+all backbone parameters remained frozen. For the CommonGen task, ROUGE is computed using the HuggingFace evaluate library (version 0.4.6). 
+
+A.4 Analysis of Routing Failures 
+
+Despite high overall precision, we identify three failure modes that inform the system’s limitations: 
+
+(1) Domain overlap : SQuAD V1 achieves 0% se-lection accuracy as it is consistently misrouted to the SQuAD V2 adapter. However, the system re-covers 85% of Oracle performance (0.64 vs 0.75 TP), demonstrating that semantically proximate adapters can often absorb routing errors. (2) Ad-versarial variance : ANLI R1 and R2 exhibit lower accuracy (0.46 and 0.38) due to high intra-task embedding variance from adversarial construction. Interestingly, ANLI R1’s downstream TP actually exceeds the target (0.42 vs 0.38), suggesting ben-eficial cross-task generalization from other NLI adapters. (3) Reasoning ambiguity : Complex tasks like MultiRC are frequently misrouted to general QA centroids (TriviaQA) due to shared linguistic surface features. Across all modes, errors are con-centrated within the same semantic cluster, leading to "graceful degradation" rather than catastrophic anli_r1 
+
+> anli_r2
+> anli_r3
+> arc_challenge
+> arc_easy
+> boolq
+> cb
+> common_gen
+> copa
+> cosmosqa
+> dart
+> definite_pronoun_resolution
+> drop
+> e2e_nlg
+> hellaswag
+> imdb
+> mnli_matched
+> mnli_mismatched
+> mrpc
+> multirc
+> natural_questions
+> paracrawl
+> paws_wiki
+> piqa
+> qnli
+> qqp
+> record
+> snli
+> squad
+> sst2
+> story_cloze
+> sts-b
+> triviaqa
+> web_nlg
+> wmt14_enfr
+> wmt16_translate_csen
+> wmt16_translate_deen
+> wmt16_translate_fien
+> wmt16_translate_roen
+> wmt16_translate_ruen
+> wmt16_translate_tren
+> wnli
+> wsc
+> yelp_polarity_reviews
+> Tasks
+> anli_r1
+> anli_r2
+> anli_r3
+> arc_challenge
+> arc_easy
+> boolq
+> cb
+> common_gen
+> copa
+> cosmosqa
+> dart
+> definite_pronoun_resolution
+> drop
+> e2e_nlg
+> hellaswag
+> imdb
+> mnli_matched
+> mnli_mismatched
+> mrpc
+> multirc
+> natural_questions
+> paracrawl
+> paws_wiki
+> piqa
+> qnli
+> qqp
+> record
+> snli
+> squad
+> sst2
+> story_cloze
+> sts-b
+> triviaqa
+> web_nlg
+> wmt14_enfr
+> wmt16_translate_csen
+> wmt16_translate_deen
+> wmt16_translate_fien
+> wmt16_translate_roen
+> wmt16_translate_ruen
+> wmt16_translate_tren
+> wnli
+> wsc
+> yelp_polarity_reviews
+> Tasks
+> Pairwise Centroid Distances
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+
+Figure 3: Pairwise distances between different tasks centroids. Visual interpretation of the Graceful Degra-dation. 
+
+Model CoLA RTE MRPC SST-2 Avg. 
+
+MiniLM † 0.111 0.090 0.271 0.433 0.226 Qwen3-0.6B ‡ 0.532 0.400 0.415 0.686 0.508 mE5-small § 0.860 0.848 0.868 0.881 0.864 E5-large-v2 ¶ 0.910 0.877 0.902 0.891 0.895 
+
+Table 4: Similarity scores across GLUE tasks cen-troids and test samples. Bold = best, justify-ing our embedder choice. †all-MiniLM-L12-v2 ;
+
+‡Qwen/Qwen3-Embedding-0.6B (Zhang et al., 2025); 
+
+§intfloat/multilingual-e5-small (Wang et al., 2024); ¶intfloat/e5-large-v2 (Wang et al., 2022). 
+
+failure. A visual representation of this is reported in Figure 3, where it’s shown how similar tasks often achieve the highest centroids similarity, meaning that their representations are the closest compared to other tasks. 
+
+A.5 Embedders search 
+
+Due to the large number of existing text embedders, our selection is based upon a search on a subset of tasks. We pick as most suitable encoder the one that yields the highest cosine similarity between the generated task representation, i.e. the centroids, and 20 test set samples. We perform this study on the GLUE tasks (Wang et al., 2018). The results determining the selection are reported in Table 4. 
+
+A.6 Number of centroids ablation study 
+
+To decide the correct number of centroids and selec-tion accuracy, we tested on a subset of 19 tasks, the selection accuracy provided by each method. The multi-centroid formulation is motivated by the ob-servation that many NLP tasks exhibit substantial 60 40 20 0 20 40 60 
+
+> t-SNE Dimension 1
+> 60
+> 40
+> 20
+> 0
+> 20
+> 40
+> 60
+> t-SNE Dimension 2
+
+t-SNE Visualization of Task Embeddings 
+
+> qnli
+> squad_v2
+> anli
+> arc
+> copa
+> hellaswag
+> cosmosqa
+> obqa
+> rte
+> boolq
+> triviaqa
+> squad
+> imdb
+> drop
+> cola
+> stsb
+> snli
+> mrpc
+> sst2
+
+Figure 4: T-SNE analysis of the tasks embeddings. Note that this visualization includes tasks from the full 44-task pool used in the scalability study. 
+
+intra-task embedding variance. Adversarially con-structed tasks such as ANLI produce inputs whose embeddings span multiple disjoint regions of the latent space, as illustrated in Figure 4, while tasks with heterogeneous input formats, such as extrac-tive vs. abstractive question answering, may cluster around semantically distinct centroids even within the same task. A single global mean collapses this structure and produces a centroid that may lie in a low-density region, making it a poor representa-tive of any individual input. By partitioning each task’s distribution into local centroids, ARIADNE captures this multimodality explicitly. K-NN rout-ing, by contrast, lacks task-level structure entirely and conflates inter-task proximity with intra-task variance, explaining its intermediate performance in Table 5. 
+
+Metric 1 Centroid 5 Centroids K-NN 
+
+SA 47.4% 89.4% 65.9% 
+
+Table 5: The reported results in the table show the se-lection accuracy achieved over 19 tasks, as a way to empirically choose the best setup for dynamic selection. As reported, the sweetspot is in the middle of having a single centroid for each task, and having no centroid as per K-NN selection strategy. 
+
+A.7 Dynamic Selection Inference Cost 
+
+Since our method requires choosing an adapter at inference time, it is important to quantify the asso-ciated overhead. The embedding step, which uses the intfloat/e5-large-v2 model, takes on aver-age 20.04 ms with a standard deviation of ±3.70 210 50 100 
+
+> Training Samples (%)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy Score
+
+Figure 5: SA trend with less training samples. The best performance is achieved with 500 samples, as reported in the main paper. Here, we show that even with a small fraction (2%) of training samples we can still achieve good SA performances. 
+
+ms. The subsequent selection of the most appropri-ate adapter, based on the pre - computed centroids, adds another 1.98 ms ( ±0.10 ms). Consequently, the complete selection pipeline incurs a total la-tency of roughly 22.02 ms ( ±3.66 ms). After this brief selection phase, inference proceeds as usual by applying the chosen adapter to the base model. 
+
+A.8 Full Routing results 
+
+To evaluate whether ARIADNE’s routing preci-sion degrades as the adapter library grows, we ex-tend the evaluation to the full set of 44 tasks, adding 21 tasks to the primary evaluation. For these ad-ditional tasks, Table 6 reports per-task selection accuracy across all 44 tasks. 
+
+A.9 Training Samples Robustness 
+
+We hereby show that drastically reducing the num-ber of training samples used to generate the cen-troids has a mild effect on the SA, as shown in Figure 5. When using only 2% of the original num-ber of training samples, the SA is 77.1%. This plot shows that ARIADNE is well performing even when a small number of samples is available. 
+
+A.10 Selection Strategies 
+
+When generating the 5 centroids for each task, we employ 3 strategies: beginning , end , and random .They respectively pick the n samples from the be-ginning of the training set, the end of it, or pick ran-dom samples. In our main study, we used n = 500 ,with one centroid for beginning , one centroid for 
+
+end , and 3 random samplings. When the number of training samples for a task is smaller than n, we use only one centroid. 
+
+Dataset Acc. 
+
+Primary evaluation (23 tasks) 
+
+WSC (Levesque et al., 2012) 1.00 DPR (Rahman and Ng, 2012) 1.00 PAWS Wiki (Zhang et al., 2019) 0.92 Trivia QA (Joshi et al., 2017) 1.00 QQP (Wang et al., 2018) 1.00 MRPC (Wang et al., 2018) 0.94 STS-B (Cer et al., 2017) 1.00 CB (Wang et al., 2018) 0.84 WNLI (Wang et al., 2018) 0.94 BoolQ (Christopher et al., 2019) 0.96 NQ (Kwiatkowski et al., 2019) 1.00 ARC-Challenge (Clark et al., 2018) 1.00 ANLI R1 (Nie et al., 2020) 0.46 ANLI R2 (Nie et al., 2020) 0.38 ANLI R3 (Nie et al., 2020) 0.94 MNLI Matched (Williams et al., 2018) 0.72 MNLI Mismatched (Williams et al., 2018) 1.00 SNLI (Bowman et al., 2015) 1.00 RTE (Wang et al., 2018) 1.00 CommonGen (Lin et al., 2020) 1.00 SQuAD V1 (Rajpurkar et al., 2016) 0.00 SQuAD V2 (Rajpurkar et al., 2018) 0.94 ARC-Easy (Clark et al., 2018) 0.92 
+
+Scalability extension (21 tasks) 
+
+WMT16 Ro-En (Bojar et al., 2016) 0.96 DART (Nan et al., 2021) 1.00 DROP (Dua et al., 2019) 0.70 ParaCrawl (Bañón et al., 2020) 0.80 Story Cloze (Sharma et al., 2018) 1.00 HellaSwag (Zellers et al., 2019) 1.00 PIQA (Bisk et al., 2020) 0.98 WMT16 Fi-En (Bojar et al., 2016) 1.00 WMT16 Tr-En (Bojar et al., 2016) 1.00 WMT16 Ru-En (Bojar et al., 2016) 1.00 WMT16 De-En (Bojar et al., 2016) 1.00 IMDB (Maas et al., 2011) 0.96 WMT14 En-Fr (Bojar et al., 2014) 0.92 MultiRC (Khashabi et al., 2018) 0.56 E2E NLG (Dušek et al., 2020) 1.00 ReCoRD (Zhang et al., 2018) 0.94 SST-2 (Socher et al., 2013) 0.98 WMT16 Cs-En (Bojar et al., 2016) 1.00 Yelp Reviews (Zhang et al., 2015) 0.86 COPA (Dong et al., 2025) 1.00 QNLI (Wang et al., 2018) 0.88 Average (44 tasks) 0.897 
+
+Table 6: Adapter selection accuracy across all 44 tasks. The upper block corresponds to the 23 primary evalu-ation tasks; the lower block constitutes the scalability extension. The average is computed over all 44 tasks.

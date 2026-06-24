@@ -1,0 +1,1030 @@
+Title: RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing
+
+URL Source: https://arxiv.org/pdf/2606.18774v2
+
+Published Time: Tue, 23 Jun 2026 00:43:58 GMT
+
+Number of Pages: 28
+
+Markdown Content:
+## RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing 
+
+Guannan Lai 1,2,3 laign@lamda.nju.edu.cn 
+
+Haoran Hu 1,2 huhr@smail.nju.edu.cn 
+
+Han-Jia Ye 1,2 yehj@lamda.nju.edu.cn 
+
+> 1
+
+School of Artificial Intelligence, Nanjing University, China 
+
+> 2
+
+National Key Laboratory for Novel Software Technology, Nanjing University, 210023, China 
+
+> 3
+
+SinapisAI 
+
+Abstract 
+
+LLM routing aims to automatically select the most suitable model from a heterogeneous model pool for each incoming query, so as to optimize routing quality under practical constraints such as cost, latency, and throughput. However, existing evaluations of large language model (LLM) routing systems typically rely on static benchmarks, golden answers, or automated quality scores, which impose a fixed notion of response quality and overlook the pluralistic user preferences that arise in real-world interactions. We present RouteJudge , an online pairwise preference evaluation framework for LLM routing systems, with a public platform available at https://routejudge.cn . Dif-ferent from model-level response evaluation, RouteJudge focuses on router-level deci-sion quality. For each user query, multiple routing strategies independently recommend candidate models under the same model pool and budget constraints. The selected model responses are then presented to users through anonymous pairwise comparisons, and the resulting user preferences are attributed back to the routing strategies behind the com-pared responses. Each evaluation record further stores the query, routing decisions, model responses, preference labels, cost, latency, and task metadata, enabling preference-aware, cost-aware, and task-conditioned analysis of LLM routers. To support the continuous expansion of routing methods in RouteJudge , we fur-ther release ORBIT (Optimal Routing and Budgeted Inference Toolbox), a modular and extensible toolbox that standardizes the end-to-end workflow of LLM routing. ORBIT 
+
+provides unified interfaces for benchmark loading, query representation, router implemen-tation, budget-aware evaluation, and method comparison, allowing researchers to develop and evaluate routing algorithms under consistent protocols. More importantly, ORBIT 
+
+serves as the submission and integration layer for RouteJudge : researchers can implement their routing methods within ORBIT , evaluate them on existing routing benchmarks, and submit compatible routers for online preference-based evaluation on RouteJudge . The code of ORBIT is available at https://github.com/LAMDA-Model-Reuse/ORBIT .
+
+Keywords: Large Language Model, Routing, Budget, Deep Learning, Efficient Inference 
+
+1 Introduction 
+
+Large language models (LLMs) are increasingly deployed not as a single monolithic system, but as a heterogeneous pool of proprietary and open-source models with distinct capabili-ties, costs, latency profiles, context lengths, modalities, and serving characteristics (Wang et al., 2025; Aggarwal et al., 2024). In real-world applications, the optimal model is of-ten query-dependent: simple requests may be answered by cheaper or faster models, while 1
+
+> arXiv:2606.18774v2 [cs.LG] 19 Jun 2026
+
+complex, high-stakes, or preference-sensitive queries may require stronger models to achieve satisfactory utility. This has motivated LLM routing , which aims to automatically select the most suitable model for each incoming query under practical constraints such as cost, latency, and throughput (Feng et al., 2025; Chen et al., 2023; Varangot-Reille et al., 2025). Beyond maximizing raw accuracy, routing must reason about budget-induced trade-offs, service-level objectives, uncertainty, and failure behaviors such as cascading fallback, mak-ing it a central mechanism for scalable and cost-effective LLM deployment (Srivatsa et al., 2024; Wang et al., 2026). From a broader perspective, LLM routing also resonates with the learnware vision of model reuse in a model market: instead of training a bespoke model for every scenario, users can reuse and compose suitable pre-trained models according to query-side information and deployment constraints (Zhou, 2016; Zhou and Tan, 2024; Tan et al., 2024). We therefore view routing as a form of budgeted inference , where a router must select a budget-feasible model for each query while maximizing expected user-facing utility. This setting naturally induces a performance–cost trade-off curve and calls for evaluation protocols that go beyond a single static operating point. Despite the growing importance of LLM routing, its evaluation remains largely domi-nated by offline protocols. Existing methods are typically assessed using static benchmarks, golden answers, automated scores, or routing accuracy against an assumed best model (Hu et al., 2024; Huang et al., 2025). While these protocols are convenient and reproducible, they reduce routing quality to a fixed objective target and therefore provide only a partial view of deployment-time performance. In realistic interactions, many queries do not admit a single universally optimal response: for creative writing, translation, tutoring, analytical reasoning, and dialogue, multiple outputs may be valid, yet users may prefer different re-sponses depending on their expectations, cost sensitivity, latency tolerance, desired level of detail, reasoning style, or tone (Kirk et al., 2024; Sorensen et al., 2024; Feng et al., 2024). As a result, a router that performs well under golden-answer or automated evaluation may not select models whose responses are actually preferred by users. We view this mismatch as a pluralistic preference alignment problem for LLM routing, where routers should be evaluated not only by whether they select a benchmark-optimal model, but also by whether their decisions lead to user-preferred responses under realistic query distributions. To address this limitation, we propose RouteJudge , an online platform for evaluating LLM routers under pluralistic user preferences. Rather than comparing routing decisions against fixed golden answers or an assumed best model, RouteJudge evaluates whether a router selects models whose responses are actually preferred by users. For each query, mul-tiple routing strategies operate under the same model pool and budget constraints, and the outputs of their selected models are judged through anonymous pairwise comparisons. The resulting preference signal is attributed back to the routers behind the compared responses, shifting the evaluation target from model-level response quality to router-level decision qual-ity. By recording queries, routing decisions, preferences, costs, latencies, and task metadata, RouteJudge supports preference-aware, cost-aware, and task-conditioned analysis of routing behavior in realistic user-facing settings. To continuously expand the set of routing methods evaluated by RouteJudge , we fur-ther present ORBIT (Optimal Routing and Budgeted Inference Toolbox), a modular and extensible toolbox for standardizing the end-to-end workflow of LLM routing. ORBIT pro-vides unified interfaces for benchmark loading, query representation, router implementation, 2budget-aware evaluation, and method comparison, enabling the development and assessment of different routing algorithms under consistent protocols. More importantly, ORBIT serves as the submission and integration layer for RouteJudge: researchers can implement their routing methods within ORBIT , evaluate them on existing routing benchmarks, and sub-mit compatible routers for online preference-based evaluation on RouteJudge. In this way, 
+
+ORBIT and RouteJudge together form an open evaluation ecosystem, where routing meth-ods can first be developed and validated offline under reproducible settings, and then tested online under real user preferences. 
+
+2 Background and Motivation 
+
+2.1 LLM Routing 
+
+LLM routing aims to coordinate a pool of language models with different capabilities, costs, and response characteristics. Given a user query and its surrounding context, a router selects one or more candidate models to answer the query, with the goal of improving the trade-off among response quality, inference cost, latency, and task-specific requirements (Shnitzer et al., 2023; Lai and Ye, 2026). Compared with always using a single fixed model, routing provides a more flexible inference paradigm: easier queries can be assigned to cheaper or faster models, while more difficult or preference-sensitive queries can be assigned to stronger models (Varangot-Reille et al., 2025; Lai et al., 2026). Existing routing methods instantiate this idea in different ways. Similarity-based routers estimate model suitability by comparing the current query with previously evaluated exam-ples in an embedding space (Zhuang et al., 2024; Reimers and Gurevych, 2019). Learned cost-quality routers train predictive models to estimate the expected utility of each candidate model under a budget constraint (Ding et al., 2024; Ong et al., 2025; Šakota et al., 2024). Cascade and uncertainty-based routers first query a cheaper model and invoke a stronger model only when confidence is low or the initial response appears insufficient (Jiang et al., 2023a; Aggarwal et al., 2024). Preference-based and structured routers further incorporate human or model preference signals, graph relations, or ensemble-style decisions to improve model selection (Ramírez et al., 2024; Yue et al., 2023). Although these methods differ in routing mechanism, they usually share a common evaluation assumption: routing quality can be measured offline using benchmark labels, task-specific metrics, or automated judges (Hu et al., 2024; Huang et al., 2025; Ma et al., 2026). Under this protocol, a router is considered effective if the model it selects obtains a high score on a fixed benchmark. This assumption is convenient for reproducible comparison, but it also narrows the evaluation target. It measures whether a router selects the benchmark-optimal model, rather than whether the routing decision matches what real users would prefer under heterogeneous quality, cost, and latency expectations. 
+
+2.2 Why Offline Routing Evaluation Is Insufficient 
+
+Offline evaluation offers a controlled and reproducible way to compare routing methods, but it only partially reflects routing quality in user-facing deployment. Existing protocols usually measure whether a router agrees with fixed labels, static benchmark scores, automated judges, or an assumed best model. This reduces routing to a fixed-target prediction problem, 3whereas a router in practice makes a deployment decision: which model should answer a query under a specific task context, user objective, and resource constraint. This abstraction becomes inadequate for open-ended and preference-sensitive tasks. In writing, dialogue, translation, summarization, tutoring, and analytical reasoning, multiple responses may be factually valid while differing in tone, structure, level of detail, reason-ing style, and presentation. Automatic metrics and benchmark labels can capture part of response quality, but they cannot fully determine which response a user will prefer in a particular interaction (Zhang et al., 2019; Bevilacqua et al., 2025). Moreover, preferences are heterogeneous: some users favor concise answers, others prefer detailed explanations; some are sensitive to cost or latency, while others prioritize reasoning depth, formatting, or stylistic fit (Kirk et al., 2024; Sorensen et al., 2024; Feng et al., 2024). As a result, a router that performs well under offline correctness or automated scoring may still select models whose outputs are not preferred by users. The limitation is therefore not only about evaluation data, but also about the evalua-tion objective. LLM routing is inherently a multi-objective decision problem over quality, cost, latency, and user preference, while offline benchmarks often report quality as the pri-mary score and treat cost as an auxiliary statistic (Chen et al., 2023; Ding et al., 2024). A useful routing decision should produce responses that users prefer under realistic query distributions and deployment constraints, not merely match a benchmark-optimal model. 
+
+RouteJudge is designed around this principle: it collects blinded pairwise preference feed-back for model outputs selected by different routers and attributes the resulting preferences back to router-level decisions, shifting routing evaluation from fixed-target offline scoring to preference-aware assessment. 
+
+3 The RouteJudge Evaluation Framework 
+
+RouteJudge is an online platform for evaluating LLM routing strategies through user pref-erence feedback. Unlike conventional routing benchmarks that compare routers against fixed reference answers or offline model scores, RouteJudge evaluates whether routing decisions lead to responses that users actually prefer. Each router is treated as a black-box decision maker: given the same query, model pool, and budget constraint, it recommends one candi-date model. RouteJudge then compares the responses produced by selected models through anonymous pairwise judgments and attributes the resulting preference signal back to the routers that made the corresponding decisions. This section focuses on the evaluation protocol of RouteJudge. The training, implemen-tation, offline benchmarking, and submission of routing methods are handled by ORBIT ,which will be introduced in the next section as the standardized development and integration layer. 
+
+3.1 Evaluation Record 
+
+Each RouteJudge interaction is stored as a routing-centered decision record rather than as an isolated response-quality annotation. Formally, an evaluation record is written as 
+
+Z = ( x, h, I, C, MC , d, v, m A, m B , y, s, c, ℓ, τ, η ) ,
+
+4User Inputs & 
+
+Constraints 
+
+User Query 
+
+> natural language
+
+Multimodal Input  
+
+> history, images,
+> documents, etc.
+> Cost Budget
+> user -selected feasible
+> cost region
+
+Router Committee     
+
+> Rule -based Regression -based Classification -based Ranking -based Non -parametric
+
+Budget -Feasible Model Space  
+
+> Feasible (within budget)
+> Infeasible (over budget)
+> 𝒎 𝟏
+> 𝒎 𝟑
+> 𝒎 𝟐
+> 𝒎 𝟏 𝟎
+> 𝒎 𝟖
+> Budget mask
+
+Anonymous Preference Arena 
+
+> Model identities, router votes, and costs are hidden during judgment.
+
+Response A  Response B    
+
+> VS
+> A Better B Better Tie Both Bad
+
+Router -Level Attribution           
+
+> Router Group Selected Model Participated Outcome
+> EmbedLLM 𝒎 𝑨 Yes
+> Win EquiRouter 𝒎 𝑩 Yes
+> Loss
+> Avengers -Pro 𝒎 𝑲 No NonPart
+
+...  ...  ...  ... 
+
+Routing -Centered Record  
+
+> Query Budget
+> Router
+> Decisions
+> Responses Preference
+> Cost Latency
+> Task
+> Metadata
+
+Evaluation Analytics    
+
+> Win Rate / Elo Cost -Quality Pareto
+> Participation Task -Conditioned Diagnostics
+> Votes / Selections
+> Selected
+> Duel Pair
+> Preference Signal
+
+Figure 1: Overview of the RouteJudge evaluation framework. Given a user query, optional multimodal input, and a user-selected cost budget, a committee of routing strate-gies recommends models from the budget-feasible model space. RouteJudge se-lects a duel pair, presents the two responses through an anonymous preference interface, and attributes the resulting preference signal back to the routing strate-gies behind the compared model choices. Each interaction is stored as a routing-centered record containing the query, budget, router decisions, selected responses, preference label, cost, latency, and task metadata, supporting downstream anal-yses such as win rate, Elo rating, cost-quality Pareto analysis, participation, and task-conditioned diagnostics. where x is the user query, h is the optional conversation history, I is the optional multimodal input, C is the user-selected budget, and MC is the budget-feasible model set. The vector 
+
+d records the models selected by all routers, and v denotes the induced model-level vote distribution. The pair (mA, m B ) is the model pair shown to the user, y is the user preference label, and s stores the router-level attribution scores. The vectors c and ℓ record inference costs and latencies, τ denotes the task label, and η contains additional metadata. This record structure makes RouteJudge different from model-level leaderboards. It al-lows the platform to analyze not only which response wins a comparison, but also which routers selected the winning model, how often each router participates in evaluated compar-isons, how routing behavior changes under different budgets, and how performance varies across task types. 53.2 Evaluation Workflow 
+
+Figure 1 summarizes the RouteJudge evaluation pipeline. For each user query, RouteJudge follows five main stages. 
+
+Query and budget submission. The user submits a text-only or multimodal query and selects a cost budget C. The budget determines which candidate models are feasible for the current query. Given the full model pool M, RouteJudge constructs the budget-feasible model set 
+
+MC = {m ∈ M | ˆc(m | x, h, I ) ≤ C},
+
+where ˆc(m | x, h, I ) denotes the estimated inference cost of model m on the current input. 
+
+Router recommendation. All routing strategies receive the same query context and the same feasible model set. Let R = {r1, r 2, . . . , r N } denote the evaluated router set. Each router independently selects one model: 
+
+mi = ri(x, h, I, MC ), mi ∈ M C .
+
+RouteJudge does not assume any specific internal form of ri; the router may be rule-based, retrieval-based, learned, preference-based, or otherwise implemented. 
+
+Duel model selection. RouteJudge aggregates router decisions into model-level votes. For each model m ∈ M C , its vote count is 
+
+v(m) = |{ i | mi = m}| .
+
+The platform selects two distinct models with the highest vote counts as the duel pair 
+
+(mA, m B ). When multiple models are tied, RouteJudge prioritizes models with fewer his-torical comparisons to improve evaluation coverage, and breaks remaining ties randomly. 
+
+Anonymous pairwise judgment. The two selected models generate responses to the same query in parallel. Their responses are presented to the user in randomized anonymous order, with model identities, router decisions, vote counts, costs, and latencies hidden during judgment. The user then provides one of four labels: 
+
+y ∈ { A Win , B Win , Tie , Both Bad }.
+
+This label space avoids forcing a binary preference when the two responses are indistinguish-able or both unsatisfactory. 
+
+Result reveal and router attribution. After the user submits the preference la-bel, RouteJudge reveals the model identities, router vote distribution, costs, latencies, and router-level outcomes. The preference label is first converted into comparison scores: 
+
+(sA, s B ) = 
+
+
+
+(1 , 0) , y = A Win ,
+
+(0 , 1) , y = B Win ,
+
+(0 .5, 0.5) , y = Tie ,
+
+(0 , 0) , y = Both Bad .
+
+(1) The scores are then attributed to routers according to whether their selected models entered the evaluated duel: 
+
+Si =
+
+
+
+sA, mi = mA,sB , mi = mB ,
+
+∅, mi /∈ { mA, m B }.
+
+6(a) Anonymous pairwise preference interface in RouteJudge. Two model responses are presented side by side in randomized order, with model identities and router votes hidden during judg-ment. Users provide one of four labels: A Win, B Win, Tie, or Both Bad. 
+
+> (b) Result reveal and router attribution interface in RouteJudge. After the user submits a prefer-ence label, RouteJudge reveals the model iden-tities, displays the routing vote distribution, re-ports cost and latency information, and assigns router-level outcomes according to whether each router selected the user-preferred model.
+
+Figure 2: RouteJudge user interface. Left: anonymous pairwise preference interface used for blinded user judgment. Right: result reveal and router attribution interface shown after preference submission. Here, ∅ indicates that router ri is non-participating in this comparison and is not counted as either a win or a loss. 
+
+3.3 Task Metadata and Evaluation Coverage 
+
+To support task-conditioned analysis, RouteJudge assigns each query a task label τ . In the current implementation, queries are mapped to broad categories such as Coding, Math, Translation, Creative Writing, Analysis, and Other. This metadata allows RouteJudge to report not only overall router performance, but also how routing behavior changes across heterogeneous task types. RouteJudge also records whether each router participates in a judged comparison. Arouter may recommend a model that does not enter the selected duel pair; in this case, it receives ∅ rather than a positive or negative outcome. This design avoids assigning credit or blame to routers whose selected models were not actually judged by the user. At the same time, non-participation is itself informative: a router with high preference scores but low participation may have limited evaluation coverage, while a router with broader participation may provide a more reliable estimate of deployment-time behavior. RouteJudge therefore reports participation rate together with preference-based metrics. 
+
+4 ORBIT for LLM Routing 
+
+The RouteJudge evaluation protocol assumes that a diverse set of routers can be invoked under the same model pool, budget constraint, and prediction interface. However, contin-uously expanding this router pool is non-trivial: different routing methods often rely on different data formats, query encoders, training procedures, configuration files, and evalua-7tion scripts. Without a standardized development layer, adding a new router to RouteJudge would require substantial engineering effort and could introduce uncontrolled differences in preprocessing, model access, or budget handling. To make RouteJudge open and continuously extensible, we introduce ORBIT (Optimal 
+
+Routing and Budgeted Inference Toolbox), a modular toolbox that standardizes the end-to-end workflow of LLM routing. ORBIT provides unified interfaces for data loading, query representation, router implementation, training, validation, and deployment. In our ecosystem, ORBIT serves as the development and submission layer for RouteJudge: re-searchers can implement their routing algorithms within ORBIT , verify that they are di-rectly runnable under a shared protocol, and submit compatible routers for historical replay and online preference-based evaluation on RouteJudge. Benchmark Suite         
+
+> User Customization
+> Unimodal Multimodal
+> In -Domain/Out -of -Domain
+> Split
+> User ’s Own
+> Model Pool
+> Custom
+> Training Data
+> Routing
+> Method
+> Embedding Layer
+> Small
+> Embedding
+> Model
+> Large
+> Embedding
+> Model
+> Multimodal
+> Embedding
+> Model
+> Routing Method
+> Rule -based
+> Router
+> Trainable
+> Router
+> •kNNRouter
+> •Eagle
+> •EquiRouter
+> •AvengersPro
+> RouterBench
+> MixInstruct
+> RouterEval
+> MMR -Bench
+> Unified API & Config Logging & Tracking Calibration Reproducible Scripts
+> Train
+> Your
+> Router
+> router
+> policy
+> Evaluation
+> Protocol
+> Benchmark
+> Results
+> Deployable
+> Router
+> Leaderboard /
+> Report
+> Budget -aware
+> Inference Router
+> Performance
+> Peak Score
+> Cost
+> QNC
+> Trade -off
+> nAUC
+> Failure Mode
+> RCI
+
+Figure 3: Overview of ORBIT , a modular end-to-end pipeline for LLM routing. ORBIT 
+
+unifies benchmark or user-provided data, query representation, router implemen-tation, training, offline validation, and deployment, and further serves as the integration layer through which external routing methods can be submitted to 
+
+RouteJudge .
+
+4.1 Overview of the ORBIT Pipeline 
+
+ORBIT (Optimal Routing and Budgeted Inference Toolbox) is the standardized devel-opment and integration layer behind RouteJudge . While RouteJudge focuses on online preference-based evaluation, ORBIT provides the infrastructure needed to implement, train, validate, and submit routing methods under a unified interface. As shown in Figure 3, the pipeline is organized around a set of composable components, including data sources, query representations, routing policies, training utilities, evaluation scripts, and deployment adapters. 8The pipeline starts from either built-in routing benchmarks or user-provided data. Users may specify their own model pool, training data, routing method, and query encoder. OR-BIT then converts each query into a shared representation through its embedding layer, which supports lightweight text encoders, larger embedding models, and multimodal en-coders. This design separates query representation from router implementation, allowing different routers to be compared under the same input features or the same router to be tested with different encoders. Given the query representation, a routing method is trained or initialized through a unified router interface. ORBIT supports different types of routers, including rule-based, retrieval-based, ranking-based, classification-based, regression-based, and trainable neural routers. Regardless of their internal design, all routers expose the same prediction interface: given a query and a feasible model set, the router outputs the model it recommends. This abstraction makes routers directly reusable across offline experiments and online RouteJudge evaluation. After training, ORBIT runs standardized validation and logging. It records the dataset configuration, encoder choice, router hyperparameters, random seed, budget setting, model pool, and evaluation outputs. The goal is not only to compare routing methods, but also to make each result reproducible and each router deployable. Once a router satisfies the required interface and runtime constraints, it can be exported as a RouteJudge-compatible router and evaluated on the RouteJudge platform. 
+
+4.2 Using ORBIT 
+
+ORBIT is designed around two principles: composability and reproducibility. Compos-ability means that datasets, encoders, routers, and evaluation components can be swapped independently. Reproducibility means that different routing methods are executed under the same data loading, feature extraction, configuration, and logging protocol. A typical experiment is specified by two types of configuration files. The benchmark configuration defines dataset-level settings, including the data source, modality, model pool, encoder, split protocol, budget setting, and random seed. The router configuration defines method-level settings, including training hyperparameters and algorithm-specific options. With this separation, changing the router does not alter the dataset pipeline, and changing the encoder does not require rewriting router logic. A standard run follows a unified entry point: 
+
+python main.py --dataset [Dataset Name] --method [Method Name] 
+
+The dataset name determines the data source, model pool, encoder, and system assump-tions, while the method name determines the routing algorithm and its configuration. This allows researchers to rapidly test new routing methods while keeping all non-algorithmic factors controlled. 
+
+4.3 Adding New Benchmarks or Datasets 
+
+ORBIT allows users to add new benchmarks or private datasets while preserving the same routing pipeline. A new dataset only needs to follow the ORBIT data format and implement the required loading interface. 91. Prepare the dataset in ORBIT format. The dataset should define the query set, candidate model pool, available model outputs or performance records, and the corre-sponding cost information when applicable. For RouteJudge-oriented development, the dataset may also contain historical preference records or model comparison outcomes. 2. Register the dataset loader. Add the dataset loader to utils/data.py by implement-ing the required dataset base class. Once registered, the dataset can be loaded by the shared ORBIT pipeline and paired with any compatible encoder and router. 3. Define the benchmark configuration. Create a configuration file under configs/benchmarks/ 
+
+to specify the modality, model pool, split setting, encoder choice, budget setting, and other dataset-level options. If a router requires model descriptions or auxiliary metadata, the corresponding files can be placed under configs/description/ .After registration, the new dataset can be used with existing routers without modifying router implementations. This makes it possible to test whether a routing method generalizes across different query distributions, model pools, and deployment assumptions. 
+
+4.4 Adding New Encoders 
+
+ORBIT treats query representation as a replaceable component. New encoders can be added to the shared embedding layer and reused by all compatible routers. To add a new encoder, users register it in utils/embedding.py . Both unimodal and multimodal encoders are supported. The encoder can then be selected in the benchmark configuration by setting the embeddings field. Once registered, the same encoder can be used across different routers, enabling controlled studies of how query representation affects routing behavior. This design is useful for two types of research. First, researchers can test whether stronger or domain-specific embeddings improve routing decisions. Second, they can study the trade-off between encoder overhead and routing quality, which is important when routing itself must remain lightweight. 
+
+4.5 Adding New Routing Algorithms 
+
+The main extension point of ORBIT is the router interface. A new routing method can be integrated with minimal boilerplate while reusing the same data pipeline, embedding layer, training utilities, and evaluation scripts. 1. Implement the router logic. Create a new router class under methods/ by inheriting from BaseRouter . The base class provides shared functionality for data loading, embed-ding extraction, training, checkpointing, and prediction. The new method only needs to implement its training and inference routines. 2. Expose a unified prediction interface. The router should take the query representa-tion and the feasible model set as input, and output the selected model. This interface is required for both offline ORBIT evaluation and online RouteJudge deployment. 10 3. Register and configure the router. Register the method in train.py and add a configuration file under configs/routers/ . The configuration should include method-specific hyperparameters, training options, and any required auxiliary files. 4. Check reproducibility. The implementation should be runnable through the standard ORBIT command-line entry point. All required dependencies, random seeds, checkpoints, and preprocessing steps should be specified clearly so that the method can be reproduced by the maintainers. Once these steps are completed, the new router can be evaluated within ORBIT under the same protocol as existing methods. More importantly, it becomes eligible for RouteJudge integration. 
+
+4.6 Evaluating New Routers on RouteJudge through ORBIT 
+
+ORBIT also serves as the submission and integration layer for RouteJudge. Researchers who want their routing methods to be evaluated on RouteJudge can submit their ORBIT-compatible implementations through a pull request. The submitted code should be directly runnable, include the required router configuration, and follow the unified prediction inter-face. The RouteJudge integration process consists of two stages. 
+
+Stage 1: Historical replay evaluation. After receiving a compatible router submission, we first train or initialize the router within ORBIT using the available training protocol. We then evaluate it on historical RouteJudge records. Each historical record contains the user query, the compared model pair, and the user preference label. If the submitted router selects the model that was preferred by the user in the historical comparison, the router receives a historical win. If the historical label is Tie or Both Bad , the attribution follows the same scoring rule used by RouteJudge. This replay stage provides an initial estimate of whether the submitted router is aligned with past user preferences before it enters live online evaluation. 
+
+Stage 2: Online RouteJudge evaluation. After historical replay, the router is added to the RouteJudge router pool for online testing. In live evaluation, it is treated in the same way as existing routers: for each user query, it recommends a model under the same model pool and budget constraints, participates in the same anonymous pairwise comparison protocol, and receives preference attribution when its selected model enters the judged duel pair. Its results are then updated on RouteJudge using the same metrics as other routers, including preference score, win rate, Elo rating, cost-aware performance, participation rate, and task-conditioned behavior. Because each submitted router must be checked, trained, validated, and deployed, there may be a delay between pull request submission and RouteJudge evaluation. In the current workflow, this delay is typically between two and seven days, depending on implementation complexity, dependency issues, training cost, and the online evaluation queue. Once the router has been evaluated, researchers can query its results on the RouteJudge platform and compare it with existing routing methods. 11 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 
+
+> Cost
+> 0.50
+> 0.55
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> Performance  Avengers-Pro
+> Eagle
+> EmbedLLM
+> EquiRouter
+> MIRT
+> OmniRouter
+> RM-Classification
+> RM-Interval
+> RM-Softmax
+> RouteLLM-MF
+> RouteLLM-SWRanking
+> MLPRouter
+> SVMRouter
+
+(a) Performance–cost trade-off curves of repre-sentative routers on RouterEval under the uni-fied ORBIT pipeline. 10 −1 10 0 10 1
+
+> Cost ($/1K tokens)
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Win Rate (%)
+> DeepSeek-v4-flash
+> Grok-4.20
+> Step-3.5-flash
+> Gemini-2.5-flash-lite
+> Llama-4-maverick
+> hy3-preview
+> GPT-5.4-nano
+> Mimo-v2.5-pro
+> Mercury-2
+> DeepSeek-v4-pro
+> Minimax-m2.7
+> Qwen3.6-plus
+> Kimi-k2.6
+> GPT-5.4
+> GLM-5.1
+> Claude-Sonnet-4.6
+> Gemini-2.5-pro
+
+(b) Model-level cost–win-rate distribution on 
+
+RouteJudge .
+
+Figure 4: Preliminary results from the offline ORBIT pipeline and the online RouteJudge 
+
+platform. This submission pipeline makes RouteJudge an open and continuously expandable rout-ing evaluation platform. Researchers can develop methods in ORBIT, validate them offline, submit compatible routers through pull requests, and obtain both historical replay results and online user-preference results on RouteJudge. 
+
+5 Preliminary Results 
+
+We present preliminary results from both the offline ORBIT pipeline and the online Route-Judge platform. The goal of these experiments is not to provide a final ranking of all routing methods, but to illustrate the two complementary roles of our ecosystem: ORBIT supports reproducible offline development and comparison, while RouteJudge evaluates router de-cisions under real user preferences. 
+
+5.1 Offline Benchmark Evaluation with ORBIT 
+
+We first evaluate representative routing methods using the unified ORBIT pipeline. We use the RouterEval benchmark and adopt a fixed experimental configuration across all routing methods. Queries are encoded using all-MiniLM-L6-v2 , and we use a fixed train-test split ratio of 2:8 to reflect a low-data setting where routers are trained with limited supervi-sion. We then sweep the budget to obtain the performance–cost trade-off curves shown in Figure 4a. These results demonstrate the main purpose of ORBIT : different routers can be evalu-ated under the same data processing, query representation, model pool, budget setting, and reporting protocol. This removes common sources of inconsistency across implementations and ensures that observed differences mainly reflect routing strategies rather than mis-matched preprocessing, encoders, or evaluation scripts. In addition to the trade-off curves, 12 ORBIT also logs curve-level metrics such as nAUC, Peak Score, QNC, and RCI, which are provided in the appendix. The same pipeline also supports rapid component-level ablation. Since the benchmark configuration is shared across methods, changing the encoder, data split, budget grid, or model pool only requires modifying the corresponding configuration entry, and the change is automatically applied to all compatible routers. This composability is important for routing research, where conclusions can otherwise be sensitive to implementation-specific choices. 
+
+5.2 Online Preference Evaluation with RouteJudge 
+
+We next report preliminary results collected from the RouteJudge platform as of 2026-06-08 04:00 AoE (UTC-12). At that time, the platform had recorded 261 matches and 109 user votes. The following analysis is based on these 109 voted comparisons. Since the number of votes is still limited, the results should be interpreted as an initial empirical snapshot rather than a definitive ranking of routing strategies. Continuously updated platform statistics are available at https://routejudge.cn/stats .
+
+5.2.1 Router Ranking 
+
+Table 1 reports the current router ranking by Elo score. Overall, the leading routers obtain both higher Elo ratings and above-random preference win rates, suggesting that online user preferences can already differentiate routing strategies at this early stage. RouterLLM-MF obtains the highest Elo score, while NIRT-Router achieves the highest observed win rate. Several embedding-based, graph-based, retrieval-based, and regression-style routers also remain competitive, indicating that different routing paradigms can be effective under user-preference-based evaluation. The ranking should be interpreted together with the number of available comparisons and the participation behavior of each router. A router with a high win rate may have par-ticipated in fewer decisive comparisons, while a router with a lower win rate may have been evaluated under more diverse or more difficult query conditions. This is why RouteJudge 
+
+reports Elo, win rate, participation, and cost-related statistics jointly rather than relying on a single aggregate score. The preliminary results also suggest that strong offline routing designs do not necessarily transfer uniformly to online preference-based evaluation. Some routers with explicit learned scoring mechanisms obtain relatively low preference win rates, while simpler non-parametric or matrix-factorization-based methods remain competitive. This observation supports the motivation of RouteJudge : router quality should not be assessed only by agreement with offline labels or static benchmark scores, but also by whether the selected models produce responses preferred by users under real interaction settings. 
+
+5.2.2 Model Cost–Preference Trade-off 
+
+We further examine the model-level cost–preference trade-off in RouteJudge . Figure 4b plots each candidate model by its average inference cost and empirical preference win rate. The dashed line denotes the observed Pareto frontier, where no model is simultaneously cheaper and preferred more often. 13 Table 1: Router performance ranked by Elo score. Results are based on 109 user-voted comparisons collected by RouteJudge .                                        
+
+> Router Win Rate Elo RouterLLM-MF Ong et al. (2025) 66.67% 1278
+> NIRT-Router Song et al. (2025) 80.00% 1274 kNNRouter Stripelis et al. (2024) 60.00% 1240 GraphRouter Feng et al. (2025) 44.44% 1218 EmbedLLM Zhuang et al. (2024) 63.64% 1215 EquiRouter Lai and Ye (2026) 64.00% 1212 RouterDC Chen et al. (2024) 57.14% 1209 SVMRouter Stripelis et al. (2024) 51.72% 1205 Avengers-Pro Zhang et al. (2025b) 50.00% 1204 Avengers Zhang et al. (2025c) 58.33% 1198 RM-Interval Tsiourvas et al. (2025) 46.15% 1184 MLPRouter Stripelis et al. (2024) 39.13% 1176 Eagle Zhao et al. (2024) 43.48% 1175 OmniRouter Mei et al. (2025) 40.00% 1170 RM-CLS Tsiourvas et al. (2025) 46.43% 1169 RouteLLM-SW Ong et al. (2025) 27.27% 1145 RM-Softmax Tsiourvas et al. (2025) 31.82% 1136 HybridLLM Ding et al. (2024) 18.18% 1134 MIRT-Router Song et al. (2025) 36.00% 1117
+
+The results show that model preference is not determined by cost alone. Some low-cost models achieve competitive win rates, while several stronger models require substantially higher budgets. This suggests that effective routing should adapt model selection to the user-selected budget and task context, rather than always choosing the most expensive or highest-capability model. 
+
+5.3 Discussion 
+
+Taken together, the offline and online results highlight the complementary roles of ORBIT 
+
+and RouteJudge . ORBIT provides a controlled environment for developing and compar-ing routers under reproducible benchmark settings, while RouteJudge evaluates whether those routing decisions align with real user preferences. The gap between offline benchmark performance and online preference outcomes further motivates our two-stage evaluation de-sign: routers should first be validated under standardized offline protocols, and then tested under user-facing preference feedback. 
+
+6 Conclusion 
+
+We presented RouteJudge , an online pairwise preference evaluation platform for LLM routing systems, together with ORBIT , a modular toolbox for router development, offline benchmarking, and submission-based integration. RouteJudge evaluates router-level de-cision quality by attributing anonymous user preference feedback to the routing strategies behind compared model responses. ORBIT provides the standardized development layer needed to implement, validate, and submit new routing algorithms under consistent proto-cols. 14 Together, RouteJudge and ORBIT form an open evaluation ecosystem for LLM rout-ing: researchers can develop routers in ORBIT , compare them on existing benchmarks, submit compatible methods for historical replay and online testing, and track their per-formance on RouteJudge . Preliminary results show that offline reproducible evaluation and online preference-based evaluation provide complementary signals, suggesting that fu-ture routing research should consider not only benchmark-optimal model selection, but also user-preferred, cost-aware, and deployment-sensitive routing behavior. 
+
+References 
+
+Pranjal Aggarwal, Aman Madaan, Ankit Anand, Srividya Pranavi Potharaju, Swaroop Mishra, Pei Zhou, Aditya Gupta, Dheeraj Rajagopal, Karthik Kappaganthu, Yiming Yang, et al. Automix: Automatically mixing language models. In NeurIPS , 2024. Marialena Bevilacqua, Kezia Oketch, Ruiyang Qin, Will Stamey, Xinyuan Zhang, Yi Gan, Kai Yang, and Ahmed Abbasi. When automated assessment meets automated content generation: Examining text quality in the era of gpts. ACM Transactions on Information Systems , 2025. Lingjiao Chen, Matei Zaharia, and James Zou. Frugalgpt: How to use large language models while reducing cost and improving performance. arXiv preprint arXiv:2305.05176 , 2023. Shuhao Chen, Weisen Jiang, Baijiong Lin, James Kwok, and Yu Zhang. Routerdc: Query-based router by dual contrastive learning for assembling large language models. In 
+
+NeurIPS , 2024. Dujian Ding, Ankur Mallick, Chi Wang, Robert Sim, Subhabrata Mukherjee, Victor Rühle, Laks V. S. Lakshmanan, and Ahmed Hassan Awadallah. Hybrid LLM: Cost-efficient and quality-aware query routing. In ICLR , 2024. Shangbin Feng, Taylor Sorensen, Yuhan Liu, Jillian Fisher, Chan Young Park, Yejin Choi, and Yulia Tsvetkov. Modular pluralism: Pluralistic alignment via multi-llm collaboration. In EMNLP , 2024. Tao Feng, Yanzhen Shen, and Jiaxuan You. Graphrouter: A graph-based router for llm selections. In ICLR , 2025. Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. Routerbench: A benchmark for multi-llm routing system. In arXiv preprint arXiv:2403.12031 , 2024. Zhongzhan Huang, Guoming Ling, Yupei Lin, Yandong Chen, Shanshan Zhong, Hefeng Wu, and Liang Lin. Routereval: A comprehensive benchmark for routing llms to explore model-level scaling up in llms. In EMNLP , 2025. Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. Llm-blender: Ensembling large language models with pairwise ranking and generative fusion. arXiv preprint arXiv:2306.02561 ,2023a. 15 Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. Llm-blender: Ensembling large language models with pairwise comparison and generative fusion. In ACL , 2023b. Hannah R Kirk, Alexander Whitefield, Paul Röttger, Andrew Bean, Katerina Margatina, Juan Ciro, Rafael Mosquera, Max Bartolo, Adina Williams, He He, et al. The prism alignment dataset: What participatory, representative and individualised human feed-back reveals about the subjective and multicultural alignment of large language models. 
+
+NeurIPS , 2024. Guannan Lai and Han-Jia Ye. When routing collapses: On the degenerate convergence of llm routers. arXiv preprint arXiv:2602.03478 , 2026. Guannan Lai, Haoran Hu, Long Chen, Zhenguo Li, and Han-Jia Ye. From sampled out-comes to capability distributions: Rethinking supervision for llm routing. arXiv preprint arXiv:2606.06924 , 2026. Haoxuan Ma, Guannan Lai, and Han-Jia Ye. Mmr-bench: A comprehensive benchmark for multimodal llm routing. arXiv preprint arXiv:2601.17814 , 2026. Kai Mei, Wujiang Xu, Shuhang Lin, and Yongfeng Zhang. Omnirouter: Budget and perfor-mance controllable multi-llm routing. arXiv preprint arXiv:2502.20576 , 2025. Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gon-zalez, M Waleed Kadous, and Ion Stoica. RouteLLM: Learning to route LLMs from preference data. In ICLR , 2025. Guillem Ramírez, Alexandra Birch, and Ivan Titov. Optimising calls to large language models with uncertainty-based two-tier selection. arXiv preprint arXiv:2405.02134 , 2024. Nils Reimers and Iryna Gurevych. Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In EMNLP-IJCNLP , 2019. Marija Šakota, Maxime Peyrard, and Robert West. Fly-swat or cannon? cost-effective language model choice via meta-modeling. In Proceedings of the 17th ACM International Conference on Web Search and Data Mining , pages 606–615, 2024. Tal Shnitzer, Anthony Ou, Mírian Silva, Kate Soule, Yuekai Sun, Justin Solomon, Neil Thompson, and Mikhail Yurochkin. Llm routing with benchmark datasets. In NeurIPS 2023 Workshop on Distribution Shifts: New Frontiers with Foundation Models , 2023. Wei Song, Zhenya Huang, Cheng Cheng, Weibo Gao, Bihan Xu, GuanHao Zhao, Fei Wang, and Runze Wu. IRT-router: Effective and interpretable multi-LLM routing via item response theory. In ACL , 2025. Taylor Sorensen, Liwei Jiang, Jena D Hwang, Sydney Levine, Valentina Pyatkin, Peter West, Nouha Dziri, Ximing Lu, Kavel Rao, Chandra Bhagavatula, et al. Value kaleidoscope: Engaging ai with pluralistic human values, rights, and duties. In AAAI , 2024. KV Srivatsa, Kaushal Kumar Maurya, and Ekaterina Kochmar. Harnessing the power of multiple minds: Lessons learned from llm routing. In NAACLW , 2024. 16 Dimitris Stripelis, Zijian Hu, Jipeng Zhang, Zhaozhuo Xu, Alay Dilipbhai Shah, Han Jin, Yuhang Yao, Salman Avestimehr, and Chaoyang He. Tensoropera router: A multi-model router for efficient llm inference. In EMNLP , 2024. Zhi-Hao Tan, Jian-Dong Liu, Xiao-Dong Bi, Peng Tan, Qin-Cheng Zheng, Hai-Tian Liu, Yi Xie, Xiao-Chuan Zou, Yang Yu, and Zhi-Hua Zhou. Beimingwu: A learnware dock system. In KDD , 2024. Asterios Tsiourvas, Wei Sun, and Georgia Perakis. Causal llm routing: End-to-end regret minimization from observational data. In NeurIPS , 2025. Clovis Varangot-Reille, Christophe Bouvard, Antoine Gourru, Mathieu Ciancone, Mar-ion Schaeffer, and François Jacquenet. Doing more with less–implementing routing strategies in large language model-based systems: An extended survey. arXiv preprint arXiv:2502.00409 , 2025. Chenxu Wang, Hao Li, Yiqun Zhang, Linyao Chen, Jianhao Chen, Ping Jian, Peng Ye, Qiaosheng Zhang, and Shuyue Hu. Icl-router: In-context learned model representations for llm routing. In AAAI , 2026. Xinyuan Wang, Yanchi Liu, Wei Cheng, Xujiang Zhao, Zhengzhang Chen, Wenchao Yu, Yanjie Fu, and Haifeng Chen. Mixllm: Dynamic routing in mixed large language models. 
+
+arXiv preprint arXiv:2502.18482 , 2025. Murong Yue, Jie Zhao, Min Zhang, Liang Du, and Ziyu Yao. Large language model cas-cades with mixture of thoughts representations for cost-efficient reasoning. arXiv preprint arXiv:2310.03094 , 2023. Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q Weinberger, and Yoav Artzi. Bertscore: Evaluating text generation with bert. arXiv preprint arXiv:1904.09675 , 2019. Yi-Kai Zhang, De-Chuan Zhan, and Han-Jia Ye. Capability instruction tuning: A new paradigm for dynamic llm routing. In AAAI , 2025a. Yiqun Zhang, Hao Li, Jianhao Chen, Hangfan Zhang, Peng Ye, Lei Bai, and Shuyue Hu. Be-yond gpt-5: Making llms cheaper and better via performance-efficiency optimized routing. In DAI , 2025b. Yiqun Zhang, Hao Li, Chenxu Wang, Linyao Chen, Qiaosheng Zhang, Peng Ye, Shi Feng, Daling Wang, Zhen Wang, Xinrun Wang, et al. The avengers: A simple recipe for uniting smaller language models to challenge proprietary giants. In arXiv preprint arXiv:2505.19797 , 2025c. Zesen Zhao, Shuowei Jin, and Z Morley Mao. Eagle: Efficient training-free router for multi-llm inference. arXiv preprint arXiv:2409.15518 , 2024. Zhi-Hua Zhou. Learnware: on the future of machine learning. Frontiers Comput. Sci. , 2016. Zhi-Hua Zhou and Zhi-Hao Tan. Learnware: Small models do big. SCIS , 2024. 17 Richard Zhuang, Tianhao Wu, Zhaojin Wen, Andrew Li, Jiantao Jiao, and Kannan Ram-chandran. Embedllm: Learning compact representations of large language models. In 
+
+ICLR , 2024. 18 Appendix A. Candidate Models and Routing Strategies 
+
+This appendix provides additional details about the candidate model pool and routing strate-gies used in the current RouteJudge platform and supported by the ORBIT toolbox. Route-Judge evaluates routers over a shared model pool under the same budget-feasible model space, ensuring that performance differences are attributed to routing decisions rather than access to different candidate models. 
+
+A.1 Candidate Model Pool 
+
+The current RouteJudge platform includes 17 candidate models. The pool contains both low-cost models for budget-sensitive routing and stronger models for quality-sensitive queries: 
+
+• DeepSeek-v4-flash : A low-cost candidate model used for budget-sensitive routing deci-sions. 
+
+• Grok-4.20 : A general-purpose candidate model included in the shared model pool. 
+
+• Step-3.5-flash : A lightweight candidate model used for efficient response generation. 
+
+• Gemini-2.5-flash-lite : A low-cost Gemini-family model included for cost-efficient rout-ing. 
+
+• Llama-4-maverick : An open-family candidate model used as part of the heterogeneous model pool. 
+
+• hy3-preview : A preview candidate model included to increase model diversity. 
+
+• GPT-5.4-nano : A compact GPT-family model used for low-cost query handling. 
+
+• Mimo-v2.5-pro : A pro-level candidate model included for stronger response generation. 
+
+• Mercury-2 : A general candidate model included in the RouteJudge model pool. 
+
+• DeepSeek-v4-pro : A stronger DeepSeek-family model used for higher-quality routing choices. 
+
+• Minimax-m2.7 : A general-purpose candidate model included for comparison across model families. 
+
+• Qwen3.6-plus : A Qwen-family model used as a higher-capability candidate in the model pool. 
+
+• Kimi-k2.6 : A Kimi-family candidate model included for diverse generation behavior. 
+
+• GPT-5.4 : A high-capability GPT-family model used for quality-oriented routing deci-sions. 
+
+• GLM-5.1 : A GLM-family candidate model included in the shared model pool. 
+
+• Claude-Sonnet-4.6 : A high-capability Claude-family model used for quality-sensitive queries. 19 • Gemini-2.5-pro : A pro-level Gemini-family model included for high-quality response generation. 
+
+A.2 Routing Strategies in RouteJudge 
+
+RouteJudge includes routing strategies from multiple families, including rule-based, regression-based, classification-based, ranking-based, graph-based, reward-model-based, cascade-based, and non-parametric methods. The current implementation contains the following routers: 
+
+• RouterLLM-MF (Ong et al., 2025): A matrix-factorization-based RouteLLM variant that estimates model suitability from observed routing data. 
+
+• RouteLLM-SW (Ong et al., 2025): A RouteLLM variant that uses similarity- or score-weighted information for model selection. 
+
+• NIRT-Router (Song et al., 2025): An item-response-theory-based router that models query difficulty and model ability. 
+
+• MIRT-Router (Song et al., 2025): A multidimensional IRT-based router that represents model ability and query difficulty with multiple latent factors. 
+
+• kNNRouter (Stripelis et al., 2024): A non-parametric router that selects models accord-ing to nearest historical examples. 
+
+• SVMRouter (Stripelis et al., 2024): A classification-based router that predicts a suitable model from query features. 
+
+• MLPRouter (Stripelis et al., 2024): A neural classification-based router that maps query representations to model choices. 
+
+• GraphRouter (Feng et al., 2025): A graph-based router that exploits structured relations among models, tasks, or queries. 
+
+• EmbedLLM (Zhuang et al., 2024): An embedding-based router that estimates model suitability by comparing queries in representation space. 
+
+• EquiRouter (Lai and Ye, 2026): A decision-aware routing strategy that estimates relative model utility under routing constraints. 
+
+• RouterDC (Chen et al., 2024): A data-driven router that learns model-selection decisions from offline routing signals. 
+
+• Avengers (Zhang et al., 2025c): An ensemble-style router that combines multiple decision signals for model selection. 
+
+• Avengers-Pro (Zhang et al., 2025b): An enhanced Avengers-style router with stronger aggregation or decision mechanisms. 
+
+• Eagle (Zhao et al., 2024): A cascade-style router that decides whether to invoke stronger models based on estimated difficulty or uncertainty. 20 • OmniRouter (Mei et al., 2025): A general-purpose router designed for model selection across heterogeneous task types. 
+
+• HybridLLM (Ding et al., 2024): A hybrid cost–quality-aware router that combines mul-tiple routing criteria. 
+
+• RM-CLS (Tsiourvas et al., 2025): A reward-model-based classification router that pre-dicts the preferred model. 
+
+• RM-Softmax (Tsiourvas et al., 2025): A reward-model-based router that selects models according to softmax-normalized preference scores. 
+
+• RM-Interval (Tsiourvas et al., 2025): A reward-model-based router that incorporates interval-style uncertainty in routing decisions. 
+
+A.3 Additional Routers Supported by ORBIT 
+
+In addition to the routers currently active in RouteJudge, ORBIT supports additional rout-ing methods that can be used for offline evaluation or future online deployment: 
+
+• RouteLLM-BERT (Ong et al., 2025): A BERT-based classifier trained on pairwise preference data to predict which model will be preferred for a given prompt. 
+
+• ModelSAT (Zhang et al., 2025a): A capability-aware router that uses structured model capability representations for dynamic model selection. 
+
+• Oracle : A non-deployable upper bound that selects the best feasible model using ground-truth outcomes. 
+
+Appendix B. ORBIT Details 
+
+This appendix provides the technical details of ORBIT that are omitted from the main text, including the formal routing setup, benchmark suite, embedding interfaces, and offline evaluation protocol. 
+
+B.1 Budgeted Routing Formulation 
+
+Let the candidate model pool be M = {1, . . . , K }, where each index j ∈ M denotes a deployed LLM with its own capability, cost, latency, context length, modality support, or serving characteristics. Queries are sampled from a benchmark or application distribution over a query space Q, denoted by q ∼ D .For each query q and model j, we define two query-dependent quantities: a performance or utility value aj (q) ∈ R, measuring the quality of model j on q, and an inference cost cj (q) ∈
+
+R+, measuring resources consumed by running model j on q. The cost may correspond to monetary cost, latency, or a composite resource measure. A router usually cannot access aj (q) at decision time. Instead, it derives a query repre-sentation through an embedding or feature function 
+
+ϕ : Q → Rd, x = ϕ(q).
+
+21 Given a budget C, the budget-feasible model set is 
+
+F(q; C) = { j ∈ M | cj (q) ≤ C }. (B.1) A budgeted routing policy is a function πC : Rd → M that maps the query representation to a selected model. The offline budgeted routing objective is 
+
+max 
+
+> πC
+
+Eq∼D 
+
+aπC (ϕ(q)) (q)
+
+s.t. πC (ϕ(q)) ∈ F (q; C), ∀q. 
+
+(B.2) This formulation captures the main offline routing problem studied in ORBIT: selecting a budget-feasible model that maximizes expected performance under a fixed evaluation pro-tocol. 
+
+B.2 Benchmark Suite and Splits 
+
+ORBIT integrates both unimodal and multimodal routing benchmarks. For unimodal rout-ing, ORBIT supports RouterBench (Hu et al., 2024), MixInstruct (Jiang et al., 2023b), and RouterEval (Huang et al., 2025). For multimodal routing, ORBIT supports MMR-Bench (Ma et al., 2026). These benchmarks provide query distributions, candidate model pools, model outputs or performance records, and cost information that can be used to train and evaluate routing methods under controlled settings. To evaluate both average-case performance and robustness, ORBIT supports in-domain and out-of-domain splits. The in-domain split follows the same distribution as router devel-opment data, while the out-of-domain split holds out domains, tasks, or modality patterns that differ from the development distribution. All benchmarks are loaded through the same ORBIT data interface so that routing methods can be compared under consistent prepro-cessing and reporting protocols. 
+
+B.3 Embedding Layer 
+
+ORBIT provides a unified embedding layer that maps each query into a feature representa-tion used by routers. The embedding function ϕ(·) can be instantiated by lightweight text encoders, larger embedding models, or multimodal encoders for image-text inputs. This design separates query representation from router implementation, allowing researchers to swap encoders without modifying router logic. ORBIT also supports end-to-end methods that jointly train the encoder and routing policy. In this case, the embedding module can be optimized together with the router to better capture query difficulty, task type, and model-specific compatibility. 
+
+B.4 Offline Evaluation Protocol 
+
+ORBIT evaluates routing methods by sweeping the per-query budget and tracing a performance– cost trade-off curve. For a routing policy under budget C, denoted by πC , the expected test performance and expected inference cost are 
+
+A(C) = Eq∼D test 
+
+aπC (q)(q) , ¯c(C) = Eq∼D test 
+
+cπC (q)(q) .
+
+22 Evaluating these quantities over a grid of budgets gives the trade-off curve 
+
+{(¯ c(C), A (C)) } .
+
+ORBIT reports curve-level metrics to summarize different aspects of routing behavior. 
+
+Normalized Area Under the Curve. Let budgets be ordered by increasing cost, and define xt = ¯ c(Ct) and yt = A(Ct). The normalized area under the performance–cost curve is 
+
+nAUC = 1
+
+xT − x1 
+
+> T−1
+
+X
+
+> t=1
+
+yt + yt+1 
+
+2 (xt+1 − xt). (B.3) 
+
+Peak Score. The peak performance on the curve is 
+
+Ps = max   
+
+> t∈{ 1,...,T }
+
+yt, xt⋆ with t⋆ ∈ arg max  
+
+> t
+
+yt. (B.4) 
+
+Quality Neutral Cost. Let 
+
+Amax = max  
+
+> j∈M
+
+Eq∼D test [aj (q)] 
+
+denote the performance of the best single model, and let xmax be its corresponding average cost. The quality neutral cost is defined as 
+
+QNC = min  
+
+> t:yt≥Amax
+
+xt, rQNC = QNC /x max . (B.5) 
+
+Routing Collapse Index. For each query q, define the best achievable performance and the cheapest cost among best models as 
+
+a⋆(q) = max  
+
+> j∈M
+
+aj (q), c⋆(q) = min    
+
+> j:aj(q)= a⋆(q)
+
+cj (q).
+
+The routing collapse indicator is 
+
+RCI( q) = 1 aπC (q)(q) < a ⋆(q) or cπC (q)(q) > c ⋆(q) , RCI = Eq∼D test [RCI( q)] . (B.6) 
+
+Appendix C. RouteJudge Evaluation Metrics 
+
+This appendix details the metrics used by RouteJudge to evaluate routing strategies from preference, cost, task-conditioned, and diagnostic perspectives. Let DRJ = {Z t}Tt=1 denote the set of RouteJudge evaluation records. For the t-th record, 
+
+m(t) 
+
+> i
+
+denotes the model selected by router ri, (m(t) 
+
+> A
+
+, m (t) 
+
+> B
+
+) denotes the selected duel pair, y(t)
+
+denotes the user preference label, S(t) 
+
+> i
+
+∈ { 0, 0.5, 1, ∅} denotes the attributed score of router 
+
+ri, and τ (t) denotes the task label. 23 C.1 Preference-Based Metrics 
+
+Since a router may recommend a model that does not enter the final pairwise comparison, we define the participating set of router ri as 
+
+Pi = {t | S(t)
+
+> i
+
+̸ = ∅}. (C.7) The participation rate is 
+
+PartRate( ri) = |P i|
+
+T . (C.8) The average preference score is 
+
+PrefScore( ri) = 1
+
+|P i|
+
+X
+
+> t∈P i
+
+S(t) 
+
+> i
+
+. (C.9) Wins receive score 1, ties receive 0.5, losses receive 0, and Both Bad assigns 0 to both participating routers. For comparisons with a clear winner, we define 
+
+Bi = {t ∈ P i | y(t) ∈ { A Win , B Win }} .
+
+The binary win rate is 
+
+WinRate( ri) = 
+
+P 
+
+> t∈B i
+
+1[S(t) 
+
+> i
+
+= 1] 
+
+|B i| . (C.10) RouteJudge also reports Elo ratings and bootstrap confidence intervals when enough com-parisons are available. 
+
+C.2 Cost–Preference Trade-off 
+
+For router ri, the average participating cost is 
+
+Cost( ri) = 1
+
+|P i|
+
+X
+
+> t∈P i
+
+c(t)(m(t) 
+
+> i
+
+), (C.11) where c(t)(m(t) 
+
+> i
+
+) denotes the actual inference cost of the model selected by router ri in the 
+
+t-th comparison. RouteJudge analyzes routers in the cost–preference space, where the quality axis can be 
+
+PrefScore( ri) or WinRate( ri) and the cost axis is Cost( ri). A router ri dominates another router rj if 
+
+PrefScore( ri) ≥ PrefScore( rj ), Cost( ri) ≤ Cost( rj ),
+
+with at least one inequality being strict. Routers on the Pareto frontier represent strategies that achieve the best observed preference performance at a given cost level. 24 C.3 Task-Conditioned Metrics 
+
+For a task category τ , define the task-conditioned participating set as 
+
+Pi,τ = {t ∈ P i | τ (t) = τ }. (C.12) The task-conditioned preference score is 
+
+PrefScore( ri | τ ) = 1
+
+|P i,τ |
+
+X
+
+> t∈P i,τ
+
+S(t) 
+
+> i
+
+. (C.13) The task-conditioned win rate is computed analogously by restricting Bi to examples with task label τ .
+
+C.4 Pairwise Router Comparison 
+
+For two routers ri and rj , define their shared participating set as 
+
+Pij = Pi ∩ P j . (C.14) The head-to-head preference score of ri against rj is 
+
+H2H( ri, r j ) = 1
+
+|P ij |
+
+X
+
+> t∈P ij
+
+φ(S(t) 
+
+> i
+
+, S (t) 
+
+> j
+
+), (C.15) where 
+
+φ(a, b ) = 
+
+
+
+1, a > b, 
+
+0.5, a = b, 
+
+0, a < b. 
+
+When binary preference outcomes are available, RouteJudge can also apply McNemar’s test to compare two routers on shared examples. Let a be the number of shared comparisons where ri wins and rj loses, and let b be the number of shared comparisons where rj wins and ri loses. The test statistic is 
+
+χ2 = (|a − b| − 1) 2
+
+a + b . (C.16) 
+
+C.5 Routing Behavior Diagnostics 
+
+RouteJudge further analyzes routing behavior beyond aggregate scores. 
+
+Routing entropy. Let pi,m denote the empirical frequency with which router ri selects model m:
+
+pi,m = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+1[m(t) 
+
+> i
+
+= m].
+
+The selection entropy is 
+
+H(ri) = − X
+
+> m∈M
+
+pi,m log 2 pi,m , Hnorm (ri) = H(ri)log 2 |M| . (C.17) 25 Router agreement. For two routers ri and rj , the raw agreement rate is 
+
+Agree( ri, r j ) = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+1[m(t) 
+
+> i
+
+= m(t) 
+
+> j
+
+]. (C.18) Cohen’s Kappa is 
+
+κ(ri, r j ) = Po − Pe
+
+1 − Pe
+
+, (C.19) where Po = Agree( ri, r j ) and 
+
+Pe = X
+
+> m∈M
+
+pi,m pj,m .
+
+Consensus strength. For the t-th record, the consensus strength is 
+
+ρ(t) =max m∈M (t)
+
+> C
+
+v(t)(m)
+
+N , (C.20) where N is the number of routers. This metric measures how strongly routers agree on the same model for a given query. 
+
+C.6 Historical Replay for Submitted Routers 
+
+For a newly submitted ORBIT-compatible router, RouteJudge first performs historical re-play before online deployment. Given a historical RouteJudge record with compared models 
+
+(mA, m B ) and preference-derived scores (sA, s B ), the submitted router selects a model ˆm.Its replay score is 
+
+Sreplay =
+
+
+
+sA, ˆm = mA,sB , ˆm = mB ,
+
+∅, ˆm / ∈ { mA, m B }.
+
+(C.21) Thus, if the submitted router selects the model that was historically preferred by users, it receives a win. If it selects the other compared model, it receives the corresponding loss. If its selected model was not involved in the historical comparison, the record is treated as non-participating. After historical replay, the router can enter live online RouteJudge evaluation under the same protocol as existing routers. 
+
+Appendix D. Additional RouteJudge Results 
+
+This appendix provides additional analyses of routing behavior in RouteJudge. We focus on two complementary aspects: how different routers distribute their selections over the candidate model pool, and how routers compare against each other under shared user-voted comparisons. 
+
+D.1 Model Selection Distribution 
+
+Figure D.1 shows the model selection distribution of each routing strategy. Each horizontal bar represents one router, and each segment indicates the fraction of queries for which the 26 router selects a specific candidate model. The distribution reveals substantial differences in routing behavior. Some routers concentrate heavily on a small number of models, indicating more conservative or model-specific decision patterns. Other routers spread their selections across a broader range of models, suggesting stronger sensitivity to query-level differences or budget constraints. This analysis complements the aggregate router ranking in the main text. A high-ranking router may obtain strong preference performance either by consistently selecting a robust model or by adapting its selections across different queries. Conversely, a router with diverse selections is not necessarily better unless this diversity leads to preferred responses. Therefore, model selection distribution provides a useful diagnostic for interpreting why routers obtain different win rates and Elo scores. 0 20 40 60 80 100 
+
+> Model Selection Share (%)
+> RouterLLM-MF
+> NIRT-Router
+> kNNRouter
+> GraphRouter
+> EmbedLLM
+> EquiRouter
+> RouterDC
+> SVMRouter
+> Avengers-Pro
+> Avengers
+> RM-Interval
+> MLPRouter
+> Eagle
+> OmniRouter
+> RM-CLS
+> RouteLLM-SW
+> RM-Softmax
+> HybridLLM
+> MIRT-Router
+> Router
+> DeepSeek-v4-flash
+> Grok-4.20
+> Step-3.5-flash
+> Gemini-2.5-flash-lite
+> Llama-4-maverick
+> HY3-preview
+> GPT-5.4-nano
+> Mimo-v2.5-pro
+> Mercury-2
+> DeepSeek-v4-pro
+> MiniMax-m2.7
+> Qwen3.6-plus
+> Kimi-k2.6
+> GPT-5.4
+> GLM-5.1
+> Claude-Sonnet-4.6
+> Gemini-2.5-pro
+
+Figure D.1: Model selection distribution of routing strategies. Each horizontal bar shows the percentage of times a router selects each candidate model. Concentrated dis-tributions indicate conservative or model-specific routing behavior, while more diverse distributions suggest broader use of the candidate model pool. 
+
+D.2 Head-to-Head Router Comparison 
+
+Figure D.2 presents the head-to-head win-rate matrix between routing strategies. Each cell reports the win rate of the row router against the column router on shared comparisons. Unlike global Elo ranking, this matrix directly shows pairwise advantages and disadvantages between routers. This is useful because two routers with similar overall scores may still behave differently on overlapping query subsets. The heatmap shows that router performance is not uniformly ordered across all pairwise comparisons. Some routers exhibit broad advantages against many alternatives, while others 27 perform competitively only against specific groups of routers. This suggests that RouteJudge can support a more fine-grained analysis than a single leaderboard score: it can reveal whether a router is consistently strong, specialized, or mainly competitive under certain comparison settings. RouterLLM-MF 
+
+> NIRT-Router
+> kNNRouter
+> GraphRouter
+> EmbedLLM
+> EquiRouter
+> RouterDC
+> SVMRouter
+> Avengers-Pro
+> Avengers
+> RM-Interval
+> MLPRouter
+> Eagle
+> OmniRouter
+> RM-CLS
+> RouteLLM-SW
+> RM-Softmax
+> HybridLLM
+> MIRT-Router
+
+Router B 
+
+RouterLLM-MF 
+
+NIRT-Router 
+
+kNNRouter 
+
+GraphRouter 
+
+EmbedLLM 
+
+EquiRouter 
+
+RouterDC 
+
+SVMRouter 
+
+Avengers-Pro 
+
+Avengers 
+
+RM-Interval 
+
+MLPRouter 
+
+Eagle 
+
+OmniRouter 
+
+RM-CLS 
+
+RouteLLM-SW 
+
+RM-Softmax 
+
+HybridLLM 
+
+MIRT-Router 
+
+> Router A
+
+-- 27.8 58.3 66.7 53.4 50.0 50.0 52.1 58.7 60.0 57.4 66.7 63.6 62.0 55.6 76.9 71.4 83.3 65.9 
+
+72.2 -- 75.0 70.0 83.3 68.2 66.7 77.8 77.8 80.0 75.0 87.5 75.0 83.3 70.0 88.9 88.9 100.0 93.8 
+
+41.7 25.0 -- 60.5 45.8 41.7 41.7 44.2 50.0 45.8 50.0 57.9 55.0 55.0 47.8 68.8 63.9 75.0 57.5 
+
+33.3 30.0 39.5 -- 36.4 31.8 50.0 32.5 39.5 46.2 38.2 46.4 44.4 43.8 36.8 66.7 53.3 75.0 46.9 
+
+46.6 16.7 54.2 63.6 -- 46.0 33.3 48.1 54.2 50.0 54.5 60.9 59.5 60.0 51.9 70.0 71.9 81.3 62.5 
+
+50.0 31.8 58.3 68.2 54.0 -- 50.0 51.9 57.4 53.8 57.7 65.9 62.5 63.0 55.4 72.7 71.4 83.3 65.9 
+
+50.0 33.3 58.3 50.0 66.7 50.0 -- 58.3 57.1 66.7 58.3 66.7 57.1 66.7 50.0 80.0 80.0 100.0 80.0 
+
+47.9 22.2 55.8 67.5 51.9 48.1 41.7 -- 56.0 60.7 56.3 65.8 60.9 60.4 53.8 76.9 70.0 83.3 63.6 
+
+41.3 22.2 50.0 60.5 45.8 42.6 42.9 44.0 -- 46.2 50.0 57.9 55.0 55.0 47.8 66.7 63.2 75.0 58.3 
+
+40.0 20.0 54.2 53.8 50.0 46.2 33.3 39.3 53.8 -- 54.5 59.1 63.6 53.8 39.3 70.0 72.2 77.8 72.2 
+
+42.6 25.0 50.0 61.8 45.5 42.3 41.7 43.8 50.0 45.5 -- 57.5 55.0 55.3 47.7 66.7 65.6 75.0 57.9 
+
+33.3 12.5 42.1 53.6 39.1 34.1 33.3 34.2 42.1 40.9 42.5 -- 47.2 47.4 40.5 64.3 56.7 71.4 50.0 
+
+36.4 25.0 45.0 55.6 40.5 37.5 42.9 39.1 45.0 36.4 45.0 52.8 -- 50.0 43.5 58.3 60.0 66.7 52.8 
+
+38.0 16.7 45.0 56.3 40.0 37.0 33.3 39.6 45.0 46.2 44.7 52.6 50.0 -- 43.2 66.7 59.4 78.6 53.1 
+
+44.4 30.0 52.2 63.2 48.1 44.6 50.0 46.2 52.2 60.7 52.3 59.5 56.5 56.8 -- 79.2 65.0 83.3 60.0 
+
+23.1 11.1 31.3 33.3 30.0 27.3 20.0 23.1 33.3 30.0 33.3 35.7 41.7 33.3 20.8 -- 50.0 60.0 50.0 
+
+28.6 11.1 36.1 46.7 28.1 28.6 20.0 30.0 36.8 27.8 34.4 43.3 40.0 40.6 35.0 50.0 -- 60.0 43.3 
+
+16.7 0.0 25.0 25.0 18.8 16.7 0.0 16.7 25.0 22.2 25.0 28.6 33.3 21.4 16.7 40.0 40.0 -- 40.0 
+
+34.1 6.3 42.5 53.1 37.5 34.1 20.0 36.4 41.7 27.8 42.1 50.0 47.2 46.9 40.0 50.0 56.7 60.0 --
+
+0
+
+20 
+
+40 
+
+60 
+
+80 
+
+100 
+
+> Head-to-Head Win Rate (%)
+
+Figure D.2: Head-to-head win-rate heatmap between routing strategies. Each cell reports the percentage of shared comparisons in which the row router outperforms the column router. Higher values indicate stronger pairwise advantage of the row router, while lower values indicate weaker relative performance against the cor-responding column router. 28

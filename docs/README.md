@@ -6,90 +6,58 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-23
-- 运行时间：2026-06-23 22:10:31 UTC
+- 最新运行日期：2026-06-15 ~ 2026-06-24
+- 运行时间：2026-06-24 02:02:14 UTC
 - 运行状态：成功
-- 本次总论文数：22
-- 精读区：11
-- 速读区：11
+- 本次总论文数：12
+- 精读区：7
+- 速读区：5
 
 ### 今日简报（AI）
-今日共收录22篇论文，精读与速读各半，重点聚焦长时记忆与智能体学习两大前沿方向。
-
-最值得精读的是两篇9分长文：一篇探讨如何用极少数据实现智能体长期记忆，另一篇研究个性化长时记忆机制；速读中《时间自模仿学习》与《科学策展多模态智能体》也值得关注。
-
-建议普通读者优先阅读精读列表中的两篇9分论文，理解记忆压缩与个性化设计的核心技术突破，速读部分可侧重《时间自模仿学习》的自我改进范式。
-- 详情：[/202606/23/README](/202606/23/README)
+本期日报聚焦LLM在线选择与MoE路由优化，精读7篇、速读5篇，其中两篇获满分10分。  
+最值得关注两个方向：基于时变需求的约束赌博机在线LLM选择，以及软可微路由的SoftMoE架构。  
+建议普通读者优先阅读这两篇精读论文，了解大模型部署中的高效选型与专家路由前沿。
+- 详情：[/20260615-20260624/README](/20260615-20260624/README)
 
 ### 精读区论文标签
-1. [Learning What Not to Forget: Long-Horizon Agent Memory from a Few Kilobytes of Learning](/202606/23/2606.20954v1-learning-what-not-to-forget-long-horizon-agent-memory-from-a-few-kilobytes-of-learning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：通过学习的相关性驱逐实现长周期Agent记忆
-2. [AdaMem: Learning What to Remember for Personalized Long-Horizon LLM Agents](/202606/23/2606.21144v1-adamem-learning-what-to-remember-for-personalized-long-horizon-llm-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：面向个性化长时LLM智能体的记忆控制
-3. [Sakana Fugu Technical Report](/202606/23/2606.21228v1-sakana-fugu-technical-report)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：编排模型利用LLM代理团队的能力
-4. [Beyond the Next Step: Variable-Length Latent World Models for Long-Horizon Planning](/202606/23/2606.21775v1-beyond-the-next-step-variable-length-latent-world-models-for-long-horizon-planning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：变长潜世界模型用于长程规划
-5. [Harness-MU: A Safe, Governed, and Effective Harness for Multi-User LLM Agents](/202606/23/2606.21856v1-harness-mu-a-safe-governed-and-effective-harness-for-multi-user-llm-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：面向多用户LLM智能体的安全受控框架，具有访问权限控制
-6. [PlanBench-XL: Evaluating Long-Horizon Planning of LLM Tool-Use Agents in Large-Scale Tool Ecosystems](/202606/23/2606.22388v1-planbench-xl-evaluating-long-horizon-planning-of-llm-tool-use-agents-in-large-scale-tool-ecosystems)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：LLM工具使用agent长程规划基准
-7. [Imagine to Ensure Safety in Hierarchical Reinforcement Learning](/202606/23/2606.22509v1-imagine-to-ensure-safety-in-hierarchical-reinforcement-learning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：长视野任务中的安全探索，结合层级强化学习和世界模型
-8. [Governance Decay: How Context Compaction Silently Erases Safety Constraints in Long-Horizon LLM Agents](/202606/23/2606.22528v1-governance-decay-how-context-compaction-silently-erases-safety-constraints-in-long-horizon-llm-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：长程大语言模型智能体，上下文压缩移除安全约束
-9. [ENVS: Environment-Native Verified Search for Long-Horizon GUI Agents](/202606/23/2606.22948v1-envs-environment-native-verified-search-for-long-horizon-gui-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：明确处理长时域GUI代理任务
-10. [Group-Graph Policy Optimization for Long-Horizon Agentic Reinforcement Learning](/202606/23/2606.22995v1-group-graph-policy-optimization-for-long-horizon-agentic-reinforcement-learning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：组图策略优化用于长程智能体强化学习
-11. [Self-Evolution for Multi-Turn Tool-Calling Agents via Divergence-Point Preference Learning](/202606/23/2606.23112v1-self-evolution-for-multi-turn-tool-calling-agents-via-divergence-point-preference-learning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：通过分歧点偏好学习实现多轮工具Agent的自我改进
+1. [Online LLM Selection via Constrained Bandits with Time-Varying Demand](/20260615-20260624/2606.17489v1-online-llm-selection-via-constrained-bandits-with-time-varying-demand)  
+   标签：评分：10.0/10、query:moe-routing
+   evidence：在线LLM选择即为动态模型路由
+2. [SoftMoE: Soft Differentiable Routing for Mixture-of-Experts in LLMs](/20260615-20260624/2606.17952v1-softmoe-soft-differentiable-routing-for-mixture-of-experts-in-llms)  
+   标签：评分：10.0/10、query:moe-routing
+   evidence：用于大语言模型混合专家模型的软可微路由
+3. [RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing](/20260615-20260624/2606.18774v2-routejudge-an-open-platform-for-reproducible-and-preference-aware-llm-routing)  
+   标签：评分：10.0/10、query:moe-routing
+   evidence：LLM路由评估平台
+4. [DecoSearch: Complexity-Aware Routing and Plan-Level Repair for Text-to-SQL](/20260615-20260624/2606.17821v1-decosearch-complexity-aware-routing-and-plan-level-repair-for-text-to-sql)  
+   标签：评分：9.0/10、query:moe-routing
+   evidence：面向复杂度的查询路由
+5. [RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing](/20260615-20260624/2606.18774v1-routejudge-an-open-platform-for-reproducible-and-preference-aware-llm-routing)  
+   标签：评分：9.0/10、query:moe-routing
+   evidence：LLM路由评估平台
+6. [Does the Same Token Mean the Same State? MoE Routing as Signal for Reasoning Control](/20260615-20260624/2606.22798v1-does-the-same-token-mean-the-same-state-moe-routing-as-signal-for-reasoning-control)  
+   标签：评分：9.0/10、query:moe-routing
+   evidence：MoE路由作为推理控制信号
+7. [Agent-as-a-Router: Agentic Model Routing for Coding Tasks](/20260615-20260624/2606.22902v1-agent-as-a-router-agentic-model-routing-for-coding-tasks)  
+   标签：评分：9.0/10、query:moe-routing
+   evidence：面向编码任务的代理式模型路由
 
 ### 速读区论文标签
-1. [Temporal Self-Imitation Learning](/202606/23/2606.19752v2-temporal-self-imitation-learning)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：利用时间效率作为自我监督，长程机器人操作
-2. [Building Agent Harnesses for Scientific Curation from Multimodal Sources](/202606/23/2606.21005v1-building-agent-harnesses-for-scientific-curation-from-multimodal-sources)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：明确构建代理框架用于科学策展
-3. [Horizon Adaptive Offline Policy Learning via Value Stitching](/202606/23/2606.21136v1-horizon-adaptive-offline-policy-learning-via-value-stitching)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：自适应视界值拼接用于长视界离线强化学习
-4. [Grounded Scaling: Why Agentic AI Needs Deterministic Environments](/202606/23/2606.22495v1-grounded-scaling-why-agentic-ai-needs-deterministic-environments)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：长链代理执行及确定性环境需求
-5. [AgentLens: Interpretable Safety Steering via Mechanistic Subspaces for Multi-Turn Coding Agent](/202606/23/2606.22673v1-agentlens-interpretable-safety-steering-via-mechanistic-subspaces-for-multi-turn-coding-agent)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：通过机械可解释性控制多轮编码智能体的技术
-6. [AgenticOS: An Intent-Oriented Secure Operating System Architecture for Autonomous AI Agents](/202606/23/2606.21129v1-agenticos-an-intent-oriented-secure-operating-system-architecture-for-autonomous-ai-agents)  
-   标签：评分：7.0/10、query:agent-lsh
-   evidence：用于安全保障和控制自主LLM智能体的操作系统架构
-7. [ARCO: Adaptive Rubric with Co-Evolution for Multi-Step LLM-Based Agents](/202606/23/2606.21262v1-arco-adaptive-rubric-with-co-evolution-for-multi-step-llm-based-agents)  
-   标签：评分：7.0/10、query:agent-lsh
-   evidence：自适应评标共进化通过步骤级奖励改进代理
-8. [MacAgentBench: Benchmarking AI Agents on Real-World macOS Desktop](/202606/23/2606.22557v1-macagentbench-benchmarking-ai-agents-on-real-world-macos-desktop)  
-   标签：评分：7.0/10、query:agent-lsh
-   evidence：针对macOS上长时程多应用任务的基准测试
-9. [Dynamic Malicious Skills in Agentic AI](/202606/23/2606.16287v1-dynamic-malicious-skills-in-agentic-ai)  
-   标签：评分：6.0/10、query:agent-lsh
-   evidence：驾驭Agent的技术：漏洞与防御
-10. [ACCORD: Action-Conditioned Contextual Grounding for Language Agents](/202606/23/2606.16432v1-accord-action-conditioned-contextual-grounding-for-language-agents)  
-   标签：评分：6.0/10、query:agent-lsh
-   evidence：将agent动作锚定在观察到的证据中
-11. [On the Reliability of Networks of AI Agents: Density Evolution, Stopping Sets, and Architecture Optimization](/202606/23/2606.18121v1-on-the-reliability-of-networks-of-ai-agents-density-evolution-stopping-sets-and-architecture-optimization)  
-   标签：评分：6.0/10、query:agent-lsh
-   evidence：AI代理网络的可靠性分析与架构优化
+1. [Tying the Loop -- Tied Expert Layers in Mixture-of-Experts Language Models](/20260615-20260624/2606.16825v1-tying-the-loop----tied-expert-layers-in-mixture-of-experts-language-models)  
+   标签：评分：8.0/10、query:moe-routing
+   evidence：MoE语言模型中的专家绑定与独立路由
+2. [Geometric and Stochastic Analysis of Discontinuities in Sparse Mixture-of-Experts](/20260615-20260624/2606.19036v1-geometric-and-stochastic-analysis-of-discontinuities-in-sparse-mixture-of-experts)  
+   标签：评分：8.0/10、query:moe-routing
+   evidence：稀疏混合专家路由的不连续性分析
+3. [ARIADNE: Agnostic Routing for Inference-time Adapter DyNamic sElection](/20260615-20260624/2606.19079v1-ariadne-agnostic-routing-for-inference-time-adapter-dynamic-selection)  
+   标签：评分：8.0/10、query:moe-routing
+   evidence：推理时动态适配器选择，无需训练的路由
+4. [SAFE-Cascade: Cost-Adaptive Vision-Language Routing for Chart Question Answering](/20260615-20260624/2606.19646v1-safe-cascade-cost-adaptive-vision-language-routing-for-chart-question-answering)  
+   标签：评分：7.0/10、query:moe-routing
+   evidence：图表问答中的成本自适应视觉-语言路由
+5. [Query-aware Routing for Filtered Approximate Nearest Neighbors Search](/20260615-20260624/2606.19898v1-query-aware-routing-for-filtered-approximate-nearest-neighbors-search)  
+   标签：评分：7.0/10、query:moe-routing
+   evidence：过滤近似最近邻搜索中的查询感知路由
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,482 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-06-24T01:52:40.835183+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 10,
+    "deep_cap": 6,
+    "deep_selected": 7,
+    "quick_candidates": 5,
+    "quick_skim_target": 11,
+    "quick_selected": 5
+  },
+  "deep_dive": [
+    {
+      "id": "2606.17489v1",
+      "source": "arxiv",
+      "title": "Online LLM Selection via Constrained Bandits with Time-Varying Demand",
+      "abstract": "Large Language Models (LLMs) are increasingly deployed in edge-cloud inference systems to handle diverse user tasks with heterogeneous accuracy, latency, and cost profiles. Selecting the appropriate LLM for each incoming task is critical for ensuring service quality and efficient resource utilization. However, model heterogeneity, stochastic and unknown performance characteristics, and time-varying task demands make static selection strategies inadequate. Real-world deployments often impose hard resource budgets such as monetary expenditure limits, along with soft service-level requirements such as latency guarantees. These constraints introduce additional challenges for online decision-making. We formulate this problem as a constrained stochastic bandit learning task, where the learner sequentially selects models under both packing-type (hard) and covering-type (soft) constraints, while adapting to time-varying task demand. The learner operates without access to the underlying reward, cost, or latency distributions and must rely on partial feedback. We develop a novel online learning algorithm that leverages confidence-bound estimates and demand predictions to balance reward maximization with long-term constraint satisfaction. We provide theoretical guarantees showing sublinear regret and sublinear covering constraint violations compared to an offline benchmark with full information. Experimental results on synthetic workloads demonstrate the effectiveness and robustness of our approach in dynamic, resource-constrained environments.",
+      "authors": [
+        "Yin Huang",
+        "Qingsong Liu",
+        "Jie Xu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-06-16T03:58:48+00:00",
+      "link": "https://arxiv.org/pdf/2606.17489v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "online LLM selection as dynamic model routing",
+      "llm_evidence_cn": "在线LLM选择即为动态模型路由",
+      "llm_evidence": "在线LLM选择即为动态模型路由",
+      "canonical_evidence": "在线LLM选择即为动态模型路由",
+      "llm_tldr_en": "Proposes a constrained bandit framework for online LLM selection under time-varying demand, optimizing accuracy, latency, and cost while respecting resource budgets.",
+      "llm_tldr_cn": "大语言模型推理部署中，选择合适模型以平衡精度、延迟和成本是关键挑战。本文提出基于约束bandit的在线LLM选择方法，在时变需求下动态选择模型。该方法能有效满足资源预算和服务质量约束，为LLM服务系统的模型路由提供了实用方案。",
+      "llm_tldr": "大语言模型推理部署中，选择合适模型以平衡精度、延迟和成本是关键挑战。本文提出基于约束bandit的在线LLM选择方法，在时变需求下动态选择模型。该方法能有效满足资源预算和服务质量约束，为LLM服务系统的模型路由提供了实用方案。",
+      "llm_tags": [
+        "query:moe-routing:composite"
+      ],
+      "matched_query_tag": "query:moe-routing:composite",
+      "matched_query_text": "Papers central to 帮我寻找大模型推理时路由的论文, especially work that connects or combines: model routing in LLM inference; dynamic model selection during inference; routing in large language model serving; papers on routing during inference of large language models; dynamic model selection for LLM inference.",
+      "matched_requirement_id": "req-composite-moe-routing",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.17952v1",
+      "source": "arxiv",
+      "title": "SoftMoE: Soft Differentiable Routing for Mixture-of-Experts in LLMs",
+      "abstract": "Sparse Mixture-of-Experts (MoE) architectures enable scaling LLM parameters under a fixed inference budget by activating only a small subset of experts via top-$k$ routing. While this preserves causality and suits autoregressive language models, the discrete top-$k$ operator is not differentiable, forcing a fixed number of active experts per input and resulting in inefficient use of computation. We propose SoftMoE, which replaces discrete routing with a truncated soft top-$k$ LapSum relaxation, allowing gradient-based optimization of expert routing. We further parameterize the mean number of active experts per layer and impose a global budget constraint, enabling the model to learn how to allocate expert capacity across layers. SoftMoE remains fully compatible with autoregressive modeling and achieves performance comparable to or better than sparse MoE on language modeling and downstream tasks, while activating significantly fewer experts. Notably, the learned allocation is highly non-uniform, with later layers activating more experts. The source code is publicly available$^\\dagger$.",
+      "authors": [
+        "Mikołaj Zasada",
+        "Łukasz Struski",
+        "Jacek Tabor",
+        "Marcin Kurdziel"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-06-16T14:05:41+00:00",
+      "link": "https://arxiv.org/pdf/2606.17952v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "soft differentiable routing for MoE in LLMs",
+      "llm_evidence_cn": "用于大语言模型混合专家模型的软可微路由",
+      "llm_evidence": "用于大语言模型混合专家模型的软可微路由",
+      "canonical_evidence": "用于大语言模型混合专家模型的软可微路由",
+      "llm_tldr_en": "SoftMoE replaces discrete top-k routing in MoE with a soft differentiable relaxation, enabling gradient-based optimization and dynamic expert allocation under a budget constraint.",
+      "llm_tldr_cn": "SoftMoE针对混合专家模型中的离散top-k路由不可微、固定激活专家数导致计算效率低下的问题，提出一种用截断软top-k拉普拉斯求和松弛替代离散路由的方法，允许梯度优化专家路由，并通过参数化每层平均激活专家数和全局预算约束让模型学会跨层分配专家容量。实验表明该方法在保持因果兼容性的同时提升了计算效率和性能。",
+      "llm_tldr": "SoftMoE针对混合专家模型中的离散top-k路由不可微、固定激活专家数导致计算效率低下的问题，提出一种用截断软top-k拉普拉斯求和松弛替代离散路由的方法，允许梯度优化专家路由，并通过参数化每层平均激活专家数和全局预算约束让模型学会跨层分配专家容量。实验表明该方法在保持因果兼容性的同时提升了计算效率和性能。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "model routing in LLM inference",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.18774v2",
+      "source": "arxiv",
+      "title": "RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing",
+      "abstract": "We present RouteJudge, an online pairwise preference evaluation framework for LLM routing systems, with a public platform available at https://routejudge.cn. Different from model-level response evaluation, RouteJudge focuses on router-level decision quality. For each user query, multiple routing strategies independently recommend candidate models under the same model pool and budget constraints. The selected model responses are then presented to users through anonymous pairwise comparisons, and the resulting user preferences are attributed back to the routing strategies behind the compared responses. Each evaluation record stores the query, routing decisions, model responses, preference labels, cost, latency, and task metadata, enabling preference-aware, cost-aware, and task-conditioned analysis of LLM routers. To support the continuous expansion of routing methods in RouteJudge, we further release ORBIT (Optimal Routing and Budgeted Inference Toolbox), a modular and extensible toolbox that standardizes the end-to-end workflow of LLM routing. ORBIT provides unified interfaces for benchmark loading, query representation, router implementation, budget-aware evaluation, and method comparison, allowing researchers to develop and evaluate routing algorithms under consistent protocols. It also serves as the submission and integration layer for RouteJudge: researchers can implement routing methods within ORBIT, validate them on existing routing benchmarks, and submit compatible routers for online preference-based evaluation. The code of ORBIT is available at https://github.com/LAMDA-Model-Reuse/ORBIT.",
+      "authors": [
+        "Guannan Lai",
+        "Haoran Hu",
+        "Han-Jia Ye"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-17T07:35:10+00:00",
+      "link": "https://arxiv.org/pdf/2606.18774v2",
+      "tags": [
+        "keyword:moe-routing"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "LLM routing evaluation platform",
+      "llm_evidence_cn": "LLM路由评估平台",
+      "llm_evidence": "LLM路由评估平台",
+      "canonical_evidence": "LLM路由评估平台",
+      "llm_tldr_en": "RouteJudge is an open platform for evaluating LLM routing systems through pairwise user preferences, focusing on router-level decision quality.",
+      "llm_tldr_cn": "RouteJudge是一个开源的LLM路由系统评估平台，通过匿名成对比较用户偏好来评估路由器级别决策质量。它记录了查询、路由决策、响应、偏好、成本等元数据，支持可重复和偏好感知的路由研究，填补了缺乏标准路由评估的空白。",
+      "llm_tldr": "RouteJudge是一个开源的LLM路由系统评估平台，通过匿名成对比较用户偏好来评估路由器级别决策质量。它记录了查询、路由决策、响应、偏好、成本等元数据，支持可重复和偏好感知的路由研究，填补了缺乏标准路由评估的空白。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "model routing in LLM inference",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.17821v1",
+      "source": "arxiv",
+      "title": "DecoSearch: Complexity-Aware Routing and Plan-Level Repair for Text-to-SQL",
+      "abstract": "Large Language Models (LLMs) have demonstrated remarkable capabilities in translating natural language to SQL, yet existing methods still falter on complex queries requiring multi-step, data-aware reasoning. We introduce DecoSearch, a training-free framework that addresses this by routing each query to the appropriate level of reasoning effort. A lightweight Schema Selector first prunes the full database schema to the relevant tables and columns. An LLM Judger then decides whether the question requires decomposition: straightforward questions follow a direct generation path and complex ones are escalated to a Directed Acyclic Graph (DAG) of atomic sub-questions, each solved by a targeted SQL generation step. A RAG component grounds the decomposer with semantically similar training examples, and a Topology Refiner restructures the reasoning plan when execution failures signal a flawed decomposition rather than a fixable SQL error. DecoSearch achieves 70.53% execution accuracy on BIRD and 88.31% on Spider with a DeepSeek backbone, surpassing all training-free baselines while consuming an order of magnitude fewer tokens than competing methods. It also functions as a model-agnostic wrapper, consistently improving fine-tuned SQL generation backbones without any modification to the pipeline.",
+      "authors": [
+        "Esteban Schafir",
+        "Xu Zheng",
+        "Hojat Allah Salehi",
+        "Zhuomin Chen",
+        "Mo Sha",
+        "Wei Cheng",
+        "Dongsheng Luo"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-16T11:48:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.17821v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "complexity-aware routing to appropriate reasoning level",
+      "llm_evidence_cn": "面向复杂度的查询路由",
+      "llm_evidence": "面向复杂度的查询路由",
+      "canonical_evidence": "面向复杂度的查询路由",
+      "llm_tldr_en": "DecoSearch routes queries to appropriate reasoning effort levels for Text-to-SQL, demonstrating complexity-aware routing in LLM inference.",
+      "llm_tldr_cn": "论文针对大语言模型在Text-to-SQL中处理复杂查询的不足，提出了DecoSearch这一无需训练的路由框架。该框架通过模式选择器和LLM判断器将查询路由到直接生成或分解为子问题的路径。实验表明该方法在多步推理上有效，展示了推理路由的通用性。",
+      "llm_tldr": "论文针对大语言模型在Text-to-SQL中处理复杂查询的不足，提出了DecoSearch这一无需训练的路由框架。该框架通过模式选择器和LLM判断器将查询路由到直接生成或分解为子问题的路径。实验表明该方法在多步推理上有效，展示了推理路由的通用性。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "model routing in LLM inference",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.18774v1",
+      "source": "arxiv",
+      "title": "RouteJudge: An Open Platform for Reproducible and Preference-Aware LLM Routing",
+      "abstract": "We present RouteJudge, an online pairwise preference evaluation framework for LLM routing systems, with a public platform available at https://routejudge.cn. Different from model-level response evaluation, RouteJudge focuses on router-level decision quality. For each user query, multiple routing strategies independently recommend candidate models under the same model pool and budget constraints. The selected model responses are then presented to users through anonymous pairwise comparisons, and the resulting user preferences are attributed back to the routing strategies behind the compared responses. Each evaluation record stores the query, routing decisions, model responses, preference labels, cost, latency, and task metadata, enabling preference-aware, cost-aware, and task-conditioned analysis of LLM routers. To support the continuous expansion of routing methods in RouteJudge, we further release ORBIT (Optimal Routing and Budgeted Inference Toolbox), a modular and extensible toolbox that standardizes the end-to-end workflow of LLM routing. ORBIT provides unified interfaces for benchmark loading, query representation, router implementation, budget-aware evaluation, and method comparison, allowing researchers to develop and evaluate routing algorithms under consistent protocols. It also serves as the submission and integration layer for RouteJudge: researchers can implement routing methods within ORBIT, validate them on existing routing benchmarks, and submit compatible routers for online preference-based evaluation. The code of ORBIT is available at https://github.com/AIGNLAI/LAMDA-ORBIT.",
+      "authors": [
+        "Guannan Lai",
+        "Haoran Hu",
+        "Han-Jia Ye"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-17T07:35:10+00:00",
+      "link": "https://arxiv.org/pdf/2606.18774v1",
+      "tags": [
+        "keyword:moe-routing"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "LLM routing evaluation platform",
+      "llm_evidence_cn": "LLM路由评估平台",
+      "llm_evidence": "LLM路由评估平台",
+      "canonical_evidence": "LLM路由评估平台",
+      "llm_tldr_en": "RouteJudge is an open platform for reproducible, preference-aware evaluation of LLM routing systems, focusing on router-level decision quality via pairwise comparisons.",
+      "llm_tldr_cn": "RouteJudge 是一个开源平台，用于可复现、偏好感知的 LLM 路由系统评估。它关注路由器级别的决策质量，通过匿名成对比较将用户偏好归因于不同的路由策略。平台记录查询、路由决策、模型响应、偏好标签、成本、延迟等元数据，支持细粒度分析。该工作填补了 LLM 路由评估标准化工具的空白，有助于推动路由系统的公平比较和改进。",
+      "llm_tldr": "RouteJudge 是一个开源平台，用于可复现、偏好感知的 LLM 路由系统评估。它关注路由器级别的决策质量，通过匿名成对比较将用户偏好归因于不同的路由策略。平台记录查询、路由决策、模型响应、偏好标签、成本、延迟等元数据，支持细粒度分析。该工作填补了 LLM 路由评估标准化工具的空白，有助于推动路由系统的公平比较和改进。",
+      "llm_tags": [
+        "query:moe-routing:composite"
+      ],
+      "matched_query_tag": "query:moe-routing:composite",
+      "matched_query_text": "Papers central to 帮我寻找大模型推理时路由的论文, especially work that connects or combines: model routing in LLM inference; dynamic model selection during inference; routing in large language model serving; papers on routing during inference of large language models; dynamic model selection for LLM inference.",
+      "matched_requirement_id": "req-composite-moe-routing",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22798v1",
+      "source": "arxiv",
+      "title": "Does the Same Token Mean the Same State? MoE Routing as Signal for Reasoning Control",
+      "abstract": "In sparse Mixture-of-Experts language models, does the same token id imply the same router state and the same experts producing it? Holding the emitted token id fixed at repeated anchors, we find it does not: the experts that produce it still separate task context, trajectory history, and reasoning-effort mode. This residual structure supports test-time control: near \\emph{boundary} anchors (the final-response transition) and \\emph{delimiter} anchors (which open the answer, e.g.\\ \\texttt{\\textbackslash boxed\\{} or code fences), routing neighborhoods already align with final-answer basins at a marker-only readout and strongest when the routing is read at the answer opening. We operationalize this as \\textbf{RAD} (Routing Agreement Decoding), an answer-string-free multi-rollout selector: it locates a fixed anchor, represents each rollout by its anchor-window MoE routing states, and returns the densest Weighted-Jaccard $K$-NN route-basin center, without parsing, normalizing, executing, or voting over answer strings. Across 10 sparse-MoE configurations (gpt-oss, Qwen3-MoE) and 6 datasets spanning math, GPQA, and code, RAD is on par with Majority where string voting is well-posed, with small positive paired deltas (RAD $73.9$ / RAD+DC $74.2$ vs.\\ Majority $73.6$). Like majority voting, RAD is not a verifier: a dense \\emph{wrong} basin can still win. Its value is the interface: the same selector gives direct pass@1 on code, where exact-string voting is ill-defined, and the same routing-density principle, re-anchored to the agentic boundary, improves best-of-16 patch selection on SWE-bench Verified over random, where patches have no answer string to vote on.",
+      "authors": [
+        "Kang Chen",
+        "Minshen Yu",
+        "Junjie Nian",
+        "Yaoning Wang",
+        "Yixin Cao",
+        "Yugang Jiang"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-22T03:17:31+00:00",
+      "link": "https://arxiv.org/pdf/2606.22798v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "MoE routing for reasoning control during LLM inference",
+      "llm_evidence_cn": "MoE路由作为推理控制信号",
+      "llm_evidence": "MoE路由作为推理控制信号",
+      "canonical_evidence": "MoE路由作为推理控制信号",
+      "llm_tldr_en": "Analyses MoE routing states in LLMs and proposes RAD (Routing Agreement Decoding) for test-time control using routing as a signal, directly relevant to model routing in inference.",
+      "llm_tldr_cn": "该论文研究稀疏MoE语言模型中同一token是否对应相同的路由状态，发现路由状态能区分任务上下文和推理模式，并据此提出RAD（路由一致解码）方法，利用路由信号在推理时进行控制。实验表明在关键标记处读取路由可实现有效的推理控制，为模型路由在推理中的应用提供了新视角。",
+      "llm_tldr": "该论文研究稀疏MoE语言模型中同一token是否对应相同的路由状态，发现路由状态能区分任务上下文和推理模式，并据此提出RAD（路由一致解码）方法，利用路由信号在推理时进行控制。实验表明在关键标记处读取路由可实现有效的推理控制，为模型路由在推理中的应用提供了新视角。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "model routing in LLM inference",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.22902v1",
+      "source": "arxiv",
+      "title": "Agent-as-a-Router: Agentic Model Routing for Coding Tasks",
+      "abstract": "Real-world users typically have access to multiple Large Language Models (LLMs) from different providers, and these LLMs often excel at distinct domains, yet none dominate all. Consequently, routing each task to the most suitable model becomes critical for both performance and cost. Existing routers treat this as a static, one-off classification problem. However, we identify the performance bottleneck for these routers as information deficit: simply augmenting a vanilla LLM router with performance statistics at the task-dimension level yields a 15.3% relative gain, surpassing a heuristic router built on the same dimension-level priors. Motivated by this finding, we propose Agent-as-a-Router, a framework that formalizes routing as a C-A-F loop (Context->Action->Feedback->Context). It closes the information gap by accumulating execution-grounded experience during deployment. We instantiate this framework as ACRouter, composed of an Orchestrator, a Verifier, a Memory module, and introduce CodeRouterBench, an evaluation environment comprising ~10K task instances with verified scores from 8 frontier LLMs, enabling regret-based router comparison on streaming tasks. Experiments show that ACRouter achieves the lowest cumulative regret on in-distribution tasks and generalizes to out-of-distribution agentic-programming tasks, demonstrating that our routing framework actively closes the information gap. Codes and benchmarks are released at https://github.com/LanceZPF/agent-as-a-router.",
+      "authors": [
+        "Pengfei Zhou",
+        "Zhiwei Tang",
+        "Yixing Ma",
+        "Jiasheng Tang",
+        "Yizeng Han",
+        "Zhenglin Wan",
+        "Fanqing Meng",
+        "Wei Wang",
+        "Bohan Zhuang",
+        "Wangbo Zhao",
+        "Yang You"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-22T06:37:31+00:00",
+      "link": "https://arxiv.org/pdf/2606.22902v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Agentic model routing for coding tasks during LLM inference",
+      "llm_evidence_cn": "面向编码任务的代理式模型路由",
+      "llm_evidence": "面向编码任务的代理式模型路由",
+      "canonical_evidence": "面向编码任务的代理式模型路由",
+      "llm_tldr_en": "Proposes Agent-as-a-Router framework for routing coding tasks to LLMs during inference, using C-A-F loop and achieving 15.3% gain with task-dimension statistics; direct match to model routing in LLM inference.",
+      "llm_tldr_cn": "该论文指出现有静态路由器存在信息不足问题，通过添加任务维度性能统计可获得15.3%相对提升。在此基础上提出Agent-as-a-Router框架，将路由形式化为上下文-行动-反馈循环，动态选择最合适的LLM处理编码任务。实验表明该方法优于启发式路由器和普通LLM路由器，直接服务于大模型推理时的模型路由需求。",
+      "llm_tldr": "该论文指出现有静态路由器存在信息不足问题，通过添加任务维度性能统计可获得15.3%相对提升。在此基础上提出Agent-as-a-Router框架，将路由形式化为上下文-行动-反馈循环，动态选择最合适的LLM处理编码任务。实验表明该方法优于启发式路由器和普通LLM路由器，直接服务于大模型推理时的模型路由需求。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "model routing in LLM inference",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.16825v1",
+      "source": "arxiv",
+      "title": "Tying the Loop -- Tied Expert Layers in Mixture-of-Experts Language Models",
+      "abstract": "Mixture-of-Experts (MoE) architectures efficiently scale Large Language Models (LLMs) by activating only a small fraction of their experts per token, yet the full parameter count - dominated by the expert parameters - must be held in training and inference memory. To address this, we introduce Expert Tying, an architectural modification that shares expert parameters across consecutive transformer layers while preserving independent, layer-wise routing and attention.   We evaluate this approach across common, state-of-the-art architectures, including OLMoE, Qwen3, and DeepSeek-style MoEs. Our pretraining experiments demonstrate that tying experts can reduce memory footprint by almost 2x at virtually no degradation in perplexity or downstream quality. By exploiting the parameter redundancy inherent in MoE pathways, our method provides a highly favorable compute-to-memory trade-off, advancing efficient training and scaling of next-generation LLMs.",
+      "authors": [
+        "Martin Jaggi"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-06-15T15:08:09+00:00",
+      "link": "https://arxiv.org/pdf/2606.16825v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "expert tying in MoE language models with independent routing",
+      "llm_evidence_cn": "MoE语言模型中的专家绑定与独立路由",
+      "llm_evidence": "MoE语言模型中的专家绑定与独立路由",
+      "canonical_evidence": "MoE语言模型中的专家绑定与独立路由",
+      "llm_tldr_en": "Expert Tying shares expert parameters across MoE layers while preserving independent routing, reducing memory footprint nearly 2x with minimal quality loss.",
+      "llm_tldr_cn": "该论文提出专家绑定（Expert Tying）技术，在MoE语言模型中跨连续层共享专家参数，同时保持独立逐层路由和注意力。在OLMoE、Qwen3和DeepSeek等架构上的预训练实验表明，该技术几乎以不牺牲困惑度和下游质量为代价，将内存占用降低近2倍。这项工作在保持路由灵活性的同时提高了MoE的内存效率，对LLM推理的部署有实际意义。",
+      "llm_tldr": "该论文提出专家绑定（Expert Tying）技术，在MoE语言模型中跨连续层共享专家参数，同时保持独立逐层路由和注意力。在OLMoE、Qwen3和DeepSeek等架构上的预训练实验表明，该技术几乎以不牺牲困惑度和下游质量为代价，将内存占用降低近2倍。这项工作在保持路由灵活性的同时提高了MoE的内存效率，对LLM推理的部署有实际意义。",
+      "llm_tags": [
+        "query:moe-routing:composite"
+      ],
+      "matched_query_tag": "query:moe-routing:composite",
+      "matched_query_text": "Papers central to 帮我寻找大模型推理时路由的论文, especially work that connects or combines: model routing in LLM inference; dynamic model selection during inference; routing in large language model serving; papers on routing during inference of large language models; dynamic model selection for LLM inference.",
+      "matched_requirement_id": "req-composite-moe-routing",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.19646v1",
+      "source": "arxiv",
+      "title": "SAFE-Cascade: Cost-Adaptive Vision-Language Routing for Chart Question Answering",
+      "abstract": "Vision-language models (VLMs) are powerful for chart question answering, but invoking a VLM for every query can be unnecessarily expensive when many questions are answerable from OCR text and lightweight language reasoning. We demonstrate SAFE-Cascade, an interactive system for cost-adaptive chart question answering. Given a chart image and a natural-language question, SAFE-Cascade first extracts chart text with OCR, obtains a provisional answer from a text-only language model, and then uses a learned router to decide whether to accept the text answer or escalate to a VLM. The demo exposes this decision process to users: OCR evidence, text-only answer, routing probability, escalation decision, final answer, estimated cost, and estimated latency are shown side by side. SAFE-Cascade is designed as a transparent interface for understanding when visual grounding is actually needed. Users can upload or select charts, ask questions, inspect the evidence used by each pathway, compare text-only and VLM answers, and adjust the escalation threshold to explore the accuracy-cost frontier. The system is implemented with Azure Document Intelligence for OCR, gpt-5-mini as the text-only model, gemini-2.5-flash-image as the VLM, and a Random Forest router trained on inference-time features. On a held-out ChartQA test split of 375 examples from a 2,500-example experiment, SAFE-Cascade achieves 69.1% unified accuracy with 73.1% VLM invocation, compared with 67.7% accuracy and 100% VLM invocation for the full-VLM baseline. The observed +1.4 percentage-point difference is statistically uncertain, so we interpret SAFE-Cascade as matching full-VLM performance while reducing VLM calls by 26.9% and estimated cost by 9.3%. The demonstration shows how selective modality routing can make multimodal knowledge systems more transparent, tunable, and cost-aware.",
+      "authors": [
+        "Ayush Dwivedi",
+        "Qixin Wang",
+        "Ashvi Soni",
+        "Ruoteng Wang",
+        "Han Li",
+        "Animesh Mahapatra",
+        "Neeraj Agrawal",
+        "Xintao Wu"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR",
+        "cs.CV"
+      ],
+      "published": "2026-06-17T23:00:17+00:00",
+      "link": "https://arxiv.org/pdf/2606.19646v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "cost-adaptive vision-language routing for chart QA",
+      "llm_evidence_cn": "图表问答中的成本自适应视觉-语言路由",
+      "llm_evidence": "图表问答中的成本自适应视觉-语言路由",
+      "canonical_evidence": "图表问答中的成本自适应视觉-语言路由",
+      "llm_tldr_en": "SAFE-Cascade uses a learned router to decide whether to answer chart questions with a text-only LM or escalate to a VLM, enabling cost-adaptive routing.",
+      "llm_tldr_cn": "SAFE-Cascade 是一个成本自适应的图表问答系统。它先通过OCR提取文本，用纯文本语言模型获得初步答案，然后通过一个学习到的路由器决定是接受文本答案还是升级到视觉语言模型（VLM）。这种路由策略在保证准确性的同时显著降低了成本。其核心思想与LLM推理中的动态模型选择类似，但应用场景为视觉问答。",
+      "llm_tldr": "SAFE-Cascade 是一个成本自适应的图表问答系统。它先通过OCR提取文本，用纯文本语言模型获得初步答案，然后通过一个学习到的路由器决定是接受文本答案还是升级到视觉语言模型（VLM）。这种路由策略在保证准确性的同时显著降低了成本。其核心思想与LLM推理中的动态模型选择类似，但应用场景为视觉问答。",
+      "llm_tags": [
+        "query:moe-routing:composite"
+      ],
+      "matched_query_tag": "query:moe-routing:composite",
+      "matched_query_text": "Papers central to 帮我寻找大模型推理时路由的论文, especially work that connects or combines: model routing in LLM inference; dynamic model selection during inference; routing in large language model serving; papers on routing during inference of large language models; dynamic model selection for LLM inference.",
+      "matched_requirement_id": "req-composite-moe-routing",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.19036v1",
+      "source": "arxiv",
+      "title": "Geometric and Stochastic Analysis of Discontinuities in Sparse Mixture-of-Experts",
+      "abstract": "Sparse Mixture-of-Experts (SMoE) architectures are now widely deployed in state-of-the-art language and vision models, where conditional routing allows scaling to very large networks. However, this very Top-$k$ expert selection that enables conditional routing also renders the SMoE map inherently discontinuous. In the vicinity of these discontinuity surfaces, even inputs that are arbitrarily close may activate substantially different sets of experts resulting in significantly different outputs. In this work we give a rigorous geometric and stochastic analysis of these discontinuities. We first classify them by order, determined by the number of tied experts at a switching event. Using measure-theoretic slicing arguments, we establish asymptotic volume estimates for the thickened discontinuity surfaces, showing that lower-order discontinuity sets dominate, whereas higher-order ones occupy a vanishingly small relative volume. Next, modeling random perturbations in the input space via a diffusion process, we prove that the path eventually encounter a discontinuity, and moreover that the first hit almost surely occurs on an order-1 discontinuity with explicit finite-time probability bounds. We further derive occupation-time bounds that quantify the duration the random path spend in the neighborhoods of each discontinuity order. These theoretical results imply that inputs are more likely to lie near lower order discontinuities. Motivated by this insight, we propose a simple smoothing mechanism that can be directly applied to existing SMoEs, softly incorporating experts near discontinuities; our analysis guarantees that the added computational overhead remains small while providing localized smoothing near discontinuities, and experiments across language and vision tasks show that smoothing not only enforces continuity of the SMoE map but also enhances empirical performance.",
+      "authors": [
+        "Tho Tran Huu",
+        "Huu-Tuan Nguyen",
+        "Thien-Hai Nguyen",
+        "Nhat-Tri Ho",
+        "Viet-Hoang Tran",
+        "Tho Quan",
+        "Tan Minh Nguyen"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-17T13:06:00+00:00",
+      "link": "https://arxiv.org/pdf/2606.19036v1",
+      "tags": [
+        "keyword:moe-routing"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "discontinuities in sparse Mixture-of-Experts routing",
+      "llm_evidence_cn": "稀疏混合专家路由的不连续性分析",
+      "llm_evidence": "稀疏混合专家路由的不连续性分析",
+      "canonical_evidence": "稀疏混合专家路由的不连续性分析",
+      "llm_tldr_en": "Rigorous geometric and stochastic analysis of discontinuities in sparse MoE routing, classifying them by order and establishing asymptotic properties.",
+      "llm_tldr_cn": "该论文对稀疏混合专家（SMoE）模型中由Top-K专家选择导致的固有路由不连续性进行了严格的几何与随机分析。他们按切换事件中并列专家的数量对不连续性进行分类，并利用测度论切片论证建立了渐近性质。这项工作揭示了路由决策的敏感性，对理解MoE模型的稳定性有重要意义。",
+      "llm_tldr": "该论文对稀疏混合专家（SMoE）模型中由Top-K专家选择导致的固有路由不连续性进行了严格的几何与随机分析。他们按切换事件中并列专家的数量对不连续性进行分类，并利用测度论切片论证建立了渐近性质。这项工作揭示了路由决策的敏感性，对理解MoE模型的稳定性有重要意义。",
+      "llm_tags": [
+        "query:moe-routing:composite"
+      ],
+      "matched_query_tag": "query:moe-routing:composite",
+      "matched_query_text": "Papers central to 帮我寻找大模型推理时路由的论文, especially work that connects or combines: model routing in LLM inference; dynamic model selection during inference; routing in large language model serving; papers on routing during inference of large language models; dynamic model selection for LLM inference.",
+      "matched_requirement_id": "req-composite-moe-routing",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.19898v1",
+      "source": "arxiv",
+      "title": "Query-aware Routing for Filtered Approximate Nearest Neighbors Search",
+      "abstract": "Filtered ANN search, which combines vector similarity with attribute predicates, is a core primitive in modern vector databases and retrieval-augmented generation. We benchmark all major categorical filtered ANN methods across multiple datasets under three predicates and find that no single method dominates. Moreover, even within a single dataset and predicate type, the best method for a query can vary. Therefore, we propose a query-aware routing framework. A lightweight ML model predicts each candidate method's recall on the query, and the router consults an offline benchmark table that maps every method and parameter setting to its measured recall and QPS, then selects the method with the best recall--QPS trade-off. Our ablation study narrows 22 candidate features to a minimal set of three and we adopt regression rather than classification as the prediction target to sharpen accuracy. Our model is trained on six real-world datasets and applied to five unseen validation datasets. The final result shows that our router achieves state-of-the-art recall and QPS balance across all five validation datasets compared to existing filtered ANN baselines, while incurring negligible latency overhead.",
+      "authors": [
+        "Qianqian Xiong",
+        "Mengxuan Zhang"
+      ],
+      "primary_category": "cs.DB",
+      "categories": [
+        "cs.DB",
+        "cs.IR"
+      ],
+      "published": "2026-06-18T07:54:12+00:00",
+      "link": "https://arxiv.org/pdf/2606.19898v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "query-aware routing for filtered ANN search",
+      "llm_evidence_cn": "过滤近似最近邻搜索中的查询感知路由",
+      "llm_evidence": "过滤近似最近邻搜索中的查询感知路由",
+      "canonical_evidence": "过滤近似最近邻搜索中的查询感知路由",
+      "llm_tldr_en": "Proposes a query-aware routing framework that selects the best filtered ANN method per query using a lightweight ML model and offline benchmark table.",
+      "llm_tldr_cn": "该论文针对过滤近似最近邻搜索中单一方法无法在所有查询上最优的问题，提出查询感知路由框架。它训练一个轻量级ML模型预测各候选方法在查询上的召回率，再结合离线基准表选择最佳召回-QPS trade-off的方法。该方法在22个候选配置中显著提升了搜索效率。虽然面向向量搜索，但其动态方法选择的思想与LLM推理路由密切相关。",
+      "llm_tldr": "该论文针对过滤近似最近邻搜索中单一方法无法在所有查询上最优的问题，提出查询感知路由框架。它训练一个轻量级ML模型预测各候选方法在查询上的召回率，再结合离线基准表选择最佳召回-QPS trade-off的方法。该方法在22个候选配置中显著提升了搜索效率。虽然面向向量搜索，但其动态方法选择的思想与LLM推理路由密切相关。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "dynamic model selection for LLM inference",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.19079v1",
+      "source": "arxiv",
+      "title": "ARIADNE: Agnostic Routing for Inference-time Adapter DyNamic sElection",
+      "abstract": "The increasing deployment of parameter-efficient fine-tuning (PEFT) has led to model ecosystems in which a single backbone is paired with many task-specialized adapters. In this setting, inference-time queries often arrive without task labels, requiring the system to automatically select the most appropriate adapter from a growing and heterogeneous adapter pool. Existing routing methods either depend on access to adapter internals, such as weight decompositions or gradient-based statistics, or require additional router training, which limits scalability and portability as new adapters are added. We introduce ARIADNE, a training-free, adapter-agnostic routing framework for dynamic adapter selection at inference time. ARIADNE represents each adapter through a set of centroids computed from embeddings of its training set, capturing the data distribution associated with that adapter. Given an unlabeled input, it selects an adapter by measuring proximity to these centroids in latent space. Because routing is performed entirely in the input embedding space, ARIADNE is compatible with arbitrary PEFT methods and requires no modification to the adapters or training procedures. Primarily evaluated with Llama 3.2 1B Instruct on 23 diverse NLP tasks, ARIADNE recovers 97.44% of the upper bound performance. Scaling to 44 tasks, it achieves 89.7% average selection accuracy, without additional training or access to adapter internals.",
+      "authors": [
+        "Enrico Cassano",
+        "Michał Brzozowski",
+        "Zuzanna Dubanowska",
+        "Paolo Mandica",
+        "Neo Christopher Chung"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-17T13:50:51+00:00",
+      "link": "https://arxiv.org/pdf/2606.19079v1",
+      "tags": [
+        "keyword:moe-routing",
+        "query:moe-routing"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Dynamic adapter selection at inference time, training-free routing",
+      "llm_evidence_cn": "推理时动态适配器选择，无需训练的路由",
+      "llm_evidence": "推理时动态适配器选择，无需训练的路由",
+      "canonical_evidence": "推理时动态适配器选择，无需训练的路由",
+      "llm_tldr_en": "Proposes ARIADNE, a training-free, adapter-agnostic routing framework for dynamic adapter selection at inference time, directly relevant to dynamic model selection during inference.",
+      "llm_tldr_cn": "该论文针对参数高效微调后适配器的在线选择问题，提出ARIADNE框架。它无需训练，不依赖适配器内部信息，仅通过表示每个适配器的上下文嵌入实现推理时动态选择。该方法具有可扩展性和可移植性，新增适配器无需重新训练路由器，直接对应动态模型选择的需求。",
+      "llm_tldr": "该论文针对参数高效微调后适配器的在线选择问题，提出ARIADNE框架。它无需训练，不依赖适配器内部信息，仅通过表示每个适配器的上下文嵌入实现推理时动态选择。该方法具有可扩展性和可移植性，新增适配器无需重新训练路由器，直接对应动态模型选择的需求。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "dynamic model selection during inference",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    }
+  ]
+}
