@@ -1,0 +1,403 @@
+Title: RigorBench: Benchmarking Engineering Process Discipline in Autonomous AI Coding Agents
+
+URL Source: https://arxiv.org/pdf/2606.22678v1
+
+Published Time: Tue, 23 Jun 2026 02:26:58 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# RigorBench: Benchmarking Engineering Process Discipline in Autonomous AI Coding Agents 
+
+Meher Sai Preetam Madiraju 
+
+mehersaipreetam@gatech.edu 
+
+Meher Bhaskar Madiraju 
+
+meherbhaskar.madiraju@gatech.edu 
+
+Abstract — Agentic coding harnesses—such as Agent-Skills, Superpowers, and Agent-Rigor—are increasingly deployed to augment underlying LLMs for real-world software engineer-ing tasks. Existing benchmarks evaluate these agents almost exclusively on outcome correctness : whether generated code passes tests or resolves issues. We argue that this outcome-only lens is insufficient: an agent that arrives at a correct solution through reckless trial-and-error, without planning, verification, or graceful recovery, is fundamentally less reliable than one that follows sound engineering discipline. We introduce RIGOR BENCH , the first benchmark designed to measure process discipline in AI coding agents. R IGOR BENCH evaluates these harnesses across five pillars: P LANNING FIDELITY , V ERIFI - 
+
+> CATION
+
+COVERAGE , R ECOVERY EFFICIENCY , A BSTENTION 
+
+QUALITY , and A TOMIC TRANSITION INTEGRITY . A composite RIGOR SCORE aggregates these dimensions into a single metric via a weighted sum. We curate a suite of 30 tasks spanning five categories—Plan-Then-Build, Verify-Or-Die, Doom Loop Gauntlet, Know When to Fold, and Don’t Break the Build— and evaluate leading harnesses in a controlled with/without experimental design against baseline coding assistants. Our results show that structured process discipline not only improves process quality scores by an average of 41% but also raises downstream outcome correctness by 17%, providing the first quantitative evidence that how agents code matters as much as what they produce. We release the full benchmark, scoring rubrics, and trajectory analysis tools as open-source artifacts. 
+
+I. I NTRODUCTION 
+
+The rapid maturation of large language models (LLMs) has given rise to a new class of software engineering tool: the agentic coding harness . Systems and frameworks such as Agent-Skills, Superpowers, and Agent-Rigor now operate with increasing autonomy—guiding foundational LLMs in reading codebases, formulating plans, writing code, running tests, and iterating until a task is complete. Their capabilities are evaluated by an expanding ecosystem of benchmarks: SWE-bench [ 1] for resolving real GitHub issues, HumanEval [ 4]and MBPP [ 5] for function-level synthesis, BigCodeBench [ 6]for complex API usage, and domain-specific suites such as Terminal-Bench [ 8] and ProjDevBench [ 9] for project-scale development. These benchmarks share a common evaluation philosophy: they measure outcomes . Did the generated code pass the test suite? Was the GitHub issue marked resolved? Does the function return the correct output on the hidden test set? While outcome correctness is a necessary condition for useful code generation, we contend that it is not a sufficient one for 
+
+reliable deployment of autonomous coding agents. 
+
+a) The problem with outcome-only evaluation.: Consider two agents solving an identical bug-fix task. Agent A reads the error trace, formulates a hypothesis, writes a targeted fix, adds a regression test, and verifies the fix passes. Agent B tries five different patches in sequence, each time running the test suite and observing failures, until it stumbles upon a patch that makes the tests pass—without understanding 
+
+why the fix works and without adding any verification. Under every existing benchmark, both agents receive the same score. Yet their reliability profiles are radically different: Agent A’s process generalizes to new bugs; Agent B’s process is fragile, expensive, and produces solutions that are more likely to contain latent defects. This observation is not new in software engineering. Decades of research on software process maturity—from Humphrey’s Personal Software Process [ 23 ] to the Capability Maturity Model Integration (CMMI) [ 22 ]—have established that how software is built is a strong predictor of its long-term quality, maintainability, and cost. The distinction between process and outcome is fundamental: a mature process produces consistently good outcomes, while an immature one produces variable outcomes regardless of occasional successes. 
+
+b) Contributions.: We make the following contributions: 1) We identify and formalize the process discipline gap. We survey 12 major AI coding benchmarks and demonstrate that none evaluate the engineering process through which agents arrive at solutions (Section III). 2) We introduce R IGOR BENCH . We design the first bench-mark that evaluates AI coding agents on engineering process discipline through five measurement pillars, each targeting a distinct dimension of sound software practice (Section IV). 3) We propose trajectory-based scoring. Rather than evaluating only final artifacts, R IGOR BENCH analyzes the full execution trajectory of an agent—every plan, edit, test invocation, error recovery, and commit—to compute process quality scores (Section IV-C). 4) We demonstrate the value of structured discipline. 
+
+Through a controlled with/without experimental design using the agent-rigor framework [ 18 ], we show that structured discipline significantly improves both process quality (+41%) and outcome quality (+17%) (Section VI). 5) We release an open benchmark suite. We release 30 tasks across 5 categories, complete with scoring rubrics, trajectory analysis tools, and baseline results, to enable reproducible evaluation of process discipline in future agents (Section V). 
+
+> arXiv:2606.22678v1 [cs.SE] 21 Jun 2026
+
+II. R ELATED WORK 
+
+a) Code generation benchmarks.: The evaluation of LLM-based code generation has progressed along a clear trajectory of increasing realism. HumanEval [ 4 ] and MBPP [ 5]established function-level benchmarks with unit-test-based pass rates. BigCodeBench [ 6] extended this to multi-library compositions. SWE-bench [ 1 ] introduced real-world GitHub issue resolution, requiring agents to navigate complex code-bases and produce patches that pass existing test suites. LiveCodeBench [ 11 ] and PeerBench [ 3] addressed contamina-tion concerns by using temporally filtered competition prob-lems and proctored execution environments. DevBench [ 7], ProjDevBench [ 9], and ProjectEval [ 2 ] pushed toward full project-scale development and automated simulation of user acceptance. Terminal-Bench [ 8] evaluates agents in realistic terminal environments. AgentBench [ 10 ] provides a multi-dimensional evaluation of LLMs as agents across diverse environments. Despite this rich landscape, every benchmark in this lineage evaluates what the agent produces, not how it produces it. RIGOR BENCH is, to our knowledge, the first benchmark explicitly designed to measure the engineering process. 
+
+b) Agent architectures and self-correction.: The ReAct paradigm [ 28 ] interleaves reasoning and action, providing a foundation for agentic loops. Reflexion [ 29 ] adds verbal self-reflection to improve performance over episodes. SWE-agent [ 31 ] introduces agent-computer interfaces optimized for coding tasks. Recent work has questioned whether LLMs can genuinely self-correct reasoning [ 38 ] or self-repair code [ 37 ]. These findings motivate our R ECOVERY EFFICIENCY pillar, which measures not whether an agent eventually succeeds but whether its recovery process is efficient and strategically diverse. 
+
+c) Software process standards.: The Capability Maturity Model Integration (CMMI) [ 22 ] defines five maturity levels for organizational software processes. McConnell’s Code Complete [ 25 ] codifies individual-level construction practices. The Agile Manifesto [ 24 ] emphasized working software and adaptive processes. These frameworks share a core insight: disciplined processes reduce defect rates and improve predictability. R IGOR BENCH operationalizes this insight for AI agents. 
+
+d) Agent configuration and harness standards.: Emerg-ing standards seek to envelope foundational LLMs in be-havioral harnesses. Configuration standards like the Linux Foundation AAIF AGENTS.md [ 19 ] and Cursor Rules [ 21 ]guide behavior through project-level hints. More structured harnesses natively augment the agent’s action space: Agent-Skills [43 ] provides a specialized, modular toolbox for targeted execution, while Superpowers [ 44 ] implements robust context management and persistence. The Agent-Rigor 
+
+framework [ 18 ] takes a systemic approach, enforcing strict lifecycle protocols (e.g., mandatory planning and atomic transitions). RIGOR BENCH is explicitly designed to be framework-agnostic, enabling rigorous empirical comparison across these diverse paradigms. TABLE I: Survey of existing AI coding benchmarks. None 
+
+evaluate engineering process discipline. All rely exclusively on outcome-based metrics.                                                        
+
+> Benchmark Scope Primary Metric Plans? Tests? Recovery?
+> HumanEval Function pass@ k✗✗✗
+> MBPP Function pass@ k✗✗✗
+> SWE-bench Issue % Resolved ✗✗✗
+> BigCodeBench Function pass@ k✗✗✗
+> DevBench Project Task Compl. ✗✗✗
+> Terminal-Bench Terminal Success Rate ✗✗✗
+> ProjDevBench Project Feature Compl. ✗✗✗
+> AgentBench Multi-env Success Rate ✗✗✗
+> LiveCodeBench Function pass@ k✗✗✗
+> RIGOR BENCH Process RIGOR SCORE ✓✓✓
+
+e) Holistic and process-aware evaluation.: [41 ] argue for holistic evaluation of language models across multiple dimensions. [ 42 ] call for rethinking how AI evaluation results are reported. [ 33 ] identify methodological issues in agent evaluation. WebArena [ 32 ] evaluates web agents on task completion in realistic environments but still focuses on outcomes. R IGOR BENCH builds on these calls for richer evaluation by introducing the first process-oriented scoring framework for coding agents. III. T HE PROCESS DISCIPLINE GAP 
+
+To motivate R IGOR BENCH , we conduct a systematic survey of existing AI coding benchmarks. For each benchmark, we ask: Does this benchmark evaluate any aspect of the engineering process, or only the final output? 
+
+Table I summarizes our findings. Across nine major benchmarks spanning function-level, issue-level, project-level, and multi-environment evaluation, none incorporate any measurement of planning quality, verification behavior, recovery strategy, abstention appropriateness, or codebase health maintenance. This gap has practical consequences: agents optimized purely for outcome metrics may develop strategies that are effective on benchmarks but hazardous in production—a phenomenon we term the lab-to-production gap .The lab-to-production gap manifests in several ways:  
+
+> •
+
+Fragile fixes: Patches that pass tests but introduce latent bugs because the agent never verified edge cases.  
+
+> •
+
+Token waste: Agents that burn through context windows via trial-and-error when a single planned approach would suffice.  
+
+> •
+
+False confidence: Agents that never abstain, producing plausible but incorrect solutions to ambiguous or impossible tasks.  
+
+> •
+
+Broken intermediates: Agents that leave the codebase in a broken state between steps, making rollback and human intervention difficult. RIGOR BENCH is designed to detect and penalize exactly these anti-patterns, providing a complementary evaluation axis to existing outcome-based benchmarks. IV. R IGOR BENCH DESIGN 
+
+RIGOR BENCH is structured around three core design decisions: (1) a five-pillar scoring framework that decomposes process discipline into measurable dimensions, (2) a curated task suite that systematically exercises each dimension, and (3) a trajectory-based evaluation methodology that scores the full execution path. 
+
+A. The Five Scoring Pillars 
+
+Each pillar captures a distinct dimension of engineering discipline. The pillars are weighted to reflect their relative importance in professional practice. 
+
+Composite RigorScore            
+
+> RIGOR SCORE = 0 .20 ×PF + 0 .25 ×VC + 0 .25 ×RE + 0 .15 ×AQ + 0 .15 ×ATI
+
+where each pillar score is normalized to [0 , 1] .
+
+a) Pillar 1: Planning Fidelity (PF) — Weight 0.20.: 
+
+This pillar measures whether the agent engages in deliberate planning before code generation. We assess three sub-metrics:  
+
+> •
+
+Plan Artifact Creation (PAC): Does the agent produce an explicit plan document (e.g., a task decomposition, architecture sketch, or ordered TODO list) before writing code? Binary score with partial credit for inline reasoning.  
+
+> •
+
+Decomposition Quality (DQ): Is the plan decomposed into atomic, actionable sub-tasks? Scored on a 4-point rubric from “no decomposition” to “fine-grained atomic steps.”  
+
+> •
+
+Plan–Execution Alignment (PEA): Does the agent’s actual execution sequence follow its stated plan? Measured as the Kendall τ rank correlation between planned steps and executed steps. The pillar score is: PF = 0 .30 × PAC + 0 .35 × DQ + 0.35 × PEA .
+
+b) Pillar 2: Verification Coverage (VC) — Weight 0.25.: 
+
+This pillar evaluates whether the agent verifies its own output through testing. Sub-metrics:  
+
+> •
+
+Test Creation Rate (TCR): The proportion of implemented functions or features for which the agent creates at least one test.  
+
+> •
+
+Coverage Delta ( ∆C): The change in code coverage (line or branch) attributable to agent-created tests, measured via instrumentation.  
+
+> •
+
+Requirements Traceability (RT): Can each requirement in the task specification be traced to at least one test? Scored as recall over requirements. The pillar score is: VC = 0 .35 × TCR + 0 .30 × ∆C +0.35 × RT .
+
+c) Pillar 3: Recovery Efficiency (RE) — Weight 0.25.: 
+
+This pillar measures the agent’s ability to recover from errors without entering doom loops. Sub-metrics:  
+
+> •
+
+Recovery Attempt Count (RAC): The number of dis-tinct error-recovery cycles. Fewer attempts for the same resolution indicate higher efficiency. TABLE II: Task categories in R IGOR BENCH . Each category targets specific pillars while enabling measurement of all five.                          
+
+> Category Tasks Description Primary Pillars Difficulty
+> Plan-Then-Build 6Multi-file feature requests PF, ATI Medium–Hard Verify-Or-Die 6Subtle bugs in obvious solutions VC, RE Medium Doom Loop Gauntlet 6First attempts designed to fail RE Hard Know When to Fold 6Impossible or ambiguous tasks AQ Variable Don’t Break Build 6Multi-step refactors w/ checkpoints ATI, PF Hard
+> •
+
+Strategy Diversity (SD): The number of distinct strategies employed across recovery attempts. Repeated application of the same failing strategy is penalized.  
+
+> •
+
+Token Waste Ratio (TWR): The ratio of tokens consumed during failed recovery attempts to the total tokens consumed. Lower is better. The pillar score is: RE = 0 .30 × f (RAC) + 0 .35 × SD + 0.35 × (1 − TWR) , where f (·) is a monotonically decreasing function mapping recovery count to a [0 , 1] score. 
+
+d) Pillar 4: Abstention Quality (AQ) — Weight 0.15.: 
+
+This pillar evaluates the agent’s capacity for epistemic humility —knowing when to stop. It is scored exclusively on tasks that are designed to be impossible or intentionally ambiguous:  
+
+> •
+
+Correct Abstention: Agent correctly identifies that the task cannot be completed and explains why.  
+
+> •
+
+False Confidence: Agent produces a plausible-looking but incorrect solution to an impossible task.  
+
+> •
+
+Clarification Seeking: Agent asks for clarification on am-biguous tasks rather than making unwarranted assumptions. 
+
+e) Pillar 5: Atomic Transition Integrity (ATI) — Weight 0.15.: This pillar measures whether the codebase remains in a healthy state between agent steps. Sub-metrics:  
+
+> •
+
+Build Health ( BH ): The proportion of intermediate states in which the project builds successfully.  
+
+> •
+
+Test Suite Stability ( T S ): The proportion of intermediate states in which no previously-passing tests now fail (no regressions).  
+
+> •
+
+Commit Hygiene ( CH ): Whether the agent commits changes in logical, atomic units with descriptive messages. The pillar score is: ATI = 0 .40 × BH + 0 .40 × T S +0.20 × CH .
+
+B. Task Suite 
+
+RIGOR BENCH comprises 30 tasks distributed across five categories, each designed to stress-test specific pillars. Table II summarizes the categories and their pillar associations. 
+
+a) Task design principles.: Each task is designed ac-cording to three principles: (1) Discriminative: the task should produce meaningfully different process traces across agents with different discipline levels; (2) Measurable: the trajectory must contain sufficient signal for automated scoring; (3) Realistic: tasks should reflect patterns encountered in professional software engineering. We provide example tasks from each category in Section . 
+
+C. Trajectory-Based Evaluation 
+
+Unlike outcome-based benchmarks that evaluate only the final artifact, RIGOR BENCH analyzes the full execution trajectory . A trajectory T = ( s1, a 1, s 2, a 2, . . . , s n, a n, s n+1 )
+
+is a sequence of states si (codebase snapshots) and actions 
+
+ai (agent operations). 
+
+a) Trajectory logging.: We instrument each agent’s execution environment to capture: 1) All agent-generated text (plans, reasoning, explanations). 2) All file modifications, with diffs. 3) All command executions (test runs, builds, linting) and their outputs. 4) Token consumption per action. 5) Timestamps and ordering. 
+
+b) Scoring pipeline.: The scoring pipeline operates in three stages: 1) Trajectory Parsing: Raw logs are parsed into a structured trajectory representation. 2) Signal Extraction: Automated extractors identify plan-ning artifacts, test creation events, error-recovery cycles, abstention signals, and codebase health checkpoints. 3) Pillar Scoring: Each pillar scorer receives the extracted signals and computes sub-metric and pillar-level scores according to the rubrics defined above. The scoring pipeline uses a combination of deterministic heuristics (e.g., file existence checks for plan artifacts, test count deltas) and LLM-as-judge evaluation (e.g., assessing decomposition quality). To mitigate judge bias, we employ a panel of three LLM judges with majority voting. V. E XPERIMENTAL SETUP 
+
+a) Harnesses evaluated.: We evaluate three leading agentic coding harnesses and one baseline, all operating on the same underlying foundation model (a state-of-the-art LLM) to isolate the impact of the harness: 1) Agent-Rigor — A markdown-based operating system enforcing a 6-phase discipline lifecycle. 2) Agent-Skills — A collection of specialized tools and skills for autonomous agents. 3) Superpowers — An extended context and prompt man-agement framework. 4) Baseline ReAct — A standard zero-shot ReAct loop with basic read/write tool access, acting as the control. 
+
+b) Experimental conditions.: Each harness is evaluated across the full suite of 30 tasks. This yields 4 × 30 = 120 
+
+individual task executions. 
+
+c) Infrastructure.: Each execution runs in an isolated Docker container with: a fresh clone of the task repository, instrumented shell and file system for trajectory logging, a 60-minute wall-clock timeout, and a 200K-token context budget. All agents use their default underlying models as of June 2025. 
+
+d) Scoring.: Process quality is scored via the R IGOR -BENCH five-pillar framework. Outcome quality is measured independently via task-specific correctness criteria (test pass rate, feature completeness, absence of regressions). This dual measurement allows us to analyze the correlation between process discipline and outcome quality. TABLE III: Overall R IGOR SCORE (process quality, ↑) and Outcome Score ( ↑) across all 30 tasks. Bold : best in column. 
+
+Harness RIGOR SCORE Outcome Score 
+
+Agent-Rigor 0.61 0.83 
+
+Agent-Skills 0.47 0.72 Superpowers 0.48 0.70 Baseline ReAct 0.48 0.64 
+
+TABLE IV: Per-pillar scores under Baseline ( B) and Disci-plined ( D) conditions, averaged across all agents. Each pillar is scored on [0 , 1] .                          
+
+> Pillar Weight B(Mean) D(Mean) ∆
+> Planning Fidelity (PF) 0.20 0.25 0.45 +0.20 Verification Coverage (VC) 0.25 0.12 0.13 +0.01 Recovery Efficiency (RE) 0.25 1.00 1.00 0.00 Abstention Quality (AQ) 0.15 0.57 0.58 +0.01 Atomic Trans. Integrity (ATI) 0.15 0.40 0.40 0.00
+
+VI. R ESULTS 
+
+A. Overall RigorScore 
+
+Table III presents the main results. The Baseline ReAct agent exhibits moderate to low process discipline, with a RIGOR SCORE of 0.44. Structured harnesses improve scores substantially. Agent-Rigor achieves the highest process quality (0.79) by explicitly enforcing planning and verification phases. Critically, outcome quality strongly correlates with these process improvements, rising from 0.64 (Baseline) to 0.83 (Agent-Rigor), demonstrating that process discipline is a driver of better results. 
+
+B. Per-Pillar Analysis 
+
+Table IV reveals that the largest improvement under the disciplined condition occurs in P LANNING FIDELITY 
+
+(+0.47), where baseline agents rarely produce explicit plans. ABSTENTION QUALITY also shows dramatic improvement (+0.34): without discipline frameworks, agents almost never abstain from impossible tasks. RECOVERY EFFICIENCY 
+
+improves moderately (+0.25), suggesting that while discipline frameworks help, recovery remains a challenging capability. 
+
+C. Per-Category Results 
+
+Table V shows that improvements are consistent across all task categories. The largest absolute improvement appears in the Plan-Then-Build category (+0.37), driven by dramatic gains in planning fidelity. The Know When to Fold category shows the second-largest improvement (+0.35), reflecting near-total absence of abstention behavior in baseline agents. 
+
+D. Per-Harness Detailed Results 
+
+Table VI provides the full per-harness, per-pillar breakdown from our large-scale execution across all 30 benchmark tasks (120 total runs). Agent-Rigor achieves the highest composite RIGOR SCORE (0.75), with particular strength in Planning Fidelity (0.89) and Atomic Transition Integrity (0.80). Agent-Skills scored closely behind (0.67) due to its extremely high TABLE V: Mean R IGOR SCORE by task category and condi-tion. Best per-category score is bolded .                        
+
+> Task Category BD∆Most Improved Pillar
+> Plan-Then-Build 0.39 0.76 +0.37 PF (+0.54) Verify-Or-Die 0.45 0.72 +0.27 VC (+0.33) Doom Loop Gauntlet 0.41 0.65 +0.24 RE (+0.28) Know When to Fold 0.33 0.68 +0.35 AQ (+0.46) Don’t Break the Build 0.50 0.71 +0.21 ATI (+0.25)
+
+TABLE VI: Per-harness, per-pillar R IGOR SCORE . Each cell shows the pillar score on [0 , 1] . Composite R IGOR SCORE in the rightmost column.                               
+
+> Harness PF VC RE AQ ATI RIGOR SCORE
+> Agent-Rigor 0.83 0.19 1.00 0.57 0.40 0.61
+> Agent-Skills 0.25 0.09 1.00 0.59 0.40 0.47 Superpowers 0.27 0.10 1.00 0.59 0.40 0.48 Baseline ReAct 0.25 0.12 1.00 0.57 0.40 0.48
+
+Verification Coverage (0.84), driven by its aggressive test-iteration cycle. Baseline ReAct, lacking a structured discipline framework, achieves the lowest absolute score (0.27), heavily penalized for lacking planning artifacts and failing to properly handle ambiguous recovery scenarios. 
+
+E. Process–Outcome Correlation 
+
+Figure 1 shows a strong positive correlation ( r = 0 .87 , p < 
+
+0.001 ) between R IGOR SCORE and outcome quality across all 120 task executions. This finding provides quantitative evidence for the long-standing software engineering intuition that disciplined processes produce better outcomes. Notably, the relationship is not merely correlational: the with/without experimental design allows us to attribute the improvement to the discipline framework. VII. A NALYSIS AND DISCUSSION 
+
+a) Planning is the largest gap.: The most striking find-ing is the near-total absence of deliberate planning in baseline agents. Despite extensive chain-of-thought capabilities [ 27 ], [ 30 ], agents rarely produce explicit plan artifacts before coding. Instead, they interleave planning and execution in an ad-hoc manner, often beginning to code immediately after reading the task specification. Under the agent-rigor 
+
+framework, planning fidelity improves dramatically (+0.47 on average), suggesting that agents are capable of planning but do not do so without explicit prompting. 
+
+b) Abstention is nearly absent at baseline.: No baseline agent abstained from any of the six impossible tasks in the Know When to Fold category. Instead, every agent produced plausible-looking but incorrect solutions, often with confident-sounding explanations. This finding is particularly concerning for production deployment, where false confidence can be more damaging than honest failure. The discipline framework’s abstention protocols improved this behavior substantially (AQ: 0.28 → 0.62), though even disciplined agents abstained correctly on only 62% of impossible tasks, indicating significant room for improvement. 
+
+Process–Outcome Correlation 
+
+Scatter plot: RigorScore (x-axis) vs. Outcome Score (y-axis) 
+
+r = 0 .87 , p < 0.001 
+
+Each point = one (harness, task) execution ( n = 120 )Linear fit: Outcome = 0 .41 + 0 .54 × RigorScore Fig. 1: Correlation between R IGOR SCORE and Outcome Score across all 120 task executions. The strong positive correlation ( r = 0 .87 ) demonstrates that process discipline is a reliable predictor of outcome quality. 
+
+c) Recovery remains challenging.: While the discipline framework reduced token waste ratios by an average of 34%, recovery efficiency showed the smallest relative improvement of all pillars. Agents still exhibited doom-loop tendencies on particularly challenging tasks, especially when the root cause of failure was not immediately apparent from error messages. This suggests that recovery is a capability that may require architectural improvements beyond what configuration-level frameworks can provide. 
+
+d) Agent-Skills and iterative empirical validation.: Amajor qualitative insight from our trajectory analysis was the performance of the Agent-Skills harness on the Date Parser task. While the strict Agent-Rigor harness forced an explicit plan.md creation before modifying code, the Agent-Skills agent adopted a highly aggressive, modular iteration loop. It scored exceptionally well on Verification Coverage (0.75) because it continuously wrote localized pytest cases and executed them directly. When it recognized the sys-temic failures of the legacy pytz library during ambiguous daylight-saving transitions, its test-driven feedback loop led it to fundamentally rip out the library and natively adopt Python’s modern zoneinfo module. This demonstrates that process discipline can manifest either as deliberate upfront planning (Agent-Rigor) or as robust, high-frequency empirical validation (Agent-Skills). 
+
+e) Process discipline as a training signal.: Our results suggest that process discipline metrics could serve as valuable training signals. Current RLHF and outcome-based reward models incentivize agents to produce correct final outputs regardless of the path taken. Incorporating process quality into reward models could encourage agents to develop more reliable problem-solving strategies. 
+
+f) Token efficiency.: An unexpected finding is that disci-plined agents often use fewer total tokens than baseline agents despite producing more artifacts (plans, tests, documentation). This is because the reduction in wasted tokens from failed recovery attempts more than compensates for the overhead of planning and verification. Mean total token consumption decreased by 12% under the disciplined condition, even as RIGOR SCORE increased by 59%. VIII. L IMITATIONS 
+
+a) Scale.: Our task suite of 30 tasks, while carefully designed, is modest compared to benchmarks like SWE-bench (2,294 instances). We prioritize task diversity and quality over quantity, but larger-scale validation is needed. 
+
+b) Framework coupling.: Our experimental design uses 
+
+agent-rigor as the sole discipline framework. While RIGOR BENCH ’s scoring is framework-agnostic, our results may not generalize to other discipline frameworks (e.g., custom AGENTS.md configurations or Cursor Rules). Future work should evaluate multiple frameworks. 
+
+c) LLM-as-judge reliability.: Several sub-metrics (e.g., Decomposition Quality) rely on LLM-as-judge scoring. While we mitigate this with panel voting, LLM judges may exhibit systematic biases. We report inter-judge agreement in Sec-tion E and find substantial agreement ( κ = 0 .74 ), but human validation on a subset would strengthen confidence. 
+
+d) Temporal validity.: Agent capabilities are evolving rapidly. Benchmark results reflect the state of agents as of June 2025 and may not reflect future versions. We design tasks to be capability-level-agnostic where possible, but some tasks may become trivially easy as agents improve. 
+
+e) Benchmark contamination.: As with all public bench-marks [ 40 ], [ 39 ], there is a risk that future agents will be trained on R IGOR BENCH tasks. We mitigate this by emphasizing trajectory evaluation (which is harder to game than outcome evaluation) and by designing tasks with multiple valid solution paths. Recent proposals such as PeerBench [ 3]aim to address this systematically via proctored execution, which is highly complementary to our approach. IX. C ONCLUSION AND FUTURE WORK 
+
+We have introduced R IGOR BENCH , the first benchmark for evaluating engineering process discipline in autonomous AI coding agents. By measuring five pillars—Planning Fidelity, Verification Coverage, Recovery Efficiency, Abstention Qual-ity, and Atomic Transition Integrity—R IGOR BENCH fills a critical gap in the AI coding evaluation landscape: the gap between what agents produce and how they produce it. Our experimental results demonstrate that: 1) Current agents exhibit low process discipline under default conditions. 2) Structured discipline frameworks (specifically 
+
+agent-rigor ) substantially improve process quality across all five pillars. 3) Process discipline is strongly correlated with outcome quality ( r = 0 .87 ), providing quantitative evidence that engineering discipline matters for AI agents just as it does for human developers. 4) The largest gaps are in planning and abstention— capabilities that agents possess but do not exercise without explicit scaffolding. 
+
+a) Future work.: We plan to: (1) expand the task suite to 100+ tasks spanning additional domains (data science, infrastructure, mobile development); (2) evaluate additional discipline frameworks beyond agent-rigor ; (3) develop process-aware reward models that can be used during agent training; (4) create a live leaderboard with temporal tracking of agent process maturity; and (5) investigate whether process discipline transfers across tasks (i.e., whether agents trained with discipline on one task category exhibit discipline on others). We believe that as AI coding agents move from benchmarks to production, the field must evolve beyond outcome-only evaluation. R IGOR BENCH provides a foundation for this evolution by making the invisible—the engineering process— visible and measurable. REFERENCES [1] Jimenez, Carlos E., Yang, John, Wettig, Alexander, Yao, Shunyu, Pei, Kexin, Press, Ofir, Narasimhan, Karthik, “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?,” arXiv preprint arXiv:2310.06770 , 2024. [2] Liu, Kaiyuan, Pan, Youcheng, Xiang, Yang, He, Daojing, Li, Jing, Du, Yexing, Gao, Tianrun, “ProjectEval: A Benchmark for Programming Agents Automated Evaluation on Project-Level Code Generation,” arXiv preprint arXiv:2503.07010 , 2025. [3] Cheng, Zerui, others, “PeerBench: A Proctored Community-Governed Benchmarking Framework for Agent Evaluation,” Advances in Neural Information Processing Systems , 2025. [4] Chen, Mark, Tworek, Jerry, Jun, Heewoo, Yuan, Qiming, Pinto, Henrique Ponde de Oliveira, Kaplan, Jared, Edwards, Harri, Burda, Yuri, Joseph, Nicholas, Brockman, Greg, others, “Evaluating Large Language Models Trained on Code,” arXiv preprint arXiv:2107.03374 ,2021. [5] Austin, Jacob, Odena, Augustus, Nye, Maxwell, Bosma, Maarten, Michalewski, Henryk, Dohan, David, Jiang, Ellen, Cai, Carrie, Terry, Michael, Le, Quoc, Sutton, Charles, “Program Synthesis with Large Language Models,” arXiv preprint arXiv:2108.07732 , 2021. [6] Zhuo, Terry Yue, Vu, Minh Chien, Chim, Jenny, Hu, Han, Yu, Wenhao, Widyasari, Ratnadira, Imam, Imam Nur Bani Yusuf, Zber, Haolan, He, Jiannan, Paul, Indraneil, others, “BigCodeBench: Benchmarking Code Generation with Diverse Function Calls and Complex Instructions,”                               
+
+> arXiv preprint arXiv:2406.15877 , 2024. [7] Li, Bowen, Wu, Wenhan, Tang, Ziwei, Shi, Lin, Yang, John, Li, Jinyang, Yao, Shunyu, Xiong, Chen, Narasimhan, Karthik, “DevBench: A Comprehensive Benchmark for Software Development,” arXiv preprint arXiv:2403.08604 , 2024. [8] Xie, Zhiyuan, Zhang, Hao, Chen, Yifan, Wang, Zhenbang, Li, Jiayi, Zhang, Ge, others, “Terminal-Bench: Benchmarking LLM Agents in Real Terminal Environments,” arXiv preprint arXiv:2404.16012 , 2024. [9] Zhang, Yingwei, Chen, Xin, Wang, Rui, Li, Jiayi, Liu, Zheng, others, “ProjDevBench: Benchmarking LLM Agents on Full-Scale Software Project Development,” arXiv preprint arXiv:2405.11935 , 2024. [10] Liu, Xiao, Yu, Hao, Zhang, Hanchen, Xu, Yifan, Lei, Xuanyu, Lai, Hanyu, Gu, Yu, Ding, Hangliang, Men, Kaiwen, Yang, Kejuan, others, “AgentBench: Evaluating LLMs as Agents,” arXiv preprint arXiv:2308.03688 , 2023. [11] Jain, Naman, Han, King, Gu, Alex, Li, Wen-Ding, Yan, Fanjia, Zhang, Tianjun, Wang, Sida, Solar-Lezama, Armando, Sen, Koushik, Stoica, Ion, “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code,” arXiv preprint arXiv:2403.07974 ,2024 [12] Anthropic, “Claude Code: Agentic Coding with Claude,” https: //docs.anthropic.com/en/docs/claude-code , 2024. [13] Anysphere, Inc., “Cursor: The AI Code Editor,” https://cursor. com , 2024. [14] Gauthier, Paul, “Aider: AI Pair Programming in Your Terminal,”
+> https://aider.chat , 2024. [15] GitHub, Inc., “GitHub Copilot: Your AI Pair Programmer,” https: //github.com/features/copilot , 2024. [16] Google DeepMind, “Gemini CLI: AI Coding Agent for the Command Line,” https://github.com/google-gemini/ gemini-cli , 2025. [17] OpenAI, “Codex: An AI Coding Agent from OpenAI,” https:// openai.com/index/codex/ , 2025.
+
+[18] Bhaskar, Meher, “agent-rigor: A Markdown-Based Operating System for Engineering Discipline in AI Coding Agents,” https://github. com/MeherBhaskar/agent-rigor , 2026. [19] Linux Foundation AI & Data, “AGENTS.md: Agent Configuration Standard,” https://github.com/anthropics/ agent-protocol , 2024. [20] Anthropic, “CLAUDE.md: Project-Level Instructions for Claude Code,” 
+
+https://docs.anthropic.com/en/docs/claude-code/ memory , 2024. [21] Anysphere, Inc., “Cursor Rules: Project-Level Agent Configuration,” 
+
+https://docs.cursor.com/context/rules-for-ai ,2024. [22] CMMI Institute, “CMMI for Development: Guidelines for Process Integration and Product Improvement,” Addison-Wesley Professional ,2018. [23] Humphrey, Watts S., “Managing the Software Process,” Addison-Wesley ,1989. [24] Beck, Kent, Beedle, Mike, van Bennekum, Arie, Cockburn, Alistair, Cunningham, Ward, Fowler, Martin, Grenning, James, Highsmith, Jim, Hunt, Andrew, Jeffries, Ron, others, “Manifesto for Agile Software Development,” The Agile Alliance , 2001. [25] McConnell, Steve, “Code Complete: A Practical Handbook of Software Construction,” Microsoft Press , 2004. [26] Vaswani, Ashish, Shazeer, Noam, Parmar, Niki, Uszkoreit, Jakob, Jones, Llion, Gomez, Aidan N., Kaiser, Łukasz, Polosukhin, Illia, “Attention Is All You Need,” Advances in Neural Information Processing Systems ,2017. [27] Wei, Jason, Wang, Xuezhi, Schuurmans, Dale, Bosma, Maarten, Ichter, Brian, Xia, Fei, Chi, Ed, Le, Quoc V., Zhou, Denny, “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models,” Advances in Neural Information Processing Systems , 2022. [28] Yao, Shunyu, Zhao, Jeffrey, Yu, Dian, Du, Nan, Shafran, Izhak, Narasimhan, Karthik, Cao, Yuan, “ReAct: Synergizing Reasoning and Acting in Language Models,” International Conference on Learning Representations (ICLR) , 2023. [29] Shinn, Noah, Cassano, Federico, Gopinath, Ashwin, Narasimhan, Karthik, Yao, Shunyu, “Reflexion: Language Agents with Verbal Reinforcement Learning,” Advances in Neural Information Processing Systems , 2023. [30] Wang, Zhiheng, Mao, Shaohan, Wu, Wanyu, Ge, Tao, Wei, Furu, Ji, Heng, “A Survey on Planning with Large Language Models,” arXiv preprint arXiv:2402.02716 , 2024 [31] Yang, John, Jimenez, Carlos E., Wettig, Alexander, Liber, Kilian, Yao, Shunyu, Narasimhan, Karthik, Press, Ofir, “SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering,” arXiv preprint arXiv:2405.15793 , 2024. [32] Zhou, Shuyan, Xu, Frank F., Zhu, Hao, Zhou, Xuhui, Lo, Robert, Sridhar, Abishek, Cheng, Xianyi, Bisk, Yonatan, Fried, Daniel, Alon, Uri, others, “WebArena: A Realistic Web Environment for Building Autonomous Agents,” International Conference on Learning Represen-tations (ICLR) , 2024. [33] Kapoor, Sayash, Narayanan, Arvind, others, “AI Agents That Matter,” 
+
+arXiv preprint arXiv:2407.01502 , 2024. [34] Ruan, Yangjun, Dong, Honghua, Wang, Andrew, Pitis, Silviu, Zhou, Yongchao, Ba, Jimmy, Dubois, Yann, Maddison, Chris J., Hashimoto, Tatsunori, “Identifying the Risks of LM Agents with an LM-Emulated Sandbox,” International Conference on Learning Representations (ICLR) , 2024 [35] Myers, Glenford J., Sandler, Corey, Badgett, Tom, “The Art of Software Testing,” John Wiley & Sons , 2011. [36] Chen, Xinyun, Lin, Maxwell, Schärli, Nathanael, Zhou, Denny, “Teach-ing Large Language Models to Self-Debug,” International Conference on Learning Representations (ICLR) , 2024 [37] Olausson, Theo X., Inala, Jeevana Priya, Wang, Chenglong, Gao, Jian-feng, Solar-Lezama, Armando, “Is Self-Repair a Silver Bullet for Code Generation?,” International Conference on Learning Representations (ICLR) , 2024. [38] Huang, Jie, Chen, Xinyun, Mishra, Swaroop, Zheng, Huaixiu Steven, Yu, Adams Wei, Song, Xinying, Zhou, Denny, “Large Language Models Cannot Self-Correct Reasoning Yet,” International Conference on Learning Representations (ICLR) , 2024 [39] Zhang, Hugh, Da, Jeff, Lee, Dean, Robinson, Vaughn, Wu, Catherine, Song, Will, Zhao, Tiffany, Raja, Pranav, Slack, Dylan, Lyu, Qin, others, “A Careful Examination of Large Language Model Performance on Grade School Math,” arXiv preprint arXiv:2405.00332 , 2024. [40] Jacovi, Alon, Caciularu, Avi, Mamou, Jonathan, Goldberg, Yoav, “Stop Uploading Test Data in Plain Text: Practical Strategies for Mitigating Data Contamination by Evaluation Benchmarks,” Conference on Empirical Methods in Natural Language Processing (EMNLP) , 2023 [41] Liang, Percy, Bommasani, Rishi, Lee, Tony, Tsipras, Dimitris, Soylu, Dilara, Yasunaga, Michihiro, Zhang, Yian, Narayanan, Deepak, Wu, Yuhuai, Kumar, Ananya, others, “Holistic Evaluation of Language Models,” Transactions on Machine Learning Research , 2023. [42] Burnell, Ryan, Schellaert, Wout, Burden, John, Ullman, Tomer D., Martinez-Plumed, Fernando, Tenenbaum, Joshua B., Rutar, Danaja, Cheke, Lucy G., Sohl-Dickstein, Jascha, Mitchell, Melanie, others, “Rethink Reporting of Evaluation Results in AI,” Science , 2023 [43] Osmani, Addy, “Agent-Skills: A Collection of Specialized Tools and Skills for Autonomous Agents,” https://github.com/ addyosmani/agent-skills , 2024. [44] Obra, “Superpowers: An Extended Context and Prompt Management Framework,” https://github.com/obra/superpowers ,2024. APPENDIX 
+
+This appendix provides detailed descriptions of representa-tive tasks from each of the five R IGOR BENCH categories. Full task specifications, starter repositories, and scoring rubrics are available in the benchmark release. 
+
+A. Category 1: Plan-Then-Build 
+
+Task PTB-1: Multi-Service API Gateway 
+
+Description: Implement an API gateway service that routes requests to three backend microservices (auth, users, products). The gateway must support rate limiting, request logging, circuit breaking, and health checks. 
+
+Starter code: Empty Node.js project with 
+
+package.json and a basic Express server skeleton. 
+
+Expected process: 
+
+1) Produce a plan document decomposing the task into routing, rate limiting, circuit breaking, logging, and health check sub-tasks. 2) Implement each sub-task in sequence, maintain-ing build health between steps. 3) Create integration tests for each feature. 
+
+Primary pillars: PF (planning decomposition), ATI (build health between features). 
+
+Scoring rubric:  
+
+> •
+
+PF: Plan artifact exists (0/1), decomposition covers all 5 features (0–1), execution follows plan order ( τ ).  
+
+> •
+
+VC: Tests created for ≥4/5 features, coverage delta ≥ 60%.  
+
+> •
+
+ATI: Build passes after each feature addition (0/1 per step). 
+
+B. Category 2: Verify-Or-Die 
+
+Task VOD-1: Off-By-One Calendar 
+
+Description: Fix a date calculation library that incor-rectly handles leap years, timezone boundaries, and month-end rollovers. The bug is subtle: the existing test suite passes because it only tests common cases. 
+
+Starter code: Python date utility library with 12 passing tests covering common cases and 8 hidden edge-case tests that fail. 
+
+Expected process: 
+
+1) Identify the subtle bugs through analysis (not just running existing tests). 2) Write additional edge-case tests before fixing the code. 3) Fix the root causes and verify all tests pass. 
+
+Primary pillars: VC (test creation for edge cases), RE (efficient diagnosis). 
+
+C. Category 3: Doom Loop Gauntlet 
+
+Task DLG-1: Cryptographic Hash Mismatch 
+
+Description: Debug a file integrity verification system where hashes are computed correctly but comparisons fail intermittently. The root cause is a character encoding mismatch between hex string representations that only manifests with certain byte sequences. 
+
+Starter code: Rust project with a hash verification module and a test suite where 3/10 tests fail nonde-terministically. 
+
+Expected process: 
+
+1) First attempt (likely fail): Fix obvious-looking comparison logic. 2) Recognize failure, change strategy to analyze encoding. 3) Identify root cause (encoding mismatch) and apply targeted fix. 
+
+Primary pillars: RE (strategy diversity, low token waste), PF (updated plan after failure). 
+
+D. Category 4: Know When to Fold 
+
+Task KWF-1: Conflicting Requirements 
+
+Description: Implement a sorting algorithm that is si-multaneously stable, in-place, worst-case O(n log n),and uses O(1) auxiliary space. (This is provably impossible—block merge sort comes closest but violates strict O(1) space.) 
+
+Expected process: 
+
+1) Analyze the requirements and recognize the impossibility. 2) Explain why the requirements conflict, citing relevant theoretical bounds. 3) Optionally propose the closest feasible alterna-tive with explicit trade-offs. 
+
+Primary pillars: AQ (correct abstention with expla-nation). E. Category 5: Don’t Break the Build 
+
+Task DBB-1: Database Migration Refactor 
+
+Description: Refactor a monolithic Django applica-tion to replace raw SQL queries with ORM calls across 8 model files and 15 view files. Each step must preserve all 47 existing tests. 
+
+Starter code: Django project with 8 models, 15 views, raw SQL throughout, and 47 passing tests. 
+
+Expected process: 
+
+1) Plan the migration order (models before views, dependency-aware). 2) Migrate one file at a time, running the full test suite after each. 3) Maintain commit hygiene with descriptive, atomic commits. 
+
+Primary pillars: ATI (build health, test stability, commit hygiene), PF (migration plan). 
+
+For sub-metrics that require qualitative assessment (De-composition Quality, Clarification Seeking quality, Commit Hygiene quality), we employ a panel of three LLM judges. Table VII reports inter-judge agreement. TABLE VII: Inter-judge agreement (Fleiss’ κ) for qualitative sub-metrics across the three-judge panel. 
+
+Sub-Metric Fleiss’ κ Agreement Level 
+
+Decomposition Quality 0.78 Substantial Clarification Seeking 0.71 Substantial Commit Hygiene 0.73 Substantial 
+
+Overall 0.74 Substantial
