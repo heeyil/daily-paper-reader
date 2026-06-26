@@ -6,80 +6,79 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-25
-- 运行时间：2026-06-25 22:08:13 UTC
+- 最新运行日期：2026-06-26
+- 运行时间：2026-06-26 21:30:04 UTC
 - 运行状态：成功
-- 本次总论文数：20
-- 精读区：8
+- 本次总论文数：19
+- 精读区：7
 - 速读区：12
 
 ### 今日简报（AI）
-今日筛选20篇论文，精读两篇高分研究聚焦语言模型测试时扩展与编程任务模型路由。最值得关注方向：高效可训练语言模型测试时扩展（Local Branch Routing，10.0分）和面向编程任务的智能体路由框架（Agent-as-a-Router，9.0分）。建议优先精读这两篇，快速追踪模型路由与测试时扩展的前沿进展。
-- 详情：[/202606/25/README](/202606/25/README)
+今日精选2篇精读：智能体世界模型与自主数据合成，还有3篇速读聚焦机器人数据治理、资源感知代理及强化学习评估。  
+最值得看《Qwen-AgentWorld》的世界模型驱动通用智能体方向，以及《Autodata》的自主数据科学家合成高质量数据方法。  
+普通读者可优先关注机器人数据生命周期治理与计算机用代理的自主评估，这些能直接提升智能体系统的可靠性与效率。
+- 详情：[/202606/26/README](/202606/26/README)
 
 ### 精读区论文标签
-1. [Efficient and Trainable Language Model Test-Time Scaling via Local Branch Routing](/202606/25/2606.25354v1-efficient-and-trainable-language-model-test-time-scaling-via-local-branch-routing)  
-   标签：评分：10.0/10、query:moe-routing
-   evidence：通过局部分支路由实现token级测试时扩展
-2. [Agent-as-a-Router: Agentic Model Routing for Coding Tasks](/202606/25/2606.22902v2-agent-as-a-router-agentic-model-routing-for-coding-tasks)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：智能体模型路由用于编码任务，将路由形式化为C-A-F循环
-3. [Self-Compacting Language Model Agents](/202606/25/2606.23525v1-self-compacting-language-model-agents)  
+1. [Qwen-AgentWorld: Language World Models for General Agents](/202606/26/2606.24597v1-qwen-agentworld-language-world-models-for-general-agents)  
+   标签：评分：10.0/10、query:agent-lsh
+   evidence：语言世界模型支持长链思维推理和长期规划
+2. [Autodata: An agentic data scientist to create high quality synthetic data](/202606/26/2606.25996v2-autodata-an-agentic-data-scientist-to-create-high-quality-synthetic-data)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：智能体自压缩以处理长轨迹
-4. [ReM-MoA: Reasoning Memory Sustains Mixture-of-Agents Scaling](/202606/25/2606.24437v1-rem-moa-reasoning-memory-sustains-mixture-of-agents-scaling)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：记忆增强的混合智能体框架中使用多样化记忆路由进行LLM推理
-5. [Forget to Improve: On-Device LLM-Agent Continual Learning via Budget-Curated Memory](/202606/25/2606.25115v1-forget-to-improve-on-device-llm-agent-continual-learning-via-budget-curated-memory)  
+   evidence：通过元优化实现智能体自我改进
+3. [The Red Queen Gödel Machine: Co-Evolving Agents and Their Evaluators](/202606/26/2606.26294v1-the-red-queen-gdel-machine-co-evolving-agents-and-their-evaluators)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：通过预算管理记忆实现设备端代理的自我改进
-6. [ActPlane: Programmable OS-Level Policy Enforcement for Agent Harnesses](/202606/25/2606.25189v1-actplane-programmable-os-level-policy-enforcement-for-agent-harnesses)  
+   evidence：自我改进智能体与共演评估器
+4. [Autoformalization of Agent Instructions into Policy-as-Code](/202606/26/2606.26649v1-autoformalization-of-agent-instructions-into-policy-as-code)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：面向智能体安全壳的操作系统级策略执行
-7. [RAVEN: Long-Horizon Reasoning & Navigation with a Visuo-Spatio-Temporal Memory](/202606/25/2606.25206v1-raven-long-horizon-reasoning--navigation-with-a-visuo-spatio-temporal-memory)  
+   evidence：将智能体指令自动形式化为正式验证的策略
+5. [AgentX: Towards Agent-Driven Self-Iteration of Industrial Recommender Systems](/202606/26/2606.26859v1-agentx-towards-agent-driven-self-iteration-of-industrial-recommender-systems)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：面向机器人长视界推理与导航的记忆系统
-8. [Semantic Consistency Policy Optimization for Reinforcement Learning of LLM Agents](/202606/25/2606.25852v1-semantic-consistency-policy-optimization-for-reinforcement-learning-of-llm-agents)  
+   evidence：代理驱动的工业推荐系统自迭代
+6. [Advancing Omnimodal Embodied Agents from Isolated Skills to Everyday Physical Autonomy](/202606/26/2606.27251v1-advancing-omnimodal-embodied-agents-from-isolated-skills-to-everyday-physical-autonomy)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：针对LLM智能体长视界稀疏奖励任务的强化学习
+   evidence：持久具身智能体，具有长程自主性和层次化架构
+7. [Empowering GUI Agents via Autonomous Experience Exploration and Hindsight Experience Utilization for Task Planning](/202606/26/2606.27330v1-empowering-gui-agents-via-autonomous-experience-exploration-and-hindsight-experience-utilization-for-task-planning)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：自主经验探索与事后经验利用，实现长周期任务规划
 
 ### 速读区论文标签
-1. [Skill-MAS: Evolving Meta-Skill for Automatic Multi-Agent Systems](/202606/25/2606.18837v2-skill-mas-evolving-meta-skill-for-automatic-multi-agent-systems)  
+1. [RoboLineage: Agent-Native Data Lifecycle Governance Across Robot Policy Iterations](/202606/26/2606.22142v1-robolineage-agent-native-data-lifecycle-governance-across-robot-policy-iterations)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：演化元技能用于自动多智能体系统
-2. [Efficient and Sound Probabilistic Verification for AI Agents](/202606/25/2606.20510v1-efficient-and-sound-probabilistic-verification-for-ai-agents)  
+   evidence：机器人策略迭代的智能体原生数据生命周期
+2. [A Stackelberg Framework for Resource-Aware LLM Agents: Learning, Repair, and Conditional Guarantees](/202606/26/2606.23026v1-a-stackelberg-framework-for-resource-aware-llm-agents-learning-repair-and-conditional-guarantees)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：用于控制AI代理的概率验证
-3. [Reinforcement Learning for Computer-Use Agents with Autonomous Evaluation](/202606/25/2606.24515v1-reinforcement-learning-for-computer-use-agents-with-autonomous-evaluation)  
+   evidence：资源感知的LLM智能体策略学习与修复
+3. [Reinforcement Learning for Computer-Use Agents with Autonomous Evaluation](/202606/26/2606.24515v1-reinforcement-learning-for-computer-use-agents-with-autonomous-evaluation)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：使用自主视觉语言评估进行强化学习微调，实现GUI智能体自改进
-4. [VisCritic: Visual State Comparison as Process Reward for GUI Agents](/202606/25/2606.24525v1-viscritic-visual-state-comparison-as-process-reward-for-gui-agents)  
+   evidence：使用自主视觉语言模型评估作为强化学习奖励信号
+4. [Are We Ready For An Agent-Native Memory System?](/202606/26/2606.24775v1-are-we-ready-for-an-agent-native-memory-system)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：针对长程GUI智能体的视觉过程奖励验证方法
-5. [Uncertainty Decomposition for Clarification Seeking in LLM Agents](/202606/25/2606.19559v1-uncertainty-decomposition-for-clarification-seeking-in-llm-agents)  
+   evidence：系统实验研究LLM智能体记忆系统，支持持久存储、更新和整合，使智能体能够随时间改进
+5. [AgentMeter: Evaluating Model-CLI Matching for CLI-Based Local Task-Solving Agents](/202606/26/2606.21140v1-agentmeter-evaluating-model-cli-matching-for-cli-based-local-task-solving-agents)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：基于提示的不确定性分解使LLM智能体能够主动寻求澄清，增强可控性
-6. [Formal Verification of Learned Multi-Agent Communication Policies via Decision Tree Distillation](/202606/25/2606.19632v1-formal-verification-of-learned-multi-agent-communication-policies-via-decision-tree-distillation)  
+   evidence：通过CLI评估来控制和驾驭agent
+6. [Composing Verifiable Conceptual Models via Building Blocks: Towards Design-Time Verification of Agentic AI Workflows](/202606/26/2606.21565v1-composing-verifiable-conceptual-models-via-building-blocks-towards-design-time-verification-of-agentic-ai-workflows)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：多代理通信策略的形式化验证框架，提供安全性控制手段
-7. [PACMS: Submodular Context Selection as a Pluggable Engine for LLM Agents](/202606/25/2606.20047v1-pacms-submodular-context-selection-as-a-pluggable-engine-for-llm-agents)  
+   evidence：智能体工作流的设计时验证
+7. [Complex Autonomous UAV Task Execution and Decision-Making With s(CASP)](/202606/26/2606.23866v1-complex-autonomous-uav-task-execution-and-decision-making-with-scasp)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：面向LLM智能体的上下文选择方法，用于处理复杂环境
-8. [Whose Agent Are You? Multi-Layer Fingerprinting and Attribution of Autonomous Web Agents](/202606/25/2606.20910v1-whose-agent-are-you-multi-layer-fingerprinting-and-attribution-of-autonomous-web-agents)  
+   evidence：符号化无人机智能体执行多步自主任务
+8. [ReM-MoA: Reasoning Memory Sustains Mixture-of-Agents Scaling](/202606/26/2606.24437v1-rem-moa-reasoning-memory-sustains-mixture-of-agents-scaling)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：多层指纹与归因技术，用于控制和识别自主web智能体
-9. [Enhancing Decision-Making with Large Language Models through Multi-Agent Fictitious Play](/202606/25/2606.19308v1-enhancing-decision-making-with-large-language-models-through-multi-agent-fictitious-play)  
+   evidence：基于记忆增强的混合智能体架构，用于驾驭LLM智能体
+9. [AutoRAS: Learning Robust Agentic Systems with Primitive Representations](/202606/26/2606.21445v1-autoras-learning-robust-agentic-systems-with-primitive-representations)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：基于多代理LLM的决策范式解决立场纠缠问题
-10. [PulseCX: Breaking the Closed-World Assumption in Real-Time CX](/202606/25/2606.21124v1-pulsecx-breaking-the-closed-world-assumption-in-real-time-cx)  
+   evidence：通过原语表示自动设计鲁棒的多智能体系统
+10. [Hallucination as Context Drift: Synchronization Protocols for Multi-Agent LLM Systems](/202606/26/2606.21666v1-hallucination-as-context-drift-synchronization-protocols-for-multi-agent-llm-systems)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：使用自进化记忆的异步代理处理实时客户体验
-11. [Dissecting Agentic RAG: A Component Ablation for Multi-Hop QA with a Local 7B Model](/202606/25/2606.21553v1-dissecting-agentic-rag-a-component-ablation-for-multi-hop-qa-with-a-local-7b-model)  
+   evidence：多智能体同步协议
+11. [Select-to-Act: Hierarchical Reinforcement Learning via Adaptive Language Guidance](/202606/26/2606.22350v1-select-to-act-hierarchical-reinforcement-learning-via-adaptive-language-guidance)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：研究Agentic RAG管道组件，与复杂环境中利用agent相关
-12. [RigorBench: Benchmarking Engineering Process Discipline in Autonomous AI Coding Agents](/202606/25/2606.22678v1-rigorbench-benchmarking-engineering-process-discipline-in-autonomous-ai-coding-agents)  
+   evidence：利用语言指导的层次强化学习实现长期规划
+12. [HoloAgent-0: A Unified Embodied Agent Framework with 3D Spatial Memory](/202606/26/2606.23565v1-holoagent-0-a-unified-embodied-agent-framework-with-3d-spatial-memory)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：度量自主编码代理的过程规范以更好地利用
+   evidence：统一的具身智能体框架用于真实世界部署
 
 
 <div class="dpr-home-promo-card">
