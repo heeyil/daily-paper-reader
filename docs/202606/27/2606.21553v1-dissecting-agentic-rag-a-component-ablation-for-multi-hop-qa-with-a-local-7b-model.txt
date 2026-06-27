@@ -1,0 +1,223 @@
+Title: Dissecting Agentic RAG: A Component Ablation for Multi-Hop QA with a Local 7B Model
+
+URL Source: https://arxiv.org/pdf/2606.21553v1
+
+Published Time: Tue, 23 Jun 2026 01:17:18 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Dissecting Agentic RAG: A Component Ablation for Multi-Hop QA with a Local 7B Model 
+
+Sheroz Shaikh 
+
+Independent Researcher 
+
+shaikh.sheroz07@gmail.com 
+
+Abstract 
+
+Agentic retrieval-augmented generation (RAG) systems combine iterative reasoning loops, query decomposition, and adaptive retrieval to tackle multi-hop question answering. However, the contribution of each component remains poorly understood, particularly under resource-constrained settings using only local language models. Many agentic designs add adaptive re-trieval routing and deeper retrieval loops on the assumption that the added complexity helps. To test whether it does, we run a controlled abla-tion study of a full agentic RAG pipeline evalu-ated on 5,000 questions from the HotpotQA dis-tractor development set (Yang et al., 2018) us-ing a local 7B parameter model (Qwen2.5-7B-Instruct; Qwen Team 2025). Our full pipeline achieves EM=53.2% and F1=61.6%, compared to a single-pass dense-retrieval baseline of EM=43.1% and F1=54.0%. Across eight abla-tion conditions, we find that: (1) fixed hybrid retrieval via reciprocal rank fusion consistently outperforms rule-based adaptive routing (+1.8 EM, +1.9 F1), as the routing heuristic over-routes to BM25 by firing on named entities present in nearly all multi-hop sub-questions; (2) two retrieval iterations over the decomposed sub-questions capture 95% of the gains of five, with no meaningful benefit from deeper loops; and (3) query decomposition and cross-encoder reranking each contribute statistically signifi-cant but smaller gains ( p < 0.01 and p < 0.001 
+
+respectively). Taken together, on a fixed local-model budget the simpler and fixed choices turn out to be competitive with or better than their adaptive versions: most of the gain comes from running a short retrieval loop, not from adap-tive routing or from many iterations. We use no proprietary APIs or large-scale compute. 
+
+1 Introduction 
+
+Multi-hop question answering (QA) requires rea-soning across multiple documents, chaining inter-mediate facts before reaching a final answer (Yang et al., 2018). Standard retrieval-augmented gener-ation (RAG) (Lewis et al., 2020), which performs a single retrieval pass before synthesis, struggles in this setting because one retrieval step rarely sur-faces the full evidence chain needed for complex questions. Agentic RAG addresses this limitation by em-bedding retrieval inside an iterative reasoning loop. Drawing on the ReAct framework (Yao et al., 2023), these pipelines allow a language model to alternate between reasoning and retrieval, refining its evidence gathering based on what it has already found. Query decomposition strategies (Press et al., 2023) and adaptive retrieval routing (Jiang et al., 2023) further augment these pipelines, in principle tailoring retrieval behavior to each query’s charac-teristics. Although agentic RAG is now widely adopted, these systems are complex, and the relative con-tribution of each component is not well under-stood. Existing work largely demonstrates end-to-end gains on multi-hop benchmarks (Trivedi et al., 2023) but rarely isolates individual components in a controlled manner. Ablation studies that do exist typically use large proprietary models, making it unclear whether the findings transfer to resource-constrained deployments. We address this gap with a systematic component-level ablation of an agentic RAG pipeline, run entirely on a local Qwen2.5-7B-Instruct model with no proprietary API calls. We run eight controlled ablation conditions on 5,000 HotpotQA distractor questions, varying the re-trieval step depth, the presence of query decomposi-tion, the reranking stage, and the retrieval strategy. Our aim is empirical rather than a new model. Us-ing these ablations and paired significance tests, we ask whether each added component actually helps on a local 7B model. For two of them the answer is no: deeper retrieval loops stop helping after about two steps, and the rule-based router does worse 1
+
+> arXiv:2606.21553v1 [cs.CL] 19 Jun 2026
+
+than simply using fixed hybrid retrieval. Our main contributions are: • A controlled component ablation of a full agentic RAG pipeline on a single local 7B model (Qwen2.5-7B-Instruct), with paired sig-nificance tests and bootstrap confidence inter-vals over 5,000 HotpotQA questions. • Fixed hybrid retrieval (reciprocal rank fusion over dense and sparse signals) does better than the rule-based adaptive router meant to re-place it, by +1.8 EM and +1.9 F1 ( p < 0.001 ). The router fires on named entities, which ap-pear in almost every multi-hop sub-question, so it sends most queries to BM25 and loses the complementary dense signal. The per-strategy scores that seem to favor routing appear to be a selection-bias effect (Section 6). • Two retrieval iterations capture 95% of the gain from five ( p < 0.001 vs. one step), and deeper loops add nothing measurable. The large improvement over the baseline comes from running the loop at all, not from running it many times. • Query decomposition ( p = 0 .004 ) and cross-encoder reranking ( p < 0.001 ) each con-tribute statistically significant but smaller im-provements. Reranking is retained uncondi-tionally; decomposition improves accuracy but, unlike reranking, carries a non-trivial la-tency cost. 
+
+2 Related Work 
+
+Retrieval-Augmented Generation. Lewis et al. (2020) introduced RAG, pairing a dense retriever with a generative model for knowledge-intensive NLP tasks. Dense passage retrieval (Karpukhin et al., 2020) and late-interaction models (Khattab and Zaharia, 2020) advanced the retrieval com-ponent. Hybrid retrieval via reciprocal rank fu-sion (Cormack et al., 2009), combining dense and sparse (Robertson and Zaragoza, 2009) rankings, has shown consistent gains across tasks and serves as a key baseline in our study. 
+
+Iterative and Agentic Retrieval. IRCoT (Trivedi et al., 2023) interleaves chain-of-thought reasoning steps with retrieval, showing that itera-tive evidence accumulation substantially improves multi-hop QA. Self-Ask (Press et al., 2023) decomposes complex questions into answerable sub-questions before retrieval. ReAct (Yao et al., 2023) provides a general framework for language model agents that alternate between reasoning and action. We adopt a plan-and-execute variant of this idea, in which sub-questions are generated up front by the decomposer and then retrieved iteratively, rather than interleaving a fresh reasoning step before every retrieval. FLARE (Jiang et al., 2023) introduces retrieval triggered by model uncertainty, a conceptual precursor to adaptive retrieval routing. 
+
+Multi-Hop Question Answering. HotpotQA (Yang et al., 2018) is a widely-used benchmark for multi-hop reasoning over Wikipedia paragraphs. The distractor setting provides 10 paragraphs per question (2 relevant, 8 distractors), requiring mod-els to identify evidence while ignoring noise. Purpose-built systems report substantially higher absolute scores on the full benchmark; for instance, the Hierarchical Graph Network (Fang et al., 2020) reaches answer EM 69.2 and F1 82.2 on the dis-tractor test set. Our work focuses on understand-ing which components drive gains under a fixed small model, rather than maximizing absolute per-formance. 
+
+3 System Architecture 
+
+Our pipeline integrates four stages: query decom-position, an iterative retrieval loop over the decom-posed sub-questions, adaptive retrieval with cross-encoder reranking, and answer synthesis. Figure 1 shows the pipeline overview. 
+
+Query Decomposition. Given an input question 
+
+q, an LLM prompt decomposes q into a sequence of simpler sub-questions {q1, . . . , q k} that can each be answered from a single document. This decom-position is produced once before the retrieval loop and provides structured guidance for iterative re-trieval. 
+
+Iterative Retrieval Loop. Rather than interleav-ing a fresh LLM reasoning step before every re-trieval, as in the original ReAct formulation (Yao et al., 2023), our pipeline follows a plan-and-execute design. The decomposition stage produces the complete set of sub-questions up front, and the loop then iterates over them in dependency or-der. At each step t ∈ { 1, . . . , T } (default T = 5 ), the agent takes the next sub-question, selects a re-trieval strategy, retrieves and reranks passages, and 2Decomposer Synthesizer Question Answer   
+
+> Retrieval Loop (max Tsub-questions)
+> Select strategy
+> Retrieve
+> Rerank
+> Add to context
+
+Figure 1: Our agentic RAG pipeline. A decomposer breaks the input question into sub-questions, which are processed by an iterative retrieval loop. For each sub-question, the loop selects a retrieval strategy (dense/sparse/hybrid), retrieves, reranks with a cross-encoder, and appends the new evidence to a shared context. Once all sub-questions are processed (up to T steps), a single synthesizer call produces the final answer. The model is not queried between retrieval steps. 
+
+appends the new evidence to a shared working con-text. The loop runs until all sub-questions are pro-cessed, the context budget is reached, or T steps elapse. A single synthesis call then produces the an-swer from the accumulated evidence; the language model is not queried between retrieval steps. This design isolates the effect of iterative evidence ac-cumulation from that of per-step reasoning, which is precisely the variable our step-depth ablation manipulates. 
+
+Adaptive Retrieval. Each retrieval query is routed to one of three strategies by a rule-based heuristic selector: queries containing named enti-ties, dates, or numbers are routed to sparse (BM25); short or conceptual queries to dense; all others to hybrid. • Dense : bi-encoder retrieval using BGE-small-en-v1.5 (Xiao et al., 2023) over a Qdrant vec-tor index. • Sparse : BM25 (Robertson and Zaragoza, 2009) over an inverted index. • Hybrid : reciprocal rank fusion (Cormack et al., 2009) combining dense and sparse rank-ings (equal weights). The top-20 candidates from the selected strategy are passed to a cross-encoder reranker (ms-marco-MiniLM-L-6-v2) which produces a final top-5 pas-sage set for the LLM context. 
+
+Synthesis. After the retrieval loop completes, all accumulated evidence passages are concatenated and passed to the LLM with a synthesis prompt that instructs it to produce a short factual answer in the style expected by HotpotQA evaluation. 
+
+Implementation. All language model calls use Qwen2.5-7B-Instruct (Qwen Team, 2025) served locally via Ollama on an NVIDIA RTX A6000 (49GB VRAM). No proprietary or cloud API calls are made. Vector storage uses Qdrant with FastEm-bed embeddings. Evaluation traces are logged to DuckDB for reproducibility. Our code and evalua-tion traces are publicly available. 1
+
+4 Experimental Setup 
+
+Dataset. We evaluate on the HotpotQA distractor development set (Yang et al., 2018), using a fixed random sample of 5,000 questions drawn with a fixed seed; the sampled question identifiers are released with our code. The distractor setting pro-vides 10 candidate paragraphs per question (2 gold, 8 distractors), making it a challenging retrieval and reasoning benchmark. We use the same fixed sam-ple across all conditions to ensure comparability. 
+
+Baseline. Our baseline performs single-pass dense retrieval (top-10 passages, BGE-small-en-v1.5) followed by a single-step synthesis prompt, with no query decomposition, no iterative loop, and no cross-encoder reranking. This represents a standard non-agentic RAG configuration. 
+
+Metrics. We report Exact Match (EM) and token-level F1 computed using the official HotpotQA evaluation script. We also report mean per-question latency in milliseconds. All runs use 
+
+EVAL_NUM_WORKERS=1 to ensure latency accuracy; Ollama serializes GPU inference, so multiple work-ers inflate latency measurements without improv-ing throughput. To assess statistical reliability, we 
+
+> 1https://github.com/sherozshaikh/ agentic-rag-eval
+
+3compute 95% percentile bootstrap confidence inter-vals (10,000 resamples) for each system. Because all conditions are evaluated on the same 5,000 ques-tions, pairwise comparisons are paired per ques-tion, and we test them with paired tests: McNe-mar’s exact test for Exact Match and the Wilcoxon signed-rank test for F1. All reported p-values are one-sided in the direction of the stated hypothesis, and every reported comparison remains significant under Holm-Bonferroni correction for the five key comparisons. 
+
+Ablation Conditions. We run eight ablation con-ditions, each modifying a single component of the full pipeline while keeping all others at default: 1. steps-1 : retrieval loop depth capped at 1 step (single iteration). 2. steps-2 : retrieval loop depth capped at 2 steps. 3. steps-3 : retrieval loop depth capped at 3 steps. 4. no-decomp : Query decomposition disabled; raw question used directly in the retrieval loop. 5. no-reranker : Cross-encoder reranking dis-abled; raw top-5 retrieval candidates used di-rectly. 6. dense-only : Adaptive router replaced with fixed dense retrieval for all queries. 7. sparse-only : Adaptive router replaced with fixed BM25 retrieval for all queries. 8. hybrid-only : Adaptive router replaced with fixed hybrid RRF retrieval for all queries. 
+
+5 Results 
+
+5.1 Main Results 
+
+Table 1 compares our full agentic pipeline and best ablation variant (hybrid-only) against our non-agentic baseline. The full agentic pipeline improves over the single-pass baseline by +10.1 EM and +7.6 F1 (p < 0.001 ). The baseline differs from the full pipeline in several respects at once (single-pass dense retrieval, no decomposition, no reranking), so this gap measures the value of the complete pipeline rather than any single component; the ab-lations in Section 6 isolate the individual contri-butions. The hybrid-only variant outperforms the 
+
+System EM F1 Lat. (ms) 
+
+Baseline 43.1 54.0 546 Agentic (full) 53.2 61.6 5,642 
+
+Hybrid-only 55.0 63.5 5,688 
+
+Table 1: Main results on our 5,000-question HotpotQA sample. All systems use Qwen2.5-7B-Instruct locally. Hybrid-only replaces adaptive routing with fixed RRF fusion. baseline 
+
+> no-decomp
+> no-reranker
+> steps-1
+> steps-2
+> steps-3
+> dense-only
+> sparse-only
+> hybrid-only
+> agentic
+> (full)
+> 40
+> 45
+> 50
+> 55
+> 60
+> 65
+> Score (%)  55.0
+> 63.5
+> EM
+> F1
+
+Figure 2: EM and F1 for all ablation variants. Hybrid-only exceeds the full adaptive pipeline; steps-1 shows the largest single-component drop. 
+
+full adaptive pipeline by +1.8 EM and +1.9 F1 (p < 0.001 ), a result that contradicts the motiva-tion for adaptive routing and is analyzed in detail in Section 6. For broader context, purpose-built systems re-port higher absolute scores on the full distractor benchmark; the Hierarchical Graph Network (Fang et al., 2020), for example, reaches answer EM 69.2 and F1 82.2 on the test set. Our hybrid-only system reaches EM=55.0% and F1=63.5% using only a local 7B model and no proprietary APIs. 2
+
+5.2 Ablation Study 
+
+Table 2 presents all eight ablation conditions along-side the full pipeline and baseline. Figure 2 visualizes EM and F1 across all vari-ants. Figure 3 shows the performance trend across retrieval loop depths. 
+
+6 Analysis 
+
+Hybrid retrieval outperforms adaptive routing. 
+
+For 79.2% of questions the top-ranked evidence passage is retrieved by sparse (BM25) routing, compared with 16.3% by hybrid and only 4.5% by dense retrieval (Table 3 and Figure 4). This 
+
+> 2Our results are on a 5,000-question random sample of the HotpotQA distractor development set. The HGN figures are on the full test set with a different system design. No direct benchmark comparison is intended.
+
+4Variant EM (%) F1 (%) Latency (ms) ∆EM ∆F1 
+
+Baseline 43.1 54.0 546 −10.1 −7.6 Agentic full 53.2 61.6 5,642 ref. ref. 
+
+no-decomp 51.9 60.1 2,546 −1.4 −1.4 no-reranker 51.5 59.4 5,648 −1.7 −2.1 steps-1 46.1 53.9 5,426 −7.1 −7.6 steps-2 52.9 61.3 5,628 −0.3 −0.3 steps-3 53.2 61.6 5,643 ±0.0 ±0.0 dense-only 53.0 61.9 5,623 −0.2 +0.3 sparse-only 53.0 61.2 5,681 −0.2 −0.4 
+
+hybrid-only 55.0 63.5 5,688 +1.8 +1.9 
+
+Table 2: Ablation results on 5,000 HotpotQA distractor questions. ∆EM and ∆F1 are relative to the full agentic pipeline. Latency is mean per-question wall-clock time ( EVAL_NUM_WORKERS=1 ). 95% bootstrap CIs (10k resamples): baseline EM [41.8, 44.5], agentic_full EM [51.8, 54.6], hybrid-only EM [53.6, 56.4]. 1 2 3 5 (full) 
+
+> Retrieval Loop Depth (steps)
+> 45.0
+> 47.5
+> 50.0
+> 52.5
+> 55.0
+> 57.5
+> 60.0
+> 62.5
+> 65.0
+> Score (%)
+> plateau
+> EM
+> F1
+
+Figure 3: EM and F1 as a function of retrieval loop depth (1–3 steps vs. full pipeline at 5 steps). Performance plateaus after 2 steps, capturing 95% of the gain from the full loop. 
+
+skew follows directly from the routing heuristic, which fires on named entities, dates, and numbers: such features appear in nearly every HotpotQA sub-question, since multi-hop questions inherently involve entity chains. The selector therefore routes most sub-questions to BM25 (72% of all retrieval calls), and BM25-retrieved passages dominate the final evidence. Despite BM25’s dominance in routing decisions, the hybrid-only condition, which always applies re-ciprocal rank fusion, outperforms the full pipeline by +1.8 EM ( p < 0.001 , McNemar’s exact test). The per-stratum EM in Table 3 appears to favor BM25, but this pattern likely reflects selection bias: the entity heuristic tends to route structurally simpler, entity-anchored queries to BM25, leaving harder queries for the other strategies. When hy-
+
+Strategy Count % EM F1 
+
+sparse (BM25) 3,961 79.2 53.9 62.0 hybrid (RRF) 814 16.3 50.9 59.8 dense 225 4.5 50.7 59.8 
+
+Table 3: Distribution of the retrieval strategy that produced the top-ranked evidence passage, with per-stratum EM and F1, in the full agentic pipeline ( n =5,000 ). Despite BM25 achieving higher per-stratum EM, forcing hybrid RRF for all queries (hybrid-only) outperforms the full adaptive pipeline overall. 0 20 40 60 80 
+
+> Percentage of queries (%)
+> Dense
+> Hybrid
+> (RRF)
+> Sparse
+> (BM25)
+> 4.5%
+> 16.3%
+> 79.2%
+> Routing strategy distribution
+> (agentic full, n=5,000)
+
+Figure 4: Distribution of the strategy that produced the top-ranked evidence passage in the full agentic pipeline. Sparse (BM25) dominates because the entity-firing heuristic routes most sub-questions to it. 
+
+brid retrieval is applied uniformly to all queries, the complementary dense signal improves results even for entity-heavy questions, since multi-hop evidence chains involve paraphrase and conceptual overlap that lexical BM25 cannot capture. Rule-based routing heuristics designed for single-hop re-trieval thus appear insufficient for multi-hop ques-tion answering, and fixed hybrid retrieval is the more robust choice here. 5Two retrieval iterations suffice. Reducing the retrieval loop to a single step (steps-1) incurs a 
+
+−7.1 EM penalty, representing the largest single-component drop in our study ( p < 0.001 , McNe-mar’s exact test), and confirming that iterative ev-idence accumulation is the primary driver of per-formance gains over the baseline. The two-step variant (steps-2) recovers to within 0.3 EM of the full five-step pipeline ( p < 0.001 vs. steps-1), and steps-3 is statistically indistinguishable from the full pipeline ( ±0.0 EM, with 95% confidence inter-vals overlapping completely). Table 4 presents representative cases in which a second retrieval iteration recovers the correct an-swer. In the first example, the initial step retrieves partial evidence about Detroit techno but fails to identify the relevant time period; the second itera-tion resolves this gap. In the second example, a sin-gle step returns “insufficient information,” whereas the second iteration successfully locates the answer. For the two-hop structure of most HotpotQA dis-tractor questions, the evidence chain is therefore resolved within two retrieval iterations, and limit-ing the loop to two or three steps yields negligible accuracy loss. The latency savings from fewer steps are modest, however, because each additional retrieval is inexpensive relative to the two LLM calls (decomposition and synthesis) that dominate per-question cost (see below). 
+
+Decomposition and reranking each contribute significantly. Removing query decomposition costs 1.4 EM ( p = 0 .004 , McNemar’s exact test); removing the cross-encoder reranker costs 1.7 EM (p < 0.001 ). Both effects are statistically signif-icant but smaller than the iteration-depth finding, because the iterative retrieval loop partially com-pensates: later retrievals can surface evidence that earlier steps failed to find. The two components differ sharply in cost, however. Decomposition re-quires an extra LLM call and roughly doubles per-question latency; the no-decomp condition runs at 2,546 ms versus 5,642 ms for the full pipeline, as it skips this call and issues a single retrieval for the raw question. Reranking, by contrast, adds only one cross-encoder pass over 20 candidates and negligible latency. We therefore retain rerank-ing unconditionally, and recommend decomposi-tion when accuracy is the priority, while noting it is the first component to drop under a tight la-tency budget. We note one caveat in interpreting the decomposition result: because retrieval steps follow the decomposed sub-questions, disabling decomposition also collapses the loop to a single retrieval. The −1.4 EM for no-decomp therefore reflects the combined loss of decomposition guid-ance and multi-step retrieval, rather than decompo-sition in isolation; the step-depth ablation isolates the iteration effect directly. 
+
+Individual retrieval strategies are near-equivalent within the full pipeline. Dense-only and sparse-only both achieve EM=53.0%, which is effectively identical to the full adaptive pipeline (53.2%). This result indicates that within an iterative retrieval loop, the choice of per-step retrieval strategy is less consequential than the depth of the loop itself. Repeated retrieval across multiple sub-question formulations compensates for the blind spots of any individual strategy, reducing the sensitivity of performance to routing decisions. 
+
+7 Limitations 
+
+This study has several limitations. First, we evalu-ate on a 5,000-question random sample of the Hot-potQA distractor development set rather than the complete set; while we use a fixed sample for repro-ducibility, results may differ slightly on the full set. Second, all experiments use a single model family (Qwen2.5-7B-Instruct); findings may not general-ize to other architectures or parameter scales. Third, HotpotQA is a single benchmark with a specific two-hop reasoning structure; tasks requiring longer evidence chains or numerical reasoning may ex-hibit different component rankings. Finally, latency measurements are specific to our hardware (RTX A6000, Ollama serving) and should not be gener-alized to other deployment configurations. Each condition is evaluated in a single run with greedy decoding (temperature 0); our confidence intervals capture variation due to question sampling but not residual run-to-run variation in model generation. All statistics, including bootstrap confidence inter-vals and paired significance tests, are computed on our 5,000-question sample; results on the full development set may differ slightly. 
+
+Conclusion 
+
+We present a systematic ablation study of an agen-tic RAG pipeline for multi-hop question answer-ing, using a local 7B model throughout. In our setup the simpler and fixed choices were also the stronger ones. Our key findings are: (1) fixed 6Question Gold steps-1 (wrong) steps-2 (correct)         
+
+> Acid Brass fuses traditional brass band music with acid house and Detroit techno, a type that generally includes the first techno productions by Detroit-based artists during what years?
+> the 1980s and early 1990s 1980s 1980s and early 1990s
+> What song written by Leonard McNally with music composed by James Hook was the favorite song of the King of the United Kingdom of Great Britain and Ireland?
+> The Lass of Richmond Hill Low confidence, insufficient information The Lass of Richmond Hill
+
+Table 4: Qualitative examples where steps-2 recovers the correct answer but steps-1 fails. In both cases the first retrieval step surfaces partial evidence; the second step resolves the missing link. Question text is lightly condensed for space; gold answers and model outputs are verbatim. 
+
+hybrid retrieval outperforms rule-based adaptive routing ( p < 0.001 ), because the heuristic over-routes to BM25 by firing on named entities present in nearly all multi-hop sub-questions; (2) two re-trieval iterations capture 95% of the gains from five ( p < 0.001 vs. one step), enabling efficient deployment without meaningful accuracy loss; and (3) query decomposition ( p = 0 .004 ) and cross-encoder reranking ( p < 0.001 ) each contribute statistically significant but smaller gains, partially compensated by the iterative loop. The hybrid-only variant of our pipeline achieves EM=55.0% F1=63.5% on our 5K HotpotQA evaluation sample with no proprietary API calls. For anyone building agentic RAG under similar resource constraints, the practical takeaways are simple: prefer fixed hybrid retrieval over rule-based routing, and cap retrieval depth at two or three steps. 
+
+Acknowledgments 
+
+Experiments were conducted on personal hardware. No external funding or institutional support was received. 
+
+References 
+
+Gordon V. Cormack, Charles L.A. Clarke, and Stefan Buettcher. 2009. Reciprocal rank fusion outperforms condorcet and individual rank learning methods. In 
+
+Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Infor-mation Retrieval , pages 758–759. Yuwei Fang, Siqi Sun, Zhe Gan, Rohit Pillai, Shuo-hang Wang, and Jingjing Liu. 2020. Hierarchical graph network for multi-hop question answering. In 
+
+Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP) ,pages 8823–8838. Zhengbao Jiang, Frank F. Xu, Luyu Gao, Zhiqing Sun, Qian Liu, Jane Dwivedi-Yu, Yiming Yang, Jamie Callan, and Graham Neubig. 2023. Active retrieval augmented generation. In Proceedings of the 2023 Conference on Empirical Methods in Natural Lan-guage Processing , pages 7969–7992. Vladimir Karpukhin, Barlas O˘ guz, Sewon Min, Patrick Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. 2020. Dense passage retrieval for open-domain question answering. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing , pages 6769–6781. Omar Khattab and Matei Zaharia. 2020. ColBERT: Effi-cient and effective passage search via contextualized late interaction over BERT. In Proceedings of the 43rd International ACM SIGIR Conference on Re-search and Development in Information Retrieval ,pages 39–48. Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir Karpukhin, Naman Goyal, Hein-rich Küttler, Mike Lewis, Wen-tau Yih, Tim Rock-täschel, Sebastian Riedel, and Douwe Kiela. 2020. Retrieval-augmented generation for knowledge-intensive NLP tasks. In Advances in Neural Infor-mation Processing Systems , volume 33, pages 9459– 9474. Ofir Press, Muru Zhang, Sewon Min, Ludwig Schmidt, Noah A. Smith, and Mike Lewis. 2023. Measuring and narrowing the compositionality gap in language models. In Findings of the Association for Computa-tional Linguistics: EMNLP 2023 , pages 5687–5712. Qwen Team. 2025. Qwen2.5 technical report. Preprint ,arXiv:2412.15115. Stephen Robertson and Hugo Zaragoza. 2009. The probabilistic relevance framework: BM25 and be-yond. Foundations and Trends in Information Re-trieval , 3(4):333–389. Harsh Trivedi, Niranjan Balasubramanian, Tushar Khot, and Ashish Sabharwal. 2023. Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions. In Proceedings of the 
+
+761st Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 10014–10037. Shitao Xiao, Zheng Liu, Peitian Zhang, Niklas Muen-nighoff, Defu Lian, and Jian-Yun Nie. 2023. C-Pack: Packed resources for general chinese embeddings. 
+
+Preprint , arXiv:2309.07597. Zhilin Yang, Peng Qi, Saizheng Zhang, Yoshua Ben-gio, William W. Cohen, Ruslan Salakhutdinov, and Christopher D. Manning. 2018. HotpotQA: A dataset for diverse, explainable multi-hop question answer-ing. In Proceedings of the 2018 Conference on Em-pirical Methods in Natural Language Processing ,pages 2369–2380. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations .
+
+8
