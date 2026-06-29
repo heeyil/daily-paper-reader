@@ -19,6 +19,9 @@ const {
   __setRunSelectionState,
   __initializeConferenceChoices,
   __getSelectedConferenceYearPairs,
+  __setConferenceStatsSnapshot,
+  __buildConferenceChoiceRowsHtml,
+  formatConferenceYearStatsLabel,
   runSelectedQuickFetch,
 } = global.window.SubscriptionsManager.__test;
 
@@ -161,9 +164,11 @@ function testConferenceCurrentYearDisabledForPendingSources() {
   assert.equal(isConferenceYearSelectable('NeurIPS', previousYear), true);
   assert.equal(isConferenceYearSelectable('NIPS', previousYear), true);
   assert.equal(isConferenceYearSelectable('ICML', previousYear), true);
-  // 2026 available only for ICLR and AAAI
+  // 2026 available sources are explicitly whitelisted; pending/future sources stay disabled
   assert.equal(isConferenceYearSelectable('ICLR', currentYear), true);
   assert.equal(isConferenceYearSelectable('AAAI', currentYear), true);
+  assert.equal(isConferenceYearSelectable('OSDI', currentYear), true);
+  assert.equal(isConferenceYearSelectable('IEEE S&P', currentYear), true);
   assert.equal(isConferenceYearSelectable('CVPR', currentYear), false);
   assert.equal(isConferenceYearSelectable('ECCV', currentYear), false);
   assert.equal(isConferenceYearSelectable('IJCAI', currentYear), false);
@@ -179,6 +184,31 @@ function testConferenceDefaultYearOnlySelects2025() {
   const pairs = __getSelectedConferenceYearPairs().sort();
   // 不再默认勾选，由用户手动选择
   assert.deepEqual(pairs, []);
+}
+
+function testConferenceYearChoicesShowStoredAndAcceptedCounts() {
+  __setRunSelectionState({ conferencePairs: ['ICLR:2025'] });
+  __setConferenceStatsSnapshot({
+    generated_at: '2026-06-30T00:00:00Z',
+    items: [
+      {
+        conference_key: 'iclr',
+        conference_label: 'ICLR',
+        year: 2025,
+        official_accepted_count: 379,
+        stored_total_count: 401,
+        stored_accepted_count: 379,
+        stored_rejected_count: 22,
+      },
+    ],
+  });
+
+  assert.equal(formatConferenceYearStatsLabel('ICLR', '2025'), '2025 (401/379)');
+  const html = __buildConferenceChoiceRowsHtml();
+  assert.ok(html.includes('ICLR'));
+  assert.ok(html.includes('2025 (401/379)'));
+  assert.ok(html.includes('拒稿 22'));
+  assert.ok(html.includes('aria-pressed="true"'));
 }
 
 function testQuickRunUnsavedMessageClearsAfterSave() {
@@ -300,6 +330,7 @@ async function testQuickFetchIncludesAnySelectedProfile() {
   await testRunProfileQuickFetchPassesProfileTagToWorkflow();
   testConferenceCurrentYearDisabledForPendingSources();
   testConferenceDefaultYearOnlySelects2025();
+  testConferenceYearChoicesShowStoredAndAcceptedCounts();
   testQuickRunUnsavedMessageClearsAfterSave();
   testConferenceRunDisabledWhenUnsaved();
   await testQuickFetchIncludesAnySelectedProfile();

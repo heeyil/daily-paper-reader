@@ -42,6 +42,8 @@ window.SubscriptionsManager = (function () {
   let draftConfig = null;
   let hasUnsavedChanges = false;
   let isSavingDraftConfig = false;
+  let conferenceStatsSnapshot = { schema_version: 1, generated_at: '', items: [], byKey: new Map() };
+  let conferenceStatsLoadPromise = null;
 
   const defaultPromptTemplate = [
     'You are a retrieval planning assistant.',
@@ -108,10 +110,11 @@ window.SubscriptionsManager = (function () {
     'IEEE S&P',
     'NDSS',
   ];
+  const CONFERENCE_STATS_SNAPSHOT_URL = 'app/conference-stats.json';
   // 2026 年会议数据可用性（截至 2026-06）：
-  // 有数据: ICLR 2026, AAAI 2026, NDSS 2026
-  // 无数据: CVPR/OSDI/SOSP/IEEE S&P 2026（论文 PDF 尚未全量公开或未上传）
-  const CONFERENCE_2026_AVAILABLE = new Set(['ICLR', 'AAAI', 'NDSS']);
+  // 有数据: ICLR 2026, AAAI 2026, OSDI 2026, IEEE S&P 2026, NDSS 2026
+  // 无数据: CVPR/SOSP 2026（论文 PDF 尚未全量公开或未上传）
+  const CONFERENCE_2026_AVAILABLE = new Set(['ICLR', 'AAAI', 'OSDI', 'IEEE S&P', 'NDSS']);
   // ECCV 是双年会议（偶数年）
   const BIENNIAL_EVEN_CONFERENCES = new Set(['ECCV']);
   const CONFERENCES_WITH_PENDING_CURRENT_YEAR = new Set([
@@ -132,6 +135,121 @@ window.SubscriptionsManager = (function () {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+  const toSafeInteger = (value) => {
+    const num = parseInt(String(value ?? '').trim(), 10);
+    return Number.isFinite(num) ? num : 0;
+  };
+  const normalizeConferenceStatsKey = (value) => {
+    const compact = normalizeText(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!compact) return '';
+    if (['ieee_s_p', 'ieee_sp', 's_p', 'sp'].includes(compact)) return 'ieee_sp';
+    if (compact === 'nips') return 'neurips';
+    return compact;
+  };
+  const normalizeConferenceStatsSnapshot = (snapshot) => {
+    const rawItems = Array.isArray(snapshot && snapshot.items) ? snapshot.items : [];
+    const byKey = new Map();
+    const items = rawItems
+      .map((item) => {
+        const conferenceKey = normalizeConferenceStatsKey(item && (item.conference_key || item.conference_label));
+        const year = toSafeInteger(item && item.year);
+        if (!conferenceKey || !year) return null;
+        return {
+          id: normalizeText(item.id || `${conferenceKey}-${year}`),
+          conference_key: conferenceKey,
+          conference_label: normalizeText(item.conference_label || conferenceKey.toUpperCase()),
+          year,
+          official_accepted_count: toSafeInteger(item.official_accepted_count),
+          stored_total_count: toSafeInteger(item.stored_total_count),
+          stored_accepted_count: toSafeInteger(item.stored_accepted_count),
+          stored_rejected_count: toSafeInteger(item.stored_rejected_count),
+          stored_other_count: toSafeInteger(item.stored_other_count),
+          generated_at: normalizeText(item.generated_at || snapshot.generated_at || ''),
+        };
+      })
+      .filter(Boolean);
+    items.forEach((item) => byKey.set(`${item.conference_key}:${item.year}`, item));
+    return {
+      schema_version: toSafeInteger(snapshot && snapshot.schema_version) || 1,
+      generated_at: normalizeText(snapshot && snapshot.generated_at),
+      items,
+      byKey,
+    };
+  };
+  const setConferenceStatsSnapshot = (snapshot) => {
+    conferenceStatsSnapshot = normalizeConferenceStatsSnapshot(snapshot || {});
+  };
+  const getConferenceYearStats = (conference, year) => {
+    const conferenceKey = normalizeConferenceStatsKey(conference);
+    const yearNum = toSafeInteger(year);
+    if (!conferenceKey || !yearNum) return null;
+    return conferenceStatsSnapshot.byKey.get(`${conferenceKey}:${yearNum}`) || null;
+  };
+  const formatConferenceYearStatsLabel = (conference, year) => {
+    const yearText = normalizeText(year);
+    const stats = getConferenceYearStats(conference, yearText);
+    if (!stats) return yearText;
+    return `${yearText} (${stats.stored_total_count}/${stats.official_accepted_count})`;
+  };
+  const formatConferenceRejectLabel = (stats) => {
+    if (!stats) return '';
+    return `拒稿 ${stats.stored_rejected_count}`;
+  };
+  const buildConferenceChoiceRowsHtml = () => QUICK_RUN_CONFERENCES
+    .map((name) => {
+      const yearButtons = getConferenceYearOptions()
+        .map((year) => {
+          const active = selectedConferenceYearPairs.has(`${name}:${year}`);
+          const reason = getConferenceYearDisabledReason(name, year);
+          const disabled = !!reason;
+          const stats = getConferenceYearStats(name, year);
+          const classes = [
+            'dpr-choice-pill',
+            stats ? 'has-conference-stats' : '',
+            active ? 'is-active' : '',
+            disabled ? 'is-disabled' : '',
+          ].filter(Boolean).join(' ');
+          const rejectLabel = formatConferenceRejectLabel(stats);
+          return `<button
+            class="${classes}"
+            type="button"
+            data-conference="${escapeHtml(name)}"
+            data-conference-year="${escapeHtml(year)}"
+            aria-pressed="${active ? 'true' : 'false'}"
+            ${disabled ? `disabled title="${escapeHtml(reason)}"` : ''}
+          ><span class="dpr-choice-pill-main">${escapeHtml(formatConferenceYearStatsLabel(name, year))}</span>${stats ? `<span class="dpr-choice-pill-reject">${escapeHtml(rejectLabel)}</span>` : ''}</button>`;
+        })
+        .join('');
+      return `<div class="dpr-conference-choice-row">
+        <div class="dpr-conference-choice-label">${escapeHtml(name)}</div>
+        <div class="dpr-choice-row">${yearButtons}</div>
+      </div>`;
+    })
+    .join('');
+  const loadConferenceStatsSnapshot = () => {
+    if (conferenceStatsLoadPromise) return conferenceStatsLoadPromise;
+    if (typeof fetch !== 'function') return Promise.resolve(null);
+    conferenceStatsLoadPromise = fetch(CONFERENCE_STATS_SNAPSHOT_URL, { cache: 'force-cache' })
+      .then((response) => {
+        if (!response || !response.ok) {
+          throw new Error(`conference stats load failed: ${response ? response.status : 'no-response'}`);
+        }
+        return response.json();
+      })
+      .then((snapshot) => {
+        setConferenceStatsSnapshot(snapshot);
+        renderConferenceChoiceButtons();
+        return snapshot;
+      })
+      .catch((error) => {
+        console.warn('[DPR] 会议统计快照加载失败', error);
+        return null;
+      });
+    return conferenceStatsLoadPromise;
+  };
   const MAX_PROFILE_TAG_CHARS = 12;
   const sanitizeProfileTag = (value) => {
     const base = normalizeText(value);
@@ -534,29 +652,7 @@ window.SubscriptionsManager = (function () {
   const renderConferenceChoiceButtons = () => {
     const conferenceWrap = document.getElementById('arxiv-admin-conference-choice-group');
     if (conferenceWrap) {
-      conferenceWrap.innerHTML = QUICK_RUN_CONFERENCES
-        .map((name) => {
-          const yearButtons = getConferenceYearOptions()
-            .map((year) => {
-              const active = selectedConferenceYearPairs.has(`${name}:${year}`);
-              const reason = getConferenceYearDisabledReason(name, year);
-              const disabled = !!reason;
-              return `<button
-                class="dpr-choice-pill${active ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}"
-                type="button"
-                data-conference="${name}"
-                data-conference-year="${year}"
-                aria-pressed="${active ? 'true' : 'false'}"
-                ${disabled ? `disabled title="${escapeHtml(reason)}"` : ''}
-              >${year}</button>`;
-            })
-            .join('');
-          return `<div class="dpr-conference-choice-row">
-            <div class="dpr-conference-choice-label">${name}</div>
-            <div class="dpr-choice-row">${yearButtons}</div>
-          </div>`;
-        })
-        .join('');
+      conferenceWrap.innerHTML = buildConferenceChoiceRowsHtml();
     }
   };
 
@@ -1560,6 +1656,7 @@ window.SubscriptionsManager = (function () {
     }
     initializeConferenceChoices();
     renderConferenceChoiceButtons();
+    loadConferenceStatsSnapshot();
     if (quickRunStartBtn && !quickRunStartBtn.dataset.defaultTitle) {
       quickRunStartBtn.setAttribute('data-default-title', quickRunStartBtn.textContent || '');
     }
@@ -1732,6 +1829,9 @@ window.SubscriptionsManager = (function () {
       buildDefaultSourceBackend: (sourceKey, config) => buildDefaultSourceBackend(sourceKey, cloneDeep(config || {})),
       normalizePaperSources: (values, options) => normalizePaperSources(values, options),
       isConferenceYearSelectable: (conference, year) => isConferenceYearSelectable(conference, year),
+      __setConferenceStatsSnapshot: (snapshot) => setConferenceStatsSnapshot(snapshot),
+      __buildConferenceChoiceRowsHtml: () => buildConferenceChoiceRowsHtml(),
+      formatConferenceYearStatsLabel: (conference, year) => formatConferenceYearStatsLabel(conference, year),
       __setQuickRunMsgEl: (el) => {
         quickRunMsgEl = el || null;
       },
