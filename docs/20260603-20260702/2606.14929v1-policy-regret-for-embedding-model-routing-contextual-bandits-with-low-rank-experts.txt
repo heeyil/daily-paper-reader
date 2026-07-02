@@ -1,0 +1,3678 @@
+Title: Policy Regret for Embedding Model Routing: Contextual Bandits with Low-Rank Experts
+
+URL Source: https://arxiv.org/pdf/2606.14929v1
+
+Published Time: Tue, 16 Jun 2026 00:13:00 GMT
+
+Number of Pages: 44
+
+Markdown Content:
+# Policy Regret for Embedding Model Routing: Contextual Bandits with Low-Rank Experts 
+
+Yan Dai ∗ Negin Golrezaei † Patrick Jaillet ‡
+
+Abstract 
+
+Modern recommendation systems increasingly rely on dynamically routing diverse queries to multiple embedding models. Despite its practical significance, this problem remains poorly understood under realistic conditions like adversarial queries, bandit feedback, and limited observability of models. We formalize embedding model routing as an adversarial contextual linear bandit with low-rank experts, where contexts are queries, actions are items, and experts are the embedding models working on low-rank latent representation spaces. We first establish that standard regret notions suffer from structural misspecification or statistical intractability, and we identify a log-quadratic policy class that is expressive enough to capture query-dependent model routing, yet structured enough to allow efficient online learning. Second, we propose a policy gradient algorithm called Hypentropy Policy Gradient (HPG). It provably adapts to the unknown low-rank structure under incomplete information and attains eO(s√M T ) linearized policy regret – where s, M , and T are the intrinsic rank of the experts, the number of models, and the number of rounds – thus avoiding a curse of dimensionality. Finally, we also provide an computationally efficient and parameter-free implementation of HPG. 
+
+# 1 Introduction 
+
+Modern recommendation systems and search engines rely heavily on dense embedding models for information retrieval (Yi et al., 2019; Karpukhin et al., 2020). These models map queries and items into low-dimensional “embedding spaces,” enabling efficient retrieval based on the similarity scores (i.e., inner products). However, representing the full diversity of distinct user queries within a single embedding space is fundamentally limited: Due to models’ intrinsic low-dimensional structures, no single embedding model can be uniformly optimal across all types of queries (Weller et al., 2026). This limitation is reflected in practice. Large-scale industrial e-commerce platforms by Alibaba and Meta deploy multiple embedding models to capture different semantic aspects of queries (Li et al., 2019a; Huang et al., 2020). Similarly, recent approaches in Retrieval-Augmented Generation (RAG) route queries to specialized “expert models” trained on domain-specific corpora, such as code, finance, or medical data (Lee et al., 2025; Zhao et al., 2026). These developments point to a challenge: How to dynamically route each incoming query to the most appropriate embedding model? To numerically illustrate this challenge, Figure 1 compares the rankings from a semantic embedding (miniLM ; Wang et al., 2020) and a Q&A model ( msmarco ; Reimers and Gurevych, 2019) against an    
+
+> ∗Operations Research Center, MIT. Email: yandai20@mit.edu .
+> †Sloan School of Management, MIT. Email: golrezae@mit.edu .
+> ‡Department of EECS, MIT. Email: jaillet@mit.edu .
+
+1
+
+> arXiv:2606.14929v1 [cs.LG] 12 Jun 2026
+
+Policy Regret for Embedding Model Routing 1 30 60 90 120 
+
+> miniLM ranking
+> 1
+> 30
+> 60
+> 90
+> 120
+> msmarco ranking
+> msmarco wins
+> miniLM wins
+> Good items only found by miniLM
+> Good items only found by msmarco
+> Other good items (LLM top-25%)
+> Remaining items
+
+Figure 1: miniLM vs msmarco 
+
+LLM-generated ground-truth on an Amazon dataset (Collins et al., 2022). Each point is a single item. Gray dots denote high-quality candidates (LLM top-25%). Colored dots highlight “exclusively good” items: high-quality candidates that are successfully retrieved by one model (top-30, as indicated by the dashed line) but missed by the other. The detailed experimental setup can be found in Appendix A. The mutually exclusive errors and strengths in Figure 1 confirm no single model dominates the other , making adaptive routing essential. This gvies our main question: How can an online learner adap-tively route queries to embedding models, using feedback only from the routed models, to achieve provable performance guarantees? Towards answering this question in a theoretically grounded way, we make the following main contributions: 
+
+Modeling (Section 2). We frame the online embedding model routing problem as a T -round adversarial contextual linear bandit with low-rank experts: In round t, the learner observes an adversarial query qt ∈ Rdq as context and faces an item set A ⊆ Rda as actions . M embedding models, as experts , each implicitly has a distribution over A via a latent embedding space of dimension 
+
+s ≪ min (dq, d a). The learner can only choose one model mt to route, observe the selected model’s recommendation, and receive an induced noisy reward. The goal is to compete with a fixed class of routing policies. This formulation captures the main challenges in realistic recommendation systems: adversarial query sequences, bandit reward feedback, and partial observability of model outputs. 
+
+Regret Notion (Section 3). A key challenge is identifying an appropriate performance benchmark for this problem. We find standard regret notions inadequate: competing with the best fixed model (i.e., expert regret) ignores query heterogeneity, while competing with arbitrary query-dependent policies (i.e., contextual regret) is intractable. The commonly used log-linear policy class also fails to fit the underlying structures of embedding models. Instead, our main insight is, under the latent geometry of embedding models, the expected reward of each model is approximately a 
+
+low-rank quadratic function of the query (Proposition 1). This leads to our log-quadratic policy class: expressive enough to capture near-optimal routing, while remaining amenable to efficient learning. In Table 2, we numerically justify our claims on an Amazon ESCI dataset (Reddy et al., 2022). 
+
+Algorithm Design (Section 4). Because of the quadratically large parameter space, a vanilla policy gradient suffers from eO(dq
+
+√M T ) linearized policy regret (a surrogate metric to resolve the non-convexity of softmax; see Section 3.2). To avoid the dq dependency, we propose Hypentropy Policy Gradient (HPG). By automatically adapting to the unknown low-rank structure of embedding models, HPG provably attains eO(s√M T ) linearized policy regret, thus avoiding the curse of dimensionality. 
+
+Practical Implementation (Section 5). Our algorithm builds upon Online Mirror Descent (OMD), which is typically computationally expensive due to a Bregman projection. Perhaps surprisingly, we prove that our projection step in HPG can be implemented in O(d2 
+
+> q
+
+M ) time (Theorem 4); this is because of the combination of hypentropy regularization and nuclear-norm-induced parameter space. We further show HPG can be implemented parameter-freely, i.e., without the low-rank parameter s.
+
+1.1 Related Literature 
+
+Model Routing. In large-scale industrial recommendation systems or searching engines, multi-embedding frameworks were developed for better performance (Li et al., 2019a; Huang et al., 2020). 2Policy Regret for Embedding Model Routing Mixture-of-Experts (MoE) architectures were proposed in the natural language processing literature to aggregate representations and capture semantic intents (Shazeer et al., 2017; Ma et al., 2018; Lepikhin et al., 2021; Fedus et al., 2022; Zhou et al., 2022). In the era of large language models (LLMs), dynamic model routing (also known as model cascading or LLM routing) was proposed to balance the generation quality and the inference cost (Jiang et al., 2023; Shnitzer et al., 2023; Chen et al., 2024; Ong et al., 2025). More closely related to our context of embedding models, modern Retrieval-Augmented Generation (RAG) pipelines increasingly route queries to specialized expert retrievers (Mallen et al., 2023; Jeong et al., 2024; Lee et al., 2025; Zhao et al., 2026). Several prior works also drew heuristics by viewing model routing as (online or offline) contextual bandits (Nguyen et al., 2024; Ong et al., 2025; Hu et al., 2025; Tsiourvas et al., 2025; Jitkrittum et al., 2026; Zu et al., 2026; Poon et al., 2026), but they treated the underlying embedding models as complete black-boxes. On the other hand, in this paper, we model the embedding model routing rigorously as an adversarial contextual linear bandit with low-rank experts, and design a policy gradient algorithm with provable regret guarantee, computational cost bound, and parameter-free implementation. 
+
+Bandits with Expert Advice. Bandits with expert advice (Definition 1) were first studied by Auer et al. (2002), who proposed the EXP4 algorithm for O(√KT log M ) expert regret where K, T, M 
+
+are the numbers of arms, rounds, and experts. Beygelzimer et al. (2011) proposed EXP4.P, achieving the same bound with high probability. Seldin et al. (2013) raised the limited observation setup – where each round only N experts can be queried – as a COLT open problem. With full information, 
+
+eO(pM T /N ) expert regret is possible (Seldin et al., 2014); under bandit feedback, Kale (2014) gave 
+
+eO(pmin( N, K )M T /N ) expert regret and a near-matching lower bound. The unlimited observation setup has recently regained interest, with Ω( pKT log( M/K ) ) lower bounds established for learners with different levels of adaptivity (Ito, 2024; Cesa-Bianchi et al., 2025; Chase et al., 2025). 
+
+(Contextual) Linear Bandits. Linear bandit was studied by Dani et al. (2008), and the contextual version (Definition 2) was studied by Chu et al. (2011) and Abbasi-Yadkori et al. (2011) under the adversarial-context stochastic-reward (“A-S”) regime. The adversarial-context and adversarial-reward (“A-A”) regime is intractable (Kanade and Steinke, 2014; Hazan and Koren, 2016; Neu and Olkhovskaya, 2020), thus Agarwal et al. (2014) and Syrgkanis et al. (2016) opted for policy regret. The stochastic-context adversarial-reward (“S-A”) regime was proposed by Neu and Olkhovskaya (2020) under the known context distribution assumption. Subsequent works (Neu and Olkhovskaya, 2021; Luo et al., 2021; Dai et al., 2023; Sherman et al., 2023; Kong et al., 2024) focused on the more general linear Markov decision process (MDP) setup; when specialized to bandits, they require extra assumptions or give sub-optimal regret. Liu et al. (2023) proposed an efficient eO(d2√T ) algorithm and an inefficient eO(d√T ) algorithm, with d being the dimension and T being the number of rounds. Ito (2024) considered a finite-arm case and van Erven et al. (2025) refined the computational cost. Misspecification in linear bandits were studied by, for example, Gopalan et al. (2016); Ghosh et al. (2017); Foster et al. (2020); Dong and Yang (2023); Liu et al. (2024), which we adopt in Eqs. (2) and (4). Richer non-linear regimes were also studied in the literature (Russo and Van Roy, 2013; Foster et al., 2018; Foster and Rakhlin, 2020; Li et al., 2022a), which are beyond the scope of this paper. 
+
+Policy Gradient Methods. Policy gradient (PG) methods are foundational for reinforcement learning and control (Williams, 1992; Sutton et al., 1999; Kakade, 2001). Global convergence of PG methods for the log-linear policy class was initiated by Fazel et al. (2018) in control theory and Bhandari and Russo (2024) in reinforcement learning. Agarwal et al. (2021) and Mei et al. (2020) proposed gradient dominance conditions to establish exact convergence rates in tabular settings, 3Policy Regret for Embedding Model Routing but the log-linear policy class remains open (see Appendix B.4). Policy gradient is also frequently designed from an OMD perspective (Geist et al., 2019; Shani et al., 2020), where various entropy regularizers exist (Alfano et al., 2023; Cichocki et al., 2025). However, we are unaware of existing works utilizing hypentropy in policy gradient to promote low-rankness of the learned parameter. 
+
+Parameter-Free Online Learning. Parameter-free online learning attains near-optimal regret without prior information on the comparator (Chaudhuri et al., 2009; Streeter and McMahan, 2012; Orabona, 2013; McMahan and Orabona, 2014). Orabona and Pál (2016) proposed a “coin-betting” framework, which enables black-box frameworks for parameter-free online learning in richer regimes (Cutkosky and Orabona, 2018). More generally, adaptivity to, e.g., optimal action’s loss (Freund and Schapire, 1997; Allenberg et al., 2006; Allen-Zhu et al., 2018), feedback delays (Zimmert and Seldin, 2020; Gyorgy and Joulani, 2021; Huang et al., 2023), or properties of loss distributions (Huang et al., 2022; Genalti et al., 2024; Chen et al., 2025), has been widely studied in bandits or online learning. 
+
+# 2 Setup: Contextual Bandits with Low-Rank Experts 
+
+Notations. For an integer n ∈ Z+, [n] denotes the set {1, 2, . . . , n }. We use O to hide absolute constants, and use eO to additionally hide poly-logarithmic factors. Let Sn ⊆ Rn×n be the space of symmetric n × n real matrices. For X ∈ Sn, λi(X) denotes the i-th largest eigenvalue of X. Let 
+
+∥X∥∗ := P
+
+> i
+
+|λi(X)| be the nuclear norm and ∥A∥2 := max i|λi(X)| be the spectral norm. Consider a T -round game between a learner and the environment. In each round t, a query embedded into the dq-dimensional Euclidean space, namely qt ∈ Q := Rdq , is presented to the learner as a context. We allow qt to be arbitrary, i.e., it may be chosen by an adaptive adversary. Although real queries can be in natural language, in practical model routing scenarios, queries are usually first fed into a “base encoder” and embedded into a finite-dimensional space (see, e.g., Lee et al., 2025). The learner has a large set of candidate items embedded into the da-dimensional Euclidean space, denoted by A ⊆ Rda , corresponding to the action set in bandits. The learner aims to recommend an item at ∈ A that best answers the query qt, measured in terms of expected reward r(qt, a t). In Section 2.1, we model reward r as the similarity score between items and queries on a latent space. Instead of directly looking into the action set A, the learner is equipped with M embedding models 
+
+(also known as experts). Each model m has a recommendation distribution ξm(qt) – induced by its latent internal structure – to the query qt, which we formalize in Section 2.2. However, as argued by Tsiourvas et al. (2025), given the cost of invoking large models, the learner can only query one model 
+
+mt for an item at,m t , thus giving limited observability. The learner only receives bandit feedback on the induced reward. The interaction protocol and feedback model will be detailed in Section 2.3. 
+
+2.1 Misspecified Adversarial Contextual Linear Bandit 
+
+For each query q ∈ Q and candidate item a ∈ A , we assume the expected reward r(q, a ) is roughly their similarity score (inner product) on a high-dimensional latent space Rmax( da,d q ). Specifically, there are fixed but unknown linear maps U ∗ ∈ Rmax( da,d q )×dq and V ∗ ∈ Rmax( da,d q )×da , such that 
+
+r(q, a ) = U ∗q, V ∗a + ν(q, a ), ∀q ∈ Q , a ∈ A , (1) where ν is a misspecification term capturing the non-linearity. We assume ∥ν∥∞ := sup q,a |ν(q, a )| ≤ ϵ
+
+for some fixed but unknown ϵ ∈ [0 , 1) , a standard way of modeling misspecification in linear bandits (Gopalan et al., 2016; Ghosh et al., 2017; Foster et al., 2020; Dong and Yang, 2023) or linear Markov 4Policy Regret for Embedding Model Routing decision processes (Du et al., 2020; Jin et al., 2023; Vial et al., 2022). All components in Eq. (1) – linear maps U ∗, V ∗, misspecification function ν, and misspecification bound ϵ – are all unknown. Using the Frobenius inner product notation ⟨A, B ⟩F := Tr (ATB), where A, B are two matrices of the same size, we equivalently write r(q, a ) = ⟨(V ∗)TU ∗, aq T⟩F . Thus the reward function in Eq. (1) admits a da × dq-dimensional linear structure (with a misspecification up to ϵ), namely 
+
+r(q, a ) = Ψ∗, aq T 
+
+> F
+
++ ν(q, a ), where kernel Ψ∗ := ( V ∗)TU ∗ ∈ Rda×dq . (2) 
+
+2.2 Embedding Models as Low-Rank Experts 
+
+As standard both in practical recommendation systems and theoretical research, we model embedding models via the two-tower architecture (Huang et al., 2013): Each model m ∈ [M ] projects queries and items independently onto its own embedding space Rsm , and recommends items to queries according to the softmax of similarity scores on Rsm . As observed by Weller et al. (2026), embedding models work in very low-dimensional representation spaces, hence we assume sm ≪ da, d q. When presented with query q ∈ Q , model m’s recommendation distribution over the item set A ⊆ Rda is: 1
+
+ξm(a | q) ∝ exp 
+
+
+
+Umq, V ma + μm(q, a )
+
+
+
+, ∀a ∈ A , (3) which is in a form that is very similar to Eq. (1): Um ∈ Rsm×dq and Vm ∈ Rsm×da are two fixed but unknown linear maps, and μm(q, a ) is a misspecification function capturing the non-linearity in the embedding model. We assume ∥μm∥∞ := sup q,a |μm(q, a )| ≤ ϵ for the same constant ϵ ∈ [0 , 1) .The key difference between Eqs. (1) and (3) is that Um ∈ Rsm×dq and Vm ∈ Rsm×da are low-rank. For notational simplicity, we define s := max m sm and omit the subscript m in sm. Consequently, when defining the model kernel Ψm := V T 
+
+> m
+
+Um similar to Eq. (2), we have rank(Ψ m) ≤ s and 
+
+ξm(a | q) ∝ exp 
+
+
+
+Ψm, aq T 
+
+> F
+
++ μm(q, a )
+
+
+
+, where kernel Ψm := V T 
+
+> m
+
+Um has a rank ≤ s. (4) We emphasize that all components in Eq. (4), namely Ψm, μ m, and s, are unknown to the learner. The name low-rank “experts” come from the bandits with expert advice literature (Auer et al., 2002). 
+
+Regularity Assumptions. We assume that all the embeddings are ℓ2-normalized as ∥q∥2, ∥a∥2 ≤ 1,
+
+∀q ∈ Q , a ∈ A ; all model kernels ensure ∥Ψm∥2 ≤ √ϵ; and the reward kernel satisfies ∥Ψ∗∥2 ≤ 1.2
+
+> 1
+
+While embedding models – from lightweight encoders to large LLMs – employ highly non-linear internal structures such as GeLU activations (Hendrycks and Gimpel, 2016; Devlin et al., 2019), the linear form in Eq. (3) is backed by recent findings: The Platonic representation hypothesis (Huh et al., 2024) and representation alignment literature (Lenc and Vedaldi, 2015; Kornblith et al., 2019) demonstrate that latent spaces across heterogeneous neural networks – spanning lightweight encoders like BERT, massive LLMs like LLaMA, and even computer vision models – are globally isomorphic and can be mapped to one another via linear transformations. Furthermore, Wang and Isola (2020) prove that contrastive learning, a common paradigm in embedding model training, explicitly enforces an inner-product -based geometry. Thus, the learned embeddings naturally possess a linear structure, allowing the misspecification function 
+
+μm to rigorously absorb any residual non-linearities. 
+
+> 2
+
+The first condition is a standard practice in contrastive learning (Wang and Isola, 2020, §3). The second condition arises because, prior to computing a softmax over inner products, practitioners usually divide the logits by a large normalization or temperature parameter. This technique is very common in Transformers (Vaswani et al., 2017), knowledge distillation (Hinton et al., 2015), and model calibration (Guo et al., 2017). Should this condition fail to hold, our main result in Section 3 – namely the quadratic leading term identified in Proposition 1 – would still hold, albeit with a larger misspecification gap. The third condition ensures bounded rewards and is standard in bandits and reinforcement learning (Jin et al., 2023; Luo et al., 2021). 
+
+5Policy Regret for Embedding Model Routing 
+
+2.3 Interaction Protocol, Feedback Model, and Policy Regret 
+
+Before the game, the environment fixes the reward kernel Ψ∗, model kernels {Ψm}m, and misspecifi-cation functions ν and μm in Eqs. (2) and (4). The learner only knows the query space Q = Rdq ,item set A ⊆ Rda , number of models M , and number of rounds T .3 In each round t = 1 , 2, . . . , T :1. the environment arbitrarily (perhaps adaptively adversarially) decides a query qt ∈ Q ;2. each model m ∈ [M ], observing the query qt, crafts its distribution ξm(qt) via Eq. (4); 3. the learner, observing query qt but not the distributions, chooses an model mt ∈ [M ] to invoke; 4. the item recommended for this round is sampled from model mt’s distribution as at,m t ∼ ξmt (qt);5. the learner observes a noisy reward rt = r(qt, a t,m t ) + ηt, where rt(q, a ) is defined in Eq. (2). We assume ηt is a zero-mean and conditionally 1-sub-Gaussian noise (Abbasi-Yadkori et al., 2011). We remark that the feedback available to the learner is very limited. First, bandit reward feedback :only the (noisy) reward induced by the actually recommended item at,m t is revealed. While this is a common challenge in both practical recommendation systems (Li et al., 2010; Chapelle and Li, 2011) and theoretical bandits with expert advice (Auer et al., 2002; Beygelzimer et al., 2011), the extremely limited expert observability is unique in the context of model routing: Only an item sampled from the chosen model’s distribution, namely at,m t , is observable. This, therefore, induces two layers of unobservability. First, for each unselected model m̸ = mt, the learner does not know which item it would have recommended; second, for model mt, only the recommended item – instead of the full distribution ξmt (qt) – is observed. This challenge arises from the prohibitively large cost of invoking multiple models in practice: As argued by Tsiourvas et al. (2025) and Zu et al. (2026), it is unrealistic to assume counterfactual information from those unselected models. In Section 3, we will see how the limited observability and bandit feedback together constitute significant challenges. We consider the policy regret (Agarwal et al., 2014; Syrgkanis et al., 2016), which compares our learner to a fixed class of model routing policies. Formally, a policy is a mapping from query set Q
+
+to the probability simplex over all models, i.e., △ := {p ∈ [0 , 1] M | PMm=1 pm = 1 }. The space of all policies is △Q. The policy regret is defined w.r.t. a fixed subset of policies, namely Π ⊆ △ Q, as: 4
+
+RT (Π) := sup 
+
+> π∗∈Π
+
+E
+
+" TX
+
+> t=1
+
+E
+
+> m∼π∗(qt)
+
+
+
+E
+
+> a∼ξm(qt)
+
+[r(qt, a )] 
+
+
+
+−
+
+> T
+
+X
+
+> t=1
+
+r(qt, a t)
+
+#
+
+. (5) Properly deciding Π recovers several commonly used regret metrics: When Π = △Q takes the full policy space, it recovers the contextual regret, which is unfortunately intractable; when Π restricts all queries to a fixed model m∗ ∈ [M ], it reduces to the expert regret, which essentially ignores the heterogeneity of queries; when Π = Π lin is the standard log-linear policy class, it turns out to                           
+
+> 3While practical hard constraints may make the item set time-varying (Covington et al., 2016; Wang et al., 2018; Huang et al., 2020), incorporating such non-stationarity via sleeping bandits (Kleinberg et al., 2010; Kanade et al., 2009) is orthogonal to our primary focus. We assume a stationary item set Ato isolate our core challenge of online embedding model routing. The knowledge of Tis for the ease of presentation, which can be relaxed via the standard doubling trick (Auer et al., 2002; Besson and Kaufmann, 2018). We remark that the low-rank parameter s=max msm
+> – defined in Eq. (4) – is also unknown.
+> 4Despite allowing an adaptive adversary, the qt’s in Eq. (5) are those queries actually realized under the learner’s policies (that is, fixing the same query sequence q1, q 2, . . . , q Tand finding the hindsight optimal policy π∗∈Π). As proved by Arora et al. (2012), the strict policy regret – where the reference policy π∗is evaluated on its own induced queries q∗
+> 1, q ∗
+> 2, . . . , q ∗
+> T– must be Ω( T). We further remark that for the non-convex policy classes like log-linear and log-quadratic, the literature instead studies linearized versions of the policy regret; see Table 1, Section 3.2, and Appendices B.4 and B.5 for more details.
+
+6Policy Regret for Embedding Model Routing be structurally misaligned with the underlying problem structure. In Section 3, we study the first question of this paper: what is the most appropriate choice of Π for embedding model routing? 
+
+# 3 Policy Class: Tradeoff between Alignment and Tractability 
+
+Instead of more common policy classes (discussed later in this section), as a main contribution of this paper, we argue that the most appropriate choice of Π is the following log-quadratic policy class: 
+
+Πquad := π(m | q) ∝ exp( qTWmq), ∀q ∈ Q Wm ∈ Sdq , ∀m ∈ [M ] , (6) where Sdq is the space of symmetric dq × dq matrices. Πquad defines a parametric class of model routing policies: The probability of routing a query q to a model m is determined by a softmax distribution over the quadratic score qTWmq (hence the name). We first justify that this log-quadratic class is well-aligned with the underlying structure of the embedding model routing problem. 
+
+Log-Quadratic Class. In Proposition 1, we establish that in embedding model routing, the expected reward of any model m under any query q is governed by a low-rank quadratic structure: 
+
+Proposition 1 (True Rewards are Roughly Low-Rank Quadratic) . Given a query q ∈ Q = Rdq , the expected reward of any model m ∈ [M ] is approximated by a low-rank quadratic form in q, namely 
+
+Rm(q) := E
+
+> a∼ξm(q)
+
+[r(q, a )] = C(q) + qTW ∗
+
+> m
+
+q + δm(q), ∀m ∈ [M ], q ∈ Q ⊆ Rdq ,
+
+where C(q) is a constant shared across all models, W ∗ 
+
+> m
+
+∈ Sdq is a symmetric matrix with ∥W ∗
+
+> m
+
+∥∗ ≤
+
+rank( W ∗
+
+> m
+
+) ≤ 2s, and δm(q) is an O(ϵ) misspecification gap due to the non-linearity of ν and μm.
+
+The proof is in Appendix B.1. In light of Proposition 1, let us consider the following family of score-based embedding model router: Upon receiving a query q, the router calculates a score sm(q)
+
+for each model m, and performs routing via a softmax over scores with some temperature c−1. Such an architecture is ubiquitous in classification or model routing systems (Devlin et al., 2019; Fedus et al., 2022). The optimal score-based routing policy is setting the score as the true reward, i.e., 
+
+π∗(m | q) = exp  cR m(q)PMm′=1 exp  cR m′ (q) ≈ exp  cq TW ∗
+
+> m
+
+qPMm′=1 exp  cq TW ∗ 
+
+> m′
+
+q ∝ exp 
+
+
+
+qT cW ∗
+
+> m
+
+q
+
+
+
+, ∀m, (7) Proposition 1 and Eq. (7) thus suggest that optimal model routing policies are naturally approximated by our log-quadratic class in Eq. (6), namely Πquad = {π(m | q) ∝ exp (qTWmq) | Wm ∈ Sdq , ∀m}.In addition to well-aligned with the underlying structure of embedding model routing, Πquad is also tractable enough for learning: In Section 4, we design a computationally efficient policy gradient algorithm, HPG, that attains eO(s√M T ) linearized policy regret (a surrogate metric we study; see Section 3.2) w.r.t. Πquad . We thus conclude that, the log-quadratic Πquad offers an ideal trade-off for embedding model routing : well-approximating the optimal policies, while enabling efficient learning. Having investigated our log-quadratic class, we examine why standard policy classes fall short. As depicted in Table 1, we consider the following policy classes; detailed discussions are in Appendix B. 
+
+Constant Class is Non-Adaptive (Appendix B.2). When Π = Π const only contains constant policies, i.e., π(q) ≡ m for some fixed m, we recover the expert regret for bandits with expert advice. While simple, this metric is unfavorable for model routing: The benchmark is using the same model to answer all queries, while modern recommendation systems direct queries to distinct expert models 7Policy Regret for Embedding Model Routing Table 1: Comparison between Different Policy Classes or Regret Notions 
+
+Regret Notion Aligned? Tractable? Regret Computation Coments 
+
+Expert Regret ✗ ✓
+
+√M T log M O(M ) Non-Adaptive (constant policy) (Auer et al., 2002) per round Model Routing Contextual Regret ✓ ✗
+
+pdadqT log M log T O(d2
+
+> a
+
+d2 
+
+> q
+
+M ) Curse of (unrestriced policy) (Li et al., 2019b) a per round Dimensionality Log-Linear Regret ✗ ✓
+
+pdqM T log T O(d2 
+
+> q
+
+M 2) Structural (π ∝ exp( θT
+
+> m
+
+q)) (Agarwal et al., 2021) b per round Misspecification Log-Quadratic Policy Regret (π ∝ exp( qTWmq))
+
+✓ ✓
+
+dq
+
+√M T log T O(d4 
+
+> q
+
+M 2) Curse of   
+
+> (Agarwal et al., 2021) per round
+
+Dimensionality 
+
+s√M T log T O(d2 
+
+> q
+
+M ) Efficient & (Ours) per round Parameter-Free            
+
+> aThis reduction only holds without misspecification ( ν=μm= 0 ) and when knowing model kernels ( Ψm). “Curse of dimensionality” means, when treating dqand daas the same order d, a regret bound that is linear in d.
+> bTheir bound, as well as ours, only applies to linearized versions of policy regret. These are surrogate metrics used to resolve the non-convexity of softmax functions; see Section 3.2 and Appendices B.4 and B.5 for more discussions. An exact policy regret guarantee under either log-linear or log-quadratic class remains open.
+
+for better performance. We further justify that RT (Π const ) fails to capture the structure of model routing problems: In Theorem 6, we establish RT (Π const ) = Ω( pM T / log da), which holds even if the learner observes all models’ recommendations. Thus, a black-box EXP3 (Auer et al., 2002), by entirely ignoring linear rewards and low-rank model structures, is already near-optimal w.r.t. Πconst .
+
+Unrestricted Class gives “Curse of Dimensionality” (Appendix B.3). The other extreme is the unrestricted Π = △Q, resembling the contextual regret in contextual bandits. This is favorable because the learner competes with any query-adaptive routing policy. However, this class remains notorious even under two assumptions: (A1) no misspecification and (A2) known model kernels. Under these two assumptions, we first reduce RT (△Q) to a dadq-dimensional contextual linear bandit. The VCL-SupLinUCB algorithm (Li et al., 2019b) attains RCT = O(pdadqT log M log T ) regret at a per-round computational cost of O(d2
+
+> a
+
+d2 
+
+> q
+
+M ). Neither the regret nor computational cost is acceptable: In embedding model routing, the dimensions of query and item spaces are both large. For example, 
+
+RouterRetriver (Lee et al., 2025) embeds queries and items into dq = da = 768 -dimensional spaces via Contriever (Izacard et al., 2022). Hence if T / (log M log T ) ≤ 768 2 ≈ 5 × 10 5, the regret bound becomes vacuous. The per-round per-model d2
+
+> a
+
+d2 
+
+> q
+
+≈ 3 × 10 11 computation cost is also unbearable. Such a “curse of dimensionality” (Footnote a) thus makes this algorithm impractical. In Appendix B.3, we discuss why other seemingly more promising reductions (e.g., to da-dimensional adversarial contextual linear bandits) fail to refine the regret: Even if assuming i.i.d. queries – in addition to assumptions (A1) and (A2) – the correlation between recommendation distributions 
+
+ξm(· | qt) and rewards r(qt, ·) still makes existing algorithms inapplicable (see Section B.3.3). 
+
+Log-Linear Class is Misaligned (Appendix B.4). In reinforcement learning, another commonly used policy class is the log-linear class Πlin := {π(m | q) ∝ exp (θT
+
+> m
+
+q) | θm ∈ Rdq , ∀m} (Agarwal et al., 2021; Mei et al., 2020). The parameter space of Πlin , namely Θ = ( Rdq )M , is of dimension 
+
+M d q, which is much smaller than that of our Πquad . Based on Natural Policy Gradient (NPG; Kakade 2001), Agarwal et al. (2021) attain O(pdqM T log T ) linearized policy regret w.r.t. Πlin at a 8Policy Regret for Embedding Model Routing per-round computational cost of O(d2 
+
+> q
+
+M 2).5 Compared to the unrestricted class, under the same 
+
+dq = da = 768 example, the vacuous regret regime only lasts for 768 · M rounds, and the per-round computational cost reduces to 6 × 10 5 · M 2. Given its simplicity, Πlin is already used in practical model routing: RouterRetriever (Lee et al., 2025) routes queries based on the cosine similarity between the query qt and models’ “representative training data,” thus essentially resembling the θT
+
+> m
+
+q.However, despite its tractability and popularity, Πlin is structurally misaligned: As established in Proposition 1, the true rewards are governed by a quadratic structure qTW ∗
+
+> m
+
+q. A linear score θT
+
+> m
+
+q
+
+thus fails to capture the interactions between different dimensions of q. Consequently, even with optimal policy regret w.r.t. Πlin , the learner remains sub-optimal in actual model routing tasks. 
+
+3.1 Numerical Verification on Amazon ESCI Dataset 
+
+In Table 2, we consider four policy classes – the constant Πconst , the log-linear Πlin , the log-quadratic 
+
+Πquad , and the unrestricted △Q – over the Amazon ESCI dataset (Reddy et al., 2022). This dataset benchmarks 97,345 difficult search queries in e-commerce: Each consumer query is associated with several candidate products (18.68 on average) with titles, descriptions, and keywords, all in natural language. Each query-action pair is annotated with one of E(xact), S(ubstitute), C(omplement), or I(rrelevant), which we convert into numerical values as the reward function r : Q × A → [0 , 1] .We consider M = 8 lightweight embedding models as candidate experts, spanning symmetric semantic encoders like miniLM (Wang et al., 2020; 2021), asymmetric search models like msmarco-distilbert 
+
+(Reimers and Gurevych, 2019), and modern prompt-driven encoders (Wang et al., 2022; Xiao et al., 2024). The detailed experimental setup, as well as more discussions, can be found in Appendix C. To facilitate model routing, we embed queries and items into 768-dimensional vector spaces via 
+
+Contriever (Izacard et al., 2022) before feeding them to the learner; this follows the practice of 
+
+RouterRetriever (Lee et al., 2025). 6 We denote an embedded query by q ∈ Rdq and an embedded item by a ∈ Rda , with dq = da = 768 . We then find the optimal routing policy from each policy class: the constant Πconst , the log-linear Πlin , our log-quadratic Πquad , and the unrestricted ∆Q.For any routing policy π : Q → △ , we define it sub-optimality gap on the ESCI dataset as follows: Gap (π) := E
+
+> q
+
+
+
+max   
+
+> m∈[M]
+
+E
+
+> a∼ξm(q)
+
+[r(q, a )] − E
+
+> m∼π(q)
+
+
+
+E
+
+> a∼ξm(q)
+
+[r(q, a )] 
+
+ 
+
+, ∀π ∈ △ Q, (8) where Eq is taken w.r.t. the uniform distribution over all ESCI queries (i.e., the average sub-optimality on each query), and recall that the reward r(q, a ) is constructed using the E, S, C, and I labels in the dataset. Gap (π) hence compares π to the best adaptive policy mapping any query to any model. In Table 2, we report the following quantities about the optimal policy from each class: 7  
+
+> 5The regret notion Agarwal et al. (2021) used for the log-linear policy class also adopts linearization to handle the non-convexity of softmax. However, we remark that their linearization happens in a different space to ours. We direct the readers to Section 3.2 and Appendices B.4 and B.5 for detailed discussions.
+> 6While expert models generate recommendations based on the similarity score between embeddings (see Appendix C), the learner cannot access such embeddings. The reason is two-fold: As argued by Tsiourvas et al. (2025) and Zu et al. (2026), it is impractical to feed every incoming query into every candidate model; hence the learner can only choose one model, observe its recommendation, and collect its reward (see Section 2.3). Moreover, models’ embeddings lie in different spaces and are incomparable with each other; we hence need a single embedding to define the policy classes.
+> 7In addition to the first row evaluating on the full ESCI dataset, we also evaluate them on a few “query categories,” provided by Reddy et al. (2022) as exceptionally hard queries; more details and discussions are in Appendix C.
+
+9Policy Regret for Embedding Model Routing Table 2: Sub-Optimality Gap of Different Policy Classes on Amazon ESCI Dataset Query Num of Πconst Πlin Πconst → Πlin Πquad Πlin → Πquad 
+
+Category Queries Gap ( ↓) Gap ( ↓) Improvement ( ↑) Gap ( ↓) Improvement ( ↑)all 97,345 0.078 0.065 16.4% 0.021 68.0% 
+
+nlqec 169 0.109 0.003 97.4% <0.001 99.8% 
+
+behavioral 1,253 0.067 0.012 82.3% <0.001 99.4% 
+
+parse-pattern 4,250 0.064 0.024 62.2% 0.002 93.3% 
+
+negations 2,899 0.132 0.060 54.6% 0.007 88.9% 
+
+other 88,774 0.074 0.060 19.1% 0.017 71.4% 
+
+• Πconst gap, which is the sub-optimality gap of the best constant policy π∗ 
+
+> const
+
+∈ Πconst (mapping all queries to a fixed expert model). This quantity measures the necessity and difficulty of model routing: A large π∗ 
+
+> const
+
+implies that no single model dominates the others on (most of) the queries. 
+
+• Πlin gap and its improvement over Πconst . We find the best routing policy π∗ 
+
+> lin
+
+in the log-linear class 
+
+Πlin = {π(m | q) ∝ exp (θT
+
+> m
+
+q) | θm ∈ Rdq , ∀m}, and calculate sub-optimality Gap (π∗
+
+> lin
+
+) according to Eq. (8). We then report 1 − Gap (π∗
+
+> lin
+
+)/Gap (π∗
+
+> const
+
+) as the improvement of Πlin over Πconst .
+
+• Πquad gap and its improvement over Πlin . This is almost similar to the previous metric, except that we now compare our proposed log-quadratic policy π∗ 
+
+> quad
+
+∈ Πquad to the log-linear policy π∗
+
+> lin
+
+.From Table 2, we see that Πquad is indeed well-suited for the problem of embeddig model routing: Over the full ESCI dataset (row “all”), the constant policy suffers a sub-optimality gap of 0.078 , and the log-linear policy still has a gap of 0.065 (only 16 .4% improvement). On the other hand, our log-quadratic policy reduces the gap to 0.021, which is a 68 .0% improvement over the log-linear policy. For various harder categories – like nlqec and negations – the constant policy suffers from a significantly larger sub-optimality gap (compared to the full-dataset average, i.e., these categories are indeed harder), but our log-quadratic policy improves the gaps significantly. To conclude, by comparing different policy classes, Table 2 demonstrates not only the necessity of dynamic model routing, but also the low misspecification of our log-quadratic policy class Πquad .
+
+3.2 Additional Notations and Linearized Policy Regret 
+
+We therefore focus on our log-quadratic Πquad class. To facilitate subsequent algorithm design, we give a few extra notations: Since each policy is parameterized by M symmetric dq × dq matrices, we collect them into a single diagonal block matrix W = diag (W1, W 2, . . . , W M ) ∈ SM d q , which we call a parameter . We use boldface letters for parameters. The parameter space W ⊆ SM d q then has a dimension of M d 2 
+
+> q
+
+. According to Eq. (6), each parameter W ∈ W induces a model routing policy: 
+
+πW (m | q) := exp( qTWmq)
+
+PMm′=1 exp( qTWm′ q) , ∀m = 1 , 2, . . . , M. (9) For each round t ∈ [T ], define the expected loss (negative reward) suffered by any parameter W as 
+
+Lt(W ) := − E 
+
+> m∼πW(qt)
+
+
+
+E 
+
+> a∼ξm(qt)
+
+[r(qt, a )] 
+
+
+
+, ∀t ∈ [T ], W ∈ W. (10) Then the policy regret w.r.t. Πquad , namely RT (Π quad ), is sup W ∗∈W E[PTt=1 Lt(Wt) − L t(W ∗)] .From Proposition 1, we assume that an optimal W ∗ ∈ W ensures ∥W ∗
+
+> m
+
+∥∗ ≤ rank( W ∗
+
+> m
+
+) ≤ 2s, ∀m.10 Policy Regret for Embedding Model Routing Unfortunately, since softmax is non-convex, neither policy (Eq. (9)) nor loss (Eq. (10)) is convex. Consistent with previous policy gradient analysis (detailed in Appendix B.4; Agarwal et al. 2021), we define a surrogate metric for the policy regret RT (Π quad ) via a local linearization . Specifically, we perform linearization on the parameter space W and consider the following linearized policy regret: 
+
+eRT (Π quad ) := sup  
+
+> W∗∈W
+
+E
+
+" TX
+
+> t=1
+
+D
+
+∇L t(Wt), Wt − W ∗E
+
+> F
+
+#
+
+. (11) Each term in the sum of Eq. (11) recovers the Frank-Wolfe gap in online non-convex optimization (Lafond et al., 2015; Reddi et al., 2016), commonly used for, e.g., online submodular optimization (Hassani et al., 2017; Chen et al., 2018; Zhang et al., 2019). See Appendix B.5 for a more technical comparison between RT (Π quad ) and our linearized eRT (Π quad ). While we consider eRT as a surrogate metric to handle non-convexity, tackling policy regret exactly remains an important open question. 
+
+# 4 Hypentropy Policy Gradient (HPG) for Model Routing 
+
+We now introduce our algorithm for the log-quadratic policy class Πquad . Moving from the log-linear class Πlin to Πquad improves approximation accuracy (see Proposition 1 and Eq. (7)), but comes at a cost: The parameter space dimension increases from dim (Θ) = dqM to dim (W) = d2 
+
+> q
+
+M . Hence, naively flattening W into a d2 
+
+> q
+
+M -dimensional vector space and applying policy gradient methods gives O(dq
+
+√M T log T ) regret and requires O(d4 
+
+> q
+
+M ) computation per round (Agarwal et al., 2021). Similar to the unrestricted class discussed in Section 3, both bounds can be probitively large. Fortunately, because embedding models operate on low-dimensional representation spaces, Proposi-tion 1 shows that the optimal parameter W ∗ also contains only low-rank matrices. This observation is key to bypassing the curse of dimensionality: If we restrict learning to those low-rank Wm’s, the effective parameter dimension reduces to Θ( sd qM ). But this is challenging: the reward kernel Ψ∗ in Eq. (2) is not low-rank, so standard low-rank or sparse regression approaches (e.g., ridge or lasso) do not apply. That is, the low-rank structure only lies in the parameter space, not in the reward space. Standard policy gradient methods also inherently fail to exploit this hidden structure. Indeed, NPG – which is equivalent to Online Mirror Descent (OMD) equipped with a KL-divergence regularizer (Geist et al., 2019) – is isotropic across directions and thus does not adapt to the rank. 8 We thus instead use the hypentropy regularizer (Ghai et al., 2020) to promote low-rankness; see Section 4.1. In addition to this new regularizer, due to our challenge of bandit feedback and partial observability, we also design a REINFORCE-style gradient estimator; see Section 4.2. These together give Hypentropy 
+
+Policy Gradient (HPG) in Algorithm 1. We remark this estimator’s effect is two-fold: First, as standard in the literature, it is unbiased and low-variance, thus allowing provable performances under incomplete information (Theorem 3); second, which is unique to our log-quadratic policy class Πquad ,it can reduce the computational cost of OMD. Indeed, as we discuss in Section 5, our HPG admits computationally efficient – only O(d2 
+
+> q
+
+M ) runtime per round – and parameter-free implementations. 11 Policy Regret for Embedding Model Routing 
+
+Algorithm 1 H ypentropy Policy Gradient (HPG) for Model Routing 
+
+Input: Game length T , query set Q ⊆ Rdq , candidate item set A ⊆ Rda , number of models M .Hypentropy parameter β > 0, learning rate η > 0, nuclear norm bound τ > 0. 
+
+> 1:
+
+Initialize W1 as the M d q × M d q all-zero matrix, which is a diagonal block matrix in SM d q . 
+
+> 2:
+
+for t = 1 , 2, . . . , T do  
+
+> 3:
+
+Observe query qt. Decide model mt according to πWt (qt) ▷ π W is in Eq. (9)  
+
+> 4:
+
+Observe model mt’s recommendation at,m t ∼ ξmt (qt) ▷ ξ m is in Eq. (4)  
+
+> 5:
+
+Recommend item at,m t . Observe rt = r(qt, a t,m t ) + ηt ▷ r (q, a ) is in Eq. (2)  
+
+> 6:
+
+Construct gradient estimator bGt using qt, m t, r t ▷ bGt is in Eq. (15)  
+
+> 7:
+
+Perform an Online Mirror Descent (OMD) step over BM 
+
+> ∗
+
+(τ ). ▷ Eqs. (12) to (14) 
+
+4.1 Nuclear-Norm Ball, Hypentropy, and Online Mirror Descent 
+
+We introduce the first component of our algorithm: a hypentropy-regularized OMD. Since the optimal parameter W ∗ is low-rank, we restrict our parameter space to a product nuclear-norm ball :
+
+BM 
+
+> ∗
+
+(τ ) := diag( W1, W 2, . . . , W M ) Wm ∈ Sdq , ∥Wm∥∗ ≤ τ, ∀m . (12) The τ ≥ 0 is a parameter to be determined later, and ∥·∥ ∗ is the matrix nuclear norm (sum of absolute eigenvalues) that serves as a convex surrogate for matrix rank. According to Proposition 1, we know ∥W ∗
+
+> m
+
+∥∗ ≤ rank (W ∗
+
+> m
+
+)∥W ∗
+
+> m
+
+∥2 ≤ 2s, which means W ∗ ∈ BM 
+
+> ∗
+
+(2 s). For the ease of presentation, for now, we assume the low-rank parameter s is known; we will drop this assumption in Section 5.2. Given a properly chosen parameter τ , our HPG algorithm performs OMD on BM 
+
+> ∗
+
+(τ ). The regularizer we use is the hyperbolic entropy ( hypentropy ; Ghai et al. 2020), which is strongly convex with respect to the nuclear norm, making it well-suited for promoting low-rank structures in the parameter space. 9
+
+Formally, for a parameter β > 0 to be specified later, the β-hypentropy of W ∈ SM d q is defined as 
+
+Φβ (W ) := 
+
+> M d q
+
+X
+
+> i=1
+
+
+
+λi arcsinh λi
+
+β −
+
+q
+
+λ2 
+
+> i
+
++ β2
+
+
+
+, ∀W ∈ SM d q , (13) where λ1 ≥ λ2 ≥ · · · ≥ λM d q are the eigenvalues of W in non-increasing order. Using Φβ as the regularizer, the OMD update of HPG over the product ball BM 
+
+> ∗
+
+(τ ) takes the following form: 
+
+Wt+1 = argmin    
+
+> W∈BM
+> ∗(τ)
+
+
+
+η W , bGt F + Dβ
+
+> Φ
+
+(W ∥Wt)
+
+
+
+, ∀t = 1 , 2, . . . , T, (14) where η > 0 is a parameter to be determined; bGt is the (estimated) gradient defined in Section 4.2; and Dβ
+
+> Φ
+
+(W ∥W ′) := Φ β (W ) − Φβ (W ′) − ⟨∇ Φβ (W ′), W − W ′⟩F (detailed in Appendix D.1). As we see in Section 5.1, this Bregman projection – usually computationally expensive – is implementable in O(d2 
+
+> q
+
+M ) time thanks to the choice of hypentropy regularizer Φβ and nuclear-norm ball BM 
+
+> ∗
+
+(τ ).             
+
+> 8In fact, vanilla NPG is only defined on the flattened vector space, where the low-rank structure of W∗is lost. Exploiting low-rankness requires working with matrix spaces, but the matrix analogue of NPG – OMD with von Neumann entropy Φ( X) = Tr (Xlog X−X)– is only defined for positive semi-definite matrices (Tsuda et al., 2005).
+> 9The connection between hypentropy and low-rankness has been exploited by Woodworth et al. (2020), Pesme et al. (2021), Li et al. (2022b), Varre et al. (2023), and Jacobs et al. (2025) to understand the implicit bias/regularization in neural network training, by Wu and Rebeschini (2020; 2023) in sparse phase retrieval problems, and by Wu and Rebeschini (2021) for low-rank matrix sensing. However, we are unaware of existing works using this property for policy regret, bandit feedback, or embedding model routing.
+
+12 Policy Regret for Embedding Model Routing 
+
+4.2 Gradient Estimation and Policy Regret Bound 
+
+The other component of HPG is the gradient estimator bGt. In standard OMD with full information feedback, one directly uses the true gradient ∇L (Wt) in place of bGt for the OMD update in Eq. (14). However, in our bandit feedback and partial observability setup, we cannot directly compute this gradient: In each round, we only observe one item at,m t sampled from the selected model ξmt (qt) and a noisy reward rt = r(qt, a t,m t ) + ηt. We must estimate ∇L (Wt) only from this limited information. We design a REINFORCE-style gradient estimator: let bGt = diag( bGt, 1, bGt, 2, . . . , bGt,M ), where 
+
+bGt,m = −rt
+
+ 1[mt = m] − πWt (m | qt)qtqT 
+
+> t
+
+, ∀m = 1 , 2, . . . , M. (15) Lemma 2 below indicates that the bGt is conditionally unbiased and admits constant second-order moments. While similar estimators and properties have been widely used in reinforcement learning and policy gradient methods (see, e.g., Williams, 1992; Sutton et al., 1999), in our log-quadratic policy class Πquad , we have yet another unique property: The bGt,m in Eq. (15) is rank-one . As we will see shortly in Section 5.1, this is pivotal for the computational efficiency of our HPG algorithm. 
+
+Lemma 2 (Gradient Estimation) . Let Et be the expectation taken only w.r.t. the randomness in round t. Then we have Et[ bGt | qt] = ∇W Lt(Wt). Furthermore, PMm=1 ∥ bGt,m ∥22 ≤ 2 almost surely. 
+
+Combining this gradient estimator with OMD updates yields the full HPG algorithm (see Algorithm 1). We now state the regret guarantee of HPG, which shows that it adapts to the problem’s intrinsic low-rank structure and avoids linear dependence on the high-dimensional query space. 
+
+Theorem 3 (Regret Bound) . Assume that the optimal W ∗ ∈ W ensures ∥W ∗
+
+> m
+
+∥∗ ≤ 2s, ∀m. When setting τ = 2 s, β = 2 s/d q and η = p(M log dq)/T , HPG gives eRT (Π quad ) = O(spM T log dq).
+
+Theorem 3 indicates that if the low-rank parameter s is known to the learner, the HPG algorithm attains eO(s√M T ) linearized policy regret, thus provably adapts to the underlying low-rank structures of embedding models. In Section 5.2, we further show that when the low-rank parameter s is unknown, the HPG algorithm is still implementable in a parameter-free way that attains an almost identical regret bound. The full proofs of Lemma 2 and Theorem 3 are deferred to Appendices D.3 and D.4. 
+
+# 5 Practical Implementation of the HPG Algorithm 
+
+While attaining eO(τ √M T ) regret, two issues present before implementing HPG for realistic model routing: the computational cost of the Bregman projection step in Eq. (14), and the knowledge of s
+
+in Theorem 3. We resolve both issues in this section, thus demonstrating the practibility of HPG. 
+
+5.1 Computationally Efficient Implementation 
+
+In each round t, the OMD framework performs a Bregman projection step, as we demonstrated in Eq. (14). Solving a convex optimization problem is in general computationally expensive: In our case, the underlying space SM d q is of dimension M 2d2 
+
+> q
+
+, hence a generic interior point method takes O(( M 2d2 
+
+> q
+
+)3) = O(M 6d6 
+
+> q
+
+) time per step (Boyd and Vandenberghe, 2004). With dq = 768 as in 
+
+RouterRetriver (Lee et al., 2025), this means 2 × 10 17 · M floating point operations per round. Fortunately, since the hypentropy Φβ and nuclear-norm ball BM 
+
+> ∗
+
+(τ ) are both defined w.r.t. eigenvalues, and diagonal block matrices preserve eigenvalues, we establish a direct sum property (Lemma 12 in 13 Policy Regret for Embedding Model Routing Appendix D.2). This allows us to treat each model’s parameter separately. Furthermore, we prove that each m only requires O(d2 
+
+> q
+
+) time per round by maintaining an eigen-decomposition of Wt,m :
+
+Wt,m = Ut,m diag( λt,m )U T
+
+> t,m
+
+, ∀t ∈ [T ], (16) where Ut,m ∈ Rdq ×dq and λt,m ∈ Rdq . Indeed, utilizing the rank-one property of bGt (see Eq. (15)), we decompose the Bregman projection onto B∗(τ ) in Eq. (14) into 4 computationally easy steps: 1. Convert Wt to Mirror Space. Let Yt,m = ∇Φβ (Wt,m ), which, as detailed in Appendix D.1, is applying arcsinh  
+
+> β
+
+(·) to all the eigenvalues. Hence Yt,m is derived in O(dq) time from Eq. (16). 2. Gradient Descent Update. In the mirror space, perform gradient descent eYt+1 ,m = Yt,m −η bGt,m .While eigen-decomposing eYt+1 ,m in general takes O(d3 
+
+> q
+
+) time, our bGt,m is rank-one (Eq. (15)). Hence eigen-updating from Yt,m to eYt+1 ,m only takes O(d2 
+
+> q
+
+) time (see, e.g., Bunch et al., 1978). 3. Convert eYt+1 to Primal Space. Let fWt+1 ,m = ( ∇Φβ )−1( eYt+1 ,m ), which is the same as Step 1. 4. Projection onto B∗(τ ) based on Dβ
+
+> Φ
+
+. This is another step that is (usually) computationally expensive. But our B∗(τ ) and Φβ both only depend on the eigenvalues . Hence, equipped with 
+
+fWt+1 ,m ’s eigen-decomposition, we can derive from von Neumann’s trace inequality that 
+
+Wt+1 ,m = Ut+1 ,m diag( λt+1 ,m )U T
+
+> t+1 ,m
+
+, λt+1 ,m = argmin 
+
+> ∥λ∥1≤τdq
+
+X
+
+> i=1
+
+Dβϕ (λi∥eλt+1 ,m,i ), (17) where Dβϕ is the Bregman divergence of ϕβ (x) = x arcsinh xβ − px2 + β2. Thus the projection to 
+
+B∗(τ ) reduces to a dq-dimensional convex optimization, which is solvable in O(dq log dq) time. In Appendix E.1, we prove Eq. (14) is equivalent to these 4 steps. This gives the following theorem: 
+
+Theorem 4 (Computational Cost) . HPG is implementable in O(d2 
+
+> q
+
+M ) time complexity per round. 
+
+We remark that in practice, one can sharpen the O(d2 
+
+> q
+
+) computational bound even more: In the proof of Theorem 4 (detailed in Appendix E.1), we will see that the optimization problem in Eq. (17) of Step 4 induces a low-rank structure. Thus, if we only keep the top-τ eigenvalues of Wt+1 ,m 
+
+(i.e., eigen-truncation), λt+1 ,m becomes τ -dimensional and Ut+1 ,m becomes dq × τ ; the eigen-update in Step 2 thus takes O(τ d q) time. One can further batch OMD updates by performing an aggregated gradient step in the mirror space for enhanced efficiency, though sacrifising the strict regret guarantee. 
+
+5.2 Parameter-Free Implementation 
+
+Yet another issue is the hyper-parameter τ in Algorithm 1, which controls the nuclear-norm truncation. Theorem 3 sets τ = 2 s where s is the unknown rank of the model kernels Ψm (recall Section 2.2). Fortunately, utilizing the parameter-free online learning technique (Cutkosky and Orabona, 2018), HPG algorithm can be implemented without any prior information while enjoying a similar regret guarantee. This gives Theorem 5. The detailed algorithm description and proof is in Appendix E.2. 
+
+Theorem 5 (Parameter-Free HPG) . Assume that the optimal W ∗ ∈ W ensures ∥W ∗
+
+> m
+
+∥∗ ≤ 2s, ∀m,but the low-rank parameter s is unknown. Then the parameter-free HPG algorithm (Algorithm 2 in Appendix E.2) ensures a linearized policy regret bound of eRT (Π quad ) = O(sM √T log( dqT )) .
+
+Compared to the eRT (Π quad ) = O(spM T log dq) bound in Theorem 3, this bound is slightly inferior by a √M factor and a few poly-logarithmic dependencies. However, the most favorable properties of 14 Policy Regret for Embedding Model Routing HPG algorithm – automatically adapting to the unknown low-rank structure of embedding models, avoiding poly (dq) dependencies, and admitting efficient implementations – remain true in Theorem 5. 
+
+# References 
+
+Yasin Abbasi-Yadkori, Dávid Pál, and Csaba Szepesvári. Improved algorithms for linear stochastic bandits. Advances in Neural Information Processing Systems , 24:2312–2320, 2011. Alekh Agarwal, Daniel Hsu, Satyen Kale, John Langford, Lihong Li, and Robert Schapire. Taming the monster: A fast and simple algorithm for contextual bandits. In International Conference on Machine Learning , pages 1638–1646. PMLR, 2014. Alekh Agarwal, Sham M Kakade, Jason D Lee, and Gaurav Mahajan. On the theory of policy gradient methods: Optimality, approximation, and distribution shift. Journal of Machine Learning Research , 22(98):1–76, 2021. Carlo Alfano, Rui Yuan, and Patrick Rebeschini. A novel framework for policy mirror descent with general parameterization and linear convergence. Advances in Neural Information Processing Systems , 36:30681–30725, 2023. Zeyuan Allen-Zhu, Sébastien Bubeck, and Yuanzhi Li. Make the minority great again: First-order regret bound for contextual bandits. In International Conference on Machine Learning , pages 186–194. PMLR, 2018. Chamy Allenberg, Peter Auer, László Györfi, and György Ottucsák. Hannan consistency in on-line learning in case of unbounded losses under partial monitoring. In International Conference on Algorithmic Learning Theory , pages 229–243. Springer, 2006. Raman Arora, Ofer Dekel, and Ambuj Tewari. Online bandit learning against an adaptive adversary: from regret to policy regret. In Proceedings of the 29th International Coference on International Conference on Machine Learning , pages 1747–1754, 2012. Peter Auer, Nicolo Cesa-Bianchi, Yoav Freund, and Robert E Schapire. The nonstochastic multiarmed bandit problem. SIAM Journal on Computing , 32(1):48–77, 2002. Payal Bajaj, Daniel Campos, Nick Craswell, Li Deng, Jianfeng Gao, Xiaodong Liu, Rangan Majumder, Andrew McNamara, Bhaskar Mitra, Tri Nguyen, et al. MS MARCO: A human generated machine reading comprehension dataset. arXiv preprint arXiv:1611.09268 , 2016. Lilian Besson and Emilie Kaufmann. What doubling tricks can and can’t do for multi-armed bandits. 
+
+arXiv preprint arXiv:1803.06971 , 2018. Alina Beygelzimer, John Langford, Lihong Li, Lev Reyzin, and Robert Schapire. Contextual bandit algorithms with supervised learning guarantees. In Proceedings of the Fourteenth International Conference on Artificial Intelligence and Statistics , pages 19–26. JMLR Workshop and Conference Proceedings, 2011. Jalaj Bhandari and Daniel Russo. Global optimality guarantees for policy gradient methods. 
+
+Operations Research , 72(5):1906–1927, 2024. Stephen Boyd and Lieven Vandenberghe. Convex optimization . Cambridge university press, 2004. 15 Policy Regret for Embedding Model Routing James R Bunch, Christopher P Nielsen, and Danny C Sorensen. Rank-one modification of the symmetric eigenproblem. Numerische Mathematik , 31(1):31–48, 1978. Nicolò Cesa-Bianchi, Khaled Eldowa, Emmanuel Esposito, and Julia Olkhovskaya. Improved regret bounds for bandits with expert advice. Journal of Artificial Intelligence Research , 83, 2025. Olivier Chapelle and Lihong Li. An empirical evaluation of Thompson sampling. Advances in Neural Information Processing Systems , 24, 2011. Zachary Chase, Shinji Ito, and Idan Mehalel. A tight lower bound for non-stochastic multi-armed bandits with expert advice. arXiv preprint arXiv:2511.00257 , 2025. Kamalika Chaudhuri, Yoav Freund, and Daniel J Hsu. A parameter-free hedging algorithm. Advances in neural information processing systems , 22, 2009. Lin Chen, Hamed Hassani, and Amin Karbasi. Online continuous submodular maximization. In 
+
+International Conference on Artificial Intelligence and Statistics , pages 1896–1905. PMLR, 2018. Lingjiao Chen, Matei Zaharia, and James Zou. FrugalGPT: How to use large language models while reducing cost and improving performance. Transactions on Machine Learning Research , 2024. ISSN 2835-8856. Yu Chen, Jiatai Huang, Yan Dai, and Longbo Huang. uniINF: Best-of-both-worlds algorithm for parameter-free heavy-tailed MABs. In The Thirteenth International Conference on Learning Representations , 2025. Wei Chu, Lihong Li, Lev Reyzin, and Robert Schapire. Contextual bandits with linear payoff functions. In Proceedings of the Fourteenth International Conference on Artificial Intelligence and Statistics , pages 208–214. JMLR Workshop and Conference Proceedings, 2011. Andrzej Cichocki, Toshihisa Tanaka, Frank Nielsen, and Sergio Cruces. Mirror descent and exponen-tiated gradient algorithms using trace-form entropies. Entropy , 27(12):1243, 2025. Jasmine Collins, Shubham Goel, Kenan Deng, Achleshwar Luthra, Leon Xu, Erhan Gundogdu, Xi Zhang, Tomas F Yago Vicente, Thomas Dideriksen, Himanshu Arora, Matthieu Guillaumin, and Jitendra Malik. ABO: Dataset and benchmarks for real-world 3D object understanding. In 
+
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 21126–21136, 2022. Paul Covington, Jay Adams, and Emre Sargin. Deep neural networks for Youtube recommendations. In Proceedings of the 10th ACM Conference on Recommender Systems , pages 191–198, 2016. Ashok Cutkosky and Francesco Orabona. Black-box reductions for parameter-free online learning in Banach spaces. In Conference On Learning Theory , pages 1493–1529. PMLR, 2018. Yan Dai, Haipeng Luo, Chen-Yu Wei, and Julian Zimmert. Refined regret for adversarial MDPs with linear function approximation. In International Conference on Machine Learning , pages 6726–6759. PMLR, 2023. Varsha Dani, Thomas P Hayes, and Sham M Kakade. Stochastic linear optimization under bandit feedback. In 21st Annual Conference on Learning Theory , number 101, pages 355–366, 2008. 16 Policy Regret for Embedding Model Routing Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. BERT: Pre-training of deep bidirectional transformers for language understanding. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 4171–4186, 2019. Jialin Dong and Lin Yang. Does sparsity help in learning misspecified linear bandits? In International Conference on Machine Learning , pages 8317–8333. PMLR, 2023. Simon S Du, Sham M Kakade, Ruosong Wang, and Lin F Yang. Is a good representation sufficient for sample efficient reinforcement learning? In International Conference on Learning Representations ,2020. Ky Fan. On a theorem of Weyl concerning eigenvalues of linear transformations I. Proceedings of the National Academy of Sciences , 35(11):652–655, 1949. Maryam Fazel, Rong Ge, Sham Kakade, and Mehran Mesbahi. Global convergence of policy gradient methods for the linear quadratic regulator. In International Conference on Machine Learning ,pages 1467–1476. PMLR, 2018. William Fedus, Barret Zoph, and Noam Shazeer. Switch Transformers: Scaling to trillion parameter models with simple and efficient sparsity. Journal of Machine Learning Research , 23(120):1–39, 2022. Dylan Foster and Alexander Rakhlin. Beyond UCB: Optimal and efficient contextual bandits with regression oracles. In International Conference on Machine Learning , pages 3199–3210. PMLR, 2020. Dylan Foster, Alekh Agarwal, Miroslav Dudík, Haipeng Luo, and Robert Schapire. Practical contextual bandits with regression oracles. In International Conference on Machine Learning ,pages 1539–1548. PMLR, 2018. Dylan J Foster, Claudio Gentile, Mehryar Mohri, and Julian Zimmert. Adapting to misspecification in contextual bandits. Advances in Neural Information Processing Systems , 33:11478–11489, 2020. Yoav Freund and Robert E Schapire. A decision-theoretic generalization of on-line learning and an application to boosting. Journal of Computer and System Sciences , 55(1):119–139, 1997. Matthieu Geist, Bruno Scherrer, and Olivier Pietquin. A theory of regularized markov decision processes. In International Conference on Machine Learning , pages 2160–2169. PMLR, 2019. Gianmarco Genalti, Lupo Marsigli, Nicola Gatti, and Alberto Maria Metelli. ( ε, u)-adaptive regret minimization in heavy-tailed bandits. In The Thirty Seventh Annual Conference on Learning Theory , pages 1882–1915. PMLR, 2024. Udaya Ghai, Elad Hazan, and Yoram Singer. Exponentiated gradient meets gradient descent. In 
+
+Algorithmic Learning Theory , pages 386–407. PMLR, 2020. Avishek Ghosh, Sayak Ray Chowdhury, and Aditya Gopalan. Misspecified linear bandits. In 
+
+Proceedings of the AAAI Conference on Artificial Intelligence , volume 31, 2017. Aditya Gopalan, Odalric-Ambrym Maillard, and Mohammadi Zaki. Low-rank bandits with latent mixtures. arXiv preprint arXiv:1609.01508 , 2016. 17 Policy Regret for Embedding Model Routing Ming Gu and Stanley C Eisenstat. A stable and efficient algorithm for the rank-one modification of the symmetric eigenproblem. SIAM Journal on Matrix Analysis and Applications , 15(4):1266–1276, 1994. Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q Weinberger. On calibration of modern neural networks. In International Conference on Machine Learning , pages 1321–1330. PMLR, 2017. Andras Gyorgy and Pooria Joulani. Adapting to delays and data in adversarial multi-armed bandits. In International Conference on Machine Learning , pages 3988–3997. PMLR, 2021. Hamed Hassani, Mahdi Soltanolkotabi, and Amin Karbasi. Gradient methods for submodular maximization. Advances in Neural Information Processing Systems , 30, 2017. Elad Hazan and Tomer Koren. The computational power of optimization in online learning. In 
+
+Proceedings of the Forty-Eighth Annual ACM Symposium on Theory of Computing , pages 128–141, 2016. Dan Hendrycks and Kevin Gimpel. Gaussian error linear units (gelus). arXiv preprint arXiv:1606.08415 , 2016. Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531 , 2015. Xiaoyan Hu, Ho fung Leung, and Farzan Farnia. An online learning approach to prompt-based selection of generative models and LLMs. In Forty-second International Conference on Machine Learning , 2025. Jiatai Huang, Yan Dai, and Longbo Huang. Adaptive best-of-both-worlds algorithm for heavy-tailed multi-armed bandits. In International Conference on Machine Learning , pages 9173–9200. PMLR, 2022. Jiatai Huang, Yan Dai, and Longbo Huang. Banker online mirror descent: A universal approach for delayed online bandit learning. In International Conference on Machine Learning , pages 13814–13844. PMLR, 2023. Jui-Ting Huang, Ashish Sharma, Shuying Sun, Li Xia, David Zhang, Philip Pronin, Janani Padman-abhan, Giuseppe Ottaviano, and Linjun Yang. Embedding-based retrieval in Facebook search. In 
+
+Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining , pages 2553–2561, 2020. Po-Sen Huang, Xiaodong He, Jianfeng Gao, Li Deng, Alex Acero, and Larry Heck. Learning deep structured semantic models for web search using clickthrough data. In Proceedings of the 22nd ACM International Conference on Information & Knowledge Management , pages 2333–2338, 2013. Minyoung Huh, Brian Cheung, Tongzhou Wang, and Phillip Isola. Position: The platonic represen-tation hypothesis. In Forty-First International Conference on Machine Learning , 2024. Shinji Ito. On the minimax regret for contextual linear bandits and multi-armed bandits with expert advice. Advances in Neural Information Processing Systems , 37:61793–61812, 2024. Gautier Izacard, Mathilde Caron, Lucas Hosseini, Sebastian Riedel, Piotr Bojanowski, Armand Joulin, and Edouard Grave. Unsupervised dense information retrieval with contrastive learning. 
+
+Transactions on Machine Learning Research , 2022. ISSN 2835-8856. 18 Policy Regret for Embedding Model Routing Tom Jacobs, Chao Zhou, and Rebekka Burkholz. Mirror, mirror of the flow: How does regularization shape implicit bias? In International Conference on Machine Learning , pages 26673–26699. PMLR, 2025. Kyoungseok Jang, Kwang-Sung Jun, Se-Young Yun, and Wanmo Kang. Improved regret bounds of bilinear bandits using action space analysis. In International Conference on Machine Learning ,pages 4744–4754. PMLR, 2021. Soyeong Jeong, Jinheon Baek, Sukmin Cho, Sung Ju Hwang, and Jong C Park. Adaptive-rag: Learning to adapt retrieval-augmented large language models through question complexity. In 
+
+Proceedings of the 2024 Conference of the North American Chapter of the Association for Compu-tational Linguistics , pages 7036–7050, 2024. Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. LLM-blender: Ensembling large language models with pairwise ranking and generative fusion. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics , pages 14165–14178, 2023. Chi Jin, Zhuoran Yang, Zhaoran Wang, and Michael I Jordan. Provably efficient reinforcement learning with linear function approximation. Mathematics of Operations Research , 48(3):1496–1521, 2023. Wittawat Jitkrittum, Harikrishna Narasimhan, Ankit Singh Rawat, Jeevesh Juneja, Congchao Wang, Zifeng Wang, Alec Go, Chen-Yu Lee, Pradeep Shenoy, Rina Panigrahy, Aditya Krishna Menon, and Sanjiv Kumar. Universal model routing for efficient LLM inference. In The Fourteenth International Conference on Learning Representations , 2026. Kwang-Sung Jun, Rebecca Willett, Stephen Wright, and Robert Nowak. Bilinear bandits with low-rank structure. In International Conference on Machine Learning , pages 3163–3172. PMLR, 2019. Sham Kakade. A natural policy gradient. In Proceedings of the 15th International Conference on Neural Information Processing Systems: Natural and Synthetic , pages 1531–1538, 2001. Sham Kakade and John Langford. Approximately optimal approximate reinforcement learning. In 
+
+Proceedings of the Nineteenth International Conference on Machine Learning , pages 267–274, 2002. Sham M Kakade, Shai Shalev-Shwartz, and Ambuj Tewari. Regularization techniques for learning with matrices. The Journal of Machine Learning Research , 13(1):1865–1890, 2012. Satyen Kale. Multiarmed bandits with limited expert advice. In Conference on Learning Theory ,pages 107–122. PMLR, 2014. Varun Kanade and Thomas Steinke. Learning hurdles for sleeping experts. ACM Transactions on Computation Theory , 6(3):1–16, 2014. Varun Kanade, H Brendan McMahan, and Brent Bryan. Sleeping experts and bandits with stochastic action availability and adversarial rewards. In Artificial Intelligence and Statistics , pages 272–279. PMLR, 2009. Yue Kang, Cho-Jui Hsieh, and Thomas Chun Man Lee. Efficient frameworks for generalized low-rank matrix bandit problems. Advances in Neural Information Processing Systems , 35:19971–19983, 2022. 19 Policy Regret for Embedding Model Routing Vladimir Karpukhin, Barlas Oguz, Sewon Min, Patrick Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. Dense passage retrieval for open-domain question answering. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing , pages 6769–6781, 2020. Robert Kleinberg, Alexandru Niculescu-Mizil, and Yogeshwer Sharma. Regret bounds for sleeping experts and bandits. Machine Learning , 80(2):245–272, 2010. Fang Kong, XiangCheng Zhang, Baoxiang Wang, and Shuai Li. Improved regret bounds for linear adversarial MDPs via linear optimization. Transactions on Machine Learning Research , 2024. ISSN 2835-8856. URL https://openreview.net/forum?id=KcmWZSk53y .Simon Kornblith, Mohammad Norouzi, Honglak Lee, and Geoffrey Hinton. Similarity of neural network representations revisited. In International Conference on Machine Learning , pages 3519–3529. PMlR, 2019. Jean Lafond, Hoi-To Wai, and Eric Moulines. On the online Frank-Wolfe algorithms for convex and non-convex optimizations. arXiv preprint arXiv:1510.01171 , 2015. Hyunji Lee, Luca Soldaini, Arman Cohan, Minjoon Seo, and Kyle Lo. RouterRetriever: Routing over a mixture of expert embedding models. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 39, pages 11995–12003, 2025. Karel Lenc and Andrea Vedaldi. Understanding image representations by measuring their equivariance and equivalence. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition , pages 991–999, 2015. Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Chen, Orhan Firat, Yanping Huang, Maxim Krikun, Noam Shazeer, and Zhifeng Chen. {GS}hard: Scaling giant models with conditional computation and automatic sharding. In International Conference on Learning Representations ,2021. Chao Li, Zhiyuan Liu, Mengmeng Wu, Yuchi Xu, Huan Zhao, Pipei Huang, Guoliang Kang, Qiwei Chen, Wei Li, and Dik Lun Lee. Multi-interest network with dynamic routing for recommendation at Tmall. In Proceedings of the 28th ACM International Conference on Information and Knowledge Management , pages 2615–2623, 2019a. Gene Li, Pritish Kamath, Dylan J Foster, and Nati Srebro. Understanding the eluder dimension. 
+
+Advances in Neural Information Processing Systems , 35:23737–23750, 2022a. Lihong Li, Wei Chu, John Langford, and Robert E Schapire. A contextual-bandit approach to personalized news article recommendation. In Proceedings of the 19th International Conference on World Wide Web , pages 661–670, 2010. Yingkai Li, Yining Wang, and Yuan Zhou. Nearly minimax-optimal regret for linearly parameterized bandits. In Conference on Learning Theory , pages 2173–2174. PMLR, 2019b. Zhiyuan Li, Tianhao Wang, Jason D Lee, and Sanjeev Arora. Implicit bias of gradient descent on reparametrized models: On equivalence to mirror descent. Advances in Neural Information Processing Systems , 35:34626–34640, 2022b. 20 Policy Regret for Embedding Model Routing Haolin Liu, Chen-Yu Wei, and Julian Zimmert. Bypassing the simulator: Near-optimal adversarial linear contextual bandits. Advances in Neural Information Processing Systems , 36:52086–52131, 2023. Haolin Liu, Artin Tajdini, Andrew Wagenmaker, and Chen-Yu Wei. Corruption-robust linear bandits: Minimax optimality and gap-dependent misspecification. Advances in Neural Information Processing Systems , 37:24277–24325, 2024. Yangyi Lu, Amirhossein Meisami, and Ambuj Tewari. Low-rank generalized linear bandit problems. In International Conference on Artificial Intelligence and Statistics , pages 460–468. PMLR, 2021. Haipeng Luo, Chen-Yu Wei, and Chung-Wei Lee. Policy optimization in adversarial MDPs: Improved exploration via dilated bonuses. Advances in Neural Information Processing Systems , 34:22931– 22942, 2021. Jiaqi Ma, Zhe Zhao, Xinyang Yi, Jilin Chen, Lichan Hong, and Ed H Chi. Modeling task relationships in multi-task learning with multi-gate mixture-of-experts. In Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining , pages 1930–1939, 2018. Alex Mallen, Akari Asai, Victor Zhong, Rajarshi Das, Daniel Khashabi, and Hannaneh Hajishirzi. When not to trust language models: Investigating effectiveness of parametric and non-parametric memories. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics , pages 9802–9822, 2023. H Brendan McMahan and Francesco Orabona. Unconstrained online linear learning in Hilbert spaces: Minimax algorithms and normal approximations. In Conference on Learning Theory ,pages 1020–1039. PMLR, 2014. Jincheng Mei, Chenjun Xiao, Csaba Szepesvari, and Dale Schuurmans. On the global convergence rates of softmax policy gradient methods. In International Conference on Machine Learning , pages 6820–6829. PMLR, 2020. Niklas Muennighoff, Nouamane Tazi, Loïc Magne, and Nils Reimers. MTEB: Massive text embedding benchmark. In Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics , pages 2014–2037, 2023. Gergely Neu and Julia Olkhovskaya. Efficient and robust algorithms for adversarial linear contextual bandits. In Conference on Learning Theory , pages 3049–3068. PMLR, 2020. Gergely Neu and Julia Olkhovskaya. Online learning in MDPs with linear function approximation and bandit feedback. Advances in Neural Information Processing Systems , 34:10407–10417, 2021. Quang H Nguyen, Thinh Dao, Duy C Hoang, Juliette Decugis, Saurav Manchanda, Nitesh V Chawla, and Khoa D Doan. Metallm: A high-performant and cost-efficient dynamic framework for wrapping llms. arXiv preprint arXiv:2407.10834 , 2024. Julia Olkhovskaya, Jack Mayo, Tim van Erven, Gergely Neu, and Chen-Yu Wei. First-and second-order bounds for adversarial linear contextual bandits. Advances in Neural Information Processing Systems , 36:61625–61644, 2023. Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gonzalez, M Waleed Kadous, and Ion Stoica. RouteLLM: Learning to route LLMs from preference data. In 
+
+The Thirteenth International Conference on Learning Representations , 2025. 21 Policy Regret for Embedding Model Routing Francesco Orabona. Dimension-free exponentiated gradient. Advances in Neural Information Processing Systems , 26, 2013. Francesco Orabona. A modern introduction to online learning. arXiv preprint arXiv:1912.13213 ,2019. Francesco Orabona and Dávid Pál. Coin betting and parameter-free online learning. Advances in Neural Information Processing Systems , 29, 2016. Andrea Papenmeier, Dagmar Kern, Daniel Hienert, Alfred Sliwa, Ahmet Aker, and Norbert Fuhr. Dataset of natural language queries for e-commerce. In Proceedings of the 2021 conference on human information interaction and retrieval , pages 307–311, 2021. Scott Pesme, Loucas Pillaud-Vivien, and Nicolas Flammarion. Implicit bias of sgd for diagonal linear networks: a provable benefit of stochasticity. Advances in Neural Information Processing Systems ,34:29218–29230, 2021. Manhin Poon, XiangXiang Dai, Xutong Liu, Fang Kong, John C.S. Lui, and Jinhang Zuo. Online multi-LLM selection via contextual bandits under unstructured context evolution. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 40, 2026. Sashank J Reddi, Suvrit Sra, Barnabás Póczos, and Alex Smola. Stochastic Frank-Wolfe methods for nonconvex optimization. In 2016 54th annual Allerton conference on communication, control, and computing (Allerton) , pages 1244–1251. IEEE, 2016. Chandan K. Reddy, Lluís Màrquez, Fran Valero, Nikhil Rao, Hugo Zaragoza, Sambaran Bandyopad-hyay, Arnab Biswas, Anlu Xing, and Karthik Subbian. Shopping queries dataset: A large-scale ESCI benchmark for improving product search. 2022. Nils Reimers and Iryna Gurevych. Sentence-BERT: Sentence embeddings using siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) , pages 3982–3992, 2019. Daniel Russo and Benjamin Van Roy. Eluder dimension and the sample complexity of optimistic exploration. Advances in Neural Information Processing Systems , 26, 2013. Yevgeny Seldin, Koby Crammer, and Peter Bartlett. Open problem: Adversarial multiarmed bandits with limited advice. In Conference on Learning Theory , pages 1067–1072. PMLR, 2013. Yevgeny Seldin, Peter Bartlett, Koby Crammer, and Yasin Abbasi-Yadkori. Prediction with limited advice and multiarmed bandits with paid observations. In International Conference on Machine Learning , pages 280–287. PMLR, 2014. Lior Shani, Yonathan Efroni, and Shie Mannor. Adaptive trust region policy optimization: Global convergence and faster rates for regularized mdps. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 34, pages 5668–5675, 2020. Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. Outrageously large neural networks: The sparsely-gated mixture-of-experts layer. arXiv preprint arXiv:1701.06538 , 2017. 22 Policy Regret for Embedding Model Routing Uri Sherman, Tomer Koren, and Yishay Mansour. Improved regret for efficient online reinforcement learning with linear function approximation. In International Conference on Machine Learning ,pages 31117–31150. PMLR, 2023. Tal Shnitzer, Anthony Ou, Mírian Silva, Kate Soule, Yuekai Sun, Justin Solomon, Neil Thompson, and Mikhail Yurochkin. Large language model routing with benchmark datasets. arXiv preprint arXiv:2309.15789 , 2023. Matthew Streeter and H Brendan McMahan. No-regret algorithms for unconstrained online convex optimization. In Advances in Neural Information Processing Systems , volume 25, pages 2402–2410, 2012. Richard S. Sutton, David A. McAllester, Satinder P. Singh, and Yishay Mansour. Policy gradient methods for reinforcement learning with function approximation. In Advances in Neural Information Processing Systems (NeurIPS) , volume 12, 1999. Vasilis Syrgkanis, Akshay Krishnamurthy, and Robert Schapire. Efficient algorithms for adversarial contextual learning. In International Conference on Machine Learning , pages 2159–2168. PMLR, 2016. Nandan Thakur, Nils Reimers, Andreas Rücklé, Abhishek Srivastava, and Iryna Gurevych. BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models. In Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track (Round 2) ,2021. Asterios Tsiourvas, Wei Sun, and Georgia Perakis. Causal LLM routing: End-to-end regret minimiza-tion from observational data. In Advances in Neural Information Processing Systems , volume 38, 2025. Koji Tsuda, Gunnar Rätsch, and Manfred K Warmuth. Matrix exponentiated gradient updates for on-line learning and bregman projection. In Journal of Machine Learning Research , pages 995–1018, 2005. Tim van Erven, Jack Mayo, Julia Olkhovskaya, and Chen-Yu Wei. An improved algorithm for adversarial linear contextual bandits via reduction. In Advances in Neural Information Processing Systems , volume 38, 2025. Aditya Vardhan Varre, Maria-Luiza Vladarean, Loucas Pillaud-Vivien, and Nicolas Flammarion. On the spectral bias of two-layer linear networks. Advances in Neural Information Processing Systems ,36:64380–64414, 2023. Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. Attention is all you need. Advances in neural information processing systems , 30, 2017. Daniel Vial, Advait Parulekar, Sanjay Shakkottai, and R Srikant. Improved algorithms for misspecified linear markov decision processes. In International Conference on Artificial Intelligence and Statistics , pages 4723–4746. PMLR, 2022. John Von Neumann. Some matrix-inequalities and metrization of matric space. Univ. Rev , 1:286–300, 1937. 23 Policy Regret for Embedding Model Routing Jizhe Wang, Pipei Huang, Huan Zhao, Zhibo Zhang, Binqiang Zhao, and Dik Lun Lee. Billion-scale commodity embedding for e-commerce recommendation in Alibaba. In Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining , pages 839–848, 2018. Liang Wang, Nan Yang, Xiaolong Huang, Binxing Jiao, Linjun Yang, Daxin Jiang, Rangan Majumder, and Furu Wei. Text embeddings by weakly-supervised contrastive pre-training. arXiv preprint arXiv:2212.03533 , 2022. Tongzhou Wang and Phillip Isola. Understanding contrastive representation learning through alignment and uniformity on the hypersphere. In International Conference on Machine Learning ,pages 9929–9939. PMLR, 2020. Wenhui Wang, Furu Wei, Li Dong, Hangbo Bao, Nan Yang, and Ming Zhou. MiniLM: Deep self-attention distillation for task-agnostic compression of pre-trained transformers. Advances in Neural Information Processing Systems , 33:5776–5788, 2020. Wenhui Wang, Hangbo Bao, Shaohan Huang, Li Dong, and Furu Wei. MiniLMv2: Multi-head self-attention relation distillation for compressing pretrained transformers. In Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021 , pages 2140–2151, 2021. Orion Weller, Michael Boratko, Iftekhar Naim, and Jinhyuk Lee. On the theoretical limitations of embedding-based retrieval. In The Fourteenth International Conference on Learning Representa-tions , 2026. Ronald J. Williams. Simple statistical gradient-following algorithms for connectionist reinforcement learning. Machine Learning , 8(3–4):229–256, 1992. Blake Woodworth, Suriya Gunasekar, Jason D Lee, Edward Moroshko, Pedro Savarese, Itay Golan, Daniel Soudry, and Nathan Srebro. Kernel and rich regimes in overparametrized models. In 
+
+Conference on Learning Theory , pages 3635–3673. PMLR, 2020. Fan Wu and Patrick Rebeschini. A continuous-time mirror descent approach to sparse phase retrieval. 
+
+Advances in Neural Information Processing Systems , 33:20192–20203, 2020. Fan Wu and Patrick Rebeschini. Implicit regularization in matrix sensing via mirror descent. 
+
+Advances in Neural Information Processing Systems , 34:20558–20570, 2021. Fan Wu and Patrick Rebeschini. Nearly minimax-optimal rates for noisy sparse phase retrieval via early-stopped mirror descent. Information and Inference: A Journal of the IMA , 12(2):633–713, 2023. Shitao Xiao, Zheng Liu, Peitian Zhang, Niklas Muennighoff, Defu Lian, and Jian-Yun Nie. C-Pack: Packed resources for general chinese embeddings. In Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval , pages 641–649, 2024. Xinyang Yi, Ji Yang, Lichan Hong, Derek Zhiyuan Cheng, Lukasz Heldt, Aditee Kumthekar, Zhe Zhao, Li Wei, and Ed Chi. Sampling-bias-corrected neural modeling for large corpus item recommendations. In Proceedings of the 13th ACM Conference on Recommender Systems , pages 269–277, 2019. 24 Policy Regret for Embedding Model Routing Mingrui Zhang, Lin Chen, Hamed Hassani, and Amin Karbasi. Online continuous submodular maxi-mization: From full-information to bandit feedback. Advances in Neural Information Processing Systems , 32, 2019. Tong Zhao, Yutao Zhu, Yucheng Tian, and Zhicheng Dou. R3AG: Retriever routing for retrieval-augmented generation. arXiv preprint arXiv:2604.22849 , 2026. Yanqi Zhou, Tao Lei, Hanxiao Liu, Nan Du, Yanping Huang, Vincent Zhao, Andrew M Dai, Quoc V Le, James Laudon, et al. Mixture-of-experts with expert choice routing. Advances in Neural Information Processing Systems , 35:7103–7114, 2022. Julian Zimmert and Yevgeny Seldin. An optimal algorithm for adversarial bandits with arbitrary delays. In International Conference on Artificial Intelligence and Statistics , pages 3285–3294. PMLR, 2020. Lingkai Zu, Xiyue Peng, and Xin Liu. Barouter: A budget-adaptive online large language model router framework. In Proceedings of the ACM Web Conference 2026 , pages 7645–7656, 2026. 25 Policy Regret for Embedding Model Routing 
+
+# Technical Appendices 
+
+A Setup of Figure 1 and More Discussions 26 B More Discussions on Policy Classes and Regret Notions 27 
+
+B.1 Log-Quadratic Policy Class (Proposition 1) . . . . . . . . . . . . . . . . . . . . . . . 27 B.2 Constant Policy Class and Expert Regret . . . . . . . . . . . . . . . . . . . . . . . . 29 B.3 Unrestricted Policy Class and Contextual Regret . . . . . . . . . . . . . . . . . . . . 30 B.4 Log-Linear Policy Class and Linearization in Policy Regret . . . . . . . . . . . . . . . 33 B.5 Log-Quadratic Policy Class and Linearized Policy Regret . . . . . . . . . . . . . . . . 34 
+
+C Setup of Table 2 and More Discussions 36 D Omitted Proofs for Hypentropy Policy Gradient 37 
+
+D.1 Matrix Functions and Convex Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . 37 D.2 Direct Sum Property . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38 D.3 Gradient Estimation (Lemma 2) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39 D.4 Linearized Policy Regret Bound of HPG (Theorem 3) . . . . . . . . . . . . . . . . . . 40 
+
+E Practical Implementation of HPG 42 
+
+E.1 Computational Cost Bound of HPG (Theorem 4) . . . . . . . . . . . . . . . . . . . . 42 E.2 Parameter-Free Implementation of HPG (Theorem 5) . . . . . . . . . . . . . . . . . . 43 
+
+# A Setup of Figure 1 and More Discussions 
+
+In Figure 1, we consider a recommendation system scenario over the Amazon Berkeley Objects (ABO) dataset (Collins et al., 2022). Based on the “keywords” in the ABO dataset, we randomly picked 500 items with one of the following keywords: ‘sofa’, ‘couch’, ‘chair’, ‘loveseat’, ‘ottoman.’ 
+
+We consider the following specific user prompt, which is generated by a Large Language Model (LLM) API, Gemini-2.5-pro, to mimic a typical customer that has a diverse range of requirements: “Looking for a modern, dark-colored lounge sofa (not a chair). Definitely NOT leather. Prefer fabric or linen with a cozy but structural design. ” It contains various components: vague style descriptions (modern, cozy but structural), color (dark-colored), object category (lounge sofa, not a chair), and material constraints (NOT leather, prefer fabric or linen). In industrial recommendation systems like Youtube (Covington et al., 2016), Alibaba e-commerce (Wang et al., 2018), and Facebook (Huang et al., 2020), a filter step taking care of hard constraints is implemented independent of the embedding models. We capture this by invoking Gemini-2.5-pro with the following prompt: “You are a strict data filter for a recommendation system. A user has provided the following search query: {user_prompt} Task: 1. Identify any STRICT negative 
+
+26 Policy Regret for Embedding Model Routing 
+
+constraints or hard requirements in the user’s query (e.g., if they explicitly say "NOT X", then X is a hard constraint). 2. Evaluate the following items. If an item clearly violates a strict negative constraint from the query, it fails the filter. 3. Return ONLY a valid JSON dictionary where keys are Item IDs and values are boolean ‘true‘ (passes constraints, or no strict constraints violated) or ‘false‘ (fails strict constraints). ” The items satisfying all hard constraints in the user prompt stated above – 131 out of 500 – are passed onto the next stage of recommendation. For the recommendation stage, we use two lightweight embedding models pre-trained using different methodologies: (i) the miniLM model by Wang et al. (2020; 2021, all-MiniLM-L6-v2 on Huggingface), whose embeddings are optimized so that semantically similar sentences have high cosine similarity; and (ii) the msmarco model by Reimers and Gurevych (2019, msmarco-distilbert-base-v4 on Huggingface), an asymmetric retrieval model trained on a large-scale dataset built from Bing search queries (Bajaj et al., 2016). Prior benchmarks show that text embedding models are strongly task-dependent: models optimized for semantic similarity and models optimized for query-document retrieval perform differently across downstream retrieval and similarity tasks (Thakur et al., 2021; Muennighoff et al., 2023). Thus, using one symmetric semantic model and one asymmetric retrieval model is expected to produce different rankings over the same candidate items. To evaluate these two models, we again called the LLM API, Gemini-2.5-pro, with the following prompt: “ You are a recommendation system evaluator. A user queried: {user_prompt} Note: All items below have already passed the hard filter constraints of the query. Evaluate how perfectly each item satisfies the remaining soft constraints (modern, dark-colored, cozy but structural, fabric/linen). Task: Score each item from 0 to 100. Return ONLY a valid JSON dictionary where keys are Item IDs and values are integer scores. ” The resulting ranking is treated as the ground-truth. In Figure 1, we visualize the rankings using a 2D scatter plot, with the x-axis and y-axis representing the ranks assigned by miniLM and msmarco , respectively. To show the discrepancy between different models without visual clutter, low-relevance items (ground-truth rank > 40 , which is roughly 25%) are plotted as faint crosses, while high-quality items (ground-truth rank ≤ 40 ) are shown as gray dots. Furthermore, we also highlight representative “exclusively good” items identified as follows: An item ranked in the top tier by both the LLM ground-truth and one embedding model, while simultaneously being penalized by the other embedding model. Green dots are items uniquely captured by miniLM , and red dots are items uniquely captured by msmarco . This gives our main motivation: No single model dominates the other, and hence dynamic model routing is necessary. 
+
+# B More Discussions on Policy Classes and Regret Notions 
+
+B.1 Log-Quadratic Policy Class (Proposition 1) 
+
+Proof of Proposition 1. We begin by defining the ideal (non-misspecified) recommendation distribu-tion for expert m, which removes the misspecification function μm in Eq. (4): 
+
+ξ∗
+
+> m
+
+(a | q) = exp  ⟨Ψm, aq T⟩P 
+
+> a′∈A
+
+exp  ⟨Ψm, a ′qT⟩ , ∀m ∈ [M ], q ∈ Q , a ∈ A .
+
+Given the bounded misspecification ∥μm∥∞ ≤ ϵ in Eq. (4), the ratio between the actual distribution and the ideal distribution is strictly bounded. Specifically, for any a ∈ A :
+
+ξm(a | q)
+
+ξ∗
+
+> m
+
+(a | q) = exp  μm(q, a ) P 
+
+> a′∈A
+
+exp  ⟨Ψm, a ′qT⟩P 
+
+> a′∈A
+
+exp  ⟨Ψm, a ′qT⟩ + μm(q, a ′)
+
+27 Policy Regret for Embedding Model Routing 
+
+≤ exp( ϵ)
+
+P 
+
+> a′∈A
+
+exp  ⟨Ψm, a ′qT⟩
+
+exp( −ϵ) P 
+
+> a′∈A
+
+exp  ⟨Ψm, a ′qT⟩ = exp(2 ϵ).
+
+By symmetry, the lower bound is exp (−2ϵ). Consequently, the total variation distance is bounded by 
+
+DTV (ξm, ξ ∗
+
+> m
+
+) ≤ 12
+
+X
+
+> a
+
+ξ∗
+
+> m
+
+(a | q)|exp(2 ϵ) − 1| = O(ϵ).
+
+We therefore compare the expected action of model m when answering query q, namely am(q) := 
+
+Ea∼ξm [a], to that under the ideal ξ∗
+
+> m
+
+, namely a∗
+
+> m
+
+(q) := Ea∼ξ∗ 
+
+> m
+
+[a]. We have 
+
+∥am(q) − a∗
+
+> m
+
+(q)∥2 = X
+
+> a∈A
+
+a ξm(a | q) − ξ∗
+
+> m
+
+(a | q) 
+
+> 2
+
+≤ max  
+
+> a∈A
+
+∥a∥2 · X
+
+> a∈A
+
+|ξm − ξ∗
+
+> m
+
+| ≤ O (ϵ),
+
+where we invoked the regularity assumption that ∥a∥2 ≤ 1 (Section 2.2). As ξ∗ 
+
+> m
+
+belongs to the exponential family, the expected action is the gradient of the log-partition function at Ψmq, i.e., 
+
+a∗
+
+> m
+
+(q) = E
+
+> a∼ξ∗
+> m
+
+[a] = ∇A(Ψ mq), where A(z) := log X
+
+> a∈A
+
+exp( ⟨z, a ⟩).
+
+Expand ∇A(z) around z = 0 to the second order as ∇A(z) = ∇A(0) + ∇2A(0) z + R2(z) where 
+
+∥R2(z)∥2 ≤ O (∥z∥22). Due to the log-partition function, ∇A(0) = 1
+
+> |A|
+
+P 
+
+> a∈A
+
+a := μA is the mean of all items, and ∇2A(0) = 1
+
+> |A|
+
+P
+
+> a∈A
+
+(a − μA)( a − μA)T := Σ A is the covariance. Now plug in z = Ψ mq. By the regularity conditions that ∥q∥2 ≤ 1 and ∥Ψm∥2 ≤ √ϵ, we have 
+
+∥z∥2 ≤ √ϵ. Thus the remainder is bounded by ∥R2(z)∥2 ≤ O (ϵ). Combining it with the total variational bound between am(q) and a∗
+
+> m
+
+(q), we have 
+
+a∗
+
+> m
+
+(q) = μA + Σ AΨmq + eem(q), am(q) = μA + Σ AΨmq + em(q),
+
+where ∥eem(q)∥2, ∥em(q)∥2 ≤ O (ϵ). Substituting am(q) into the true reward function in Eq. (2), 
+
+E
+
+> a∼ξm(q)
+
+[r(q, a )] = E
+
+> a∼ξm(q)
+
+qT(Ψ ∗)Ta + ν(q, a ) = qT(Ψ ∗)Tam(q) + E
+
+> a∼ξm
+
+[ν(q, a )] = qT(Ψ ∗)TμA
+
+| {z } 
+
+> constant C(q)
+
++ qT(Ψ ∗)TΣAΨmq
+
+| {z } 
+
+> quadratic qTWmq
+
++ qT(Ψ ∗)Tem(q) + E
+
+> a∼ξm
+
+[ν(q, a )] 
+
+| {z } 
+
+> residual δm(q)
+
+.
+
+We first focus on the quadratic term qTWmq where Wm := (Ψ ∗)TΣAΨm. Since the quadratic form only depends on the symmetric part, we define W ∗ 
+
+> m
+
+= 12 (Wm + W T
+
+> m
+
+) ∈ Sdq . It is also low-rank: 
+
+rank( W ∗
+
+> m
+
+) = rank 
+
+ 12 Wm + 12 W T
+
+> m
+
+
+
+≤ rank( Wm) + rank( W T
+
+> m
+
+) ≤ 2 rank(Ψ m) ≤ 2sm ≤ 2s. 
+
+Consequently, we have the following nuclear-norm bound: 
+
+∥W ∗
+
+> m
+
+∥∗ ≤ rank( W ∗
+
+> m
+
+) × ∥ W ∗
+
+> m
+
+∥2 ≤ 2s × 12
+
+
+
+∥Wm∥2 + ∥W T
+
+> m
+
+∥2
+
+
+
+≤ 2s × 1 × 1 × √ϵ = 2 s, 
+
+where the last step uses the regularity conditions that ∥Φ∗∥2 ≤ 1, ∥a∥2 ≤ 1 for all a ∈ A , and 
+
+∥Ψm∥2 ≤ √ϵ ≤ 1. For the residual term δm(q), because ∥q∥2 ≤ 1, ∥Ψ∗∥2 ≤ 1, and |ν| ≤ ϵ,
+
+|δm(q)| ≤ ∥ q∥2 · ∥ Ψ∗∥2 · ∥ em(q)∥2 + sup 
+
+> a∈A
+
+ν(q, a ) ≤ 1 · 1 · O (ϵ) + ϵ = O(ϵ).
+
+This finishes the proof: We have Ea∼ξm(q,a ) = C(q) + qTW ∗
+
+> m
+
+q + δm(q), such that W ∗ 
+
+> m
+
+∈ Sdq
+
+∥W ∗
+
+> m
+
+∥∗ ≤ rank( W ∗
+
+> m
+
+) ≤ 2s, and that |δm(q)| ≤ O (ϵ).28 Policy Regret for Embedding Model Routing 
+
+B.2 Constant Policy Class and Expert Regret 
+
+When picking the reference policy class as the constant class, the policy regret recovers the expert regret in the problem of bandits with expert advice (BwE). We begin by defining the BwE problem. 
+
+Definition 1 (Bandits with Expert Advice; Auer et al. 2002) . Consider a T -round K-armed bandit between a learner and an environment. In each round t ∈ [T ], the learner observes M experts advice 
+
+ξt, 1, ξ t, 2, . . . , ξ t,M , which are probability distributions over [K]. The learner chooses one expert mt
+
+and plays according to their advice, i.e., at ∼ ξt,m t . The learner suffers an adversarial loss ℓt,a t . The learner minimizes expert regret , the sub-optimality gap compared to the optimal expert in hindsight: 
+
+RET := max   
+
+> m∗∈[M]
+
+E
+
+" TX
+
+> t=1
+
+
+
+ℓt,a t − E
+
+> a∼ξt,m ∗
+
+[ℓt,a ]
+
+#
+
+. (18) In the more restrictive limited observability setup (Seldin et al., 2013; Kale, 2014), there is a parameter 
+
+N ≤ M . The learner can only pick a size-N subset of experts in each round to observe their advices. Everything else, including the performance metric of expert regret in Eq. (18), remains the same. In our embedding model routing problem (Section 2), if picking Π as the class of constant policies: 
+
+Πconst := π(m | q) = 1[m = m0], ∀q ∈ Q m0 ∈ [M ] , (19) which is parameterized by a single parameter m0 ∈ [M ], our problem is almost Definition 1 with 
+
+N = 1 : Let K = |A| , i.e., each item a ∈ A is an arm. View each model as an expert, with the round-t advice ξt,m defined according to the ξm(· | qt) in Eq. (4). The loss of arm a in round t is the 
+
+−r(qt, a ) in Eq. (2). The reason why we say “almost” is the correlation between expert advice and losses: In standard bandits with expert model (see, e.g., Kale, 2014, Footnote 2), the advices and losses must be independent conditional on the history (i.e., they can both be adaptive to the history, but cannot be correlated to each other). Fortunately, our claims in Section 3 still holds. On the upper bound side, we ignore the “experts” structure and apply an EXP3 algorithm (Auer et al., 2002): In round t, the learner chooses one between M models, namely mt, and the loss of model m in round t has a mean Ea∼ξm(qt)[r(qt, a )] , which is bounded by [−1, 1] . Since EXP3 allows adaptive losses, its policy regret w.r.t. Πconst is O(√M T log M ) (Auer et al., 2002, Corollary 3.2). On the lower bound side, we translate the construction of Kale (2014, Theorem 4) into our setting: 
+
+Theorem 6 (Regret Lower Bound w.r.t. Πconst ). There exists a group of instances with da ≫ M ,
+
+dq = M d a, and s = da, such that the policy regret w.r.t. Πconst must be Ω( pM T / log da). Moreover, even if we allow the learner to query multiple N ≤ M models per round, the same bound remains. 
+
+The proof of Theorem 6 is presented at the end of this section. We hence conclude that the constant policy class and the induced expert regret are inappropriate for embedding model routing: Ablack-box EXP3 ignoring the linear reward structures in Eq. (2) and the low-rank model structures in Eq. (4) attains near-optimal regret. This lower bound holds even with full observability on models (as long as M ≤ da, which is typically true since da = 768 in RouterRetriver ; Lee et al. 2025). We give two more remarks before concluding this section. First, one may ask with full observability, whether the Hedge algorithm (Freund and Schapire, 1997) – attaining O(√T log M ) regret – becomes applicable. The answer is no: while full observability on models are obtained, the reward feedback is still bandit (see Section 2.3). Second, noticing that the s in Theorem 6 is chosen to be the same as 
+
+da, one may ask whether the low-rank bilinear or matrix bandit algorithms (Jun et al., 2019; Jang 29 Policy Regret for Embedding Model Routing et al., 2021; Lu et al., 2021; Kang et al., 2022) can be used to derive sharpened regret bounds and bypass the Ω( pM T / log da) lower bound. The answer is again no: the reward kernel Ψ∗ in Eq. (2) can be general (i.e., having a rank as large as d), and the learner has no control over the query qt.
+
+B.2.1 Lower Bound on Policy Regret w.r.t. Constant Policy Class 
+
+Proof of Theorem 6. Write dq = M K and da = K. Let A = {e1, e 2, . . . , e K } ∈ RK be unit vectors in the item space. For each round t ∈ [T ], the adversary samples kt, 1, k t, 2, . . . , k k,M uniformly random at from [M ]. The query is given as qt = 1√M [eT 
+
+> kt, 1
+
+, e T 
+
+> kt, 2
+
+, . . . , e T 
+
+> kt,M
+
+]T ∈ RM K . Each expert m ∈ [M ]
+
+has the following kernel ( M matrices in total, and IK×K appears as the m-th): 
+
+Ψm = α√M [0K×K · · · 0K×K IK×K 0K×K · · · 0K×K ] ∈ RK×M K ,
+
+where α is a parameter controlling the softmax temperature in Eq. (4). The rank of Ψm is K.Setting misspecification μm ≡ 0, the model m with very high probability recommends the item kt,m :
+
+ξm(ek | qt) = exp( ⟨Ψm, e kqT 
+
+> t
+
+⟩F )
+
+PKk′=1 exp( ⟨Ψm, e k′ qT 
+
+> t
+
+⟩F ) = exp( α1[k = kt,m ]) (K − 1) + exp( α) , ∀k ∈ [M ].
+
+It only remains to construct the true rewards. Following the construction by Kale (2014, Theorem 4), the environment picks a “good” expert m∗ ∈ [M ] uniformly at random before the game, and set 
+
+Ψ∗ = δ√M [0K×K · · · 0K×K IK×K 0K×K · · · 0K×K ] ∈ RK×M K ,
+
+where there are M matrices in total and IK×K appears as the m∗-th, and the δ > 0 is a paremeter enabling information theoretic arguments. This Ψ∗ ensures r(qt, e k) = δ1[k = kt,m ∗ ]. That is, only the item recommended by the m∗-th expert has a reward of δ, whereas all others have zero reward. We therefore resemble the hard instance constructed by Kale (2014, Theorem 4) by setting our α
+
+and δ according to their ϵ. Kale (2014, Theorem 4) proved that in bandits with expert advice with limited observability, one suffers an expert regret lower bound of (with notations from Definition 1) 
+
+RET = Ω 
+
+r min( K, N/ log K)
+
+N M T 
+
+!
+
+.
+
+Plugging in our configuration that N ≤ M ≪ da = K, we come at the conclusion that, even if we allow full observability on models, the policy regret w.r.t. Πconst (Eq. (19)) is still at least 
+
+RT (Π const ) = Ω 
+
+r N/ log da
+
+N M T 
+
+!
+
+= Ω 
+
+ M T 
+
+log da
+
+
+
+.
+
+B.3 Unrestricted Policy Class and Contextual Regret 
+
+Similar to Appendix B.2, we begin by defining the problem of contextual linear bandits and contextual regret. We use the adversarial formulation by Liu et al. (2023) to ease subsequent discussions. 
+
+Definition 2 (Adversarial Contextual Linear Bandit; Liu et al. 2023) . Consider a T -round game between a learner and an environment. In round t, a context, or equivalently, an action set At ⊆ Rd,is presented to the learner. The learner picks action at ∈ At. At the same time, the environment 30 Policy Regret for Embedding Model Routing (without observing at) chooses a loss vector ℓt ∈ Rd. The learner incurs and observes a noisy sample of the loss ⟨ℓt, a t⟩. The learner minimizes the contextual regret, defined as 
+
+RCT := sup 
+
+> π∗
+
+E
+
+" TX
+
+> t=1
+
+
+
+⟨ℓt, a t⟩ − E
+
+> a∼π∗(At)
+
+[⟨ℓt, a ⟩]
+
+#
+
+, (20) where π∗ is any policy that maps a subset A ⊆ Rd to a (possibly randomized) action a ∈ A therein. To illustrate the hardness of matching the unrestricted policy class △Q via reduction to Definition 2, throughout this section, we make the following two assumptions as mentioned in Section 3: A1. There is no misspecification in rewards or recommendation distributions so that everything is perfectly linear, i.e., ν(q, a ) = μm(q, a ) = 0 for all q ∈ Q and a ∈ A in Eqs. (2) and (4). A2. The low-rank recommendation kernels of each model, namely the Ψm in Eq. (4), is also known to the learner in advance. This allows the learner to calculate the following expected recommendation :
+
+am(qt) := E
+
+> a∼ξm(qt)
+
+[a] ∈ Rda , ∀m ∈ [M ],
+
+which means this is an even stronger assumption than full observability on models (Theorem 6). Since these two assumptions strictly ease learning, but matching the unrestricted policy class remains notoriously hard as we detail in subsequent sections, this metric is only harder in the original setup. 
+
+B.3.1 Unrestricted Policy Class → A-S Contextual Linear Bandit 
+
+The first reduction, as sketched in Section 3 in the main text, is to the adversarial-context stochastic-loss (“A-S”) contextual linear bandit problem. Specifically, take the d in Definition 2 as d = dadq.The round-t action set (or context) is given as 
+
+At = vec (am(qt) qT 
+
+> t
+
+) m ∈ [M ] ⊆ Rd = Rdadq ,
+
+where the vec (·) means flattering a Rm×n matrix into a Rmn vector: Ai,j = vec (A)i×n+j . Note that, assumption (A2) is used to ensure that the learner can calculate the action set At in each round t.When choosing action a = vec (am(qt) qT 
+
+> t
+
+) ∈ At in round t, which is equivalent to choosing model m
+
+in round t, the expected loss (i.e., negative-reward) is 
+
+− E
+
+> a∼ξm(qt)
+
+[r(qt, a )] = −
+
+D
+
+Ψ∗, E
+
+> a∼ξm(qt)
+
+[a] qT
+
+> t
+
+E 
+
+> F
+
+= −
+
+D
+
+vec (Ψ ∗), vec (am(qt) qT 
+
+> t
+
+)
+
+E
+
+, (21) where the first step uses the definition of r(q, a ) in Eq. (2) and also assumption (A1) to ensure the linearity, and the second step uses the property that for two matrices A, B ∈ Rm×n,
+
+⟨A, B ⟩F := Tr( ATB) = 
+
+> m
+
+X
+
+> i=1
+> n
+
+X
+
+> j=1
+
+Ai,j Bi,j = ⟨vec (A), vec (B)⟩.
+
+Therefore, the loss vector in Definition 2 is always chosen as ℓt = −vec (Ψ ∗). This consequently reduces to an adversarial-context (because At’s depend on qt and are thus adversarial) and stochastic-loss (because ℓt is stationary) contextual linear bandit problem. We list a few available algorithms: 
+
+• OFUL (Abbasi-Yadkori et al., 2011): O(d√T log T ) contextual regret with O(|At|d2) computation per round. A faster “rarely switching” implementation is available, but the regret is the same. 31 Policy Regret for Embedding Model Routing 
+
+• SupLinUCB (Chu et al., 2011): O
+
+q 
+
+dT log 3(|A|T )
+
+
+
+contextual regret (where |A| := max t|At|;in our case we thus have |A| = M ) with O(|A|d2 log T ) computation per round. 
+
+• VCL-SupLinUCB (Li et al., 2019b): O(pdT log T log |A|) contextual regret with O(|A|d2 log T )
+
+computation per round. As we argued in Section 3, when d = dqdq and da = dq = 768 (Lee et al., 2025; Izacard et al., 2022), none of these regret bounds or computational cost guarantees are acceptable. 
+
+B.3.2 Unrestricted Policy Class → A-A Contextual Linear Bandit 
+
+A seemingly more promising reduction is rewriting Eq. (21) as a da-dimensional inner product: 
+
+− E
+
+> a∼ξm(qt)
+
+[r(qt, a )] = −
+
+D
+
+Ψ∗, E
+
+> a∼ξm(qt)
+
+[a] qT
+
+> t
+
+E 
+
+> F
+
+= −⟨ Ψ∗qt, a m(qt)⟩,
+
+which corresponds to Definition 2 with round-t action set At = am(qt) m ∈ [M ] ⊆ Rda and loss vector ℓt = −Ψ∗qt ∈ Rda . While reducing the problem dimension greatly, the adversarial qt –appearing in both action set At and loss vector ℓt – makes this problem intractable: Adversarial-context adversarial-loss (so-called “A-A”) contextual linear bandits are computationally infeasible (Kanade and Steinke, 2014), admit Ω( |△ Q|) oracle-complexity lower bounds (Hazan and Koren, 2016), and are conjectured to bear Ω( T ) regret lower bounds (Neu and Olkhovskaya, 2020). 
+
+B.3.3 Unrestricted Policy Class with i.i.d. Query → S-A Contextual Linear Bandit 
+
+Given the intractability comes from the fact that both the action set At and the loss vector ℓt are adversarial, what if we assume queries are i.i.d. in addition to the assumptions (A1) and (A2)? A3. Assume that all queries qt are i.i.d. samples from a fixed but unknown distribution Q ∈ △ (Q).This assumption is justified by, e.g., in large-scale e-commerce systems, it is acceptable to expect customers come uniformly at random from a large population. Now the action set At = am(qt)
+
+m ∈ [M ] is i.i.d., and only the loss vector ℓt = −Ψ∗qt is time-varying, does it fall into the tractable category of stochastic-context adversarial-loss (“S-A”) contextual linear bandits? (While ℓt is also stochastic, a stochastic-loss setup requires a stationary ℓt.) This is because S-A contextual linear bandits admits an efficient algorithm with eO(d2√T ) contextual regret (Liu et al., 2023). In our case where action sets have bounded sizes, O(pdT log |A|) regret is also possible (Ito, 2024). However, the answer is negative. This is because all “S-A” contextual linear bandit algorithms require the “ghost sample” technique proposed by Neu and Olkhovskaya (2020). Roughly speaking, via the independence between losses and contexts, this technique allows one to analyze the contextual regret by “fixing” a single q0 ∈ Q throughout the game. However, our qt presents both in At = {am(qt)}m
+
+and in ℓt = −Ψ∗qt, thus inducing correlation. All existing algorithms are hence inapplicable (Neu and Olkhovskaya, 2020; Olkhovskaya et al., 2023; Liu et al., 2023; Ito, 2024; van Erven et al., 2025). To conclude, matching the unrestricted policy class △Q or minimizing the contextual regret RCT is desirable for embedding model routing. However, it is intractable – even after making the unrealistic assumptions of knowing model kernels and no misspecification – due to the extreme flexibility of 
+
+π∗ ∈ △ Q, which can impose an arbitrary decision boundary when routing Q to △.32 Policy Regret for Embedding Model Routing 
+
+B.4 Log-Linear Policy Class and Linearization in Policy Regret 
+
+The log-linear policy class is formally defined as follows: 
+
+Πlin := π(m | q) ∝ exp( θT
+
+> m
+
+q), ∀q ∈ Q θm ∈ Rdq , ∀m ∈ [M ] . (22) It assumes the routing policy is parameterized by M d q-dimensional vectors, θ = ( θ1, θ 2, . . . , θ M ) ∈
+
+(Rdq )M . We call Θ := ( Rdq )M the parameter space. The policy induced by parameter θ ∈ Θ is thus 
+
+πθ(m | q) = exp( θT
+
+> m
+
+q)
+
+PMm′=1 exp( θT 
+
+> m′
+
+q) , ∀m ∈ [M ], q ∈ Q .
+
+Equivalently, we can view θ as a concatenated M d q-dimensional vector and let 
+
+ϕ(q, m ) = [0 T · · · 0T qT 0T · · · 0T]
+
+be the concatenation of M d q-dimensional vectors with the m-th one being q and all remaining ones being 0. Thus θT
+
+> m
+
+q = θTϕ(q, m ), recovering the log-linear class by Agarwal et al. (2021, §6.1.1). As discussed by Agarwal et al. (2021), Πlin is much harder than the tabular softmax policy class Πtab ,where each policy π(m | q) ∝ exp (θ′
+
+> q,m
+
+) for some θ′ ∈ Θ′ := RM |Q| . Indeed, for Πtab , it is possible to exactly handle the policy regret (Agarwal et al., 2021, Theorems 5.1 and 5.4). However, for the log-linear policy class Πlin , where the policy π(m | q) ∝ exp (θTϕ(q, m )) for some θ ∈ Θ := RM d q ,Agarwal et al. (2021) instead considered a linearized surrogate regret notion instead of the policy regret. We now introduce their notations and results in more details. Since they focus on stochastic MDPs, we also assume i.i.d. queries (that is, qt ∼ Q with some fixed but unknown Q) in this section. For any parameter θ ∈ Θ, let ϕθ(q, m ) = ∇θ log πθ(m | q). Now consider a round t ∈ [T ] with parameter θt ∈ Θ. For each model m ∈ [M ], define the advantage under θt as 
+
+Aθt (q, m ) = E
+
+> a∼ξm(q)
+
+[r(q, a )] −
+
+> M
+
+X
+
+> m′=1
+
+πθt (m′ | q) E 
+
+> a∼ξm′(q)
+
+[r(q, a )] .
+
+The natural policy gradient (NPG) step in round t is then given as (Agarwal et al., 2021, §6.1.1) 
+
+wt := argmin 
+
+> w∈Θ
+
+E 
+
+> q∼Q,m ∼πθt(·| q)
+
+
+
+Aθt (q, m ) − wTϕθt (q, m )
+
+2
+
+. (23) Agarwal et al. (2021, Assumption 6.1 and Theorem 6.1) defined the following transfer error ϵbias ,and had a final bound scaling with √ϵbias × T :10 
+
+ϵbias := max   
+
+> t∈[T]
+
+E 
+
+> q∼Q,m ∼πθ∗(·| q)
+
+
+
+Aθt (q, m ) − wT 
+
+> t
+
+ϕθt (q, m )
+
+2
+
+.
+
+Let the expected reward – when taking q ∼ Q into consideration – of policy πθt be J(θt), defined as 
+
+J(θt) := E
+
+> q∼Q
+
+"
+
+E 
+
+> m∼πθt(q)
+
+
+
+E
+
+> a∼ξm(q)
+
+[r(q, a )] 
+
+#
+
+.      
+
+> 10 The bound of Agarwal et al. (2021) is stated w.r.t. single-round sub-optimality gaps, hence a linear dependency on Tarises when converting to our cumulative regret setup. As an additional remark, their γis the discount factor that only applies to multi-stage MDPs; in our bandit setup, we have γ= 0 .
+
+33 Policy Regret for Embedding Model Routing By direct arithmetic calculation (which is the famous Performance Difference Lemma specialized to bandits; Kakade and Langford 2002), the one-step true policy regret in RT (Π lin ) decomposes as 
+
+J(θ∗) − J(θt) = E
+
+> q∼Q
+
+" MX
+
+> m=1
+
+πθ∗ (m | q)Aθt (q, m )
+
+#
+
+= E
+
+> q∼Q
+
+" MX
+
+> m=1
+
+πθ∗ (m | q)wT 
+
+> t
+
+ϕθt (q, m )
+
+#
+
++ E
+
+> q∼Q
+
+" MX
+
+> m=1
+
+πθ∗ (m | q)
+
+
+
+Aθt (q, m ) − wT 
+
+> t
+
+ϕθt (q, m )
+
+#
+
+.
+
+Instead of tackling J(θ∗) − J(θt) directly, Agarwal et al. (2021) controlled the second term via Cauchy-Schwartz as √ϵbias and instead studied the first term. For log-linear policy class, we have 
+
+ϕθt (q, m ) = ϕ(q, m ) − Em′∼πθt (·| q)[ϕ(q, m ′)] (Agarwal et al., 2021, §6.1.1). Thus, we know 
+
+wT 
+
+> t
+
+ϕθt (q, m ) = wT
+
+> t,m
+
+q −
+
+> M
+
+X
+
+> m′=1
+
+πθt (m′ | q)wT 
+
+> t,m ′
+
+q. 
+
+Plugging this back into the first term and using the fact that PMm=1 θ∗(m | q) = 1 , we obtain: 
+
+E
+
+> q∼Q
+
+" MX
+
+> m=1
+
+πθ∗ (m | q)wT 
+
+> t
+
+ϕθt (q, m )
+
+#
+
+= E
+
+> q∼Q
+
+" MX
+
+> m=1
+
+πθ∗ (m | q)wT
+
+> t,m
+
+q −
+
+> M
+
+X
+
+> m′=1
+
+πθt (m′ | q)wT 
+
+> t,m ′
+
+q
+
+#
+
+= E
+
+> q∼Q
+
+" MX
+
+> m=1
+
+(πθ∗ (m | q) − πθt (m | q)) wT
+
+> t,m
+
+q
+
+#
+
+,
+
+Agarwal et al. (2021, Theorem 6.1 and Corollary 6.1) then proved that NPG attains √T -style regret under this linearized surrogate regret , but suffering a linear √ϵbias × T overhead in the true policy regret. We remark that, however, their linearization happens in a different space from our eRT (Π) 
+
+defined in Eq. (11): their linearization happens in the action space (the probability simplex), whereas ours happen in the parameter space (the W ∈ W, defined in Section 3.2). It remains open whether these two linearized surrogate regret notions for the policy regret can be transformed to each other. 
+
+B.5 Log-Quadratic Policy Class and Linearized Policy Regret 
+
+Proposition 7 (Linearized Policy Regret vs Policy Regret) . Consider the log-quadratic policy class 
+
+Πquad parameterized by W ∈ W; see Section 3.2. For each round t ∈ [T ] and model m ∈ [M ], let 
+
+πt,m := πWt (m | qt), π∗ 
+
+> t,m
+
+:= πW ∗ (m | qt), and rt,m := Ea∼ξm(qt)[r(qt, a )] . Then the one-step regret in the policy regret w.r.t. Πquad is (where Lt is defined in Eq. (10)) 
+
+Lt(Wt) − L t(W ∗) = 
+
+> M
+
+X
+
+> m=1
+
+π∗ 
+
+> t,m
+
+rt,m −
+
+> M
+
+X
+
+> m′=1
+
+πt,m ′ rt,m ′
+
+!
+
+,
+
+while that in the linearized policy regret eRT (Π quad ) (defined in Eq. (11)) is 
+
+D
+
+∇W Lt(Wt), Wt − W ∗E 
+
+> F
+
+=
+
+> M
+
+X
+
+> m=1
+
+πt,m rt,m −
+
+> M
+
+X
+
+> m′=1
+
+πt,m ′ rt,m ′
+
+!
+
+log π∗
+
+> t,m
+
+πt,m 
+
+.
+
+34 Policy Regret for Embedding Model Routing Given the very similar forms in Proposition 7, it is tempting to claim that these two regret notions are multiplicatively close to each other via a gradient dominance condition , it unfortunately fails. The gradient dominance condition is given as follows. 11 Due to the projection onto the product nuclear-norm ball BM 
+
+> ∗
+
+(τ ), the maximum and minimum possible coefficient of a model m under any Wm ∈ B∗(τ ) are similar, hence giving max m π∗ 
+
+> m
+> πm
+
+≤ exp (2 τ ). But the other term, log π∗ 
+
+> m
+> πm
+
+, is problematic: both it and the (rm − PMm′=1 πm′ rm′ ) term (also known as the advantage function in reinforcement learning) can be negative, hence the true policy regret is not automatically bounded by exp(2 τ ) times the linearized policy regret. We leave the exact policy regret for future research. 
+
+Proof of Proposition 7. For notational simplicity, we focus on a single round t ∈ [T ] and omit all the subscript t’s. By definition of Lt in Eq. (10), the one-step regret in RT (Π quad ) (Eq. (5)) is 
+
+Lt(Wt) − L t(W ∗) = 
+
+> M
+
+X
+
+> m=1
+
+(π∗ 
+
+> m
+
+− πm)rm
+
+> (a)
+
+=
+
+> M
+
+X
+
+> m=1
+
+(π∗ 
+
+> m
+
+− πm)rm −
+
+> M
+
+X
+
+> m=1
+
+(π∗ 
+
+> m
+
+− πm)
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+!
+
+> (b)
+
+=
+
+> M
+
+X
+
+> m=1
+
+π∗ 
+
+> m
+
+rm −
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+!
+
+−
+
+> M
+
+X
+
+> m=1
+
+πmrm +
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+=
+
+> M
+
+X
+
+> m=1
+
+π∗ 
+
+> m
+
+rm −
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+!
+
+.
+
+where (a) uses the fact that P
+
+> m
+
+(π∗ 
+
+> m
+
+− πm)C = (1 − 1) C = 0 for any C and (b) uses P 
+
+> m
+
+πm = 1 .For the linearized policy regret eRT (Π quad ) in Eq. (11), we have 
+
+D
+
+∇W Lt(Wt), Wt − W ∗E
+
+> F
+> (a)
+
+=
+
+> M
+
+X
+
+> m=1
+
+*
+
+−
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+ 1[m′ = m] − πm
+
+qtqT 
+
+> t
+
+, W t,m − W ∗
+
+> m
+
++
+
+> F
+
+=
+
+> M
+
+X
+
+> m=1
+
+πmrm − πmMX
+
+> m′=1
+
+πm′ rm′
+
+!
+
+qT 
+
+> t
+
+(W ∗ 
+
+> m
+
+− Wt,m ) qt
+
+> (b)
+
+=
+
+> M
+
+X
+
+> m=1
+
+πm rm −
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+!
+
+log π∗
+
+> m
+
+πm
+
+,
+
+where (a) uses the direct sum property in Lemma 12 (proved in Appendix D.2) and ∇L t(W ) derived in Eq. (27) (rewritten using the πm and rm notations), and (b) uses the definition of πW :
+
+log πW ∗ (m | qt)
+
+πWt (m | qt) = log exp( qT 
+
+> t
+
+W ∗
+
+> m
+
+qt)
+
+PMm′=1 exp( qT 
+
+> t
+
+W ∗ 
+
+> m′
+
+qt)
+
+! , exp( qT 
+
+> t
+
+W ∗
+
+> t,m
+
+qt)
+
+PMm′=1 exp( qT 
+
+> t
+
+Wt,m ′ qt)
+
+!
+
+= log exp( qT 
+
+> t
+
+W ∗
+
+> m
+
+qt)exp( qT 
+
+> t
+
+Wt,m qt) + log 
+
+PMm′=1 exp( qT 
+
+> t
+
+W ∗ 
+
+> m′
+
+qt)
+
+PMm′=1 exp( qT 
+
+> t
+
+Wt,m ′ qt) = qT 
+
+> t
+
+(W ∗ 
+
+> m
+
+− Wt,m )qt + C, 
+
+where C is (another) constant independent to m that automatically vanishes because 
+
+C
+
+> M
+
+X
+
+> m=1
+
+πm rm −
+
+> M
+
+X
+
+> m′=1
+
+πm′ rm′
+
+!
+
+= C
+
+> M
+
+X
+
+> m=1
+
+πmrm − C
+
+> M
+
+X
+
+> m=1
+
+πm
+
+! MX
+
+> m′=1
+
+πm′ rm′ = 0 .
+
+> 11
+
+This type of condition, also known as Łojasiewicz condition, has been developed by Agarwal et al. (2021) and Mei et al. (2020) to exactly control the policy regret of NPG w.r.t. the tabular softmax class Πtab := {π(m | q) ∝
+
+exp( θ′
+
+> q,m
+
+) | θ′ ∈ RM |Q| }; see more in Appendix B.4. We also remark their analysis only works with i.i.d. queries. 
+
+35 Policy Regret for Embedding Model Routing 
+
+# C Setup of Table 2 and More Discussions 
+
+As mentioned in the main text, we first encode every natural language query and item into 768-dimensional vector spaces via Contriever (Izacard et al., 2022). For each embedded query q ∈ R768 
+
+and associated item a ∈ R768 , the ESCI dataset labels it with one of four relevance scores: E (Exact), S (Substitute), C (Complement), or I (Irrelevant). We convert the four ordinal ESCI labels into numerical rewards as E = 0 .95 , S = 0 .70 , C = 0 .30 , and I = 0 .05 (i.e., the reward function r(q, a )
+
+defined in Eq. (1)). The specific values are a modeling choice that preserves the ordering of the labels and treats non-exact but related products (i.e., categories S and C) as partially useful. We consider M = 8 lightweight embedding models as candidate experts, spanning three distinct methodologies: (i) symmetric semantic encoders capturing similarities ( all-MiniLM-L6 , -L12 , and 
+
+paraphrase-MiniLM ; Wang et al. 2020; 2021); (ii) asymmetric search models trained on Q&A datasets ( multi-qa-MiniLM , msmarco-MiniLM , and msmarco-distilbert ; Reimers and Gurevych 2019; Bajaj et al. 2016); and (iii) modern prompt-driven encoders dynamically adapting to different tasks ( e5-small-v2 and bge-small-en-v1.5 ; Wang et al. 2022; Xiao et al. 2024). The recommendation distribution of each model m ∈ [M ] on a query q ∈ Q , namely the ξm(q) in Eq. (4) but instead supported on the candidate items corresponding to this query, is the softmax over the query-item similarity scores induced by this model. We then calculate the model’s expected reward Rm(q) = Ea∼ξm(q)[r(q, a )] and find the optimal model routing policies within each class: 12 
+
+• π∗ 
+
+> const
+
+∈ Πconst maps each query to the best fixed model m∗ = argmax m Eq[Rm(q)] , where the expectation is taken over the uniform distribution over all queries in the ESCI dataset; 
+
+• π∗ 
+
+> lin
+
+∈ Πlin is the best log-linear routing policy, i.e., in the form of π(m | q) ∝ exp (θT
+
+> m
+
+q) for some 
+
+θ = ( θ1, θ 2, . . . , θ M ) ∈ (R768 )M ;
+
+• π∗ 
+
+> quad
+
+∈ Πquad is the best log-quadratic routing policy, i.e., in the form of π(m | q) ∝ exp (qTWmq)
+
+for some W = ( W1, W 2, . . . , W M ) ∈ (R768 ×768 )M ; and 
+
+• π∗ : Q → △ is the best unrestricted policy, mapping any query q to the model that performs the best. This, by definition, is the best model routing policy that one can possibly hope for. In Table 2, we report the expected reward gap of each policy compared to π∗, i.e., the Gap defined in Eq. (8). We also report the relative improvement of π∗ 
+
+> lin
+
+over π∗ 
+
+> const
+
+and that of π∗ 
+
+> quad
+
+over π∗
+
+> lin
+
+.We see that Gap (π∗
+
+> const
+
+) = 0 .078 , Gap (π∗
+
+> lin
+
+) = 0 .065 , and Gap (π∗
+
+> quad
+
+) = 0 .021 (which, are all pretty small because the expert embedding models we chose are quite powerful). We therefore observe that the improvement of π∗ 
+
+> lin
+
+over π∗ 
+
+> const
+
+is incremental (16.4%), whereas our proposed log-quadratic policy π∗ 
+
+> quad
+
+yields a 68 .0% improvement over π∗ 
+
+> lin
+
+(and, 73 .1% over π∗
+
+> const
+
+). This indicates that our analysis Proposition 1 is robust to the two discrepancies arising in the realistic ESCI dataset: (i) 
+
+the reward function r(q, a ) is not generated according to the bilinear structure in Eq. (2), and (ii) 
+
+the misspecification in recommendation model distributions – in Eq. (4) – can be large. The ESCI dataset additionally includes several categories of challenging queries, where different embedding models are expected to exhibit different failure modes, making model routing more important. For example, nlqec consists of long natural-language search queries (Papenmeier et al., 2021). On this category, the best constant policy incurs an expected sub-optimality gap of 0.109 
+
+(where the expectation is taken uniformly over all nlqec queries), larger than the 0.078 gap over the full reduced ESCI dataset; hence this category is indeed harder for any fixed expert model. 
+
+> 12 Note that instead of online learning the optimal policies within different classes, in Table 2 we perform offline optimization in order to verify the structural alignment of each class.
+
+36 Policy Regret for Embedding Model Routing The log-linear class reduces the gap to 0.003 , closing 97 .4% of the constant-policy gap, while our log-quadratic class nearly closes the gap entirely by another 99 .8% improvement. Another category is negations , which contains negation words such as “without.” This category is not only hard for constant policies, but also hard for log-linear policies: the best πnegations  
+
+> lin
+
+∈ Πlin still incurs a sub-optimality gap of 0.060 , whereas our log-quadratic policy reduces it to 0.007 , an 88 .9% 
+
+reduction relative to the log-linear gap. Similar patterns hold for behavioral , where queries are selected because their clicks or purchases have non-representative distributions, and parse-pattern ,where queries exhibit linguistic complexity such as quantities or multiple modifiers. 
+
+# D Omitted Proofs for Hypentropy Policy Gradient 
+
+D.1 Matrix Functions and Convex Analysis 
+
+We first state a few properties of matrix functions and convex analysis without proof, mainly from Kakade et al. (2012). Since our matrices are always symmetric, we restrict our definitions to the symmetric matrix space Sn, though most of them can be seamlessly extended to rectangular matrices. 
+
+Convex Analysis. We view Sn as a n2-dimensional vector space equipped with the inner product: 
+
+⟨X, Y ⟩F = Tr( XTY ) = 
+
+> n
+
+X
+
+> i=1
+> d
+
+X
+
+> j=1
+
+Xi,j Yi,j , ∀X, Y ∈ Sn.
+
+Over a convex domain K ⊆ Sn, a function f : K → R is α-strongly convex w.r.t. some norm ∥·∥ if 
+
+f (X) − f (Y ) − ∇ f (Y ) ( X − Y ) ≥ α
+
+2 ∥X − Y ∥2, ∀X, Y ∈ Sn. (24) When α = 0 , Eq. (24) recovers the standard definition of convexity. For a function f : K → R that is only (strongly) convex over a sub-domain K ⊆ Sn, we equivalently define f : Sn → R ∪ {∞} as 
+
+f (X) = 
+
+(
+
+f (X), X ∈ K 
+
++∞, X̸ ∈ K , which is (strongly) convex over Sn. Its Fenchel dual is defined as 
+
+f ∗(Z) := sup 
+
+> X∈Sn
+
+
+
+⟨X, Z ⟩F − f (X)
+
+
+
+, ∀Z ∈ Sn.
+
+Matrix Functions. For any symmetric real matrix X ∈ Sn, it can always be eigen-decomposed as 
+
+X = U diag( λ(X)) U T, λ(X) := [ λ1, λ 2, . . . , λ n],
+
+with λ1 ≥ λ2 ≥ · · · ≥ λn being the eigenvalues of X and U being an orthogonal matrix. The following trace inequality will be used in analyzing the computational complexity (Appendix E.1): 
+
+Lemma 8 (Trace Inequality (Von Neumann, 1937; Fan, 1949)) . For X, Y ∈ Sn, we have ⟨X, Y ⟩F ≤⟨λ(X), λ (Y )⟩. The equality holds if and only if there exists an orthogonal matrix U such that 
+
+X = U diag( λ(X)) U T, Y = U diag( λ(Y )) U T.
+
+A vector function f : Rn → R ∪ {∞} is symmetric if f (x) is invariant under any permutations of the components of x. Any such function can be lifted to Sn as a F : Sn → R ∪ {∞} , defined as 
+
+F (X) := f (λ(X)) , ∀X = U diag( λ(X)) U T ∈ Sn.
+
+37 Policy Regret for Embedding Model Routing 
+
+Lemma 9 (Kakade et al. 2012, Theorem 28) . Let F : Sn → R ∪ {∞} be lifted from a symmetric 
+
+f : Rn → R ∪ {∞} . The Fenchel dual of F , namely F ∗, is equal to the Fenchel dual of f lifted to Sn.
+
+Lemma 10 (Kakade et al. 2012, Theorem 30) . Let F : Sn → R ∪ {∞} be lifted from a symmetric 
+
+f : Rn → R ∪ {∞} . The gradient of F is given as 
+
+∇F (X) = U diag  ∇f (λ(X)) U T, ∀X = U diag( λ(X)) U T ∈ Sn.
+
+After defining gradients, we can define the Bregman divergence for any F : Sn → R ∪ {∞} :
+
+DF (X∥Y ) := F (X) − F (Y ) − ⟨∇ F (Y ), X − F ⟩F , ∀X, Y ∈ Sn. (25) 
+
+Hypentropy Properties. We now move on to the β-Hypentropy function Φβ : Sn → R used in our HPG algorithm, which is defined as (Ghai et al., 2020): 
+
+Φβ (X) := 
+
+> n
+
+X
+
+> i=1
+
+
+
+λi arcsinh λi
+
+β −
+
+q
+
+λ2 
+
+> i
+
++ β2
+
+
+
+, ∀X ∈ Sn,
+
+where arcsinh( x) = ln( x + √x2 + 1) . It is lifted from the following vector function ϕβ : Rn → R:
+
+ϕβ (x) := 
+
+> n
+
+X
+
+> i=1
+
+
+
+xi arcsinh xi
+
+β −
+
+q
+
+x2 
+
+> i
+
++ β2
+
+
+
+, ∀x ∈ Rn.
+
+We have ∂∂x i ϕβ (x) = arcsinh xi 
+
+> β
+
+. According to Lemma 10, for any X ∈ Sn, we have 
+
+∇Φβ (X) = U diag 
+
+
+
+arcsinh λ(X)
+
+β
+
+
+
+U T, ∀X = U diag( λ(X)) U T ∈ Sn. (26) Plugging Eq. (26) into Eq. (25) defines the Bregman divergence induced by Φβ , namely Dβ
+
+> Φ
+
+.Finally, we include the following lemma, which ensures the hypentropy in Sn is strongly convex w.r.t. the nuclear norm ∥·∥ ∗ over any nuclear-norm ball. 
+
+Lemma 11 (Ghai et al. 2020, Theorem 14) . On the nuclear-norm ball {W ∈ Sn | ∥ W ∥∗ ≤ τ }, Φβ
+
+is  2( τ + βn )−1-strongly convex w.r.t. the nuclear norm ∥·∥ ∗. That is, 
+
+Φβ (X) − Φβ (Y ) − ∇ Φβ (Y ) ( X − Y ) ≥
+
+ 2( τ + βn )−1
+
+2 ∥X − Y ∥2
+
+> ∗
+
+, ∀X, Y ∈ B∗(τ ).
+
+D.2 Direct Sum Property 
+
+Lemma 12 (Direct Sum Property) . For any diagonal block matrix W = diag( W1, W 2, . . . , W M ),
+
+Φβ (W ) = 
+
+> M
+
+X
+
+> m=1
+
+Φβ (Wm), ∥W ∥∗ =
+
+> M
+
+X
+
+> m=1
+
+∥Wm∥∗, ∥W ∥2 = max  
+
+> m∈[M]
+
+∥Wm∥2,
+
+which implies Dβ
+
+> Φ
+
+(W ∥W ′) = PMm=1 Dβ
+
+> Φ
+
+(Wm∥W ′
+
+> m
+
+). Moreover, over the product nuclear-norm ball 
+
+BM 
+
+> ∗
+
+(τ ) := W ∈ W ∥Wm∥∗ ≤ τ, ∀m , Φβ is block-wise  2( τ + βd q)−1-strongly convex. 
+
+38 Policy Regret for Embedding Model Routing 
+
+Proof. Let λ(X) denote the multiset of eigenvalues of a symmetric matrix X. Since W =diag (W1, W 2, . . . , W M ) ∈ W is a block-diagonal symmetric matrix, its eigenvalues are exactly the union of the eigenvalues of its diagonal blocks, i.e., λ(W ) = SMm=1 λ(Wm).Because the nuclear norm ∥·∥ ∗, the spectral norm ∥·∥ 2, and the hypentropy potential Φβ are all spectral functions (i.e., defined w.r.t. eigenvalues), they can be decomposed into blocks: 
+
+∥W ∥∗ = X 
+
+> λ∈λ(W)
+
+|λ| =
+
+> M
+
+X
+
+> m=1
+
+X
+
+> λ∈λ(Wm)
+
+|λ| =
+
+> M
+
+X
+
+> m=1
+
+∥Wm∥∗,
+
+∥W ∥2 = max   
+
+> λ∈λ(W)
+
+|λ| = max   
+
+> m∈[M]
+
+max  
+
+> λ∈λ(Wm)
+
+|λ| = max  
+
+> m∈[M]
+
+∥Wm∥2,
+
+Φβ (W ) = X 
+
+> λ∈λ(W)
+
+(λ + β) log( λ + β) = 
+
+> M
+
+X
+
+> m=1
+
+X
+
+> λ∈λ(Wm)
+
+(λ + β) log( λ + β) = 
+
+> M
+
+X
+
+> m=1
+
+Φβ (Wm).
+
+From Lemma 10, the gradient of a spectral function evaluated at a block-diagonal matrix remains block-diagonal, i.e., ∇Φβ (W ′) = diag  ∇Φβ (W ′
+
+> 1
+
+), . . . , ∇Φβ (W ′ 
+
+> M
+
+). Further using the additivity of 
+
+Φβ and the fact that the Frobenius inner product also decomposes into the sum of block-wise inner products, the Bregman divergence decomposes as: 
+
+Dβ
+
+> Φ
+
+(W ∥W ′) = Φ β (W ) − Φβ (W ′) − ⟨∇ Φβ (W ′), W − W ′⟩F
+
+=
+
+> M
+
+X
+
+> m=1
+
+ Φβ (Wm) − Φβ (W ′
+
+> m
+
+) − ⟨∇ Φβ (W ′
+
+> m
+
+), W m − W ′
+
+> m
+
+⟩F
+
+ =
+
+> M
+
+X
+
+> m=1
+
+Dβ
+
+> Φ
+
+(Wm∥W ′
+
+> m
+
+).
+
+From Lemma 11, over the dq-dimensional nuclear-norm ball B∗(τ ), the hypentropy potential Φβ is 
+
+ 2( τ + βd q)−1-strongly convex. For any W ∈ BM 
+
+> ∗
+
+(τ ), we have Wm ∈ B∗(τ ) for all m ∈ [M ]. Since 
+
+Φβ (W ) = PMm=1 Φβ (Wm), the Hessian ∇2Φβ (W ) is block-diagonal where each block ∇2Φβ (Wm)
+
+satisfies α-strong convexity. Thus, Φβ is block-wise α-strongly convex over BM 
+
+> ∗
+
+(τ ).
+
+D.3 Gradient Estimation (Lemma 2) 
+
+Proof of Lemma 2. Recall that the round-t loss function for parameter W , namely Lt(W ), is 
+
+Lt(W ) = − E 
+
+> m′∼πW(qt)
+
+
+
+E 
+
+> a∼ξm′(qt)
+
+[r(qt, a )] 
+
+
+
+, ∀t ∈ [T ], W ∈ W,
+
+where πW is the log-quadratic policy induced by W (see Eq. (9)). We intentionally changed all m’s in the original definition to m′, so that we can take the partial derivative w.r.t. any m ∈ [M ] as: 
+
+∂∂W m
+
+Lt(W ) = −
+
+> M
+
+X
+
+> m′=1
+
+
+
+E 
+
+> a∼ξm′(qt)
+
+[r(qt, a )] ∂∂W m
+
+πW (m′ | qt)
+
+
+
+.
+
+By definition of πW in Eq. (9), we have by the definition of softmax that 
+
+∂∂W m
+
+πW (m′ | qt) = ∂∂W m
+
+exp( qT 
+
+> t
+
+Wm′ qt)
+
+P 
+
+> m′′
+
+exp( qT 
+
+> t
+
+Wm′′ qt) = πW (m′ | qt)  1[m′ = m] − πW (m | qt) qtqT 
+
+> t
+
+.
+
+39 Policy Regret for Embedding Model Routing Therefore, we have for any m ∈ [M ] that 
+
+∂∂W m
+
+Lt(W ) = − E 
+
+> m′∼πW(qt)
+
+
+
+E 
+
+> a∼ξm′(qt)
+
+[r(qt, a )]  1[m′ = m] − πW (m | qt) qtqT
+
+> t
+
+
+
+. (27) Hence conditional on the history before round t and the round-t query qt, the expectation of bGt,m in Eq. (15) – taken w.r.t. mt ∼ πWt (qt), at ∼ ξmt (qt), and rt = r(qt, a t) + ηt – is given as 
+
+Et[ bGt,m | qt] = Et
+
+h
+
+−rt
+
+ 1[mt = m] − πWt (m | qt)qtqT 
+
+> t
+
+qt
+
+i
+
+= E 
+
+> mt∼πWt(qt)
+
+
+
+E 
+
+> at∼ξmt(qt)
+
+
+
+E
+
+> ηt
+
+h
+
+−rt
+
+ 1[mt = m] − πWt (m | qt)qtqT 
+
+> t
+
+qt, m t, a t
+
+i
+
+qt, m t
+
+ 
+
+= E 
+
+> mt∼πWt(qt)
+
+
+
+E 
+
+> at∼ξmt(qt)
+
+h
+
+−r(qt, a t) 1[mt = m] − πWt (m | qt)qtqT 
+
+> t
+
+qt, m t
+
+i
+
+= E 
+
+> mt∼πWt(qt)
+
+
+
+− E 
+
+> at∼ξmt(qt)
+
+[r(qt, a t)]  1[mt = m] − πWt (m | qt)qtqT
+
+> t
+
+
+
+,
+
+which is exactly the RHS of Eq. (27). Thus we have Et[ bGt | qt] = ∇W L(Wt) unbiased. Furthermore, 
+
+> M
+
+X
+
+> m=1
+
+∥ bGt,m ∥22 = r2
+
+> tM
+
+X
+
+> m=1
+
+ 1[mt = m] − πWt (m | qt)2∥qt∥22
+
+≤ (1 − πWt (mt | qt)) 2 +
+
+> M
+
+X
+
+> m=1
+
+π2 
+
+> Wt
+
+(m | qt) ≤ 2,
+
+where the first inequality uses |rt| ≤ 1 and ∥qt∥2 ≤ 1, and the second inequality uses the fact that 
+
+πWt (qt) ∈ △ is a probability distribution (hence P 
+
+> m
+
+π2 
+
+> Wt
+
+(m | qt) ≤ P 
+
+> m
+
+πWt (m | qt) = 1 ). 
+
+D.4 Linearized Policy Regret Bound of HPG (Theorem 3) 
+
+Proof of Theorem 3. According to the assumption that the optimal W ∗ ∈ W ensures ∥W ∗
+
+> m
+
+∥∗ ≤ τ ,
+
+∀m, we have W ∗ ∈ BM 
+
+> ∗
+
+(τ ) (recall Eq. (12)). Recall the OMD one-step update rule in Eq. (14): 
+
+Wt+1 = argmin    
+
+> W∈BM
+> ∗(τ)
+
+
+
+η W , bGt F + Dβ
+
+> Φ
+
+(W ∥Wt)
+
+
+
+.
+
+Using the direct sum property Lemma 12 later proved in Appendix D.2, this is equivalent to 
+
+Wt+1 ,m = argmin   
+
+> W∈B∗(τ)
+
+
+
+η W, bGt,m F + Dβ
+
+> Φ
+
+(W ∥Wt,m )
+
+
+
+, ∀m ∈ [M ], (28) where we recall that B∗(τ ) := {W ∈ Sd1 | ∥ W ∥∗ ≤ τ } is the nuclear-norm ball in Sd1 . The rest of the proof follows from standard OMD analysis. Since ∇Dβ
+
+> Φ
+
+(W ∥Wt,m ) = ∇Φβ (W ) − ∇ Φβ (Wt,m ) (by definition of Dβ 
+
+> Φ
+
+in Eq. (25)), Eq. (28) gives the first-order optimality condition of 
+
+D
+
+η bGt,m + ∇Φβ (Wt+1 ,m ) − ∇ Φβ (Wt), W − Wt+1 ,m 
+
+E 
+
+> F
+
+≥ 0, ∀W ∈ B∗(τ ).
+
+More specifically, for the m-th parameter in the optimum, namely W ∗ 
+
+> m
+
+∈ B∗(τ ), we have 
+
+⟨η bGt,m , W t+1 ,m − W ∗
+
+> m
+
+⟩F ≤
+
+D
+
+∇Φβ (Wt+1 ,m ) − ∇ Φβ (Wt), W − Wt+1 ,m 
+
+E
+
+> F
+
+40 Policy Regret for Embedding Model Routing 
+
+= Dβ
+
+> Φ
+
+(W ∗
+
+> m
+
+∥Wt,m ) − Dβ
+
+> Φ
+
+(W ∗
+
+> m
+
+∥Wt+1 ,m ) − Dβ
+
+> Φ
+
+(Wt+1 ,m ∥Wt,m ),
+
+where the second step is the standard three-point identity (Orabona, 2019, Lemma 6.7). Adding 
+
+⟨η bGt,m , W t,m − Wt+1 ,m ⟩F on both sides and summing up from t = 1 , 2, . . . , T , we have 
+
+> T
+
+X
+
+> t=1
+
+⟨ bGt,m , W t,m − W ∗
+
+> m
+
+⟩F ≤ Dβ
+
+> Φ
+
+(W ∗
+
+> m
+
+∥W1,m ) − Dβ
+
+> Φ
+
+(W ∗
+
+> m
+
+∥Wt+1 ,m )
+
+η
+
++
+
+> T
+
+X
+
+> t=1
+
+⟨η bGt,m , W t,m − Wt+1 ,m ⟩F − Dβ
+
+> Φ
+
+(Wt+1 ,m ∥Wt,m )
+
+η .
+
+For the first term on the RHS, since W1,m is initialized as the all-zero matrix (Algorithm 1) and Bregman divergences are non-negative for convex functions (cf. Eqs. (24) and (25)), we have 
+
+Dβ
+
+> Φ
+
+(W ∗
+
+> m
+
+∥W1,m ) − Dβ
+
+> Φ
+
+(W ∗
+
+> m
+
+∥Wt+1 ,m ) ≤ Φβ (W ∗
+
+> m
+
+) − Φβ (0) + 0 =
+
+> dq
+
+X
+
+> i=1
+
+
+
+λi(W ∗
+
+> m
+
+) arcsinh λi(W ∗
+
+> m
+
+)
+
+β − pλi(W ∗
+
+> m
+
+)2 + β2 + β
+
+
+
+≤
+
+> dq
+
+X
+
+> i=1
+
+|λi(W ∗
+
+> m
+
+)| arcsinh |λi(W ∗
+
+> m
+
+)|
+
+β ≤ ∥ Wm∥∗ log 3∥Wm∥∗
+
+β ,
+
+where the second to last step uses the fact that arcsinh is an odd function, and the last step uses px2 + β2 + x ≤ √2 + 1 for |x| ≤ 1 (Ghai et al., 2020, Eq. (12)) and ∥Wm∥∗ := Pdq 
+
+> i=1
+
+|λi(W ∗
+
+> m
+
+)|.For the second term, by Fenchel-Young inequality (Orabona, 2019, Lemma 6.32) and the block-wise 
+
+ 2( τ + βd q)−1-strong convexity of Φβ (proved in Lemma 12), we have 
+
+⟨η bGt,m , W t,m − Wt+1 ,m ⟩F − Dβ
+
+> Φ
+
+(Wt+1 ,m ∥Wt,m ) ≤ ∥η bGt,m ∥22
+
+2 2( τ + βd q)−1 ,
+
+where ∥·∥ 2, the spectral norm of a matrix, is the dual norm of the nuclear norm ∥·∥ ∗. Hence we have 
+
+> T
+
+X
+
+> t=1
+
+⟨ bGt,m , W t,m − W ∗
+
+> m
+
+⟩F ≤ ∥W ∗
+
+> m
+
+∥∗
+
+η log 3∥W ∗
+
+> m
+
+∥∗
+
+β +
+
+> T
+
+X
+
+> t=1
+
+(τ + βd q)η∥ bGt,m ∥22, ∀m ∈ [M ].
+
+Summing up m ∈ [M ], using the assumption that ∥W ∗
+
+> m
+
+∥∗ ≤ τ , and the second part of Lemma 2, 
+
+> T
+
+X
+
+> t=1
+
+D bGt, Wt − W ∗E 
+
+> F
+
+≤ M τ η log 3τβ + 2( τ + βd q)ηT. (29) By the definition of linearized policy regret in Eq. (11), setting τ = 2 s, β = 2 s/d q, and η =p(M log dq)/T therefore gives 
+
+eRT (Π quad ) = sup  
+
+> W∗∈W
+
+" TX
+
+> t=1
+
+D
+
+Et[ bGt | qt], Wt − W ∗E
+
+> F
+
+#
+
+≤ 12 spM T log dq,
+
+where we used the first part of Lemma 2 and also the assumption that ∥W ∗
+
+> m
+
+∥∗ ≤ 2s, ∀m.41 Policy Regret for Embedding Model Routing 
+
+# E Practical Implementation of HPG 
+
+E.1 Computational Cost Bound of HPG (Theorem 4) 
+
+Proof of Theorem 4. By the standard property of Bregman divergence, the single-step update of OMD in Eq. (14) is equivalent to the following two step procedure (Orabona, 2019, §6.4.3): 
+
+∇Φβ ( fWt+1 ) = ∇Φβ (Wt) − η bGt, Wt+1 = argmin    
+
+> W∈BM
+> ∗(τ)
+
+Dβ
+
+> Φ
+
+(W ∥ fWt+1 ). (30) According to Lemma 12, both steps can be decomposed for each model. Therefore, we fix a single 
+
+m ∈ [M ], and suppose we have the eigen-decomposition of Wt,m ∈ Sdq available: 
+
+Wt,m = Ut,m diag( λt,m )U T
+
+> t,m
+
+, ∀t ∈ [T ], (31) where Ut,m ∈ Rdq ×dq and λt,m ∈ Rdq . We now prove that we can efficiently compute the eigen-decomposition of Wt+1 ,m , defined in Eq. (30), via the following steps: 1. Convert Wt to Mirror Space. We find Yt,m = ∇Φβ (Wt,m ). As defined in Eq. (26), we have 
+
+Yt,m = Ut,m diag( γt,m )U T
+
+> t,m
+
+, γt,m,i = arcsinh( λt,m,i /β ), ∀i ∈ [dq]. (32) This element-wise update on the dq eigenvalues takes O(dq) time. 2. Gradient Descent Update. In the mirror space, we perform gradient descent eYt+1 ,m =
+
+Yt,m − η bGt,m and obtain the eigen-decomposition of eYt+1 ,m . Since bGt,m is parallel to qtqT 
+
+> t
+
+, it is a rank-one matrix (see Eq. (15)). Therefore, eigen-decomposing eYt+1 ,m based on that of Yt,m in Eq. (32) only takes O(d2 
+
+> q
+
+) time (see, e.g., Bunch et al., 1978; Gu and Eisenstat, 1994): 
+
+eYt+1 ,m = Ut+1 ,m diag( eγt+1 ,m )U T
+
+> t+1 ,m
+
+, (33) where Ut+1 ,m ∈ Rdq ×dq and eγt+1 ,m ∈ Rdq .3. Convert eYt+1 to Primal Space. Let fWt+1 ,m = ( ∇Φβ )−1( eYt+1 ,m ). Using Lemma 10 again, it is equivalent to applying the map (ϕβ )−1(y) = β sinh (y) to all the eigenvalues of eYt+1 ,m . Therefore, from Eq. (33), we obtain the eigen-decomposition of fWt+1 ,m in O(dq) time as 
+
+fWt+1 ,m = Ut+1 ,m diag( eλt+1 ,m )U T
+
+> t+1 ,m
+
+, eλt+1 ,m,i = β sinh( eγt+1 ,m,i ), ∀i ∈ [dq]. (34) 4. Projection onto B∗(τ ) based on Dβ
+
+> Φ
+
+. Expanding the Bregman divergence defined in Eq. (25), the projection step in Eq. (30) minimizes 
+
+Dβ
+
+> Φ
+
+(W ∥fWt+1 ,m ) = Φ β (W ) − Φβ (fWt+1 ,m ) + ∇Φβ (fWt+1 ,m ), W − fWt+1 ,m F .
+
+Removing all terms independent to W and recalling that eYt+1 ,m = ∇Φβ (fWt+1 ,m ), we write 
+
+Wt+1 ,m = argmin   
+
+> W∈B∗(τ)
+
+
+
+Φβ (W ) − eYt+1 ,m , W F
+
+
+
+= argmin 
+
+> ∥λ∥1≤τ
+
+argmin   
+
+> UTU=I
+
+
+
+> dq
+
+X
+
+> i=1
+
+ϕβ (λi) − Ut+1 ,m diag( eγt+1 ,m )U T
+
+> t+1 ,m
+
+, U diag( λ)U T
+
+> F
+
+ ,
+
+42 Policy Regret for Embedding Model Routing where we used the fact that any symmetric matrix W ∈ B∗(τ ) can be written as U diag (λ)U T
+
+with ∥λ∥1 ≤ τ (definition of nuclear norm) and U U T = I (definition of orthogonal matrix). Fixing λ ∈ Rdq , apply the trace inequality in Lemma 8 to the second term: the inner product is at most ⟨eγt+1 ,m , λ ⟩, with equality attained if and only if U = Ut+1 ,m . Therefore, we find 
+
+argmin 
+
+> ∥λ∥1≤τ
+
+
+
+> dq
+
+X
+
+> t=1
+
+(ϕβ (λi) − eγt+1 ,m,i λi)
+
+ .
+
+For each i ∈ [dq], minimizing this is equivalent to minimizing the Bregman divergence induced by 
+
+ϕβ (again, writing out the definition and removing all terms independent to λi). This gives 
+
+Wt+1 ,m = Ut+1 ,m diag( λt+1 ,m )U T
+
+> t+1 ,m
+
+, λt+1 ,m = argmin 
+
+> ∥λ∥1≤τdq
+
+X
+
+> i=1
+
+Dβϕ (λi∥eλt+1 ,m,i ), (35) as claimed in the main text (Eq. (17)). This is implementable in O(dq log dq) time as follows: By symmetry, the optimal λi must share the same sign as eγt+1 ,m,i . Let xi = |λi| and zi = |eγt+1 ,m,i |,
+
+min 
+
+> xi≥0
+> dq
+
+X
+
+> i=1
+
+(ϕβ (xi) − zixi) subject to 
+
+> dq
+
+X
+
+> i=1
+
+xi ≤ τ. 
+
+Introducing a Lagrange multiplier ν ≥ 0 for the sum constraint. Given any multiplier ν,
+
+ϕ′ 
+
+> β
+
+(xi) − zi + ν ≥ 0 = ⇒ xi(ν) = β max 
+
+
+
+sinh( zi − ν), 0
+
+
+
+, (36) and the optimal ν∗ is the unique non-negative number satisfying Pdq 
+
+> i=1
+
+xi(ν) ≤ τ . Since sinh is monotone, ν∗ is found after sorting {zi}i in O(dq log dq) time. This gives xi(ν∗)’s and Eq. (35). Therefore, we have proved that moving from the eigen-decomposition of Wt,m in Eq. (31) to that of 
+
+Wt+1 ,m in Eq. (35) takes O(dq + d2 
+
+> q
+
++ dq + dq log dq) = O(d2 
+
+> q
+
+) time. Since there are M models to update in each round, this gives the claimed per-round complexity bound of O(d2 
+
+> q
+
+M ).In practice, one can sharpen the O(d2 
+
+> q
+
+M ) bound via approximation: Eq. (36) induces a low-rank structure, because the sum of xi(ν∗)’s cannot exceed τ . Therefore, a good approximation of HPG algorithm is only keeping the top-τ eigenvalues of Wt+1 ,m . This makes λt+1 ,m τ -dimensional and 
+
+Ut+1 ,m in the shape of dq × τ . The rank-one eigen-update in Eq. (33) is then solvable in O(τ d q)
+
+time. Under the τ ≈ s configuration in Theorem 3, this only takes O(sd qM ) time per round. 
+
+E.2 Parameter-Free Implementation of HPG (Theorem 5) 
+
+In order to implement the HPG algorithm without knowing sparsity parameter s or the nuclear-norm parameter τ = max m∥W ∗
+
+> m
+
+∥∗, we utilize the parameter-free online learning technique by Cutkosky and Orabona (2018). They provide a general framework for online linear optimization in any Banach space (a vector space with norm, e.g., our Sn equipped with the nuclear norm). In our context, given the direct sum property in Lemma 12, we consider a single expert m ∈ [M ].We now work on the d2 
+
+> q
+
+-dimensional vector space equipped with nuclear norm ∥·∥ ∗. The action in round t is Wt,m ∈ Sdq , and the loss vector (from Eq. (11)) in round t is Gt,m := ∂∂W m Lt(Wt). The (unexpected) regret w.r.t. any W 0 
+
+> m
+
+∈ Sdq is RT,m (W 0
+
+> m
+
+) := P
+
+> t
+
+⟨Gt,m , W t,m − W 0
+
+> m
+
+⟩F .43 Policy Regret for Embedding Model Routing 
+
+Algorithm 2 Parameter-Free Hypentropy Policy Gradient  
+
+> 1:
+
+Initialize M 1D “coin-betting” algorithms (Cutkosky and Orabona, 2018, Algorithm 1)  
+
+> 2:
+
+Initialize a HPG algorithm with τ = 1 , β = d−1 
+
+> q
+
+, and η = p(M log dq)/T (Algorithm 1)  
+
+> 3:
+
+for t = 1 , 2, . . . , T do  
+
+> 4:
+
+Call each coin-betting algorithm for zt, 1, z t, 2, . . . , z t,M ∈ R 
+
+> 5:
+
+Call HPG algorithm for a wt = diag( wt, 1, w t, 2, . . . , w t,M ) ∈ BM 
+
+> ∗
+
+(1)  
+
+> 6:
+
+Play according to the parameter Wt = diag( zt, 1wt, 1, z t, 2wt, 2, . . . , z t,M wt,M ) ∈ W 
+
+> 7:
+
+Let bGt = diag( bGt, 1, bGt, 2, . . . , bGt,M ) be the gradient estimator in Eq. (15)  
+
+> 8:
+
+For each m ∈ [M ], pass ⟨ bGt,m , w t,m ⟩F to the m-th coin-betting algorithm  
+
+> 9:
+
+Pass bGt to the HPG algorithm as the gradient for the OMD step Eq. (14) Cutkosky and Orabona (2018) decomposes Wt,m into two parts: a magnitude zt,m = ∥Wt,m ∥∗ and a direction wt,m = Wt,m  
+
+> ∥Wt,m ∥∗
+
+. The decision of zt,m is an one-dimensional decision making over R, and can be done via the coin-betting algorithm of Orabona and Pál (2016). For the direction wt,m , which always has norm 1, our HPG algorithm over B∗(1) attains good regret. This gives Algorithm 2. 
+
+Proof of Theorem 5. For the optimal W ∗ ∈ W such that ∥W ∗
+
+> m
+
+∥∗ ≤ 2s, ∀m, we have for any m:
+
+> T
+
+X
+
+> t=1
+
+⟨Gt,m , W t,m − W ∗
+
+> m
+
+⟩F =
+
+> T
+
+X
+
+> t=1
+
+
+
+⟨Gt,m , z t,m wt,m ⟩F − ⟨ Gt,m , W ∗
+
+> m
+
+⟩F
+
+
+
+=
+
+> T
+
+X
+
+> t=1
+
+
+
+zt,m ⟨Gt,m , w t,m ⟩F − ∥ W ∗
+
+> m
+
+∥∗⟨Gt,m , w t,m ⟩F
+
+
+
++
+
+> T
+
+X
+
+> t=1
+
+
+
+∥W ∗
+
+> m
+
+∥∗⟨Gt,m , w t,m ⟩F − ⟨ Gt,m , W ∗
+
+> m
+
+⟩F
+
+
+
+.
+
+The first term is the 1D online learning regret of zt,m w.r.t. ∥W ∗
+
+> m
+
+∥∗, with the round-t loss defined as gt,m := ⟨Gt,m , w t,m ⟩F . We know |gt,m | ≤ ∥ Gt,m ∥2∥wt,m ∥∗ ≤ 1 (see Lemma 2). According to the coin-betting guarantee (Cutkosky and Orabona, 2018, Theorem 1), this 1D regret is bounded by 
+
+> M
+
+X
+
+> m=1
+> T
+
+X
+
+> t=1
+
+ zt,m − ∥ W ∗
+
+> m
+
+∥∗
+
+⟨Gt,m , w t,m ⟩F =
+
+> M
+
+X
+
+> m=1
+
+O
+
+
+
+∥W ∗
+
+> m
+
+∥∗
+
+√T log  ∥W ∗
+
+> m
+
+∥∗T 
+
+.
+
+The second term, on the other hand, is ∥W ∗
+
+> m
+
+∥∗ times the HPG regret w.r.t. W ∗  
+
+> m
+> ∥W∗
+> m∥∗
+
+∈ B∗(1) . Using Theorem 3 with τ = 1 , β = 1 /d q, and η = p(M log dq)/T , we have 
+
+> M
+
+X
+
+> m=1
+
+
+
+∥W ∗
+
+> m
+
+∥∗⟨Gt,m , w t,m ⟩F − ⟨ Gt,m , W ∗
+
+> m
+
+⟩F
+
+
+
+≤ max  
+
+> m∈[M]
+
+∥W ∗
+
+> m
+
+∥∗ × O  p M T log dq
+
+.
+
+Putting two parts together and using the assumption that ∥W ∗
+
+> m
+
+∥∗ ≤ 2s, ∀m, we hence have 
+
+eRT (Π quad ) = E
+
+" TX
+
+> t=1
+
+D
+
+∇L t(Wt), Wt − W ∗E
+
+> F
+
+#
+
+= O
+
+
+
+M s √T log( sT ) + spM T log dq
+
+
+
+.
+
+This proves that eRT (Π quad ) = O(sM √T log( dqT )) (recall from Section 2.2 that s ≤ dq). 44

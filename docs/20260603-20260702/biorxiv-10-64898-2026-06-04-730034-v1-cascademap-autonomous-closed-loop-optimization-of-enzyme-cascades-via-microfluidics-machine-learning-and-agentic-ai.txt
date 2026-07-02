@@ -1,0 +1,1832 @@
+Title: CascadeMAP: Autonomous Closed-loop Optimization of Enzyme Cascades via Microfluidics, Machine Learning and Agentic AI
+
+URL Source: https://www.biorxiv.org/content/10.64898/2026.06.04.730034v1.full.pdf
+
+Published Time: Thu, 02 Jul 2026 02:36:31 GMT
+
+Number of Pages: 33
+
+Markdown Content:
+CascadeMAP: Autonomous Closed -loop Optimization of Enzyme 
+
+# Cascades via Microfluidics , Machine Learning  and  Agentic AI 
+
+Michal Vasina 1,2, *, David Kovar 1,2,* , Martin Kizovsky 3, *, David Lacko 1,2 , Pavel Vanacek 1, Maximilian Herich 1,
+
+Eduard Volf 1, Luk as  Drdla 1, Sona Cabalova 3, Pavlina Sikorova 3, Michael Jir asek 4, Pavel Solansky 1, Jan 
+
+Jezek 3, Ota Samek 3, Filip Dou sek 4, Hynek Walner 4, Pavel Zemanek 3, Andrew deMello 5, Zdenek Pilat 3, Jiri 
+
+Damborsky 1,2 , Stavros Stavrakis 5 ✉, Stanislav Mazurenko 1,2  ✉, Zbynek  Prokop 1,2  ✉
+
+✉ Corresponding authors: stavros.stavrakis@chem.ethz.ch, mazurenko@mail.muni.cz, 
+
+zbynek@chemi.muni.cz  
+
+> 1
+
+Loschmidt Laboratories, Department of Experimental Biology and RECETOX, Faculty of Science, 
+
+Masaryk University, 602 00 Brno, Czech Republic  
+
+> 2
+
+International Clinical Research Centre, St. Anne's University Hospital, 656 91 Brno, Czech Republic  
+
+> 3
+
+Institute of Scientific Instruments of the Czech Academy of Sciences, Kralovopolska 147, Brno 612 64, 
+
+Czech Republic  
+
+> 4
+
+Theorema Inc., 838 Walker Road, Suite 21 -2, City of Dover, County of Kent, 19904,  Delaware, USA  
+
+> 5
+
+Institute for Chemical and Bioengineering, ETH Zürich, 8093 Zürich, Switzerland  
+
+> *
+
+These authors contributed equally. 
+
+# Keywords 
+
+active learning, autonomous experimentation, Bayesian optimization, biocatalysis, closed -loop 
+
+optimizations, enzyme cascades, machine -learning, metabolic engineering, microfluidics, multi -agent AI 
+
+system 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+2
+
+# Abstract 
+
+Enzyme cascades enable complex biochemical transformations, but their optimization is resource -
+
+intensive, requiring navigation through high -dimensional parameter spaces encompassing reaction 
+
+conditions, enzyme ratios, and buffer composition. Here we introd uce CascadeMAP, an autonomous 
+
+microfluidic platform for closed -loop optimization of enzyme cascades, integrating high -throughput 
+
+microfluidics with Bayesian optimization and multi -agent AI system. We demonstrate the platform across 
+
+two cascades: (i) a glyc erol detection pathway monitored by fluorescence and (ii) a 1,2,3 -
+
+trichloropropane degradation pathway monitored by label -free Raman spectroscopy providing 
+
+orthogonal detection modalities. Bayesian optimization identified optimal conditions three times fas ter 
+
+than Design of Experiments. Multi -agent AI system automated hypothesis generation, processing 11 GB 
+
+of experimental data, pattern recognition, and insight synthesis.  Operating without human intervention 
+
+for 7 days, CascadeMAP processed ~220,000  reactio ns  across ~7,400 different conditions. This capability 
+
+establishes a generalizable framework for the autonomous optimization of enzyme cascades and 
+
+metabolic pathways  and  accelerat es  the development of biocatalytic and synthetic biological systems. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+3
+
+# Introduction 
+
+Nature has composed an immense “songbook” of biotransformations, which are performed by 
+
+enzymes  with in metabolic pathways (enzyme cascades). Th is  biosynthetic power, c haracterized by high 
+
+selectivity  under mild conditions, has been extensively utilized by metabolic engineers in a wide range of 
+
+industrial sectors, such as food, textile, agr iculture , chemical or pharma industries. 1 Traditionally, these 
+
+processes relied on whole -cell metabolic engineering . However, cell -free enzyme cascades are 
+
+increasingly utilized as a robust alternative, offering superior flexibility and fine -grained control over 
+
+reaction variables .2,3  Despite the reduced biological complexity of cell -free systems compared to intact 
+
+cells, the optimization of these cascades remains a significant challenge. Developing efficient biocatalytic 
+
+systems requires the collection of high -fidelity datasets that ca pture the intricate interplay of multiple 
+
+physicochemical parameters .4 This creates two central technical bottlenecks : (i) the  high -throughput 
+
+generation of high -quality multidimensional datasets, and (ii) the reliable analysis of th ese  datasets  to 
+
+extract actionable insights and identify optimal operating conditions. 
+
+Currently, the leading technologies to tackle these challenges are microfluidic  platforms , which enable 
+
+controlled and high -throughput experimentation, and machine learning approaches (ML),  recently 
+
+enhanced by mutli -agent AI research assistants ,5 which ensure  efficient navigation  through  complex 
+
+multidimensional parameter spaces. 6 Microfluidic systems have been  applied to  enzyme cascades, b ut 
+
+their use has largely  focused on proof -of -concept demonstrations, particularly involving enzyme 
+
+immobilization and compartmentalization strategies, rather than the systematic, multidimensional 
+
+optimization of cascade performance. 7 In parallel,  ML -based a lgorithms  have demonstrated considerable 
+
+potential for  multiparameter optimization of complex reaction  systems , including enzyme cascades. 8 For 
+
+example,  the  active learning -based software METIS has been  successfully applied to optimize the CETCH 
+
+cycle, 9 highlighting the ability of ML to accelerate optimization of complex metabolic networks. Despite 
+
+these advances, experimental implementation of ML -guided optimization has remained largely 
+
+constrained by the throughput, reproducibility, and autonomy of the  robotic  liquid handling  platforms. 10 
+
+To date, integration of ML with microfluidic experimentation for enzyme cascades has been limited. 
+
+To the best of our knowledge, the only existing fusion of these technologies in this  context is the 
+
+microfluidic continuous stirred -tank reactor introduced by the Huck group. 11,12  Their platform enabled 
+
+immobilization of enzymes in hydrogel beads and inferred kinetic models of enzymatic networks using 
+
+active learning. 13  While this approach represented an important step toward data -driven analysis of 
+
+enzyme cascades, it was primarily designed for kinetic characterization and model inference, rather than 
+
+for fully autonomous, closed -loop experimental optimization across mu ltidimensional reaction spaces. 
+
+Moreover, despite the iterative nature demonstrated by METIS or CSTR, these systems do not run fully 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+4
+
+autonomously and require a human -in -a-loop for sample handling, reagent replenishment, or data 
+
+transfer. 14 
+
+We developed CascadeMAP, a microfluidic platform that combines classical design -of -experiments 
+
+(DoE) with machine learning –guided optimization in a fully closed -loop workflow for enzyme cascade 
+
+engineering. 15 –17  To our knowledge, CascadeMAP is the first platform to employ a multi -agent AI system 
+
+for experimental planning, deep data analysis, and hypothesis generation within a microfluidic self -
+
+driving laboratory. CascadeMAP enables the simultaneous, multidimensio nal optimization of key 
+
+parameters critical for enzyme cascade development, including enzyme stoichiometry, reaction 
+
+temperature, and pH, while autonomously executing experiments, acquiring data, and guiding 
+
+subsequent experimental decisions.  We validated CascadeMAP using two  model systems,  a three -enzyme 
+
+glycerol detection pathway 18  and  a three -enzyme synthetic metabolic pathway for degradation of the 
+
+industrial and environmental pollutant  1,2,3, -trichloropropane. 19 –21  These examples demonstrate the 
+
+ability of CascadeMAP to efficiently navigate complex experimental landscapes and autonomously 
+
+identify optimal operating conditions in multienzyme reaction networks relevant to biocatalysis, 
+
+biosensing, and metabolic engine ering. 
+
+# Results 
+
+# CascadeMAP hardware and software development 
+
+We developed CascadeMAP, an autonomous microfluidic platform for the optimization and 
+
+mechanistic characterization of enzyme cascade systems. The platform integrates multiple orthogonal 
+
+detection modalities, including fluorescence -based assays and label -fr ee Raman spectroscopy, enabling 
+
+quantitative monitoring of reaction progress and intermediate formation. CascadeMAP supports reaction 
+
+times ranging from minutes to hours and allows systematic exploration of multidimensional reaction 
+
+spaces. The system oper ates in both conventional design -of -experiments (DoE) mode and a fully 
+
+autonomous active learning (AL) mode, enabling efficient, data -driven optimization of complex 
+
+enzymatic cascades ( Figure 1 ). 
+
+During the development, we addressed several technical challenges to enhance both the performance 
+
+and versatility of CascadeMAP, thereby directly resolving limitations associated with conventional 
+
+capillary‑based microfluidic architectures. In typical desi gns reported in the literature, 22 –25  aqueous 
+
+reagents are first mixed in a manifold, and droplets are subsequently generated at a downstream T -
+
+junction. While widely used, this approach introduces axial dispersion during transport from the mixing 
+
+region to droplet formation . This  smearing of concentration gradients compromises temporal precision 
+
+and necessitates long delay times to allow for transitions between distinct reaction conditions. In 
+
+contrast, CascadeMAP integrates both aqueous and oil phases within a single manifold, co upling mixing 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+5
+
+directly to droplet generation. By minimizing the dead volume between mixing and encapsulation, this 
+
+integrated configuration substantially reduces dispersion and enables rapid, well -defined switching 
+
+between flow rate combinations ( Figure S1 , S2 ), allowing precise temporal control of reagent delivery 
+
+and higher fidelity in sampling, which is inherently difficult to achieve in conventional setups. 
+
+We implemented various technical solutions to preserve sample integrity and maintain stable 
+
+experimental conditions during extended self -driving experiments, typically lasting more than 10 hours 
+
+(Figure S3 ). These include a refrigerated enclosure, customized syringe sleeves, and specialized syringe 
+
+adapters ( Figure S3a -c). Although this setup required a larger physical footprint and longer tubing 
+
+lengths, the refrigerator enabled simultaneous cooling of multiple syringes, which was essential for 
+
+maintaining  the stability of sensitive enzymes and cofactors, ensuring a consistent signal over time, and 
+
+allowing precise control of temperatures below room temperature ( Figure S3d -e). To accommodate 
+
+reactions spanning longer timescales, we also integrated a flask -based incubator and a complementary 
+
+detection cell for end -point measurements. These additions extended the versatility of CascadeMAP, 
+
+allowing it to monitor both rapid and  slow enzymatic processes with equal precision ( Figure S4 ). 
+
+Alongside the hardware development and optimization, we developed the MAPit software suite to 
+
+automatically operate CascadeMAP and process the obtained data. The system enables fully autonomous 
+
+execution of both DoE and machine learning –driven experiments,  including extended runs of up to 7 days, 
+
+with robust, unattended operation ( Figure S5 ).  The software architecture integrates a LabVIEW‑based 
+
+hardware control layer (National Instruments, US) with Python‑based routines responsible for inline data 
+
+processin g and execution of the active learning algorithm. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+6
+
+Figure 1 | CascadeMAP microfluidic platform for closed -loop optimization of enzyme cascades. a , The 
+
+technical setup of the microfluidic platform. The pumps control the flow rates of aqueous phases and oil phase, 
+
+which are mixed in the manifold (grey circle), where droplets are also generated. The droplets travel through the 
+
+incubation (reaction) co il wrapped around a temperature‑controlled rod, where fluorescence can be read out in 
+
+every loop of the tubing for time -resolved detection (Raman detection requir es platform setup adjustments, see 
+
+Figure S12 ). The software MAPit controls (i) the flow rates on syringe pumps (beige lines), dictating the 
+
+experimental mode (see  b), (ii) the reaction conditions, including temperature and reaction time (grey lines), and 
+
+(iii) the acquisition of detected signal (blue lines). Details on control of pumps, reaction and detection are described 
+
+below the platform scheme in beige, grey and  blue squares, respectively.  b, The experimental modes showcasing 
+
+design of experiments (le ft) and active learning (right). Both modes are depicted as two -step processes of (i) 
+
+defining the combinatorial space of conditions and (ii) their measurement. Typical parameters are enzyme 
+
+concentrations (E1, E2, and E3), temperature (T), and pH. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+7
+
+# Design of Experiments on CascadeMAP 
+
+DoE optimization of the glycerol detection cascade 
+
+As a model system, we selected the glycerol detection pathway ( Figure  2), adapted from the method 
+
+reported by Morita and Terada. 18  This cascade involves three enzymes, glycerol kinase (GK), 
+
+glycerolphosphate oxidase (GPO), and horseradish peroxidase (HRP), to generate a fluorescence -based 
+
+output, well -suited for the validation of the CascadeMAP architecture. We initially tested the f luorophore 
+
+used in the original method, Amplex Ultra -Red (AUR). Despite satisfactory results with measurements on 
+
+the microtiter plate (MTP) reader, the utilization of AUR on CascadeMAP led to irreproducible signals 
+
+and compromised droplet stability ( Figure  S6 ). Consistent with findings by Zhu et al., 26  we observed that 
+
+the precipitation of AUR in narrow capillary channels poses a significant challenge for microfluidic 
+
+applications. We therefore transitioned to aminophenyl fluorescein (APF),  a fluorogenic probe that 
+
+becomes fluorescent upon reaction with highly reactive oxygen species such as hydroxyl radicals, 
+
+peroxynitrite, and hypochlorite and employed in various assays .27,28  The APF was successfully validated for 
+
+performance on both the MTP reader ( Figure  S7 ) and CascadeMAP , providing the stability and signal 
+
+reproducibility required for all subsequent autonomous experiments. 
+
+Our initial objective was to optimize the relative ratios of enzymes within the glycerol detection 
+
+cascade while maintaining a constant total enzyme concentration ( Figure 2b ). First, we chose a “safe 
+
+time -resolved detection” mode enabling time -resolved detection across multiple loops on the rod. In this 
+
+configuration the reaction coil was first completely filled with droplets of a specific composition and only 
+
+afterwards, a s ignal was detected for loops of choice in a backward direction to retrieve time -res olved 
+
+fluorescence data and prevent photobleaching of the APF fluorophore ( Figure  S8b, c ). While effective for 
+
+kinetic characterization the main drawback of this “safe time -resolved” detection mode is its relatively 
+
+low efficiency (i.e., a low ratio of detected to generated droplets), resulting in both increased reagent 
+
+consumption and experi mental duration ( Table  S1 ). Leveraging the improved droplet generation 
+
+stability of CascadeMAP ( Figure  S2 ), we tested a “stepwise end -point detection” mode ( Figure  S9 ) that 
+
+maximizes the throughput of detected droplets, significantly reducing sample requirements and total 
+
+experimental time ( Figure  2c  and  Figure  S8d, e ). Validation experiments confirmed that both detection 
+
+modes yielded consistent results, identifying an optimal GK:GPO:HRP ratio of approximately 2:6:2 
+
+(Figure  S8b, e ). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+8
+
+Figure 2 | The DoE optimization of the glycerol detection pathway. a , General scheme of glycerol detection 
+
+pathway. Glycerol kinase (GK) converts glycerol (GLY) to glycerol -3-phosphate (G3P), while adenosine 
+
+triphosphate (ATP) is dephosphorylated to adenosine diphosphate (ADP). G3P further reacts with oxygen, yielding 
+
+dihy droxyacetone phosphate (DHAP) and hydrogen peroxide, which, catalyzed by horseradish peroxidase (HRP), 
+
+oxidizes aminophenyl fluorescein (APF) to form well -detectable fluorescein.  b, The de sign of the experiment is 
+
+based on a ternary plot diagram, where the axes represent enzyme ratios. The graph also shows the sequence of 
+
+measurements from the beginning (blue point in the middle) to the end (red point in the bottom left corner).  c, The 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+9
+
+resulting ternary plot from enzyme ratios optimization at 37 °C. The colormap shows the relative fluorescence 
+
+signal translated to performance of the cascade in %.  d, The parameter space and combinations of conditions for 5 -
+
+parameter DoE (enzyme ratios, temperature, and pH).  e, Ternary plots of 5 -parameter DoE for 6 different pH values 
+
+(columns, expressed as ranges due to variation with temperature) and for 5 different temperatures (rows). The 
+
+colormap shows the relative fluorescence signal in %, the same a s in  c.
+
+Despite the straightforward data acquisition required to determine optimal enzyme ratios via a 
+
+traditional DoE approach, conventional studies often keep other critical parameters constant. To target 
+
+the optimization of multiple parameters within a single e xperiment, we expanded our experimental 
+
+scope to include reaction temperatures and pH, both of which are key parameters influencing the 
+
+performance of enzyme cascades. 7 Optimization of reaction temperature was facilitated by the 
+
+temperature‑controlled rod -shaped incubator as introduced previously. 24,25  To vary the pH, we employed 
+
+two separate syringes delivering 50 mM Tricine and 50 mM Bis‑Tris propane, achieving a linear pH range 
+
+from 6.5 to 9.5.  This enabled us to successfully capture both the upper and lower activity limits of the 
+
+cascade, ( Figure  S10 ). We initially intended to monitor pH using a PVDF 50 Microliter flow cell 
+
+(Sensorex, USA) ( Figure  S11 ). However, its large internal volume introduced significant dispersion and 
+
+mixing delays. Consequently, we decided to calibrate the pH changes offline ( Figure  S10 ) and due to pH 
+
+dependence on temperature we subsequently extended this calibration to cover multiple reaction 
+
+temperatures ( Table S2 ). 
+
+Building upon the initial enzyme ratio screenings, we expanded the DoE to combinatorially explore 
+
+five parameters: 22 different enzyme ratios, 5 different temperatures, and 6 different pH levels  - in total 
+
+660 unique reaction conditions ( Figure 2d ). This exhaustive screening was completed in approximately 
+
+12 hours using endpoint measurements, identifying the optimum at 25 °C and a pH 7.6 ( Figure  2e ). 
+
+DoE optimization of the TCP degradation pathway 
+
+To expand the application scope of CascadeMAP, we combined the glycerol detection pathway with a 
+
+previously kinetically characterized synthetic metabolic pathway for degradation of 1,2,3 -
+
+trichloropropane (TCP pathway) ( Figure 3a ). 19  To accommodate the longer reaction times from 5 to 
+
+approximately 30 min, required for TCP conversion to glycerol, we implemented a heated reaction zone 
+
+with an end -point detection cell ( Figure  S4 ). Optimization of the TCP pathway enzyme ratios ( Figure  3c )
+
+yielded results consistent with previously reported optimal ratios ( Figure  3b ). 19 
+
+To demonstrate the versatility of CascadeMAP beyond fluorescence -based detection, we adapted the 
+
+system to label -free monitoring of the TCP pathway using Raman spectroscopy ( Figure S12 ). This 
+
+required integrating a glass capillary into the setup to define a stable detection zone ( Figure  S12b ), 
+
+developing a specialized capillary –tubing interface that preserved droplet monodispersity 
+
+(Figure  S12c ), and implementing custom software for automated real -time spectral acquisition and 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+10 
+
+processing. To enable the continuous detection of low concentrations of metabolites in flowing droplets, 
+
+we employed a high -power Raman microspectrometer developed at the Czech Academy of Science (ISI 
+
+CAS, Brno, Czech Republic), featuring a 6 W laser. To o ur knowledge, this high -power approach has not 
+
+previously been applied to enhance Raman sensitivity in microfluidic droplet systems, enabling the 
+
+analysis of metabolites at concentrations below the limit of detection (LOD) of conventional Raman 
+
+spectromete rs. 
+
+By leveraging the label -free detection capabilities of Raman spectroscopy, we successfully detected 
+
+the substrate (TCP), the first intermediate ( R,S )-2,3 -dichloropropane -1-ol (DCP), and the product 
+
+glycerol (GLY) in real -time. While other intermediates ( Figure 3a ) were also detectable as neat 
+
+compounds ( Figure 3e,f, Figure S13, Table S3 ) their concentration in the reaction mixture was below 
+
+the LOD, indicating they did not significantly accumulate during the cascade ( Figure S14  and  S15, 
+
+Table  S3 ). The optim ization of enzyme stoichiometry using Raman -based detection ( Figure  3d, 
+
+Figure  S14  and  S15 ) mirrored the patterns observed in our fluorescence data  (Figure 3c ) and fitted well 
+
+with established kinetic model predictions ( Figure 3b ). 19  Notably, comparing the top‑performing 
+
+enzyme ratios showed that although both the fluorescence‑ and Raman‑based measurements identified 
+
+an optimum consistent with the kinetic model, 19  the Raman‑derived data exhibited closer agreement with 
+
+the model predictions ( Figure 3g ). 
+
+Furthermore, CascadeMAP allowed us to identify the range of enzyme ratios that lead to DCP 
+
+accumulation (Figure  S14c ). While the TCP concentration remained relatively constant due to 
+
+continuous oil feeding ( Figure  S14b ), a slight decrease was observed in the region of high DCP 
+
+accumulation, suggesting a possible slow depletion of the substrate within the droplets.  Conversely, in 
+
+regions where both DhaA and HheC were present at low concentrations  — conditions insufficient to initiate 
+
+degradation —we observed  a corresponding increase in TCP concentration. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+11 
+
+Figure 3 | Optimization of enzyme ratios for TCP degradation pathway. a,  The scheme of TCP degradation 
+
+pathway. The abbreviated compound names denote: TCP  – 1,2,3 -trichloropropane, DCP  – (R,S )-2,3 -
+
+dichloropropane -1-ol, ECH  – (R,S )-epichlorohydrin, CPD  – (R,S )-3-chloropropane -1,2 -diol, GDL  – (R,S )-glycidol, and 
+
+GLY  – glycerol.  b, The prediction of TCP pathway performance depending on enzyme ratios based on a kinetic model 
+
+reported previously. 10  c, Relative fluorescence signal of TCP pathway enzyme ratio optimization for a glycerol 
+
+detection pathway employed for glycerol detection. The measurement was conducted at ~30 min of the reaction 
+
+time, and the mean reaction temperature was 38.2  ± 0.2°C.  d, Relative Raman signal depending on enzyme ratios 
+
+for the product. The experiment was carried out at ~30 min of the reaction time, and the mean reaction temperature 
+
+was ~37°C.  e, The Raman spectrum for the enzyme ratios producing the most GLY with spectra of the neat 
+
+compounds (inset).  f, The overlay of reaction spectrum (black) from  e and the spectrum (beige) reconstructed from 
+
+non -negative least squares (NNLS) calculation of individual compounds.  g, The parallel coordinates plot of 
+
+combined datasets from fluorescence ( c, green lines) and Raman ( d, blue lines) and the top ratio combination from 
+
+the kinetic model ( b, red line). The best conditions from each dataset (i.e., those showing maximum glycerol 
+
+production) are highlighted with bold lines and correspond to white circles in  b-d.
+
+# Bayesian optimization of the glycerol detection pathway 
+
+To fully harness the autonomous nature of CascadeMAP experiments, we incorporated a Bayesian 
+
+optimization (BO) active learning (AL) module that operates in a closed -feedback loop even during 
+
+experimental runs ( Figure  1b  and  S16 ). The user defines the parameter ranges to be optimized and sets 
+
+the “budget”, meaning the number of conditions to be tested in the initial and subsequent rounds 
+
+(Figure  S17 ). Then the BO AL integrated in MAPit proceeds as follows. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+12 
+
+First, the BO algorithm generates the initial set of conditions to be tested, i.e., the flow rates on the 
+
+pump and the desired reaction temperature. We introduced several technical novelties to maximize the 
+
+efficiency of this phase. Rather than using tradi tional random sampling, the initial experimental set is 
+
+created using quasi -random Halton sequences to provide uniform coverage of the multi -dimensional 
+
+parameter space for the given “budget” of conditions. Our algorithm also allows combining several 
+
+param eters into a simplex group, i.e., a set of parameters whose values should sum up to a fixed constant 
+
+for all generated conditions. For example, joining pump flow rates of enzyme solutions in such a group 
+
+enables us to keep the total flow and thus the sum o f enzyme concentrations constant. Once a list of 
+
+conditions is generated, the algorithm optimizes the execution order to minimize system stabilization 
+
+delays.  This is achieved via two criteria: (i) high -latency parameters (typically temperature) are change d
+
+in a single direction to avoid repeated heating and cooling cycles; (ii) for the remaining parameters, the 
+
+Travelling Salesman Problem (with user -defined weights if needed) is solved to ensure the minimal 
+
+overall switching distance between consecutive se ts of conditions. The combination of these two criteria 
+
+helped to minimize the time delays necessary for the microfluidic system to recalibrate after each 
+
+experimental condition was measured. 
+
+Following the initial experimental round, the data generated via the  "step -wise end -point " acquisition 
+
+mode are processed and analyzed by the MAPit software in quasi -real -time ( Figure  S8d, S9  and  S18 ). 
+
+After the data are processed and analyzed, the newly collected measured conditions are fed back into the 
+
+BO algorithm to refine the model of the reaction landscape. Based on this updated knowledge, the BO 
+
+algorithm proposes a next batch of conditions fo r the subsequent round to be tested ( Figure  4). This 
+
+enti re process —measuring, data processing and analysis, learning, and re -planning —proceeds 
+
+iteratively in a closed loop, enabling fully autonomous operation for days at a time without any human 
+
+intervention. 
+
+We validated the AL workflow using the glycerol detection pathway as  a straightforward model 
+
+cascade with relatively short reaction times. We sought to optimize enzyme ratios, pH, and temperature. 
+
+The first challenge was to automate the BO algorithm's learning from the initial set of measured 
+
+conditions. We performed severa l optimizations with a single next round of active learning ( Figure  4b -
+
+c). Our results demonstrate that the BO algorithm successfully identified higher -performing conditions 
+
+in the second  round, consistently outperforming the best results from the initial sampling ( Figure  4c ). 
+
+However, we noted a critical dependency on the experimental "budget": when the number of conditions 
+
+per round was too low relative to the complexity of the experiment (e.g.,  Figure  4b , Experiment 4 with 
+
+20 conditions per round), the overall combinatorial space was undersampled, and the second round 
+
+failed to yield  a substantial enrichment. When we compared the relative performances of the previous 
+
+DoE optimization and  the current single -next round AL dataset, we found the identified optimal 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+13 
+
+temperature and enzyme ratios to be highly consistent ( Figure  4d ). Despite a differently identified pH 
+
+optimum, the AL algorithm could efficiently sample the combinatorial space ( Figure  S19 ) while 
+
+providing optimum using only one third of conditions (225 conditions) compared to the DoE 
+
+optimization (660 conditions,  Figure  2e ), thus representing a massive increase in experimental 
+
+efficiency. 
+
+To evaluate the robustness of the AL workflow over extended durations, we transitioned from single -
+
+round optimization to a multi -round sequence. To maximize experimental efficiency, we fixed the 
+
+reaction temperature and from the initial 50 conditions (to b e tested per round), we switched to 
+
+10  conditions per initial round and 5 conditions per subsequent iteration. During these extended runs, 
+
+we compared  two different batch -sequential strategies. In addition to the formerly used Exploration and 
+
+Exploitation  (EE) algorithm 29  balancing exploration and exploitation, we further introduced the Kriging 
+
+Believer (KB) algorithm 30  to guide the optimization more towards exploitation. For each of these 
+
+algorithms, we obtained a representative dataset of 48 rounds of AL ( Figure  4e ) autonomously 
+
+measuring 245 conditions per experiment. 
+
+Due to minor mechanical misalignments between the temperature -controlled incubator and the 
+
+optical detection system, the raw datasets were not directly comparable across different runs. However, 
+
+because the initial 10 -condition sequences were identical for  every experiment, we were able to use these 
+
+points as an internal reference ( Figure  S20 ). By applying linear regressions to project the KB dataset 
+
+onto the EE one we observed that both strategies identified similar optima. The primary divergence 
+
+appeared  in the pH buffer ratios, where the KB algorithm slightly outperformed the EE approach 
+
+(Figure  4e -f). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+14 
+
+Figure 4  | Active learning optimization of the glycerol detection pathway.  a, Workflow of AL 
+
+involving (i ) scheduling the conditions to test in each round based on the limits for each parameter to be 
+
+tested, (ii) measurement of data involving end -point detection, (iii) processing and evaluation of data, 
+
+and (iv) learning of patterns in data and updating the m odel to predict new conditions (white crosses). 
+
+b-c, AL optimization of temperature, pH, and enzyme ratios.  b, Example of data acquired during the initial 
+
+and next round.  c, Box plot summarizing four experiments composed of two rounds of AL. The 
+
+performanc e on the Y axis denotes a signal relative to the maximum signal obtained during the first round 
+
+of a particular experiment, as indicated also by the gray dashed line. Experiments 1 -3 included 50 initial 
+
+conditions to be measured, while experiment 4 had 20  initial conditions measured. For experiment 2, 
+
+only 3 of the next conditions were measured.  a-c, Rounds 1 (R1) and 2 (R2) stand for the initial and the 
+
+subsequent rounds of AL and are marked by grey and yellow, respectively.  d, Parallel coordinates plot 
+
+co mparing the 10 highest -signal conditions from DoE (red,  Figure 2e ) and AL (gold,  c) when optimizing 
+
+enzyme ratios, temperature and pH (ratio of Tricine and Bis -tris propane (BTP)). The best conditions 
+
+from each algorithm are connected by a bold line.  e-f, AL optimization of pH and enzyme ratios using two 
+
+AL algorithms, Exploration and Exploitation (EE, blue) and Kriging Believer (KB, green). The data from 
+
+the KB dataset were linearly projected onto the EE dataset ( Figure S 20 ).  e, The maximum observed signal 
+
+during the AL throughout 48 rounds of active learning.  f, Parallel coordinates plot of the 10 highest -signal 
+
+conditions from each algorithm. The best conditions from each algorithm are connected by a bold line. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+15 
+
+# Experimental design and data analysis using multi -agent AI system 
+
+The concept of autonomous self -driving laboratories aligns with the emerging paradigm of multi -
+
+agent AI systems. These systems operate as coordinated teams of virtual agents that manage and 
+
+optimize complex scientific workflows, enabling autonomous experim entation, data analysis, decision -
+
+making, and iterative hypothesis generation .5,31  In this work, we explored the capabilities and limitations 
+
+of the multi -agent AI systems  in two scenarios: (i) the design and (ii) the analysis of CascadeMAP 
+
+experiments  (Figure  5a -c) by employing the Theorema Discovery and Theorema  Lab multi -agent AI 
+
+workflows, respectively. 
+
+Initially, we tasked the Theorema Discovery multi -agent system with designing an enzyme cascade for 
+
+on -chip glycerol detection without access to prior experimental data  (see  Task 1.1  in  Supplemental 
+
+Design of CascadeMAP experiments ). In the first round, the system proposed several plausible assay 
+
+architectures, including NADH -based glycerol dehydrogenase pathways and glycerol kinase/glycerol -3-
+
+phosphate dehydrogenase routes. However,  the most directly actionable oxidase –peroxidase solutions 
+
+converged predom inantly  on Amplex Red and AUR -type reporters. 26  To test the system's adaptive 
+
+reasoning, the agents were subsequently contextualized with an explicit experimental failure mode: 
+
+irreproducible fluorescence and compromised droplet stability induced by AUR aggregation  (Figure  S6 
+
+and  prompt  Example 3  in Supplemental Design of CascadeMAP experiments ).26  In response, the 
+
+agents proposed three classes of solution: (i) replacement of reporters by  2,2' -azino -bis(3 -
+
+ethylbenzothiazoline -6-sulfonic acid (ABTS), homovanillic acid, and boronate -caged hydrogen peroxide 
+
+probes; (ii) assay simplification via NADH -based glycerol dehydrogenase detection, which eliminates 
+
+dependence on oxygen, hydrogen peroxid e, and HRP; and (iii) formulation and platform interventions, 
+
+such as bovine serum albumin (BSA) addition, pluronic co -surfactants, and wetted -surface conditioning 
+
+where compatible with the microfluidic platform. 
+
+Next, we tasked the Theorema Discovery multi -agent system to suggest a specific experimental design 
+
+for our system including schedules and settings for Bayesian optimization (see  Task 1.2  in 
+
+Supplemental Design of CascadeMAP experiments ). While most of the answers were in agreement 
+
+with our current strategy, the agents could have been more specific in the specifications of buffers to 
+
+adjust the pH and proposed relatively few temperatures to be tested. On the other hand, it proposed a 
+
+num ber of control exper iments/conditions and suggested interesting approaches to tune the DoE 
+
+experiments, e.g. by suggesting the D -optimal or I -optimal designs. Altogether, the answers for both tasks 
+
+compiled by the Theorema Discovery agents, are provided in the  Supplemental Design of CascadeMAP 
+
+experiments .
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+16 
+
+Figure 5  | The planning and analysis of data by multi -agent AI system. a,  The augmentation of a 
+
+CascadeMAP workflow (beige) by interactions with multi -agent AI system (purple). Multi -agent AI 
+
+platforms Theorema Discovery and Theorema Lab were integrated with experimental design and data 
+
+analysis, respectively.  b, The skills of Theorema multi -agent AI system.  c, Overview of two case studies 
+
+(prompts on right side) given as tasks for the multi -agent AI system. The purple rectangles highlight some 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+17 
+
+of the outputs from a particular AI agent. The abbreviated reaction components include: glycerol (GLY), 
+
+glycerol kinase (GK), glycerol -3-phosphate (G3P), glycerolphosphate oxidase (GPO), hydrogen peroxide 
+
+(H 2O2), horseradish peroxidase (HRP), dihzdroxzacetonephosphate (DHAP), 2,2' -azino -bis(3 -
+
+ethylbenzothiazoline -6-sulfonic acid (ABTS), nikotineamideadenine dinucleotide (NAD +/NADH), 
+
+principal component analysis (PCA).  d-g, Selected outputs for the second case study about analysis and 
+
+interpretation of a who le active learning (AL) campaign comprising 23 experiments, 3,163 conditions 
+
+and overall about 11 GB of data. The graphs focus on two particular experiments, employing the 
+
+Exploration & Exploitation algorithm (blue) and Kriging Believer (green).  d, The progress of exploration 
+
+(solid line) and exploitation (dashed line) for both algorithms.  e, The score plot of principal component 
+
+analysis of all measured data (grey points), highlighting the representative measurements of the two 
+
+algorithms (blue and green p oints).  f-g SHapley Additive exPlanations (SHAP) analysis 32  assessing the 
+
+influence of each parameter (enzymes and pH buffer percentage) on the resulting signal in thousands of 
+
+relative fluorescence units (kRFU) of the Exploration & Exploitation ( f) and Kriging Believer ( g) dataset. 
+
+Each point represents an experimental condition, positioned by SHAP value (impact on signal), while colour 
+
+intensity reflects the corresponding feature value.  Color codes for two optimisation strategies (blue: 
+
+Exploration –Exploitation; green: Kriging Believer) across all panels, while line styles, markers, and colour 
+
+gradients represent panel -specific quantities. 
+
+To evaluate automated data interpretation, the Theorema Lab multi -agent platform was deployed to 
+
+audit 23 experimental BO campaigns, comprising 3,163 recorded conditions and approximately 11.1  GB 
+
+of raw data. At this scale a manual analysis is time -consuming and prone to errors. The agent's outputs 
+
+were benchmarked against a prior, human -curated data quality assessment in which specific dataset 
+
+integrity issues had been identified. The agents sc reened 6,116 raw LabView Technical Data Management 
+
+Streaming (T DMS) files, executing automated parsing, peak detection, experimental logic reconstruction, 
+
+and signal processing validation ( see  Tasks 2.1 and 2.2  of  Supplemental Analysis of CascadeMAP 
+
+experiments ). The multi -agent framework successfully classified the campaigns into three distinct data -
+
+integrity tiers:  4 high quality datasets, 14 partially recoverable or context -dependent campaigns, and 5 
+
+low -quality or incomplete campaigns. Notably, the agents flawlessly identified the two most successful 
+
+optimization t rajectories ( Figure  4e  and  5d -g).  Furthermore, we tasked the agents to provide an 
+
+assessment of progress curves for both exploration and exploitation throughout the experiments 
+
+(Figure  5d ) and a principal component analysis for unsupervised dimensionality reduction ( Figure  5e ). 
+
+The results highlighted that Exploration & Exploitation algorithm overall prioritized global parameter 
+
+space exploration, whereas the Kriging Believer algorithm preferred exploitation. 
+
+The collected dataset was highly heterogeneous as only a fraction of the campaign could be treated as 
+
+directly interpretable, while the remaining regions required manual curation because of low signal -to -
+
+noise ratios, ambiguous row -to -condition alignment,  or incomplete data recovery. At the design -space 
+
+level, Theorema Lab concluded that the BO campaign did not uniformly sample the full reagent space, but 
+
+instead iteratively exploited several related high -response neighborhoods. Furthermore,  we tasked the 
+
+agents to perform  the SHapley Additive exPlanations (SHAP) analysis 32  to  assess the importance of 
+
+individual reaction components  (see  Description of machine -learning methods  in  Supplemental 
+
+Analysis of CascadeMAP experiments ). This feature attribution model revealed that higher GPO levels 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+18 
+
+and intermediate HRP concentrations improved the target response, while BTP, Tricine, and GK played 
+
+minor or highly localized roles ( Figure  5f , g), consistent with a coupled multi -enzyme system where 
+
+overall metabolic flux is limited by the rate -limiting enzymatic step. Crucially, shifts in buffer composition 
+
+alter the balance between enzymes with different pH optima, producing a non -linear respons e landscape 
+
+characterized by multiple local optima. This underlying biochemistry explains why these specific 
+
+va riables manifest as local modulators in SHAP rather than dominant global drivers. The multi -agent AI 
+
+system autonomously transformed a large experimental campaign of raw data into a structured analysis, 
+
+correctly  recognizing  GPO as the dominant factor and successfully cross -validating expert implemented 
+
+data analysis. 
+
+Together, these results demonstrate that multi -agent AI systems can significantly augment both the 
+
+planning and analysis stages of automated experimentation. Ongoing developments are focusing on 
+
+expanding this framework to support on -the -fly learning exper iment execution. However, a paramount 
+
+emphasis remains on integrating rigorous human -in -the -loop control, operational guardrails, and strict 
+
+safety protocols to govern autonomously operating physical systems. 5
+
+# Discussion 
+
+The multiple -parameter optimization of enzyme cascades provides clear benefits from industrial 
+
+bioprocessing aimed at maximizing product yields to metabolic engineering focused on deciphering the 
+
+intricate flux of synthetic networks. In this work, we intro duced CascadeMAP as a platform that efficiently 
+
+combines the high -throughput capabilities of droplet microfluidics with machine learning for exploring 
+
+patterns in complex data, enabling accelerated data -driven optimization. By integrating automated 
+
+hardwar e control with real -time data analysis, CascadeMAP facilitates both traditional DoE and fully 
+
+autonomous active learning workflows. This architecture allows for the execution of hundreds of 
+
+consecutive, closed -loop experiments without human intervention. 
+
+The number of parameters to be simultaneously optimized on CascadeMAP is primarily determined 
+
+by the number of inlet ports on the fluidic manifold. Commercially available manifolds offer up to 16 
+
+inlets, which theoretically enable up to 15 factors to be va ried (accounting for oil required for droplet 
+
+generation). Expansion beyond this limit requires custom manifolds or lab -on -a-chip devices, which 
+
+could further facilitate high -resolution, time -resolved detection as previously described. 33,34  Apart from 
+
+the factors influencing the reaction mixture, external parameters, such as temperature or reaction time, 
+
+must be precisely regulated. CascadeMAP successfully integrates these variables into a fully automated 
+
+closed -loop optimizations workflow.  Our demonstration of the simultaneous optimization of enzyme 
+
+stoichiometry, reaction temperature, and pH represents, to our knowledge, an unprecedented level of 
+
+automation within a microfluidic -based self -driving laboratory platform. Further versatility an d control 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+19 
+
+over sample quality can be achieved by integrating pressure -driven pumps 35  and customized 
+
+temperature control of samples to be introduced to CascadeMAP. 
+
+During CascadeMAP development, we found that selecting a suitable analytical assay is critical. While 
+
+amplex ultra red 26  works well in microtiter plate assays, its instability during the multi -hour storage 
+
+required in syringes makes it incompatible with long -term autonomous runs. Conversely, while 
+
+aminophenyl fluorescein (APF) 27,28  offers excellent stability, its specificity for hydrogen peroxide limits 
+
+its utility in monitoring complex intermediate dynamics.  To overcome these limitations, we introduced 
+
+high -power label -free Raman detection, enabling concurrent monitoring of substrates, intermediates, 
+
+and products, exemplified by TCP degradation to glycerol. Such sensitivity exceeds conventional Raman 
+
+systems and avoids the non -linear signal enhancements and complex nanoparticle substrate 
+
+requirements of Surface -Enhanced Raman Spectroscopy (SERS), which complicate quantitative 
+
+interpretation. 36  Future versions of CascadeMAP  may integrate absorbance, luminescence, or mass 
+
+spectrometric detection for even greater versatility. 
+
+Recent advances in autonomous experimentation highlight how combining AI with robotic systems 
+
+can significantly speed up biochemical research. 15,37,38  CascadeMAP uses microfluidics to achieve similar 
+
+or higher throughput while using less reagents, precise timing and real -time adjustments. 6 One of the 
+
+exciting developments is the use of multi -agent AI systems. 5 Instead of relying on a single model, these 
+
+systems embed the scientific workflow into specialized, collaborative agents. 31,39 –43  The integration of 
+
+multi -agent AI into the CascadeMAP workflow  (Figure  5a)  demonstrated both the promise and 
+
+limitations of these systems. In the design task, the agent's initial convergence highlights a tendency to 
+
+reproduce literature -prevalent approaches when operating in the absence of experimental context. 
+
+However, when prov ided with real failure data, the system generated mechanistically grounded and 
+
+practically actionable alternatives. In the analysis task, autonomous processing of over 11 GB of raw data, 
+
+including signal validation, campaign quality stratifica tion, and SHAP -based feature attribution, closely 
+
+matched expert -derived conclusions. The agreement between agent -identified and manually verified 
+
+outcomes confirms that multi -agent systems can reliably be used for data analysis at scales that are 
+
+impracti cal for manual review. Future iterations of the CascadeMAP framework will leverage multi -agent 
+
+AI to drive  active learning experiments. By dynamically adjusting the balance between exploration and 
+
+exploitation the system will execute real -time, multi -objec tive optimization across coupled parameters, 
+
+including yield, selectivity, and long -term operational stability, i.e., areas where agent -based Bayesian 
+
+strategies have already shown effectiveness. 44,45 
+
+In summary, CascadeMAP represents a robust platform for optimizing complex enzyme cascades 
+
+within a single, unattended experimental campaign. Thanks to a high degree of fluidic automation, as well 
+
+as integration with machine learning and multi -agent system s, tens to hundreds of consecutive learning 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+20 
+
+cycles can be carried out without any human intervention. By autonomously conducting experiments, 
+
+CascadeMAP will contribute to the generation of high -quality datasets, requested by current ML 
+
+pipelines, 46  and will become a valuable tool for metabolic engineers to optimize complex pathways 
+
+leading to value -added compounds. 47 
+
+# Methods 
+
+# CascadeMAP experiments with fluorescence detection 
+
+Hardware 
+
+The CascadeMAP hardware is based on the previously introduced and thoroughly described 
+
+KinMAP. 13  Briefly, the oil and aqueous phases are loaded to GASTIGHT syringes (Hamilton, USA) and then 
+
+operated by the low -pressure neMesys microfluidic pumps (Cetoni, Germany) in the positive pressure 
+
+mode. All liquids travel through high -purity perfluoralkoxy (PF A) tubing 1622L (OD 1/16 inch, ID 0.02 
+
+inch, IDEX Health & Science, USA) and the droplets are generated either on 6 -inlet manifold P -170 (IDEX 
+
+Health & Science,  USA), or on a 10 -inlet manifold Z10M1PK (Vici Valco, France). For the long -term 
+
+experiment, the aqueous solutions were refilled during the experiment automatically by using  3/2 -way 
+
+valves (Cetoni, Germany) and the oil was delivered via two 60ml -Omnifix (Braun, Germany) syringes 
+
+both mounted on a Fusion 200 pump (Chemyx, USA). The flow of oil from these two syringes was then 
+
+unified via the Y -junction P -512 (IDEX Health & Scie nce, USA). The ratios of solutions and velocity of 
+
+droplet movement were controlle d by changing the flow rates of the individual pumps, keeping the 
+
+constant flow rates of 12 and 12 μL/min for the aqueous and oil phases, respectively. The droplets with 
+
+the reaction mixture subsequently traveled through the tubing coiled around a copper -heating rod 
+
+(diameter = 1.5 cm, length 8 cm (manufactured by PB Control, Czech Republic), which allows moving 
+
+along the longer axis using travel stage (LTS150, Thorlabs, Germany) and heating from ambient 
+
+temperature up to 180 °C. The copper rod is heated by  a cartridge (6.5x40 mm, 100 W, Farnell, 
+
+Switzerland) embedded inside the rod. The temperature is monitored using a thermocouple (Sensor, 
+
+Thermoelement Type K  - 0.5 mm, Farnell, Switzerland), inserted into the copper block close to the 
+
+surface. Temperature  control is realized using a PID controller (CN7800, Omega, USA), with an observed 
+
+temperature variation from the set point of 0.1 °C. Fluorescence assays were performed using the 
+
+following optical components, all purchased from Thorlabs (Germany) if it’s  not stated otherwise. For 
+
+APF assays, excitation was provided by an LED M470L3 diode (470 nm), in combination with a 
+
+DMLP505R dichroic mirror and an excitation filter XVS0470 Shortpass Filter VIS 470nm 25mm dia. 
+
+(Asahi spectra, USA). Emission was collected  at 512 –518 nm range, with the LED operated at 90% 
+
+intensity. For AUR assays, excitation was achieved using an LED M530L3 diode (530 nm), together with 
+
+a DMLP567R dichroic mirror and a 590 nm long‑pass filter (Comar 590 GY25, UK). Emission was 
+
+collected in  the 588 –594 nm range at an LED intensity of 30%. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+21 
+
+MAP it software 
+
+The MAPit software was written in LabVIEW and is based on a queued message handler, which 
+
+facilitates multiple sections of code running in parallel and enables control of MAP hardware 
+
+components. The main code was extended by Python -based scripts for accel erated peak detection and 
+
+evaluation of a sequence of measurements. 
+
+Bayesian optimization scripts 
+
+Additionally, a Bayesian optimization feedback loop was integrated into MAPit, providing online 
+
+replanning of experiments based on the data obtained in the previous round. The BO module was written 
+
+in Python and is available on GitHub:  https://github.com/loschmidt/CascadeMAP –Bayesian .
+
+Briefly, the Halton series for generating the initial and subsequent sets of parameters for the limits 
+
+provided by the user was implemented using scipy.stats.qmc.halton class of the SciPy library v1.17.0. The 
+
+transformation of the sample for each simplex g roup was implemented according to the “Transformation 
+
+root” method. 48  The generated conditions were sorted as follows: first, if one parameter was selected as 
+
+“priority”, the list was sorted according to this parameter; second, for each value of this parameter (or 
+
+the entire list if no parameter is selected as priority) the  weighted Travelling Salesman Problem was 
+
+solved using the solve_tsp_simulated_annealing function of the python -tsp library. 
+
+The BO was based on the Gaussian Process Regression implemented using the scikit -learn library 
+
+v1.8.0. By default, the expected improvement acquisition was used. Two different algorithms were 
+
+implemented to account for batches at each iteration: Exploratio n-Exploitation sampling different 
+
+weights in the Weighted Expected Improvement function 29  and Kriging Believer. 30  In addition to the 
+
+default definitions, each one of those methods could be biased towards more exploration or more 
+
+exploitation according to a separate setting available to the user. Moreover, if a selected method 
+
+suggested the same conditions within one  batch (which tends to happen once the method started to 
+
+converge in the toy examples), our pipeline iteratively attempted to bias the current iteration to 
+
+encourage more exploration for a fixed number of attempts (10 by default), after which any remaining 
+
+duplicities were replaced with a random subset. 
+
+Experimental modes 
+
+Generally, there are three modes for running experiments provided by the MAPit: (i) sequence mode, 
+
+(ii) flow profile mode, and (iii) manual operation mode. For the first sequence mode, the user defines the 
+
+pump flow rates to be measured in a sequence with  an identical length of droplet generation. 
+
+Additionally, the user selects the reaction temperatures to be measured from the smallest to the largest. 
+
+The sequence mode enables time -resolved data collection in 12 loops on the rod, while a single loop 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+22 
+
+(typically loop 12 with the longest reaction time) can be selected for end -point detection. Each data point 
+
+typically consisted of at least 20 repetitions (droplets). 
+
+Second, the flow profile offers an additional level of freedom by varying the length of generation for 
+
+each combination of flow rates. Practically, the flow profile mode is used exclusively with the end -point 
+
+detection mode, which is measured for the entir e reaction sequence and unlike sequence mode, does not 
+
+separate data based on the currently generated flow rate combination. Finally, the manual operation 
+
+mode lacks the automation features of the previous two modes, yet enables quick acquisition of desire d
+
+data. 
+
+Data acquisition modes 
+
+The data acquisition was initially performed the same way as on KinMAP. To account for dispersion, 
+
+a so -called “safe time -resolved” data acquisition mode was used. It works as follows: the reaction zone is 
+
+first filled with the droplets corresponding to th e desired combination of flow rates, and only afterwards, 
+
+a signal is detected in the loops of choice in a backward direction to retrieve time -resolved fluorescence 
+
+data. The suppressed dispersion of liquid phases mixing enabled the “step -wise end -point” d ata 
+
+acquisition mode. This means that at each time (typically 1 min), a reaction condition is generated, and 
+
+the same time is used for data acquisition. In the end, the data need to be realigned so that the particular 
+
+signal matches the correct reaction co ndition. For this reason, at the end of each condition sequence for 
+
+a particular temperature, so -called “auxiliary  rows” need to be introduced to account for the conditions 
+
+generated at the end of the sequence. 
+
+Glycerol pathway experiments 
+
+The glycerol pathway optimization experiments were usually run with the following samples in the 
+
+syringes. Individual enzymes were in separate syringes at such a concentration that the final reaction 
+
+concentration of all enzymes would sum to 1 U/mL. The gl ycerol, APF, and ATP were typically mixed in 
+
+one syringe, so that the final reaction mixture would contain 250 μM glycerol, 25 μM APF, and 2 mM ATP. 
+
+Specific experiments required that all of these concentrations be adjusted accordingly. 
+
+TCP pathway experiments 
+
+For the TCP pathway, substrate delivery was achieved through a substrate partitioning between the 
+
+oil (continuous phase)  and aqueous (dispersed) phase as described previously. 23,49  The enzymes were 
+
+loaded either mixed or separately in syringes with the final reaction mixture concentration of 0.6 mg/mL. 
+
+The molecular weights of monomers of these enzymes (equal to their active sites) were roughly similar, 
+
+so the ratios were calculated  with this assumption. The reaction time was set to about 30 minutes. The 
+
+solution of ~ 9.4mM TCP in fluorinated oil FC -40 (3M, USA) with 0.25 % AZ2C surfactant (manufactured 
+
+by CF Plus Chemicals, Czech Republic according to a previously published method 50 ) was diluted at least 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+23 
+
+one day ahead of the experiment by injecting TCP to the oil/surfactant mixture in a glass vial, with as 
+
+little air as possible, quickly tightening and then rolling overnight on a tube roller. 
+
+For Raman analyses the concentration of TCP in oil/surfactant mixture was ~ 47mM. Saturation with 
+
+the substrate in the reaction mixture was required for Raman to reach limits of detection of the produced 
+
+GLY. TCP was diluted in the oil/surfactant mixture i n a glass vial with limited air volume by vortexing at 
+
+12,000 rpm for 120 s. 
+
+Off -line pH calibration 
+
+The dependence of pH on the buffer composition (more specifically, the Tricine percentage in the 
+
+buffering system mixture) was measured in 100 μL aliquots for the glycerol detection pathway. These 
+
+samples were divided to contain 4 different enzyme ratios,  roughly capturing the extremes and middle 
+
+of the enzyme ratio ternary plot. The pH measurements were done first for samples without glycerol 
+
+(Penta, Czech Republic), ATP (Merck, USA), and APF (Merck or Thermo Fisher, USA), and subsequently 
+
+after their addi tion (thus initiating the cascade reaction). The addition of these reaction components 
+
+generally resulted in a decrease in pH, whereas the pH remained relatively constant during the reaction. 
+
+Such calibration was repeated for the temperatures: 25, 30, 35,  37, and 40 °C, corresponding to the 
+
+experiments on CascadeMAP. 
+
+# Microtiter plate reader experiments 
+
+The microtiter plate measurements were performed on the CLARIOstar plus reader (BMG Labtech, 
+
+Germany) using BRAND F 96  well plates (BRAND, Germany) with 100μL reaction volume. For 
+
+measurements with AUR (Thermo Fisher, USA), the excitation and emission were set to 530 -20 and 585 -
+
+10 nm, respectively, while for measurements with APF, the excitation and emission were set to 48 5-10 
+
+and 525.5 -19 nm, respectively. 
+
+# Preparation of enzyme samples 
+
+Glycerol detection pathway enzymes 
+
+Glycerol kinase from  Cellulomonas  sp. (G6142), Glycerol 3 -phosphate oxidase from  Pediococcus  sp. 
+
+(G9637), and Horseradish peroxidase (SRE0082) were purchased from Merck, USA. Upon dissolution, 
+
+the enzyme concentrations were adjusted to 40  – 100 U/mL (units were used as defined by the 
+
+manufacturer) and then flash -frozen in liquid nitrogen and stor ed at  -70  °C for further use. For 
+
+CascadeMAP measurements, the enzymes were transferred to 50 mM Tris -SO 4 buffer (50 mM Tris -SO 4,
+
+5mM  MgSO 4 pH 8.0). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+24 
+
+TCP degradation pathway enzymes 
+
+Genes encoding DhaA31 and EchA wt  were cloned into the pET21b and pET28b plasmid, respectively, 
+
+in frame with a C -terminal His -tag, while the gene for HheC wt was cloned into the pET21b plasmid 
+
+without any tag. The plasmids were transformed into  E. coli  BL21 (DE3) cells, and the proteins were 
+
+expressed there. DhaA31 and EchA were purified from cell lysates by immobilized metallo -affinity 
+
+chromatography using a HisTrap HP column (Cytiva, USA) charged with Ni 2+  ions. HheC wt was purified 
+
+using anion -exchange chromatography: 51  the crude extract was applied to a 20 ml Hi Load 16/10 
+
+(GE  Healthcare, USA) packed with Q Sepharose High performance. The buffer system consisted of TEM 
+
+buffer A (50 mM Tris -SO 4, 1 mM EDTA, 1mM DTT, pH  7.5) and TEM buffer B (50  mM Tris -SO 4,
+
+1 mM  EDTA, 1  mM 1mM DTT, 0.45 M (NH 4)2SO 4, pH 7.5). HheC was eluted with a two -step increasing 
+
+linear gradient: 0 to 45 % buffer B in 15 column volumes (CVs) and 45 to 100 % buffer B in 3 CVs. For 
+
+part of the fractions, the pure tetrameric fraction of HheC was isolated by subsequent size exclusio n
+
+chromatography using HiLoad 16 /600 SuperdexTM 200 column (Cytiva, USA). 
+
+Samples of DhaA31 and EchA wt in the 50mM PB buffer (41mM K 2HPO 4 and 9mM KH 2PO 4, pH  7.5) 
+
+were lyophilized for long -term storage. The HheC wt samples, both after anion exchange and after size -
+
+exclusion chromatography (in TEM B buffer or 50mM Tris SO 4, respectively), were flash -frozen in liquid 
+
+nitrogen and stored at  -70  °C for further use. For CascadeMAP measurements with fluorescence 
+
+detection, the enzymes were transferred to 50mM Tris -SO 4 buffer, while for measurements with Raman 
+
+detection, the reaction bu ffer was 50mM PB buffer. 
+
+# Raman detection mode 
+
+Hardware  - Raman setup 
+
+An in -house -built Raman microspectrometer was developed at the Czech Academy of Science (ISI 
+
+CAS). The high -power Verdi -V6 (Coherent, USA) laser was employed to provide up to 6  W in continuous 
+
+mode at a wavelength of 532 nm. The laser was passed through multiple optic al components, such as 
+
+mirrors and lenses (Thorlabs, USA), a 532 nm BrightLine dichroic beamsplitter (Semrock, USA), and an 
+
+in‑house -built anti -reflective at 540 –700 nm two -way mirror for the imaging camera Watec WAT -902H 
+
+(Watec Cameras, USA).  To reach the sample volume, the laser was focused through an Olympus PLN 20x 
+
+objective (NA 0.4) (Olympus, Japan). For proper focusing, the frame with the sample holder was mounted 
+
+onto an LX30/M 25 mm XYZ Translation Stage (Thorlabs, USA). The scattered li ght was collected through 
+
+the same objective and passed to a 532 nm StopLine single -notch filter (Semrock, USA) to pass the 
+
+Raman -shifted light. An Acton SP -2556 spectrometer (Teledyne Princeton Instruments, USA) featuring a 
+
+1200 gr/mm diffraction grating,  and an Andor Newton DU920P Bx -DD CCD camera (Oxford Instruments 
+
+Andor, UK) were applied to separate individual wavelengths and detect their intensity ( Figure  S12a ). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+25 
+
+Hardware  - microfluidics 
+
+Microfluidic setup was kept as similar as possible to the design used for the fluorescence assay, 
+
+although some changes were necessary. Due to the high -power laser, it was not possible to analyze 
+
+through the PFA tubing (ID 0.5 mm, OD 1.6 mm); therefore, a  glass capillary (ID 0.5 mm, OD 0.7 mm) 
+
+(both tubing and capillary from CM Scientific Ryefield, Republic of Ireland) was integrated. The capillary 
+
+was held in a custom -made 3D printed holder with the same footprint as a microscope slide (26 × 76 mm) 
+
+to make  it universal for other standard Raman instruments. The holder was fixed to an  aluminum  frame 
+
+(Figure  S12b ). The transition from tubing to capillary was achieved by utilizing a small piece of tubing 
+
+with a larger ID (0.75 mm) that was put over the capillary as a “sleeve”. The capillary with the sleeve was 
+
+then fitted into the union connector JR -1066 (BGB Analy tik Vertrieb, Germany), which was connected to 
+
+the tubing at the other end ( Figure  S12c ). This provided uniform ID throughout the system, preventing 
+
+the droplets from tearing. However, the addition of a capillary seemed to alter the behavior of the 
+
+microfluidic setup, as the 6 -inlet manifold P -170 (IDEX Health & Science, USA) was not efficient in forming 
+
+cohesive droplets, so it was used only for precis e enzyme mixing, and Y -junction P -512 (IDEX Health & 
+
+Science, USA) was inserted to inject the oil into the system to create stable droplets. The total flow rate 
+
+in the system was 600 μl/h. The total time of the reaction mixture (from the droplet -generating  point to 
+
+the detection zone) in the system was 40 min, although only 30 min was in the heated bath TVL 004 
+
+(INGOS, Czech republic) set to 37  °C to propagate the reaction. The pumps with the syringes containing 
+
+reaction solutions were kept in Biosan Orbital Shaker -Incubator ES -20/80 (Biosan, Latvia) at 12 °C to 
+
+stabilize the enzymes. 
+
+Data acquisition, processing, and analysis 
+
+Custom -made acquisition software based on LabVIEW (National Instruments, USA) was written for 
+
+the Andor Newton DU920P Bx -DD CCD camera to automatically detect the presence of the aqueous phase 
+
+in the stream of droplets and initiate Raman spectra collection  (Video S1 ). For data processing and 
+
+analysis, other custom -made Python scripts  were used  – available on GitHub :
+
+https://github.com/pavlinasik/RAMSPECT .
+
+To minimize unnecessary data storage, spectra were collected automatically only when the water 
+
+peak intensity reached a selected threshold, which was chosen experimentally using a  continuous flow 
+
+of the aqueous phase (no droplets). The acquisition time was 0.1  s with 2 accumulations. This resulted in 
+
+approximately 1 -2 spectra collected per single droplet once they were introduced. The spectra were 
+
+collected for a total of 10 minutes  per enzyme ratio. From previous experiments it occurred that 
+
+2 minutes were  required for the system to settle when the ratios changed. Thus, these spectra were 
+
+omitted for the further processing. That resulted in approximately 750 spectra per enzyme ratio. Since 
+
+the dehalogenation analysis was carried out three times and the data  were averaged, the total acquisition 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+26 
+
+time per enzyme ratio was about 7.5 minutes. The laser output power was set to 6 W, leading to a 
+
+measuring power (the light actually coming out of the objective and into the sample) to be approximately 
+
+4.5 W. The workflow of data processing consisted of th e following steps: smoothing by Savitzky -Golay 
+
+algorithm (polynomial order of 1, width 7 pixels), cropping the spectra (2700 -3100 cm -1, area with all 
+
+peaks of CH vibrations of the analyzed metabolites), min -max normalization of all spectra, grouping the 
+
+sp ectra by the applied enzyme ratios, averaging within the group, and subtracting processed averaged 
+
+blank signal (blank measurements were processed in the same way, the reaction mixture did not contain 
+
+substrate). Then, polynomial background removal with fi xed anchor points (polynomial order of 4, 
+
+anchor points outside of the CH -peak area  - separated by 10  cm -1 from 2700 to 2800 cm -1 and from 3050 
+
+to 3100 cm -1) was applied to decrease the residual background signal. Non -negative least squares 
+
+approach (NNLS) 52  was employed to decompose the resulting spectra of the reactions  and establish the 
+
+contribution of TCP, DCP, and GLY Raman signals. 
+
+# Mutli -agent AI system 
+
+Two multi -agent AI systems developed by Theorema were used in this work: Theorema Discovery for 
+
+experimental design ( Figure  5b ,c) and Theorema Lab for data analysis ( Figure  5d –g). Each system 
+
+coordinates parallel instances of speciali zed research agents grounded in the published literature, public 
+
+databases and tools. Moreover, Theorema Lab works also with user -supplied experimental datasets. 
+
+For the design task, Theorema Discovery was given the cascade design problem. Synthesis of 
+
+Theorema runs and representative prompt examples (including the failure -mode context introduced 
+
+after the initial run) are provided in the  Supplementary Design of CascadeMAP experiments .
+
+For the analysis task, Theorema Lab autonomously processed the 23 -campaign dataset 
+
+(3,163  recorded conditions, ≈11.1 GB of raw LabVIEW TDMS files) and produced the campaign -quality 
+
+classification, principal -component analysis, and SHAP feature attributions  (see  Description of 
+
+machine -learning methods  in  Supplemental Analysis of CascadeMAP experiments ). Details are 
+
+provided in  Supplementary Analysis of CascadeMAP experiments .
+
+# Code availability 
+
+Custom analysis code developed by the authors for this study is openly available: the RAMSPECT 
+
+Raman spectral processing pipeline at https://github.com/pavlinasik/RAMSPECT, and the MAPit 
+
+Bayesian -optimization  module at  https://github.com/loschmidt/CascadeMAP -Bayesian .
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+27 
+
+Theorema Discovery and Theorema Lab are proprietary multi -agent AI systems developed by 
+
+Theorema and are not released as open source. Theorema Lab is currently in private beta. Access for 
+
+academic peer review and methodological verification can be requeste d at  https://theorema.ai/lab -
+
+access . Editors and referees of this manuscript were granted access on request during peer review. The 
+
+prompts and configurations used in this work are provided in the sections  Supplementary Design of 
+
+CascadeMAP experiments  and  Supplementary Analysis of CascadeMAP experiments .
+
+# Acknowledgments 
+
+The authors would like to acknowledge funding from the Czech Ministry of Education (grants CLARA 
+
+CZ.02.01.01/00/23_029/0008437, INBIO CZ.02.1.01/0.0/0.0/16_026/0008451, TEAMING 
+
+CZ.02.1.01/0.0/0.0/17_043/0009632, ESFRI RECETOX LM2018121, ESFRI ELIXIR LM2018 131, 
+
+EXCELES Oncology LX22NPO5102). The authors also acknowledge financial support from the Swiss 
+
+National Science Foundation (grant no. 205321_176011) and ETH Zurich. The authors acknowledge 
+
+financial support from the Czech Science Foundation (project no.  25 -15784L). This project has received 
+
+funding from the European Union’s Horizon 2020 research and Innovation program (TEAMING 857560 
+
+and Sinfonia 814418). The article reflects the author's view, and the Agency is not responsible for any 
+
+use that may be ma de of the information it contains. Michal Vasina acknowledges the financial support 
+
+of his doctoral study by the scholarship Brno Ph.D. Talent. Electron microscopy and Raman spectroscopy 
+
+analysis provided at Core Facility Electron microscopy and Raman spec troscopy, ISI CAS, Brno, CZE, is 
+
+supported by MEYS CR (LM2023050 Czech -BioImaging). 
+
+# Competing interests 
+
+Michael Jirasek, Filip Dousek and Hynek Walner  are employees of Theorema Inc., which develops and 
+
+commercializes the multi -agent AI platform used in this study. The remaining authors declare no 
+
+competing interests. 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+28 
+
+# ORCID 
+
+Michal Vasina: 0000 -0002 -1504 -9929 
+
+David Kovar: 0000 -0002 -5550 -6143 
+
+Martin Kizovsky: 0009 -0002 -2906 -8802 
+
+David Lacko: 0009 -0007 -0332 -9193 
+
+Pavel Vanacek: 0000 -0002 -9046 -2983 
+
+Pavlina Sikorova: 0009 -0004 -8908 -0701 
+
+Michael Jirasek: 0000 -0002 -4630 -6457 
+
+Pavel Solansky: 0000 -0002 -1608 -8655 
+
+Jan Jezek: 0000 -0002 -5753 -1676 
+
+Ota Samek: 0000 -0001 -8188 -7608 
+
+Pavel Zemanek: 0000 -0003 -2831 -8347 
+
+Andrew DeMello: 0000 -0003 -1943 -1356 
+
+Zdenek Pilat: 0000 -0001 -9259 -8393 
+
+Jiri Damborsky: 0000 -0002 -7848 -8216 
+
+Stavros Stavrakis: 0000 -0002 -0888 -5953 
+
+Stanislav Mazurenko: 0000 -0003 -3659 -4819 
+
+Zbynek Prokop: 0000 -0001 -9358 -4081 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+29 
+
+# References 
+
+1.  Benítez -Mateos, A. I., Roura Padrosa, D. & Paradisi, F. Multistep enzyme cascades as a route towards 
+
+green and sustainable pharmaceutical syntheses.  Nat. Chem.  14 , 489 –499 (2022). 
+
+2.  Teshima, M., Willers, V. P. & Sieber, V. Cell -free enzyme cascades  — application and transition from 
+
+development to industrial implementation.  Curr. Opin. Biotechnol.  79 , 102868 (2023). 
+
+3.  Rasor, B. J.  et al.  Toward sustainable, cell -free biomanufacturing.  Curr. Opin. Biotechnol.  69 , 136 –144 
+
+(2021). 
+
+4.  Naseri, G. & Koffas, M. A. G. Application of combinatorial optimization strategies in synthetic biology. 
+
+Nat. Commun.  11 , 2446 (2020). 
+
+5.  Damborsky, J., Mazurenko, S., Yang, Z. J. & Bednar, D. A Room Full of Experts, None of Them Human: 
+
+Multi -Agent AI as Virtual Research Teams.  ChemRxiv  2026 ,. 
+
+6.  Vasina, M.  et al.  In -depth analysis of biocatalysts by microfluidics: An emerging source of data for 
+
+machine learning.  Biotechnol. Adv.  66 , 108171 (2023). 
+
+7.  Rabe, K. S., Müller, J., Skoupi, M. & Niemeyer, C. M. Cascades in Compartments: En Route to Machine -
+
+Assisted Biotechnology.  Angew. Chem. Int. Ed.  56 , 13574 –13589 (2017). 
+
+8.  Siedentop, R., Claaßen, C., Rother, D., Lütz, S. & Rosenthal, K. Getting the Most Out of Enzyme 
+
+Cascades: Strategies to Optimize In Vitro Multi -Enzymatic Reactions.  Catalysts  11 , 1183 (2021). 
+
+9.  Pandi, A.  et al.  A versatile active learning workflow for optimization of genetic and metabolic 
+
+networks.  Nat. Commun.  13 , 3876 (2022). 
+
+10.  HamediRad, M.  et al.  Towards a fully automated algorithm driven platform for biosystems design. 
+
+Nat. Commun.  10 , 5150 (2019). 
+
+11.  Baltussen, M. G., van de Wiel, J., Fernández Regueiro, C. L., Jakštaitė, M. & Huck, W. T. S. A Bayesian 
+
+Approach to Extracting Kinetic Information from Artificial Enzymatic Networks.  Anal. Chem.  94 ,
+
+7311 –7318 (2022). 
+
+12.  Teders, M., Pogodaev, A. A., Bojanov, G. & Huck, W. T. S. Reversible Photoswitchable Inhibitors 
+
+Generate Ultrasensitivity in Out -of -Equilibrium Enzymatic Reactions.  J. Am. Chem. Soc.  143 , 5709 –
+
+5716 (2021). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+30 
+
+13.  van Sluijs, B.  et al.  Iterative design of training data to control intricate enzymatic reaction networks. 
+
+Nat. Commun.  15 , 1602 (2024). 
+
+14.  Scheurer, C. & Reuter, K. Role of the human -in -the -loop in emerging self -driving laboratories for 
+
+heterogeneous catalysis.  Nat. Catal.  8, 13 –19 (2025). 
+
+15.  Singh, N.  et al.  A generalized platform for artificial intelligence -powered autonomous enzyme 
+
+engineering.  Nat. Commun.  16 , 5648 (2025). 
+
+16.  Chen, J., Singh, N., Lu, J., Lane, S. T. & Zhao, H. Artificial intelligence –powered biofoundries for protein 
+
+engineering and metabolic engineering.  Curr. Opin. Biotechnol.  96 , 103380 (2025). 
+
+17.  Collins, E., Langer, R. & Anderson, D. G. Self -driving labs for biotechnology.  Nat. Comput. Sci.  5, 976 –
+
+979 (2025). 
+
+18.  Morita, S. & Terada, T. Enzymatic measurement of phosphatidylglycerol and cardiolipin in cultured 
+
+cells and mitochondria.  Sci. Rep.  5, 11737 (2015). 
+
+19.  Dvorak, P.  et al.  Maximizing the Efficiency of Multienzyme Process by Stoichiometry Optimization. 
+
+ChemBioChem  15 , 1891 –1895 (2014). 
+
+20.  Dvorak, P., Bidmanova, S., Damborsky, J. & Prokop, Z. Immobilized Synthetic Pathway for 
+
+Biodegradation of Toxic Recalcitrant Pollutant 1,2,3 -Trichloropropane.  Environ. Sci. Technol.  48 ,
+
+6859 –6866 (2014). 
+
+21.  Kurumbang, N. P.  et al.  Computer -Assisted Engineering of the Synthetic Pathway for Biodegradation 
+
+of a Toxic Persistent Pollutant.  ACS Synth. Biol.  3, 172 –181 (2014). 
+
+22.  Maceiczyk, R. M. & deMello, A. J. Fast and Reliable Metamodeling of Complex Reaction Spaces Using 
+
+Universal Kriging.  J. Phys. Chem. C  118 , 20026 –20033 (2014). 
+
+23.  Vasina, M.  et al.  Advanced database mining of efficient haloalkane dehalogenases by sequence and 
+
+structure bioinformatics and microfluidics.  Chem Catal.  2, 2704 –2725 (2022). 
+
+24.  Lignos, I., Stavrakis, S., Kilaj, A. & deMello, A. J. Millisecond -Timescale Monitoring of PbS Nanoparticle 
+
+Nucleation and Growth Using Droplet -Based Microfluidics.  Small  11 , 4009 –4017 (2015). 
+
+25.  Lignos, I.  et al.  Synthesis of Cesium Lead Halide Perovskite Nanocrystals in a Droplet -Based 
+
+Microfluidic Platform: Fast Parametric Space Mapping.  Nano Lett.  16 , 1869 –1877 (2016). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+31 
+
+26.  Zhu, A., Romero, R. & Petty, H. R. Amplex UltraRed enhances the sensitivity of fluorimetric pyruvate 
+
+detection.  Anal. Biochem.  403 , 123 –125 (2010). 
+
+27.  Aslan -Üzel, A. S.  et al.  An Ultrasensitive Fluorescence Assay for the Detection of Halides and 
+
+Enzymatic Dehalogenation.  ChemCatChem  12 , 2032 –2039 (2020). 
+
+28.  Cohn, C. A., Pedigo, C. E., Hylton, S. N., Simon, S. R. & Schoonen, M. A. Evaluating the use of 3’ -(p -
+
+Aminophenyl) fluorescein for determining the formation of highly reactive oxygen species in particle 
+
+suspensions.  Geochem. Trans.  10 , 8 (2009). 
+
+29.  Sóbester, A., Leary, S. J. & Keane, A. J. On the Design of Optimization Strategies Based on Global 
+
+Response Surface Approximation Models.  J. Glob. Optim.  33 , 31 –59 (2005). 
+
+30.  Roux, E., Tillier, Y., Kraria, S. & Bouchard, P. -O. An efficient parallel global optimization strategy based 
+
+on Kriging properties suitable for material parameters identification.  Arch. Mech. Eng.  67 , 169 –195 
+
+(2020). 
+
+31.  Smith, A. A.  et al.  Using a GPT -5-driven autonomous lab to optimize the cost and titer of cell -free 
+
+protein synthesis. 2026.02.05.703998 Preprint at https://doi.org/10.64898/2026.02.05.703998 
+
+(2026). 
+
+32.  Ponce -Bobadilla, A. V., Schmitt, V., Maier, C. S., Mensing, S. & Stodtmann, S. Practical guide to SHAP 
+
+analysis: Explaining supervised machine learning model predictions in drug development.  Clin. 
+
+Transl. Sci.  17 , e70056 (2024). 
+
+33.  Hess, D.  et al.  Exploring mechanism of enzyme catalysis by on -chip transient kinetics coupled with 
+
+global data analysis and molecular modeling.  Chem  7, 1066 –1079 (2021). 
+
+34.  Hess, D., Rane, A., deMello, A. J. & Stavrakis, S. High -Throughput, Quantitative Enzyme Kinetic 
+
+Analysis in Microdroplets Using Stroboscopic Epifluorescence Imaging.  Anal. Chem.  87 , 4965 –4972 
+
+(2015). 
+
+35.  Iakovlev, A. P., Erofeev, A. S. & Gorelkin, P. V. Novel Pumping Methods for Microfluidic Devices: A 
+
+Comprehensive Review.  Biosensors  12 , 956 (2022). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+32 
+
+36.  A quick overview of surface -enhanced Raman spectroscopy. 
+
+https://www.sciencedirect.com/science/chapter/monograph/abs/pii/B9780444527790000076 
+
+doi:10.1016/B978 -0-444 -52779 -0.00007 -6. 
+
+37.  Zhang, Q.  et al.  Integrating protein language models and automatic biofoundry for enhanced protein 
+
+evolution.  Nat. Commun.  16 , 1553 (2025). 
+
+38.  Carruthers, D. N.  et al.  Automation and machine learning drive rapid optimization of isoprenol 
+
+production in Pseudomonas putida.  Nat. Commun.  16 , 11489 (2025). 
+
+39.  Rapp, J. T., Bremer, B. J. & Romero, P. A. Self -driving laboratories to autonomously navigate the 
+
+protein fitness landscape.  Nat. Chem. Eng.  1, 97 –107 (2024). 
+
+40.  Boiko, D. A., MacKnight, R., Kline, B. & Gomes, G. Autonomous chemical research with large language 
+
+models.  Nature  624 , 570 –578 (2023). 
+
+41.  Qiu, Y.  et al.  BioMARS: A Multi -Agent Robotic System for Autonomous Biological Experiments. 
+
+Preprint at https://doi.org/10.48550/arXiv.2507.01485 (2025). 
+
+42.  Song, T.  et al.  A Multiagent -Driven Robotic AI Chemist Enabling Autonomous Chemical Research On 
+
+Demand.  J. Am. Chem. Soc.  147 , 12534 –12545 (2025). 
+
+43.  Darvish, K.  et al.  ORGANA: A robotic assistant for automated chemistry experimentation and 
+
+characterization.  Matter  8, 101897 (2025). 
+
+44.  Tachibana, R., Zhang, K., Zou, Z., Burgener, S. & Ward, T. R. A Customized Bayesian Algorithm to 
+
+Optimize Enzyme -Catalyzed Reactions.  ACS Sustain. Chem. Eng.  11 , 12336 –12344 (2023). 
+
+45.  Grimm, M., Paul, S. & Chainais, P. Process -constrained batch Bayesian approaches for yield 
+
+optimization in multi -reactor systems.  Comput. Chem. Eng.  189 , 108779 (2024). 
+
+46.  Mazurenko, S., Prokop, Z. & Damborsky, J. Machine Learning in Enzyme Engineering.  ACS Catal.  10 ,
+
+1210 –1223 (2020). 
+
+47.  Martin, H. G.  et al.  Perspectives for self -driving labs in synthetic biology.  Curr. Opin. Biotechnol.  79 ,
+
+102881 (2023). 
+
+48.  Fang, K. -T. & Wang, Y.  Number -Theoretic Methods in Statistics . (CRC Press, 1993). 
+
+> .CC-BY 4.0 International license made available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is The copyright holder for this preprint this version posted June 7, 2026. ;https://doi.org/10.64898/2026.06.04.730034 doi: bioRxiv preprint
+
+33 
+
+49.  Buryska, T.  et al.  Controlled Oil/Water Partitioning of Hydrophobic Substrates Extending the 
+
+Bioanalytical Applications of Droplet -Based Microfluidics.  Anal. Chem.  91 , 10008 –10015 (2019). 
+
+50.  Zinchenko, A.  et al.  One in a Million: Flow Cytometric Sorting of Single Cell -Lysate Assays in 
+
+Monodisperse Picolitre Double Emulsion Droplets for Directed Evolution.  Anal. Chem.  86 , 2526 –
+
+2533 (2014). 
+
+51.  van Hylckama Vlieg, J. E. T.  et al.  Halohydrin Dehalogenases Are Structurally and Mechanistically 
+
+Related to Short -Chain Dehydrogenases/Reductases.  J. Bacteriol.  183 , 5058 –5066 (2001). 
+
+52.  Virtanen, P.  et al.  SciPy 1.0: fundamental algorithms for scientific computing in Python.  Nat. Methods 
+
+17 , 261 –272 (2020).

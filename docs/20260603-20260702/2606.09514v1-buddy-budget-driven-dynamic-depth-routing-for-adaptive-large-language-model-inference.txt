@@ -1,0 +1,1095 @@
+Title: BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference
+
+URL Source: https://arxiv.org/pdf/2606.09514v1
+
+Published Time: Tue, 09 Jun 2026 02:47:22 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Models Inference 
+
+Yuhua Zhou 1 2 Shaoqi Yu 3 Shichao Weng 4 Changhai Zhou 4 Mingze Yin 1 Fei Yang 2 Aimin Pan 2
+
+## Abstract 
+
+Large language models (LLMs) incur high infer-ence cost due to their depth and parameter scale. Depth pruning can reduce latency by skipping redundant Transformer blocks, but existing meth-ods (i) provide limited control under user-specific compute budgets and (ii) typically fix the routing path, failing to adapt as the context grows during decoding. We propose B UDDY , a budget-driven dynamic depth routing framework. B UDDY uses a lightweight Decision Module to score interme-diate layers conditioned on the input and deter-ministically executes the top-k layers to satisfy a given budget. To support decode-time adaptation, BUDDY reuses the first-layer KV cache as a low-overhead global context source and pools it to-gether with the newest token representation before each routing decision. When no explicit budget is provided,an optional Budget Predictor estimates an input-dependent compute level to balance qual-ity and efficiency. Experiments on Llama-family and Qwen models show that B UDDY is competi-tive with strong static pruning baselines and often improves the accuracy–compute trade-off, while uniquely supporting strict budget control, decode-time rerouting, and multiple budgets within a sin-gle trained model. 
+
+## 1. Introduction 
+
+Large language models (LLMs) achieve strong performance on a wide range of NLP tasks (Chang et al., 2024; Zhou et al., 2026), yet their inference latency remains high because computation scales with model depth and width (Zhou et al., 2025; Jiang et al., 2024a). A practical way to reduce latency is depth pruning, which skips entire Transformer blocks 
+
+> 1
+
+College of Computer Science and Technology, Zhe-jiang University 2Zhejiang Lab 3Ant Group 4School of Computer Science, Fudan University. Correspondence to: Aimin Pan <panaimin@zhejianglab.org >, Fei Yang 
+
+<yangf@zhejianglab.org >.
+
+Preprint. June 9, 2026. 
+
+without changing tensor and attention shapes. Most existing depth-pruning methods are static : they esti-mate a global importance score for each layer and perma-nently remove a fixed subset prior to deployment (Kim et al., 2024; Song et al., 2024). Static pruning is simple and highly efficient at runtime because of its fixed execution graph but cannot adjust its execution path to input difficulty or hetero-geneous user budgets (Wee et al., 2025). Recent dynamic 
+
+approaches improve flexibility by skipping layers on the fly (e.g., via routing (Jiang et al., 2024b) or early-exit heuristics (Fan et al., 2024; Elhoushi et al., 2024)). However, they typically: (1) enforce a fixed sparsity pattern or weakly control the number of executed layers, which makes the actual computation unpredictable; and (2) determine a fixed routing path during the prefill stage and reuse it during decoding, even though the importance of layers can change as new tokens are generated. In this paper, we seek an inference mechanism that adapts model depth to both input difficulty and user budgets ,so that a single deployed LLM can reliably serve het-erogeneous compute constraints. This setting raises two challenges. (C1) Input-adaptive routing: layer importance is highly prompt-dependent (Observation 1), not only across but also within tasks, requiring per-input decisions to pre-serve quality under a strict budget. (C2) Decode-adaptive routing: in autoregressive decoding, the relative utility of layers can shift as new tokens extend the context (Observa-tion 2). Yet decode-time routing is difficult because each step introduces only one new token, offering a weak local signal unless the router can access a compact summary of the full prefix. Addressing (C2) therefore requires injecting global context into routing decisions at every step without negating the compute savings. We propose BUDDY , a BU dget-Driven DY namic depth rout-ing framework for LLMs. Given an input and an optional compute budget, B UDDY selects a subset of layers to ex-ecute that (a) satisfies the budget constraint, and (b) pre-serves task performance. Concretely, to address the first challenge, B UDDY introduces a lightweight Decision Mod-ule that scores intermediate layers conditioned on the cur-rent context and selects the top-k layers to execute, where 
+
+k is tied to the user budget. To stabilize learning and ac-1                                                        
+
+> arXiv:2606.09514v1 [cs.LG] 8 Jun 2026 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference
+> Table 1. A holistic comparison of B UDDY with related approaches: static depth pruning and dynamic depth routing. B UDDY supports all four properties simultaneously under this definition. Budget Strict: deterministic control over the exact number of executed Transformer blocks for the user’s budget constraint. Budget Flexibility: the same model meets users’ diverse budgets. Input Adaptive: automatically adapts the inference path based on the input. Decode Adaptive: dynamically adjusting its decoding path during the generation process.
+> Method Pruning Budget Strict Budget Flexibility Input Adaptive Decode Adaptive Shortened Llama (Kim et al., 2024) static ✓✗✗✗
+> ShortGPT (Men et al., 2024) static ✓✗✗✗
+> SLEB (Song et al., 2024) static ✓✗✗✗
+> Early-exit (Elhoushi et al., 2024; Fan et al., 2024) dynamic ✗✗✓✗
+> Token-wise (Yang et al., 2025; Jiang et al., 2024b) dynamic ✗✗✓✓
+> PuDDing (Wee et al., 2025) dynamic ✓✗✓✗
+> FiRST (Jain et al., 2025) dynamic ✗✗✓✗
+> BUDDY (Ours) dynamic ✓✓✓✓
+
+celerate adaptation, we optionally initialize the Decision Module with static priors derived from standard impor-tance indicators (e.g., perplexity-, Taylor-, or representation-similarity–based signals) after appropriate normalization and fusion. To address the second challenge, B UDDY introduces a mech-anism to inject global information during decoding : we reuse the first layer’s KV cache to summarize the global context and concatenate the newest token’s features before each routing decision. This provides stable, low-overhead global signals to the Decision Module and enables B UDDY 
+
+to update the execution path as the generation unfolds. Furthermore, when users omit a budget, B UDDY turns to an Adaptive Budget Predictor that provides the optimal budget according to the inputs. In our experiments on the Llama family, B UDDY achieves stronger accuracy–compute trade-offs than static and dynamic baselines at matched spar-sity, while providing deterministic control over the executed compute. We emphasize that B UDDY targets a different serving set-ting: a single deployed model must satisfy diverse user budgets, preserve strict control over executed depth, and adapt its routing path as the input and decoding context evolve. A concise summary appears in Table 1. We there-fore evaluate BUDDY as an accuracy–efficiency–flexibility trade-off rather than as a replacement for all static pruning regimes. Our contributions are summarized as: • Budget-aware decision making. We design alightweight Decision Module that scores intermediate layers conditioned on the current context and selects the top-k layers to execute, providing explicit and de-terministic control over compute under user-specified budgets. • Global information during decoding. We introduce a low-overhead scheme that reuses the first layer’s KV cache to expose global context to the router at every decoding step, enabling path updates as generation evolves. • Adaptive budget prediction. When users do not spec-ify a budget, a discrete Budget Predictor chooses a compute level that preserves task quality while mini-mizing executed layers. • Extensive empirical study. Across Llama-family and Qwen models and multiple benchmarks, B UDDY 
+
+achieves competitive or best average accuracy in most settings while supporting strict budget control, decode-time adaptation, and multiple sparsity levels with a single trained model. 
+
+## 2. Related Work 
+
+2.1. Static Depth Pruning 
+
+Depth pruning removes redundant Transformer blocks to reduce inference latency and memory (Wang et al., 2024). Recent studies typically score layer importance and drop low-scoring blocks. Methods such as ShortGPT (Men et al., 2024) and Shortened LLaMA (Kim et al., 2024) rank blocks by Block Influence (cosine), Taylor score, or ∆PPL . Itera-tive schemes such as SLEB (Song et al., 2024) further iden-tify redundancy and eliminate low-impact layers progres-sively. While effective, static pruning is task-agnostic and is fixed post-calibration, and cannot adapt to input difficulty or enforce user-specified compute budgets. Consequently, de-veloping frameworks that are inherently compute-efficient yet robust to environmental constraints remains a high prior-ity across diverse machine learning paradigms (Jiang et al., 2025). 
+
+2.2. Dynamic Depth Pruning 
+
+Dynamic methods (Jiang et al., 2026) decide at inference which layers to execute based on the current input or con-text. Early-exit methods (Fan et al., 2024; Elhoushi et al., 2024) produce predictions from intermediate layers and skip 2BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+the rest, but may degrade quality on difficult instances by discarding later computations. Layer-skipping methods aim to preserve the depth of reasoning while avoiding redun-dant blocks via designing routers to skip computation based on token-level (Jiang et al., 2024b; Raposo et al., 2024; Yang et al., 2025; Luo et al., 2025) or prompt-level (Wee et al., 2025; Jain et al., 2025) signals. Furthermore, PuD-Ding (Wee et al., 2025) trains a prompt-conditioned global router that selects an omission set of blocks before decoding. However, many existing dynamic pruning methods cannot strictly conform to the budget and must train separate mod-els for different sparsity targets. Our work exposes budget as a first-class constraint and learning a router that hon-ors user-specified budgets while updating paths throughout decoding. 
+
+## 3. Background and Motivation 
+
+3.1. Background Layer Skipping. Dynamic depth reduction accelerates inference by conditionally bypassing Transformer blocks while preserving residual alignment. Let M ∈ { 0, 1}L be a binary skipping mask, where Mℓ = 1 means “execute” and 
+
+Mℓ = 0 means “skip.” With hidden states {H ℓ}Lℓ=0 (and 
+
+H0 the input to the stack), the residual update is: 
+
+Hℓ =
+
+(Fℓ(Hℓ−1) + Hℓ−1, if Mℓ = 1 ,
+
+Hℓ−1, if Mℓ = 0 . (1) 
+
+3.2. Motivation 
+
+Observation 1: The importance of Transformer layers is input-dependent ; different inputs induce different importance distributions across layers. 
+
+Input-Adaptive. We compute per-layer importance of Llama2-7B on WikiText-2 (Merity et al., 2017) using the 
+
+∆PPL score and, for each input, sort layers to obtain a 
+
+remove order (layers ranked earlier are less important and thus more removable). As illustrated in Figure 1, the re-sulting rank distributions vary markedly across inputs. For example, the average importance of layer 10 is 15th, while the importance range is relatively large (from 0th to 26th), and the importance distribution is not concentrated, indi-cating strong input dependence. This variability implies that the importance estimated once on a small validation set (static pruning) cannot accommodate diverse inputs; instead, pruning decisions should be made dynamically to adapt to different inputs. 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 
+
+> Layer Index
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Remove Order (1 32)
+> Per-layer Remove Order Distribution On wikitext2
+
+Figure 1. Input-dependent layer importance ranking distributions across different inputs on the WikiText-2 datasets. The chart shows how layer rankings vary significantly across inputs, suggesting the need for dynamic pruning decisions. 256 272 288 304 320 336 352 368 384 400 416 432 448 464 480 496 512 
+
+> Context length (Decode length)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Layer Index
+> Per-layer Remove Order Distribution during decoding on Wikitext2
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+
+Figure 2. Evolution of layer importance ranking shifts with context length on the WikiText-2 dataset during autoregressive decoding. The heatmap illustrates how layer importance (e.g., layer 14) fluc-tuates throughout the decoding process. 
+
+Observation 2: The importance distribution evolves during decoding ; as generation proceeds, the relative utility of layers changes with the growing context. 
+
+Decode-Adaptive. To emulate different stages of autore-gressive generation, we vary the context length from 256 to 
+
+512 and recompute layer importance. Figure 2 shows that as context length increases, the per-layer ranking of Llama2-7B shifts substantially. For example, the importance of the 14th layer of the model is relatively important at the beginning, then becomes unimportant, and then becomes important again during the decoding process. Hence, a rout-ing path fixed at prefill is insufficient; pruning must adapt throughout decoding as new tokens extend the context. Based on the above two observations, we propose a dynamic layer execution method that can adapt to different inputs and select different layers for execution, while also dynamically modifying the inference path during the inference process. 
+
+## 4. Method 
+
+4.1. Framework Overview 
+
+The framework overview of B UDDY is summarized in Fig-ure 3. Given a prompt x and an optional compute budget b,BUDDY selects a subset of Transformer blocks to execute. (1) It extracts a KV-aware global context signal from the 3BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference KV Cache  
+
+> Middle Layer i
+> Middle Layer n
+> Middle Layer i+1
+> Output Layer
+> Middle Layer n-1
+> Attention Layer
+> Add & Norm
+> Feed-Forward Layer
+> “Mathematically, which is bigger, 9.9 or 9.11?”
+> User Input
+> 0.5 0.75
+> budget not specified
+> budget
+> skip
+> execute
+> skip
+> execute
+> MLP
+> Token-Pooling
+
+Decision Module  
+
+> [0.5, 0.5, 0.5, ... ... , 0.5, 0.5,0.5 ]
+> [5, 8, ......, 16, 20]
+> [0, 1, 0, 1, ... ..., 0, 1, 1, 1]
+> Layer Masks
+> Softmax & Topk
+> selected layers
+> output token
+> concat
+> MLP
+
+Pre-Importance    
+
+> •taylor-sensitivity
+> •ppl-sensitivity
+> •similarity-sensitivity
+
+Budget Predictor 
+
+> 𝐀
+> Softmax
+> Token-Pooling
+> fusion
+
+Figure 3. Overview of the B UDDY framework. The framework consists of three key components: (1) Decision Module that adaptively selects layers based on context and budget constraints, (2) KV-aware Planner that reuses first-layer KV cache and updates global context during decoding, and (3) Budget Predictor that automatically provides estimated budgets when not explicitly provided. 
+
+first layer (Section 4.3) and feeds it to a lightweight Deci-sion Module (Section 4.2) that outputs a score sℓ for each candidate middle block. (2) It deterministically executes the top-k middle blocks, where k is derived from b, yielding a binary mask M ∈ { 0, 1}Lmid for inference. During autore-gressive decoding, the global context is refreshed with the newest token, enabling decode-time re-routing. (3) When no budget is specified, a Budget Predictor (Section 4.4) infers a discrete compute level ˆb from the same context to balance quality and efficiency. 
+
+4.2. Decision Module 
+
+4.2.1. F ORMULATION 
+
+The Decision Module selects which Transformer blocks to execute for a given input and budget. For an LLM with L
+
+layers B = {B1, . . . , B L}, each inference step corresponds to a binary mask over layers, yielding 2L possible execu-tion paths. Exhaustive search is intractable, so we adopt a 
+
+ranking-and-selection formulation: we estimate per-layer importance conditioned on the current context and execute the top-k layers determined by the budget. Following prior work (Jiang et al., 2024b), we always exe-cute the first and last blocks. Let Bmid = {B2, . . . , B L−1}
+
+denote the Lmid = L − 2 candidate middle layers. Given a context representation H ∈ Rn×D , a lightweight scorer 
+
+F (·) produces scores s ∈ RLmid . We optionally fuse s
+
+with a normalized offline prior ˜p (Section 4.2.2) and obtain routing probabilities via Softmax . We define the budget 
+
+b ∈ (0 , 1] as the target fraction of executed layers. The 
+
+b is converted to an integer k = round( b · L) − 2, and we execute the k highest-scoring middle layers. This pro-duces a deterministic mask M ∈ { 0, 1}Lmid that gates the residual updates of the middle blocks. The computation is formulated as: 
+
+s′ = s + ω ˜p, ˜p = p − μ(p)
+
+σ(p) + ε
+
+P(s′, b ) = Top -K Softmax( s′), k = round( b · L) − 2 (2) where a small ω balances model-predicted scores and the prior. The middle layers then perform a single forward pass with dynamic depth. Layer selection during inference can be viewed as a binary decision per layer (execute vs. skip): blocks with mℓ = 1 are executed; blocks with mℓ = 0 
+
+are skipped via identity routing while preserving residual alignment. 4.2.2. P RIOR NORMALIZATION AND FUSION 
+
+We compute offline layer priors on a small validation set (e.g., WikiText2 and PTB), following prior work on depth pruning (Kim et al., 2024). We consider three types of in-dicators to initialize the prior (e.g., ∆PPL when skipping layer ℓ, Taylor/Fisher scores, and cosine-based dissimilar-ity). Specifically, we use one prior indicator at a time rather than jointly combining all three. Because different indica-tors have different scales and units, we normalize them so that all priors are comparable and lie in (0 , 1) . We first unify 4BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Table 2. Performance comparison on Llama3-8B across eight Commonsense reasoning benchmarks for different pruning methods at various sparsity levels (12.5%-50%). Boldface indicates the best performance, and the Underline means the second-order performance. BUDDY achieves the best or competitive average performance across pruning ratios while using a single multi-budget model.                                                                                                                                                                                                                                                                                               
+
+> Method Pruning RM Blocks OBQA PIQA BoolQ SIQA Hellaswag ARC-E ARC-C Winogrande Avg. Dense w/o -0(0.0%) 44.80 80.85 80.98 46.98 79.17 80.09 53.24 73.40 67.44 Shortened Llama static 4(12.5%) 43.40 79.27 73.06 47.34 75.32 76.85 48.04 66.77 63.76 ShortGPT static 4(12.5%) 44.20 79.76 79.48 48.16 76.99 79.88 51.02 73.72 66.65 SLEB static 4(12.5%) 44.20 80.47 75.14 49.28 76.69 79.88 50.77 72.22 66.08 PuDDing dynamic 4(12.5%) 38.80 76.82 68.53 44.83 72.93 74.12 44.45 71.98 61.56 FiRST dynamic 4(12.5%) 31.60 52.88 63.58 37.26 42.01 42.34 30.80 52.57 44.13 BUDDY dynamic 4(12.5%) 44.80 79.71 83.24 48.41 76.25 78.96 53.33 74.51 67.40
+> Shortened Llama static 8(25%) 39.20 77.64 58.29 44.88 69.26 72.01 41.47 58.33 57.63 ShortGPT static 8(25%) 39.00 73.67 64.25 44.93 69.23 70.96 47.44 71.74 60.15 SLEB static 8(25%) 39.40 77.64 55.32 44.58 69.17 71.68 41.81 58.56 57.27 PuDDing dynamic 8(25%) 31.40 71.06 62.54 41.04 57.65 62.04 34.22 59.59 52.44 FiRST dynamic 8(25%) 33.00 55.33 64.56 38.02 46.50 45.08 31.57 53.83 45.99 BUDDY dynamic 8(25%) 39.00 74.05 75.26 47.19 67.29 70.75 45.99 70.40 61.24
+> Shortened Llama static 12(37.5%) 35.00 72.69 61.80 42.68 59.37 63.76 33.45 57.54 53.29 ShortGPT static 12(37.5%) 31.60 68.93 70.24 43.04 58.97 56.14 38.40 67.56 54.36 SLEB static 12(37.5%) 35.80 72.25 60.52 42.43 58.78 65.07 35.92 56.04 53.35 PuDDing dynamic 12(37.5%) 27.00 64.64 61.93 38.38 43.13 47.31 30.46 57.85 46.34 FiRST dynamic 12(37.5%) 33.60 55.71 64.46 37.87 45.00 43.60 31.66 52.64 45.57 BUDDY dynamic 12(37.5%) 34.20 69.97 68.96 42.32 58.76 63.05 37.03 60.93 54.40
+> Shortened Llama static 16(50%) 28.20 66.00 55.29 38.95 43.89 54.76 28.33 53.28 46.08 ShortGPT static 16(50%) 28.40 65.29 65.20 40.99 48.16 46.51 29.01 60.69 48.03 SLEB static 16(50%) 30.20 68.50 53.00 41.86 45.04 56.06 27.47 52.57 46.84 PuDDing dynamic 16(50%) 23.40 58.60 52.97 36.08 31.92 34.76 23.72 48.86 38.79 FiRST dynamic 16(50%) 32.40 54.13 62.60 37.77 42.80 42.17 30.20 52.80 44.36 BUDDY dynamic 16(50%) 30.00 67.68 61.68 39.61 47.79 53.83 30.12 54.14 48.11
+
+the direction so that “larger means more important” (for cosine, use 1 − cos ). Next, we apply heavy-tail compression on nonnegative metrics via log(1 + x), then a robust z-score using the median and IQR: 
+
+zℓ = exℓ − median x
+
+IQR x + ε . (3) Finally, we map the robust scores to (0 , 1) via rank normal-ization (empirical CDF) across layers, producing a unitless prior ˜p. We fuse ˜p with the learned scores in Equation (2). In our default setting, we compute priors on the WikiText-2 validation set for offline importance estimation; we report additional results with alternative estimation sets in the Ap-pendix B. 4.2.3. I MPLEMENTATION 
+
+The Decision Module is trained jointly with the base model under the standard SFT objective. We pool token repre-sentations, score candidate layers with a two-layer MLP, convert the normalized budget into an integer k, and apply hard Top-k selection to obtain a binary execution mask over intermediate layers. The mask gates each layer’s residual update (execute if Mℓ = 1 , skip otherwise). We adopt a straight-through estimator (STE) (Bengio et al., 2013): the forward pass uses the hard mask, while the backward pass uses a continuous relaxation so gradients from the language-modeling loss flow into the router. More details are provided in Appendix C.1. 
+
+4.3. KV-Aware Planner 
+
+During autoregressive inference, an LLM generates one to-ken at a time. If the Decision Module were to consume only the newly generated token at each decoding step, it would lack sufficient context and thus struggle to choose an effective execution path. To address this, we reuse the first layer’s KV cache to provide a lightweight global sum-mary of the full prefix. Therefore, we concatenate the KV values of the newly generated tokens with those stored in the cache to obtain global contextual information. We use 
+
+Gt ∈ { Kt, V t, K t + Vt} (discussed in the ablation study in Section 5.3) as the input to the Decision module, enabling dynamic prediction of the optimal reasoning path during the decoding stage. 
+
+4.4. Budget Predictor 
+
+When the user does not provide a budget b, we predict a discrete depth level from the input. Because routing is 5BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Table 3. Performance comparison on Qwen2.5-7B-Instruct across eight commonsense reasoning benchmarks for different pruning methods at various sparsity levels (14.3%-57.1%). Boldface indicates the best performance, and the Underline means the second-order performance. B UDDY achieves the best or competitive average performance across pruning ratios while using a single multi-budget model. 
+
+Method Pruning RM Blocks OBQA PIQA BoolQ SIQA Hellaswag ARC-E ARC-C Winogrande Avg. Dense w/o - 0(0.0%) 48.80 80.30 86.33 51.59 80.48 81.94 54.95 70.96 69.42 Shortened Llama static 4(14.3%) 44.80 80.36 78.75 48.26 73.22 77.86 48.63 65.19 64.63 ShortGPT static 4(14.3%) 44.00 77.42 82.39 50.61 72.95 79.25 50.51 66.77 65.49 SLEB static 4(14.3%) 45.20 79.11 76.24 48.57 73.25 77.90 50.34 62.90 64.19 PuDDing dynamic 4(14.3%) 40.60 75.84 71.01 45.65 69.30 72.56 46.67 59.04 60.08 FiRST dynamic 4(14.3%) 33.40 55.44 68.65 37.97 44.28 49.16 36.18 51.14 47.03 BUDDY dynamic 4(14.3%) 43.40 77.26 84.50 48.93 73.20 79.88 51.19 66.69 65.63 
+
+Shortened Llama static 8(28.6%) 39.80 74.48 65.14 45.29 62.44 67.42 40.70 57.77 56.63 ShortGPT static 8(28.6%) 41.00 73.72 56.94 43.96 62.43 70.08 41.13 59.83 56.14 SLEB static 8(28.6%) 41.60 75.95 55.47 43.71 63.86 74.24 42.58 56.35 56.72 PuDDing dynamic 8(28.6%) 32.20 70.89 56.02 40.23 53.64 65.11 35.41 54.85 51.04 FiRST dynamic 8(28.6%) 26.00 52.34 55.96 36.18 35.43 39.52 28.07 49.01 40.32 BUDDY dynamic 8(28.6%) 36.40 72.52 72.78 46.42 59.92 68.90 40.02 60.77 57.22 
+
+Shortened Llama static 12(42.9%) 33.20 71.98 46.61 41.91 51.90 65.36 33.02 50.91 49.36 ShortGPT static 12(42.9%) 37.00 67.36 57.68 41.56 48.00 59.26 32.42 52.41 49.46 SLEB static 12(42.9%) 35.60 70.35 51.16 41.91 51.23 64.56 33.02 52.88 50.09 PuDDing dynamic 12(42.9%) 32.00 60.77 50.80 36.54 36.54 46.72 26.19 48.78 42.29 FiRST dynamic 12(42.9%) 31.80 52.77 57.61 36.13 38.32 41.08 29.52 50.12 42.17 BUDDY dynamic 12(42.9%) 33.20 67.03 60.70 41.97 49.25 60.27 33.36 56.59 50.30 
+
+Shortened Llama static 16(57.1%) 29.20 63.06 57.49 37.10 37.34 49.16 26.11 50.91 43.80 ShortGPT static 16(57.1%) 27.20 57.13 60.76 36.95 32.13 36.24 24.91 49.41 40.59 SLEB static 16(57.1%) 30.60 66.49 45.38 40.23 40.50 56.02 27.39 53.12 44.96 PuDDing dynamic 16(57.1%) 27.80 57.13 51.07 34.85 30.35 34.85 23.63 51.93 38.95 FiRST dynamic 16(57.1%) 27.00 51.41 62.17 34.24 26.67 25.29 24.57 50.20 37.69 BUDDY dynamic 16(57.1%) 31.80 63.98 59.08 37.21 38.15 50.38 27.99 52.33 45.11 
+
+performed at the block level, we discretize budgets into an action space that specifies how many middle layers to execute: A = {1, 2, . . . , L mid }, where Lmid is the number of candidate depth levels. The Budget Predictor takes the same KV-aware context Gt (Section 4.3) and outputs a categorical policy πθ (k | Gt) over A. We choose 
+
+ˆk = arg max  
+
+> k∈A
+
+πθ (k | Gt), ˆb = ˆk + 2 
+
+L , (4) where “ +2 ” accounts for the always-executed first and last layers. We train the predictor with GRPO (Shao et al., 2024) using a reward that trades off predictive quality and compute; details are provided in Appendix C.4. 
+
+## 5. Experiments 
+
+5.1. Settings LLMs. We evaluate B UDDY on Llama3-8B,(Touvron et al., 2023), and Qwen2.5-7B (Yang et al., 2024) (see Appendix H for exact versions).For 32-layer Llama-family models, we evaluate removing 4/8/12/16 blocks, correspond-ing to 12.5%, 25%, 37.5%, and 50% depth sparsity. For Qwen2.5-7B-Instruct, which has 28 layers, the same re-moval counts correspond to 14.3%, 28.6%, 42.9%, and 57.1% sparsity. 
+
+Benchmark. We conduct experiments for these LLMs on the Commonsense Reasoning benchmarks, including BoolQ (Clark et al., 2019), PIQA (Bisk et al., 2020), Hel-laSwag (Zellers et al., 2019), WinoGrande (Sakaguchi et al., 2021), ARC-easy and ARC-challenge (Clark et al., 2018), OpenbookQA (Mihaylov et al., 2018), and SIQA (Sap et al., 2019). We employed lm-eval-harness (Gao et al., 2023) to create open prompts for the benchmarks and produce the results. 
+
+Baselines. We compare against recent depth-pruning ap-proaches. Static methods: (1) Shortened LLaMA (Kim et al., 2024), rank blocks ∆PPL ; (2) ShortGPT (Men et al., 2024), rank by input–output cosine similarity ; (3) SLEB 
+
+(Song et al., 2024), iterative rank layers by ∆PPL . Dynamic 
+
+methods: (4) PuDDing (Wee et al., 2025), construct the omission set from the evaluated commonsense benchmarks; 
+
+(5) FiRST (Jain et al., 2025), add lightweight per-layer lin-ear routers to predict execute/skip decisions. For details on reproduction, please refer to Appendix D.1. 6BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Table 4. Speed analysis on the Alpaca and SAMSum datasets. The speed is measured as tokens/s. 
+
+Method RM Blocks Alpaca SAMSum Prefill Speed up Decode Speed Up Prefill Speed Up Decode Speed Up Dense 0(0.0%) 1753.16 ×1.00 39.48 ×1.00 4033.83 ×1.00 60.70 ×1.00 BUDDY 4(12.5%) 1991.54 ×1.14 40.03 ×1.01 4035.68 ×1.00 61.28 ×1.01 BUDDY 8(25%) 2440.14 ×1.39 46.80 ×1.19 4777.07 ×1.18 71.91 ×1.18 BUDDY 12(37.5%) 2548.39 ×1.45 51.49 ×1.30 5476.04 ×1.36 79.11 ×1.30 BUDDY 16(50%) 3348.18 ×1.91 64.84 ×1.64 6581.55 ×1.63 99.12 ×1.63 
+
+Hyper-parameters and Training Details. We adopted the popular LoRA ( r = 8, all linear modules) method to fine-tune the LLMs. We used Alpaca (Taori et al., 2023) dataset to fine-tune the models. We applied the Value States as the features and adopted the Taylor metric as the prior-knowledge, and set the ω factor to 0.1. We converted the model precision to BFloat16 and used AdamW as the opti-mizer with 100 warm-up steps and trained the model with a learning rate of 1 × 10 −4 and batch size 8 for 2 epochs. We apply the same training configuration across each baseline. Full training details are in Appendix C. 
+
+Main Results. Across eight commonsense reasoning benchmarks and four sparsity settings, BUDDY achieves strong average accuracy and degrades gracefully as pruning increases. It is the best-performing method in most settings and remains competitive in the remaining cases, while using a single trained model to serve multiple budgets. (Table 2– Table 3). On Llama3-8B, BUDDY retains approximately 99.9%, 90.8%, 80.7%, and 71.3% of original accuracy at 12.5%, 25%, 37.5%, and 50% sparsity, respectively, out-performing both static and dynamic baselines at matched sparsity. On Qwen2.5-7B-Instruct, performance drops are larger overall, but BUDDY remains among the best meth-ods across sparsity levels. Results on additional backbones (Llama2-7B and Llama1-13B) are reported in Appendix D. Overall, BUDDY attains the best average accuracy in most settings while supporting multiple budgets with a single trained model. 
+
+5.2. Analysis 
+
+5.2.1. S PEED ANALYSIS 
+
+We measure end-to-end throughput (tokens/s) on Alpaca and SAMSum for both prefill and decode . During decoding, we generate 128 tokens. Table 4 shows: (i) speedups are con-sistently larger in prefill than in decode; (ii) Alpaca exhibits larger prefill gains than SAMSum at matched sparsity; and (iii) speedups increase with sparsity. At very light pruning (12.5%), per-step routing and gather/scatter overhead off-sets (analysized on Appendix C.2) most savings (especially on SAMSum), whereas beyond ∼25% sparsity the benefits clearly outweigh overhead. 5.2.2. L AYER SELECTION ANALYSIS 
+
+We analyze routing decisions across tasks and inputs. Fig-ure 6 summarizes, at 37.5% sparsity, the per-layer execution frequency averaged over inputs from eight benchmarks. Sev-eral blocks are consistently selected (e.g., layers 1–8 and 16–17), while others are frequently skipped (e.g., layers 14, 23, 25, and 27–30). The remaining blocks vary by task: for example, layers 13, 15, and 21 exhibit large variability, being crucial for some datasets but dispensable for others. These results support input- and task-adaptive routing. More results are shown in Appendix D.6. 5.2.3. D ECODE ADAPTIVE ANALYSIS 
+
+Inference path counts. We examine how often the ex-ecution path changes during decoding. For Alpaca and 4 8 12 16  
+
+> Remove Blocks
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> Number Of Reasoning Paths
+> 1.00
+> 4.47
+> 5.22
+> 2.93
+> 1.00
+> 2.47 2.48
+> 2.11
+> Alpaca
+> Samsum
+
+Figure 4. Inference path count. 4 8 12 16      
+
+> Remove Blocks
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> ROUGE-1/ROUGE-L Scores
+> 0.264
+> 0.232
+> 0.190 0.204
+> 0.273
+> 0.242
+> 0.180
+> 0.208
+> Reuse
+> Recompute
+> 4812 16
+> Remove Blocks
+> 0.192
+> 0.171
+> 0.134
+> 0.166
+> 0.200
+> 0.178
+> 0.133
+> 0.171
+> Reuse
+> Recompute
+
+Figure 5. ROUGE-1 (left) and ROUGE-L (right) scores between reuse and recomputation. 
+
+7BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
+
+> Layer Index
+> OBQA
+> PIQA
+> BoolQ
+> SIQA
+> Hellaswag
+> ARC-E
+> Winogrande
+> ARC-C
+> Benchmarks
+> Layer Decisions on Benchmarks Heatmap of 12 Layers Removal
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Value
+
+Figure 6. A visual illustration of the B UDDY ’s average decision of each transformer block on 37.5% sparsity (12 layers removed). The color green indicates that the blocks are likely important to be maintained, the color grey indicates that the blocks are likely to be pruned, and the color yellow means the importance of layers varies across tasks and samples. 
+
+SAMSum, we run inference at multiple sparsity levels and count the number of distinct layer masks observed across decoding steps. As shown in Figure 4, path changes are rare at low sparsity (remove 4 blocks), indicating that light pruning yields a largely stable route. At moderate sparsity, the number of distinct paths increases substantially, reflect-ing stronger context-driven adaptation. The effect is more pronounced on Alpaca than on SAMSum, consistent with longer prompts and richer context evolution in Alpaca. 
+
+Performance comparison. We explore whether path re-computation during decoding helps accuracy. We compare two strategies on SAMSum using ROUGE (Lin, 2004): 
+
+Reuse , which fixes the decode path to the prefill decision, versus Recompute , which updates the path at each step using fresh hidden states. As in Figure 5, Recompute consistently outperforms Reuse on ROUGE-1 and ROUGE-L, indicating that adapting the route to the evolving context yields better summaries without increasing the executed-layer budget. 
+
+5.3. Ablation Study Hidden-State Features. We compare three router inputs extracted from the first-layer KV cache: (1) Key states, (2) Value states, and (3) Key+Value via element-wise sum. Table 5 shows that Value states yield the best accuracy at light-to-moderate pruning (12.5%–37.5%), while at ex-treme sparsity (50%) Key states perform slightly better. The Key+Value variant underperforms, suggesting redundancy and more difficult calibration for the scorer. 
+
+Table 5. Ablation study on Decision Module input using different hidden state representations. Average accuracy (%) is reported. 
+
+RM Blocks Key States Value States Key+Value States 4(12.5%) 62.12 62.21 60.92 8(25.0%) 55.71 58.32 55.27 12(37.5%) 50.10 52.44 49.34 16(50.0%) 45.15 44.78 43.67 
+
+Prior Knowledge Fusion. We ablate the layer-importance priors used in score fusion: (1) None, (2) ∆PPL , (3) Cosine dissimilarity, and (4) Taylor/Fisher. Results in Table 6 show 
+
+Taylor consistently performs best across pruning ratios. 
+
+∆PPL lags at mild pruning but becomes competitive at high sparsity (50%). Overall, strong priors help, especially when compute is tight. 
+
+Table 6. Ablation study on prior knowledge integration for score fusion in the Decision Module. Average accuracy (%) is reported. 
+
+RM Blocks None ∆PPL Cosine Similarity Taylor 4(12.5%) 62.21 60.54 62.20 62.63 
+
+8(25.0%) 58.32 55.03 58.27 58.44 
+
+12(37.5%) 52.44 49.98 53.27 53.54 
+
+16(50.0%) 44.78 46.45 45.93 46.90 
+
+Omega Coefficient. We conducted ablation experiments on the ω hyperparameter in the Decision Module under dif-ferent pruning ratios, testing six different ω values: 0.01, 0.1, 0.3, 0.5, 0.7, and 1.0. As shown in Table 7, ω=0.1 achieved the best performance across all pruning settings. In addition, we found that as ω increases, performance gradually de-creases, meaning that prior knowledge fusion only requires a small amount of guidance, and excessive participation will lead to performance degradation. 
+
+Layer Selection for Feature Extraction. We conduct an ablation study to investigate how the placement of the De-cision Module, i.e., extracting contextual information from different transformer layers, affects routing quality. Specifi-cally, we use the KV cache from layers 1 to 4 as the context input on Llama2-7B, and compare the average performance on the commonsense benchmark, as reported in Table 13. From the results, we observe that at low sparsity levels (12.5% and 25%), using the first-layer KV cache achieves the best performance, which validates our original design choice. At higher sparsity levels, the third-layer KV cache 8BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+yields slightly better results. Overall, choosing the first-layer KV cache as the context-extraction layer is a strong and robust default. When more layers are pruned, however, leveraging a slightly deeper layer as the context-extraction layer can provide richer contextual representations for rout-ing decisions, and thus further improve performance under high sparsity.                                 
+
+> Table 7. Ablation on the balance coefficient ω. Average accuracy (%) is reported.
+> RM Blocks ω=0.01 ω=0.1 ω=0.3 ω=0.5 ω=0.7 ω=1.0 4 (12.5%) 62.24 62.63 62.09 62.07 61.84 61.57 8 (25.0%) 57.94 58.44 57.90 57.89 57.68 56.99 12 (37.5%) 48.83 53.54 52.17 51.38 44.48 53.18 16 (50.0%) 42.52 46.90 43.03 34.85 35.30 34.61
+
+## 6. Conclusion 
+
+In this paper, we introduce B UDDY , a budget-driven, decode-adaptive depth routing framework for LLM inference. A Decision Module automatically selects the most suitable layers for inference based on user input and budget con-straints. A KV-aware planner reuses the KV cache to update the model’s inference path during the autoregressive infer-ence stage. A Budget Predictor automatically determines the optimal budget based on user input when no explicit budget is provided. The framework updates routes during decoding and honors explicit or predicted budgets. Overall, BUDDY targets an accuracy–efficiency–flexibility trade-off for heterogeneous-budget LLM serving. Since a single trained model can adapt to different budget requirements, BUDDY reduces the need to train separate sparsity-specific models and avoids deploying multiple checkpoints simulta-neously, lowering both training cost and system-level GPU memory overhead. 
+
+Limitations and future work Because our method up-dates the execution path during inference to preserve per-formance, all Transformer blocks remain resident in GPU memory; thus, VRAM usage does not decrease. Besides, for batched inputs, different sequences may select differ-ent paths, which can induce KV-cache misses at skipped layers. In this paper, we use zero-filled vectors to indicate “non-executed” states; in future work we plan to develop memory-aware routing and more efficient KV-cache strate-gies (e.g., selective cache sharing/compaction, lightweight block swapping, and batch-level path grouping) to better support adaptive inference at scale. 
+
+## Impact Statement 
+
+This paper presents work whose goal is to advance the field of machine learning by enhancing the efficiency and budget-flexibility of LLM inference. By reducing the computa-tional resources required for model execution, this research contributes to the environmental sustainability of AI and po-tentially lowers the barrier for accessing advanced language technologies. We do not foresee any specific negative soci-etal or ethical consequences that distinguish this work from general advancements in model compression and adaptive inference. 
+
+## References 
+
+Bengio, Y., L ´eonard, N., and Courville, A. Estimating or propagating gradients through stochastic neurons for conditional computation, 2013. Bisk, Y., Zellers, R., Gao, J., Choi, Y., et al. Piqa: Reasoning about physical commonsense in natural language. In Pro-ceedings of the AAAI conference on artificial intelligence ,volume 34, pp. 7432–7439, 2020. Chang, Y., Wang, X., Wang, J., Wu, Y., Yang, L., Zhu, K., Chen, H., Yi, X., Wang, C., Wang, Y., et al. A survey on evaluation of large language models. ACM Transactions on Intelligent Systems and Technology , 15(3):1–45, 2024. Clark, C., Lee, K., Chang, M.-W., Kwiatkowski, T., Collins, M., and Toutanova, K. Boolq: Exploring the surprising difficulty of natural yes/no questions. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Hu-man Language Technologies, Volume 1 (Long and Short Papers) , pp. 2924–2936, 2019. Clark, P., Cowhey, I., Etzioni, O., Khot, T., Sabharwal, A., Schoenick, C., and Tafjord, O. Think you have solved question answering? try arc, the ai2 reasoning challenge. 
+
+arXiv preprint arXiv:1803.05457 , 2018. Cobbe, K., Kosaraju, V., Bavarian, M., et al. Training verifiers to solve math word problems. In Proceedings of Advances in Neural Information Processing Systems ,2021. Elhoushi, M., Shrivastava, A., Liskovich, D., Hosmer, B., Wasti, B., Lai, L., Mahmoud, A., Acun, B., Agarwal, S., Roman, A., Aly, A., Chen, B., and Wu, C.-J. Layer-skip: Enabling early exit inference and self-speculative decoding. In Proceedings of the Annual Meeting of the Association for Computational Linguistics , pp. 12622—-12642, 2024. Fan, S., Jiang, X., Li, X., Meng, X., Han, P., Shang, S., Sun, A., Wang, Y., and Wang, Z. Not all layers of llms are necessary during inference, 2024. Gao, L., Tow, J., Abbasi, B., Biderman, S., Black, S., DiPofi, A., Foster, C., Golding, L., Hsu, J., Le Noac’h, A., Li, H., McDonell, K., Muennighoff, N., Ociepa, C., Phang, 9BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+J., Reynolds, L., Schoelkopf, H., Skowron, A., Sutawika, L., Tang, E., Thite, A., Wang, B., Wang, K., and Zou, A. A framework for few-shot language model evaluation, 2023. Jain, A., Sharma, S., Mukherjee, K., and Pal, S. First: Fine-tuning router-selective transformers for input-adaptive latency reduction, 2025. Jiang, S., Shuai, X., and Xing, G. Artfl: Exploiting data resolution in federated learning for dynamic runtime in-ference via multi-scale training. In 2024 23rd ACM/IEEE International Conference on Information Processing in Sensor Networks (IPSN) , pp. 27–38. IEEE, 2024a. Jiang, S., Yang, H., Xie, Q., Ma, C., Wang, S., Liu, Z., Xiang, T., and Xing, G. Towards compute-efficient byzantine-robust federated learning with fully homomor-phic encryption. Nature Machine Intelligence , 7(10): 1657–1668, 2025. Jiang, S., Fang, R., Chen, H.-W., Ding, W., Xing, G., and Chen, M.-S. Dual alignment framework for few-shot learning with inter-set and intra-set shifts. Advances in Neural Information Processing Systems , 38:64804– 64830, 2026. Jiang, Y., Wang, H., Xie, L., Zhao, H., Zhang, C., Qian, H., and Lui, J. C. D-LLM: A token adaptive computing resource allocation strategy for large language models. In 
+
+Proceedings of The Annual Conference on Neural Infor-mation Processing Systems , 2024b. Kim, B.-K., Kim, G., Kim, T.-H., Castells, T., Choi, S., Shin, J., and Song, H.-K. Shortened LLaMA: A simple depth pruning for large language models. In Proceedings of International Conference on Learning Representations Workshop on Mathematical and Empirical Understanding of Foundation Models , 2024. Lin, C.-Y. Rouge: A package for automatic evaluation of summaries. In Text summarization branches out , pp. 74–81, 2004. Luo, X., Wang, W., and Yan, X. Adaptive layer-skipping in pre-trained llms, 2025. Men, X., Xu, M., Zhang, Q., Wang, B., Lin, H., Lu, Y., Han, X., and Chen, W. Shortgpt: Layers in large language models are more redundant than you expect, 2024. Merity, S., Xiong, C., Bradbury, J., and Socher, R. Pointer sentinel mixture models. In International Conference on Learning Representations , 2017. Mihaylov, T., Clark, P., Khot, T., and Sabharwal, A. Can a suit of armor conduct electricity? a new dataset for open book question answering. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing , pp. 2381–2391, 2018. Raposo, D., Ritter, S., Richards, B., Lillicrap, T., Humphreys, P. C., and Santoro, A. Mixture-of-depths: Dynamically allocating compute in transformer-based language models, 2024. Sakaguchi, K., Bras, R. L., Bhagavatula, C., and Choi, Y. Winogrande: An adversarial winograd schema challenge at scale. Communications of the ACM , 64(9):99–106, 2021. Sap, M., Rashkin, H., Chen, D., Le Bras, R., and Choi, Y. Social IQa: Commonsense reasoning about social interactions. In Proceedings of the Conference on Em-pirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing , pp. 4463–4473, 2019. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y. K., Wu, Y., and Guo, D. Deepseek-math: Pushing the limits of mathematical reasoning in open language models, 2024. Song, J., Oh, K., Kim, T., Kim, H., Kim, Y., and Kim, J.-J. SLEB: Streamlining LLMs through redundancy verification and elimination of transformer blocks. In 
+
+Proceedings of the International Conference on Machine Learning , volume 235, pp. 46136–46155, 2024. Taori, R., Gulrajani, I., Zhang, T., Dubois, Y., Li, X., Guestrin, C., Liang, P., and Hashimoto, T. B. Stan-ford alpaca: An instruction-following llama model, 2023. URL https://github.com/tatsu-lab/ stanford_alpaca .Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M.-A., Lacroix, T., Rozi `ere, B., Goyal, N., Hambro, E., Azhar, F., et al. Llama: Open and efficient foundation language models, 2023. Wang, W., Chen, W., Luo, Y., Long, Y., Lin, Z., Zhang, L., Lin, B., Cai, D., and He, X. Model compression and efficient inference for large language models: A survey. arXiv preprint arXiv:2402.09748, 2024. Wee, J., Park, M., and Lee, J. Prompt-based depth pruning of large language models. In Proceedings of International Conference on Machine Learning , 2025. Yang, A., Zhang, B., Hui, B., Gao, B., Yu, B., Li, C., Liu, D., Tu, J., Zhou, J., Lin, J., Lu, K., Xue, M., Lin, R., Liu, T., Ren, X., and Zhang, Z. Qwen2.5-math technical report: Toward mathematical expert model via self-improvement, 2024. 10 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Yang, N., Liu, F., Wang, J., Yang, T., Liu, K., Guan, H., and Jiang, L. Dash: Input-aware dynamic layer skipping for efficient llm inference with markov decision policies, 2025. Zellers, R., Holtzman, A., Bisk, Y., Farhadi, A., and Choi, Y. Hellaswag: Can a machine really finish your sentence? In Proceedings of the Annual Meeting of the Association for Computational Linguistics , pp. 4791–4800, 2019. Zhou, Y., Li, R., Zhou, C., Yang, F., and PAN, A. BSLoRA: Enhancing the parameter efficiency of loRA with intra-layer and inter-layer sharing. In Proceedings of Interna-tional Conference on Machine Learning , 2025. Zhou, Y., Zhou, C., Zhang, S., Yang, F., Zhang, Y., and Pan, A. Lara: Layer-wise rank allocation for efficient fine-tuning of pruned large language models. Information Processing & Management , 63(3):104538, 2026. 11 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+## Appendix A. Observations 
+
+We also adopt Taylor score and ∆PPL as the evaluation metric on the Llama2-7B model, and compute the layer-importance distributions on the WikiText-2 and PTB datasets. The results are shown in Figure 1 and Figure 7. They reveal that the estimated importance of different layers varies dramatically when different metrics are used (Taylor score vs. ∆PPL ). Moreover, the importance of each layer also differs across evaluation datasets (WikiText-2 vs. PTB). These phenomena further corroborate Observation 1: as the input and evaluation metric change, the importance of model layers also shifts, which calls for a dynamic layer-pruning scheme that can adapt to different inputs. 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 
+
+> Layer Index
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Remove Order (1 32)
+> Per-layer Remove Order Distribution On wikitext2
+
+Figure 7. Input-dependent layer importance ranking distributions across different inputs on the WikiText-2 datasets. The chart shows how layer rankings vary significantly across inputs, demonstrating the necessity for dynamic pruning decisions. 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 
+
+> Layer Index
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Remove Order (1 32)
+> Per-layer Remove Order Distribution On ptb
+
+Figure 8. Input-dependent layer importance ranking distributions across different inputs on the PTB datasets. The chart shows how layer rankings vary significantly across inputs, demonstrating the necessity for dynamic pruning decisions. 
+
+## B. Prior Indicators and Normalization 
+
+We consider L transformer layers and M prior indicators that estimate per-layer importance. Let xl,m denote the raw score of indicator m ∈ { 1, . . . , M } on layer l ∈ { 1, . . . , L }. Different indicators can have heterogeneous scales and tails (e.g., perplexity gaps versus gradient norms), so we map them to a common, robust scale before fusion. Our pipeline has four steps, and each step is applied per indicator m across layers l.
+
+(i) Direction unification. Ensure “larger ⇒ more important” for every indicator: • ∆PPL : xl, ppl := max {0, PPL skip (l) − PPL full }.• Taylor/Fisher/GradNorm : already positively oriented; clip to nonnegative. • Cosine similarity : convert to dissimilarity dl, cos := 1 − cos( ·, ·) ∈ [0 , 2] and set xl, cos := dl, cos .12 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+(ii) Heavy-tail stabilization. For heavy-tailed indicators (typically ∆PPL and Taylor/Fisher/GradNorm), apply a monotone variance–stabilizing transform, e.g., 
+
+˜xl,m = log  1 + xl,m 
+
+ (or Box–Cox: ˜xl,m = xλl,m −1 
+
+> λ
+
+, λ ∈ [0 .2, 0.5] ). (5) For cosine dissimilarity, we typically use the identity: ˜xl, cos := xl, cos .
+
+(iii) Robust standardization and outlier control. Compute a robust z-score using median and interquartile range (IQR) across layers: 
+
+zl,m = ˜xl,m − median l(˜ xl,m )IQR l(˜ xl,m ) + ε , IQR := Q75 − Q25 , ε > 0. (6) Optionally winsorize: zl,m ← clip( zl,m , −c, c ) with c ∈ [2 .5, 3.5] .
+
+(iv) Unit-interval mapping. Map zl,m to a comparable, dimensionless score ul,m ∈ (0 , 1) . We use rank normalization (scale-free and robust): 
+
+ul,m = 1 + rank l(zl,m )
+
+L + 1 ∈ (0 , 1) , (7) or, alternatively, a temperature-controlled sigmoid ul,m = σ zl,m /τ  with τ ∈ [1 , 2] .The above yields M normalized importance profiles {u·,m }Mm=1 .
+
+B.1. Indicator-specific recipes A. ∆PPL (skip-induced perplexity increase). 
+
+∆PPL l = max {0, PPL skip (l) − PPL full }, (8) 
+
+ul, ppl = RankNorm 
+
+
+
+RobustZ  log(1 + ∆PPL l)
+
+. (9) This emphasizes layers whose removal most degrades language modeling quality while suppressing magnitude outliers. 
+
+B. Taylor/Fisher/gradient-norm importance. 
+
+ul, taylor = RankNorm 
+
+
+
+RobustZ  log(1 + Score taylor  
+
+> l
+
+)
+
+. (10) Any nonnegative saliency-like score (e.g., first-order Taylor, Fisher diagonal, ℓ2 gradient norm) fits this template. 
+
+C. Cosine-similarity based discrepancy. Let sfull  
+
+> l
+
+and sskip (l) 
+
+> l
+
+be per-layer summary representations (or outputs) from the full and “skip-l” forward passes, respectively. Define the cosine dissimilarity dl = 1 − cos  sskip (l) 
+
+> l
+
+, s full 
+
+> l
+
+ and set 
+
+ul, cos = RankNorm 
+
+
+
+RobustZ( dl)
+
+
+
+. (11) This treats larger representational deviation as higher importance. 
+
+## C. Implementation 
+
+C.1. Decision Module Design 
+
+We implement the Decision Module as a lightweight two-layer MLP (Linear–SiLU–Linear). For each inference step, the module produces a real-valued score for every intermediate Transformer block. We optionally normalize the scores with a softmax to obtain a distribution over candidate blocks, and deterministically activate the top-k blocks to form a binary execution mask M ∈ { 0, 1}L over layers (excluding the always-executed first and last blocks). The resulting mask is used to gate computation via the layer-skipping mechanism described in Section 3.1 yielding dynamic-depth inference without altering tensor shapes. Batched inference introduces heterogeneous execution paths across requests. To efficiently support this setting, we process each block on a per-layer sub-batch: at block ℓ, we gather only the requests with Mℓ = 1 and run the block on this active subset, while skipping the block for the inactive requests. This grouping-by-mask strategy preserves correctness while reducing wasted computation under mixed routing decisions within the same batch. 13 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+C.2. Inference overhead 
+
+We first analyze the theoretical latency of the Decision Module. We denote by d the hidden size, by dc the MLP intermediate size (for Llama-7B, dc = 11008 when d = 4096 ), by T the input length, by L the total number of transformer layers, by I
+
+the number of ignored (fixed) layers in the router, by r the hidden width of the Decision Module MLP, by B the batch size, and by b ∈ (0 , 1] the budget parameter that controls the effective fraction of active layers. The Decision Module takes an input x ∈ RB×T ×d and applies two linear layers token-wise, d → r and r → (L − I), followed by a softmax and Top-k
+
+whose FLOPs are negligible compared to the dense matrix multiplications. Counting one multiply–add as 2 FLOPs, its cost is approximated by 
+
+FDM ≈ 2BT dr + 2 BT r (L − I).
+
+For the backbone transformer, let Flayer denote the FLOPs of a single decoder layer with hidden size d and sequence length 
+
+T . A Llama-style decoder layer has: three projections Q, K, V with cost 3 × 2T d 2 = 6 T d 2, one output projection with cost 
+
+2T d 2, attention score/product QK ⊤ and AV with cost approximately 4T 2d, and an MLP with architecture d → dc → d,whose two linear layers cost 2T dd c + 2 T d cd = 4 T dd c. Thus the corrected per-layer FLOPs with d → dc → d are 
+
+Flayer ≈ (6 T d 2 + 2 T d 2) + 4 T 2d + 4 T dd c = 8 T d 2 + 4 T 2d + 4 T dd c.
+
+Executing all L layers (no skipping) costs 
+
+Ffull ≈ LF layer = L 8T d 2 + 4 T 2d + 4 T dd c
+
+.
+
+The router converts the budget b into a Top-k via k(b) = bL − I (clamped to [1 , L − I]), so that roughly bL out of the L
+
+layers are effectively active (the I ignored layers are always run and about k(b) of the remaining L − I layers are selected). Accordingly, the backbone FLOPs under budget b are approximated as 
+
+Fmodel (b) ≈ bF full = bL  8T d 2 + 4 T 2d + 4 T dd c
+
+.
+
+The relative FLOPs overhead of the Decision Module at budget b is then 
+
+ρ(b) ≈ FDM 
+
+FDM + Fmodel (b) ≈ FDM 
+
+bL  8T d 2 + 4 T 2d + 4 T dd c
+
+ ,
+
+where the second approximation uses that FDM ≪ Fmodel (b) in practice. Instantiating with the configuration L = 32 , d = 4096 , dc = 11008 (Llama-7B MLP), T = 1024 , r = 32 , I = 2 , B = 1 ,we obtain for the Decision Module FDM ≈ 2 · 1 · 1024 · 4096 · 32 + 2 · 1 · 1024 · 32 · (32 − 2) = 270 ,401 ,536 ≈ 2.70 × 10 8.
+
+For a single transformer layer the corrected cost is Flayer ≈ 8 · 1024 · 4096 2 + 4 · 1024 2 · 4096 + 4 · 1024 · 4096 · 11008 ≈
+
+339 ,302 ,416 ,384 ≈ 3.39 × 10 11 . Under budget b = 0 .875 , the backbone FLOPs are 
+
+Fmodel (0 .875) ≈ 0.875 · Ffull ≈ 9,500 ,467 ,658 ,752 ≈ 9.50 × 10 12 ,
+
+giving a Decision Module FLOPs ratio of 
+
+ρ(0 .875) ≈ FDM 
+
+Fmodel (0 .875) ≈ 2.70 × 10 8
+
+9.50 × 10 12 ≈ 2.85 × 10 −5 ≈ 0.00285% .
+
+Under budget b = 0 .5, the backbone FLOPs become 
+
+Fmodel (0 .5) ≈ 0.5 · Ffull ≈ 5,428 ,838 ,662 ,144 ≈ 5.43 × 10 12 ,
+
+leading to 
+
+ρ(0 .5) ≈ FDM 
+
+Fmodel (0 .5) ≈ 2.70 × 10 8
+
+5.43 × 10 12 ≈ 4.98 × 10 −5 ≈ 0.00498% .
+
+Therefore, the Decision Module’s routing overhead is negligible compared to the main transformer. We further analyze the runtime overhead of B UDDY , as summarized in Table 8. On an NVIDIA A100 GPU with Llama-2-7B (batch size = 5 , sequence length = 256 ), the backbone computation dominates the overall latency, accounting for 64 .11 
+
+ms ( 79 .50% ) of the total runtime. In contrast, the decision module introduces only a small overhead of 4.58 ms ( 5.67% ), and the gather/scatter operations required by grouping-by-mask add another 2.64 ms ( 3.28% ). These results show that the routing-related system overhead of B UDDY is modest in practice. 14 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference     
+
+> Table 8. Latency breakdown of B UDDY on an NVIDIA A100 GPU with Llama-2-7B, batch size = 5 , and sequence length = 256 .
+
+Component Latency (ms) Percentage (%) Backbone Compute 64.11 79.50 Decision Module 4.58 5.67 Gather/Scatter Overhead 2.64 3.28 
+
+C.3. Training Details and Overhead 
+
+We train the Decision Module using standard supervised fine-tuning (SFT) jointly with the backbone model and LoRA adapters. Concretely, we fine-tune on the Alpaca instruction-following dataset using the Adam optimizer, and minimize the next-token cross-entropy loss. During this process, the parameters of the Decision Module and the LoRA parameters of the backbone are updated simultaneously, following the same optimization hyperparameters as in the main LoRA fine-tuning setup described in Section 5.1. To make the discrete layer-selection decisions trainable, we adopt a straight-through estimator (STE). In the forward pass, the Decision Module produces per-layer scores, and we apply a hard Top-k gating to obtain binary execute/skip decisions. In the backward pass, we use the continuous scores to approximate the gradient, allowing gradients from the language modeling loss to flow through the gating mechanism and update the MLP parameters. In order to enable the model to both strictly and flexibly adapt to different compute budgets, we perform random budget sampling during training. For each mini-batch, we sample target sparsity levels from the same range used at inference time, and assign (potentially different) budgets to individual examples within the batch. This encourages the Decision Module to learn routing policies that are robust across a variety of budgets instead of overfitting to a single sparsity setting. We also explicitly include the zero-sparsity case (i.e., all layers executed) in the sampling space, so that every Transformer block is regularly activated during training and receives gradient updates, which improves overall training stability and robustness.             
+
+> Table 9. Training cost of B UDDY across different backbone models. The training pipeline consists of two stages: (1) joint fine-tuning of the decision module and LoRA parameters, and (2) a separate GRPO stage for the budget predictor. Model Fine-tuning Time (h) GRPO Time (h) Llama2-7B 10.46 0.90 Llama3-8B 8.26 0.82 Llama1-13B 24.93 1.49 Qwen2.5-7B 11.21 0.78
+
+We report the end-to-end training cost of B UDDY in Table 9. The training procedure consists of two stages: (1) joint fine-tuning of the decision module and LoRA parameters, and (2) a separate GRPO stage for training the budget predictor. Across different backbone models, the main fine-tuning stage requires approximately 8–25 hours, while the GRPO stage is substantially lighter and consistently finishes within 1.5 hours. This result indicates that the additional cost introduced by budget prediction is modest compared with the primary fine-tuning stage, making the overall training pipeline practical and reproducible. 
+
+C.4. Training Budget Predictor with GRPO Problem Setup. Given an input x, we extract the KV-aware context G = ϕ(x) using the same feature extraction as described in Section 4.3. The Budget Predictor is a categorical policy πθ (k | G) over the action space A = {1, 2, . . . , L set },where action k corresponds to executing k middle layers. All other model parameters remain frozen during training. 
+
+Reward Function. For a target sequence y, we run the frozen model under budget b(k) = k+2  
+
+> L
+
+in teacher-forcing mode to obtain token probabilities ˆpb(k). The per-sample cross-entropy loss is: 
+
+CE  ˆpb(k), y  = − 1
+
+T − 1
+
+> T
+
+X
+
+> t=2
+
+log ˆ pb(k)(yt | x, y <t ) . (12) We balance predictive performance and computational cost via: 
+
+r(k) = −λperf · CE  ˆpb(k), y  − λcost · b(k), (13) 15 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+where λperf , λ cost > 0 are hyperparameters that control the performance-efficiency trade-off. 
+
+Group-Relative Advantage. For each training example (x, y ), we sample a group of M actions k(j) ∼ πθ (· | G),
+
+j = 1 , . . . , M , and compute their rewards r(j) = r(k(j)). To reduce variance, we normalize rewards within each group: 
+
+μ = 1
+
+M
+
+> M
+
+X
+
+> j=1
+
+r(j), σ =
+
+vuut 1
+
+M
+
+> M
+
+X
+
+> j=1
+
+(r(j) − μ)2, A(j) = r(j) − μσ + ε , (14) where ε > 0 ensures numerical stability. 
+
+Optimization Objective. GRPO maximizes the advantage-weighted log-likelihood with entropy regularization: 
+
+LGRPO (θ) = − 1
+
+M
+
+> M
+
+X
+
+> j=1
+
+A(j) log πθ (k(j) | G) − βH(πθ (· | G)) , (15) where β ≥ 0 encourages exploration and H(·) is the categorical entropy. Only the Budget Predictor parameters θ receive gradients; the language model and Decision Module remain frozen. This directly learns a discrete layer-allocation policy that maximizes task quality per unit of compute. 
+
+## D. Experiment Results 
+
+D.1. Reproduce of Baselines 
+
+We compare against recent depth-pruning approaches. Static methods: (1) Shortened LLaMA (Kim et al., 2024) 1
+
+determines block importance by measuring the increase in perplexity ( ∆PPL ) when each block is removed, then prunes the least important ones; (2) ShortGPT (Men et al., 2024) 2 ranks layers based on the cosine similarity between their input and output hidden states, treating layers with high similarity as redundant; (3) SLEB (Song et al., 2024) 3 iteratively removes the layer that causes the smallest ∆PPL , and verifies that the omission is safe by checking next-token prediction consistency on a calibration set. Dynamic methods: (4) PuDDing (Wee et al., 2025) 4 constructs token-level omission sets by evaluating commonsense reasoning benchmarks, enabling dynamic layer skipping depending on the input difficulty. We use the official omission-set construction and extend it with LoRA under our unified training setup. ; (5) FiRST (Jain et al., 2025) equips each transformer layer with a lightweight linear router that makes execute/skip decisions based on the layer input. We reproduced FiRST from the original paper and verified its performance in our setting. 
+
+D.2. Results on Llama2-7B 
+
+We also conduct experiments on Llama2-7B. Across eight commonsense reasoning benchmarks and four sparsity settings, 
+
+BUDDY exhibits strong average performance and robust degradation as pruning deepens from Table 10. At 12 .5% sparsity (removing 4 blocks), B UDDY attains an average of 62 .63 , ranking second and trailing the best baseline (ShortGPT, 63 .16 ) by only 0.53 points. For higher sparsities, B UDDY delivers the best average in every case: 58 .44 at 25% (+1 .24 over the best baseline), 53 .54 at 37 .5% (+0 .23 ), and 46 .90 at 50% (+0 .49 ). Relative to the dense (unpruned) model average of 64 .36 ,BUDDY preserves 97 .3% , 90 .8% , 83 .2% , and 72 .9% of accuracy at 12 .5% , 25% , 37 .5% , and 50% sparsity, respectively. BUDDY delivers the best average accuracy at moderate-to-high sparsity ( ≥ 25% ) while remaining highly competitive at light sparsity. Moreover, its budget flexibility makes it adapt to different sparsity ratios using only one model. 
+
+D.3. Results on Llama1-13B 
+
+We also conduct experiments on Llama1-13B with static baselines. Across eight commonsense reasoning benchmarks and four sparsity settings, BUDDY exhibits strong average performance and robust degradation as pruning deepens from Table 11. At 50% sparsity (removing 16 blocks), B UDDY attains an average of 51 .85 , ranking second and trailing the best baseline 
+
+> 1https://github.com/Nota-NetsPresso/shortened-llm
+> 2https://github.com/sramshetty/ShortGPT
+> 3https://github.com/jiwonsong-dev/SLEB
+> 4https://github.com/tada0347/PuDDing
+
+16 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Table 10. Performance comparison on Llama2-7B across eight Commonsense reasoning benchmarks for different pruning methods at various sparsity levels (12.5%-50%). Boldface indicates the best performance, and the Underline means the second-order performance. BUDDY achieves the best average performance at moderate-to-high sparsity levels and remains competitive at light sparsity.                                                                                                                                                                                                                                                                                               
+
+> Method Pruning RM Blocks OBQA PIQA BoolQ SIQA Hellaswag ARC-E ARC-C Winogrande Avg. Dense w/o -0(0.0%) 44.20 79.11 77.71 46.06 76.02 76.30 46.33 69.14 64.36 Shortened Llama static 4(12.5%) 40.60 78.02 71.25 45.29 72.53 73.27 42.83 62.90 60.84 ShortGPT static 4(12.5%) 42.00 77.15 78.69 47.59 73.69 72.56 44.45 69.14 63.16
+> SLEB static 4(12.5%) 41.40 77.48 71.96 45.14 72.60 73.40 41.04 64.01 60.88 PuDDing dynamic 4(12.5%) 40.00 75.95 73.55 43.30 69.73 69.32 39.51 64.48 59.48 FiRST dynamic 4(12.5%) 36.00 56.20 57.74 40.48 47.66 48.27 34.73 54.22 46.91 BUDDY dynamic 4(12.5%) 43.00 77.09 73.30 47.34 73.64 73.02 44.80 68.82 62.63 Shortened Llama static 8(25%) 37.00 74.27 61.87 41.10 63.15 63.26 34.90 54.62 53.77 ShortGPT static 8(25%) 39.60 72.42 62.94 43.71 67.66 65.28 38.91 67.09 57.20 SLEB static 8(25%) 39.80 73.78 69.24 43.19 65.72 66.58 35.49 60.46 56.78 PuDDing dynamic 8(25%) 36.60 71.82 62.87 39.30 60.30 61.41 35.58 56.67 53.07 FiRST dynamic 8(25%) 35.40 55.22 57.74 40.38 44.52 45.20 32.94 40.38 43.97 BUDDY dynamic 8(25%) 39.20 73.18 72.63 45.65 66.64 65.28 38.05 66.85 58.44
+> Shortened Llama static 12(37.5%) 34.20 70.89 62.14 39.87 52.81 57.28 29.86 52.33 49.92 ShortGPT static 12(37.5%) 33.20 66.92 71.22 43.65 58.76 54.46 34.13 64.09 53.31 SLEB static 12(37.5%) 36.00 71.38 60.28 41.15 54.83 59.76 31.06 52.96 50.93 PuDDing dynamic 12(37.5%) 31.60 64.69 46.42 37.36 47.36 49.16 29.35 53.59 44.94 FiRST dynamic 12(37.5%) 36.20 55.17 55.87 39.82 43.99 45.33 30.89 53.67 45.12 BUDDY dynamic 12(37.5%) 35.60 70.78 72.81 41.81 57.87 58.08 31.14 60.22 53.54
+> Shortened Llama static 16(50%) 30.80 65.51 62.17 39.76 35.46 49.71 26.62 51.30 45.17 ShortGPT static 16(50%) 29.80 61.81 62.20 39.00 47.13 44.91 29.18 57.22 46.41 SLEB static 16(50%) 31.00 65.07 61.71 38.84 42.93 49.49 26.37 52.57 46.00 PuDDing dynamic 16(50%) 31.60 64.47 46.42 37.36 47.36 49.16 29.35 53.59 44.91 FiRST dynamic 16(50%) 33.20 53.21 54.53 32.91 39.73 41.12 29.27 53.28 42.15 BUDDY dynamic 16(50%) 32.80 64.74 60.21 37.92 48.66 48.91 28.41 53.51 46.90
+
+(ShortGPT, 52 .44 ) by only 0.39 points. For other sparsities, B UDDY delivers the best average in every case: 65 .67 at 12 .5% 
+
+(+1 .67 over the best baseline), 63 .68 at 25% (+2 .32 ), and 59 .81 at 37 .5% (+1 .15 ). Relative to the dense (unpruned) model average of 65 .79 , B UDDY preserves 99 .8% , 96 .8% , 90 .9% , and 78 .8% of accuracy at 12 .5% , 25% , 37 .5% , and 50% 
+
+sparsity, respectively. 
+
+D.4. Results on Other Benchmarks 
+
+We further evaluate the fine-tuned Llama2-7B and Qwen2.5-7B-Instruct models on a more challenging reasoning benchmark, GSM8K (Cobbe et al., 2021). Due to the more aggressive pruning ratios, all methods suffer substantial performance degradation on this dataset. Therefore, we focus on sparsity levels of 12.5% and 25%, and report the results in Table 12. As shown in the Table 12, the performance of all pruned models is noticeably lower than their dense counterparts at both sparsity levels. Nonetheless, B UDDY achieves better overall performance than the baselines. The improvement is particularly significant on Qwen2.5-7B-Instruct: at 12.5% sparsity, B UDDY attains 51.10 accuracy, considerably outperforming the second-best SLEB (37.15); at 25% sparsity, B UDDY still leads by a large margin (14.63 vs. 6.60 for ShortGPT). These results demonstrate that our B UDDY framework remains effective even on more difficult benchmarks and under aggressive pruning regimes. 
+
+D.5. Speed Analysis 
+
+We measure end-to-end throughput (tokens/s) on Alpaca and SAMSum for both prefill and decode phases. During decoding, the model generates 128 tokens. We compare the throughput with baselines that are dynamic inference. Results show in Table 14, indicating that in the prefill stage, B UDDY outperforms existing dynamic inference methods in throughput at all sparsity rates. However, existing methods, due to excessive per-layer routing or switching between different LoRAs, have limited acceleration and can even be slower than Dense methods at low sparsity rates. While in the decode stage, B UDDY 
+
+left behind the PuDDing method due to its fixed inference path. In summary, the B UDDY method not only offers greater 17 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Table 11. Performance comparison on Llama1-13B across eight Commonsense Reasoning benchmarks for different pruning methods at various sparsity levels (12.5%-50%). Boldface indicates the best performance, and the Underline means the second-order performance. BUDDY achieves the best average performance at moderate-to-high sparsity levels and remains competitive at light sparsity. 
+
+Method Pruning RM Blocks OBQA PIQA BoolQ SIQA Hellaswag ARC-E ARC-C Winogrande Avg. Dense w/o - 0(0.0%) 44.80 80.14 77.92 46.72 79.06 77.36 47.61 72.69 65.79 Shortened Llama static 5(12.5%) 43.00 79.60 67.43 47.75 77.38 76.85 48.46 71.51 64.00 ShortGPT static 5(12.5%) 44.80 79.54 73.82 48.67 78.04 76.47 48.46 72.85 65.33 SLEB static 5(12.5%) 43.80 78.56 74.31 46.47 76.73 74.92 43.94 68.90 63.45 PuDDing dynamic 5(12.5%) 42.60 78.45 67.77 45.45 76.11 73.36 43.94 70.24 62.24 BUDDY dynamic 5(12.5%) 44.00 80.03 76.33 48.82 77.54 76.64 49.06 72.93 65.67 
+
+Shortened Llama static 10(25%) 40.20 77.75 58.01 47.65 73.57 72.98 44.37 69.06 60.45 ShortGPT static 10(25%) 42.00 77.58 54.62 48.31 74.30 72.22 45.31 71.27 60.70 SLEB static 10(25%) 42.00 77.31 73.06 46.52 72.97 72.10 42.83 64.09 61.36 PuDDing dynamic 10(25%) 38.20 74.43 69.14 42.22 69.30 69.95 38.74 63.06 58.13 BUDDY dynamic 10(25%) 43.40 77.37 77.68 46.78 74.27 72.26 46.16 71.51 63.68 
+
+Shortened Llama static 15(37.5%) 38.20 72.80 49.88 46.11 68.82 66.37 40.70 68.03 56.36 ShortGPT static 15(37.5%) 37.40 72.03 66.97 45.91 70.12 65.99 42.06 68.82 58.66 SLEB static 15(37.5%) 36.40 73.12 69.88 43.96 65.51 66.58 34.64 61.80 56.49 PuDDing dynamic 15(37.5%) 34.00 69.64 65.84 38.38 60.13 60.73 31.66 58.80 52.40 BUDDY dynamic 15(37.5%) 39.00 72.69 79.39 45.60 68.55 63.26 40.36 69.61 59.81 
+
+Shortened Llama static 20(50%) 32.40 69.37 44.13 42.12 56.01 57.79 31.83 59.83 49.18 ShortGPT static 20(50%) 33.80 66.16 62.32 42.63 60.04 54.17 35.75 64.64 52.44 
+
+SLEB static 20(50%) 34.00 68.99 61.31 41.30 54.73 58.00 30.89 56.43 50.71 PuDDing dynamic 20(50%) 30.60 64.91 61.99 37.72 50.38 48.48 25.68 55.72 46.94 BUDDY dynamic 20(50%) 34.40 66.43 63.21 41.30 59.67 52.02 33.79 64.01 51.85 
+
+versatility but also delivers greater throughput gains. 
+
+D.6. Layer Selection Analysis 
+
+We analyze routing decisions across tasks and inputs under different sparsity levels; results appear in Figure 9 (12.5%), Figure 10 (25%), and Figure 11 (50%). At low sparsity (12.5%), layer-selection decisions are relatively stable across inputs, indicating a near-fixed path. As sparsity increases, the importance distribution becomes less uniform . At 25% sparsity ,layers 15, 20, 24, and 26 undergo notable shifts in importance; by 50% sparsity , layers 9–11 exhibit the largest changes and their importance varies substantially across tasks. Moreover, at 25% sparsity the H ELLA SWAG task assigns different importance to layers 24 and 26, while at 50% sparsity this variability shifts to layers 9–11. These observations underscore that layer importance is not invariant to the sparsity regime; consequently, routing must adapt dynamically as the budget changes. 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
+
+Layer Index 
+
+> OBQA
+> PIQA
+> BoolQ
+> SIQA
+> Hellaswag
+> ARC-E
+> Winogrande
+> ARC-C
+> Benchmarks
+
+Layer Decisions on Benchmarks Heatmap of 4 Layers Removal 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Value
+
+Figure 9. A visual illustration of the B UDDY ’s average decision of each transformer block on 12.5% sparsity (4 layers removed). The color green indicates that the blocks are likely important to be maintained, the color grey indicates that the blocks are likely to be pruned, and the color yellow means the importance of layers varies across tasks and samples. 
+
+18 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
+
+Layer Index 
+
+> OBQA
+> PIQA
+> BoolQ
+> SIQA
+> Hellaswag
+> ARC-E
+> Winogrande
+> ARC-C
+> Benchmarks
+
+Layer Decisions on Benchmarks Heatmap of 8 Layers Removal 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Value
+
+Figure 10. A visual illustration of the B UDDY ’s average decision of each transformer block on 25.0% sparsity (8 layers removed). The color green indicates that the blocks are likely important to be maintained, the color grey indicates that the blocks are likely to be pruned, and the color yellow means the importance of layers varies across tasks and samples. 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
+
+Layer Index 
+
+> OBQA
+> PIQA
+> BoolQ
+> SIQA
+> Hellaswag
+> ARC-E
+> Winogrande
+> ARC-C
+> Benchmarks
+
+Layer Decisions on Benchmarks Heatmap of 16 Layers Removal 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Value
+
+Figure 11. A visual illustration of the B UDDY ’s average decision of each transformer block on 50.0% sparsity (16 layers removed). The color green indicates that the blocks are likely important to be maintained, the color grey indicates that the blocks are likely to be pruned, and the color yellow means the importance of layers varies across tasks and samples. 
+
+19 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference       
+
+> Table 12. Performance comparison on Llama 2-7B and Qwen 2.5-7B-Instruct on GSM8K benchmarks for different pruning methods at various sparsity levels (12.5%-25%). Boldface indicates the best performance, and the Underline means the second-order performance. BUDDY achieves the best average performance at moderate-to-high sparsity levels and remains competitive at light sparsity.
+
+Method Pruning method RM Blocks Llama2-7B Qwen2.5-7B-Instruct Dense w/o - 0(0.0%) 14.03 82.87 Shortened Llama static 4(12.5%) 5.16 27.22 ShortGPT static 4(12.5%) 8.11 35.94 SLEB static 4(12.5%) 3.64 37.15 PuDDing dynamic 4(12.5%) 1.74 0.99 FiRST dynamic 4(12.5%) 0.91 27.98 BUDDY dynamic 4(12.5%) 7.81 51.10 
+
+Shortened Llama static 8(25%) 2.05 5.84 ShortGPT static 8(25%) 2.50 6.60 SLEB static 8(25%) 1.97 6.37 PuDDing dynamic 8(25%) 0.99 0.61 FiRST dynamic 8(25%) 1.21 2.58 BUDDY dynamic 8(25%) 2.65 14.63  
+
+> Table 13. Ablation on the Start Layer that applied Decision Module. Average accuracy (%) is reported.
+
+Start layer RM Blocks 4 (12.5%) 8 (25%) 12 (37.5%) 16 (50%) 1 62.71 57.65 51.54 43.81 2 61.76 57.07 51.91 44.16 3 60.61 56.37 52.36 47.80 
+
+4 60.92 56.89 50.91 46.95 
+
+D.7. Budget Predictor Training 
+
+We train the Budget Predictor with GRPO while freezing the LLM backbone and the Decision Module. Training uses the ALPACA dataset. We set the group size to G = 4 , learning rate to 1 × 10 −5, and optimize with Adam at batch size 2 for 
+
+10 ,000 steps. Unless otherwise noted, we adopt the reward from Section C.4 with coefficients λperf = 5 .0 and λcost = 0 .05 .Figure 12 reports the training curves of training loss, training reward, training CE, and training entropy, showing a steady decrease in LGRPO and a concurrent increase in reward, indicating that GRPO effectively learns a stable, discrete budget policy under our setup. 
+
+D.8. Budget Predictor Evaluation and Analysis 
+
+We conduct a quantitative evaluation of the Budget Predictor on eight commonsense reasoning benchmarks together with two higher-variance tasks, MMLU and GSM8K. At inference time, we do not provide a user-specified budget; instead, the predictor automatically selects an instance-wise budget ˆb for each input. Figure 13 summarizes two complementary views. The left panel reports the average execution ratio and the corresponding performance retention rate. On the commonsense benchmarks, the predictor allocates a relatively similar amount of compute on average (roughly 53% ∼ 55% ), while the retained performance still varies across tasks, indicating that the same average compute budget can lead to different task-level robustness. In contrast, the higher-variance tasks require noticeably larger average budgets, suggesting that the predictor tends to allocate more computation when the task distribution is more challenging. More importantly, the right panel visualizes the full distribution of predicted budget intervals, which directly addresses the concern of mode collapse. The predictor does not degenerate to a constant output. For the commonsense benchmarks, most samples concentrate in the lower budget intervals, especially around 0.50 and 0.625 , with non-trivial mass still assigned to higher intervals. For MMLU and GSM8K, the distribution shifts further toward larger budgets: MMLU is mainly 20 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+Table 14. Speed analysis on the Alpaca and SAMSum datasets. The speed is measured as tokens/s. 
+
+Method RM Blocks Alpaca SAMSum Prefill Speed up Decode Speed Up Prefill Speed Up Decode Speed Up Dense 0(0.0%) 1753.16 ×1.00 39.48 ×1.00 4033.83 ×1.00 60.70 ×1.00 PuDDing 4(12.5%) 1491.73 ×0.85 47.70 ×1.21 3255.28 ×0.81 72.84 ×1.20 FiRST 4(12.5%) 1794.51 ×1.02 33.46 ×0.85 4075.96 ×1.01 51.58 ×0.85 BUDDY 4(12.5%) 1991.54 ×1.14 40.03 ×1.01 4035.68 ×1.00 61.28 ×1.01 PuDDing 8(25%) 1691.74 ×0.96 55.96 ×1.42 3662.78 ×0.91 84.29 ×1.39 FiRST 8(25%) 1795.22 ×1.02 33.42 ×0.85 3972.77 ×0.98 51.05 ×0.84 BUDDY 8(25%) 2440.14 ×1.39 46.80 ×1.19 4777.07 ×1.18 71.91 ×1.18 PuDDing 12(37.5%) 1837.07 ×1.05 62.82 ×1.59 3951.91 ×0.98 95.53 ×1.57 FiRST 12(37.5%) 1780.78 ×1.02 33.30 ×0.84 4082.99 ×1.01 51.63 ×0.85 BUDDY 12(37.5%) 2548.39 ×1.45 51.49 ×1.30 5476.04 ×1.36 79.11 ×1.30 PuDDing 16(50%) 2196.42 ×1.25 81.63 ×2.07 4836.26 ×1.20 124.85 ×2.06 FiRST 16(50%) 1792.25 ×1.02 33.49 ×0.85 4041.14 ×1.00 51.20 ×0.84 BUDDY 16(50%) 3348.18 ×1.91 64.84 ×1.64 6581.55 ×1.63 99.12 ×1.63 
+
+concentrated around the 0.625 interval, while GSM8K places the largest mass on the 0.75 interval. This pattern shows that the Budget Predictor is both task-sensitive and input-sensitive, rather than behaving as a fixed static strategy with a nearly constant execution rate. 
+
+## E. Background 
+
+LLMs Architecture. Given a tokenized sequence X = {x1, x 2, . . . , x n}, an autoregressive LLM predicts the next token 
+
+xn+1 by applying an embedding layer, a stack of L Transformer blocks, and a classification head: 
+
+hn = FL ◦ F L−1 ◦ · · · ◦ F 1 ◦ F embed (X ), xn+1 ∼ Softmax  Fhead (hn). (16) Here Fembed denotes token embeddings, {F ℓ}Lℓ=1 are Transformer blocks, and Fhead maps the final hidden state to logits. 
+
+Prefill vs. Decode. Inference consists of a prefill phase and an autoregressive decode phase. In prefill, the model processes the entire prompt with teacher forcing. During decoding, the model generates one token at a time and appends it to the context. To avoid recomputing attention over the full history at every step, LLMs maintain a KV cache of keys/values from prior positions. Let t be the current decoding step and (Qt, K t, V t) the query/key/value of the new token. With cached states 
+
+K(t−1)  
+
+> cache
+
+, V (t−1)  
+
+> cache
+
+, attention uses and the cache is updated by: 
+
+Attn  Qt, [K(t−1)  
+
+> cache
+
+; Kt], [V (t−1)  
+
+> cache
+
+; Vt], K(t) 
+
+> cache
+
+= [ K(t−1)  
+
+> cache
+
+; Kt], V (t) 
+
+> cache
+
+= [ V (t−1)  
+
+> cache
+
+; Vt]. (17) This mechanism substantially reduces decoding compute. 
+
+## F. Use Of LLMs 
+
+In this study, LLMs are employed as automated proofreading agents to inspect, revise, and polish the manuscript. Specifically, they are tasked with detecting spelling and grammatical errors, assessing logical coherence and fluency of expression, and rewriting or condensing paragraphs where necessary. 
+
+## G. Software and Hardware Configuration 
+
+Our implementation utilizes the following configurations: PyTorch version 2.1.2, Transformers library version 4.41.0, PEFT (Parameter-Efficient Fine-Tuning) library version 0.11.1, CUDA version 12.4, GPU: NVIDIA V100 GPU with 32GB of memory, NVIDIA A100 GPU with 80GB, Operating System: Ubuntu. 21 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 0 2000 4000 6000 8000 10000 
+
+step 
+
+0.1700 
+
+0.1701 
+
+0.1702 
+
+0.1703 
+
+> loss
+
+loss curve (EMA =0.95) 
+
+raw 
+
+smoothed (EMA =0.95) 
+
+(a) Training Loss of Budget Predictor via GRPO. 0 2000 4000 6000 8000 10000 
+
+step 
+
+25 
+
+20 
+
+15 
+
+10 
+
+5
+
+0
+
+> reward
+
+reward curve (EMA =0.95) 
+
+raw 
+
+smoothed (EMA =0.95) (b) Training Reward of Budget Predictor via GRPO. 0 2000 4000 6000 8000 10000 
+
+step 
+
+3.4006 
+
+3.4007 
+
+3.4008 
+
+3.4009 
+
+3.4010 
+
+3.4011 
+
+> entropy
+
+entropy curve (EMA =0.95) 
+
+raw 
+
+smoothed (EMA =0.95) 
+
+(c) Training Entropy of Budget Predictor via GRPO. 0 2000 4000 6000 8000 10000 
+
+step 
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+> CE
+
+CE curve (EMA =0.95) 
+
+raw 
+
+smoothed (EMA =0.95) (d) Training CE of Budget Predictor via GRPO. 
+
+Figure 12. Training details of GRPO. Training loss, reward, CE, and entropy are reported. OBQA 
+
+> PIQA
+> BoolQ
+> SIQA
+> HellaSwag
+> ARC-E
+> ARC-C
+> WinoGrande
+> MMLU
+> GSM8K
+
+Task 
+
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Percentage (%)
+> 84.6
+> 73.0
+> 78.3
+> 86.2
+> 65.2
+> 68.4
+> 83.1
+> 74.4
+> 78.7
+> 75.1
+> 53.5
+> 53.9
+> 55.3
+> 54.6
+> 54.6
+> 54.3
+> 54.7
+> 54.3
+> 67.0
+> 72.7
+
+Task-Level Accuracy and FLOPs Ratio     
+
+> Accuracy / Retention
+> FLOPs Ratio
+> 0.50 0.625 0.75 0.875 1.0
+
+Predicted Budget Interval                                         
+
+> OBQA
+> PIQA
+> BoolQ
+> SIQA
+> HellaSwag
+> ARC-E
+> ARC-C
+> WinoGrande
+> MMLU
+> GSM8K
+> Task
+> 78.6% 17.2% 2.6% 0.6% 1.0%
+> 79.4% 12.9% 5.4% 1.6% 0.7%
+> 76.4% 13.3% 4.8% 2.4% 3.2%
+> 79.3% 12.4% 3.0% 2.8% 2.6%
+> 73.9% 20.3% 2.6% 1.2% 2.0%
+> 76.5% 16.2% 4.2% 2.6% 0.5%
+> 79.3% 11.1% 4.1% 3.3% 2.2%
+> 79.0% 14.6% 1.5% 2.7% 2.2%
+> 7.2% 59.1% 26.4% 5.1% 2.2%
+> 6.6% 24.1% 55.3% 9.2% 4.8%
+
+Budget Predictor Distribution Across Tasks 
+
+> 10
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> Samples (%)
+
+Figure 13. Budget Predictor evaluation and analysis across tasks. Left: average performance retention and average execution ratio when the budget is selected automatically by the Budget Predictor. Right: instance-level budget distribution over five discrete budget intervals, showing that the predictor adapts its compute allocation across tasks rather than collapsing to a single budget. 
+
+22 BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference 
+
+## H. LLM versions and Datasets 
+
+We provide the Hugging Face link of LLMs used in the experiment: Llama 2-7B: https://huggingface. co/meta-llama/Llama-2-7b ; Llama 1-13B: https://huggingface.co/yahma/llama-13b-hf ;Llama 3-8B: https://huggingface.co/meta-llama/Meta-Llama-3.1-8B ; Qwen2.5-7B: https: //huggingface.co/Qwen/Qwen2.5-7B-Instruct ; Alpaca: https://huggingface.co/datasets/ yahma/alpaca-cleaned .23
