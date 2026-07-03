@@ -1,0 +1,1124 @@
+Title: ContinuumCellAgent: A Framework-Guided Agent for Long-Horizon Scientific Research
+
+URL Source: https://www.biorxiv.org/content/10.64898/2026.06.15.732409v1.full.pdf
+
+Published Time: Fri, 03 Jul 2026 03:11:35 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# CONTINUUM CELL AGENT : A Framework-Guided Agent for Long-Horizon Scientific Research 
+
+Hao Li 1, Yifei Lu 1, Kaiwen Fang 1, Zixi Xu 1, Fuhai Li 1,* 1Washington University in St. Louis, School of Medicine, St. Louis, MO, USA 
+
+> *
+
+Corresponding author June 15, 2026 
+
+Abstract 1
+
+AI-scientist systems are beginning to automate parts of scientific research. We present C ONTINUUM CELL AGENT ,2
+
+an autonomous agent that executes literature review, hypothesis formation, computational experimentation, manuscript 3
+
+drafting, and adversarial peer review as a single unattended run. Existing AI scientist systems remain difficult to 4
+
+diagnose because they lack modularity, systematic prompt grounding, and observability into long-running behavior. 5
+
+CONTINUUM CELL AGENT addresses these gaps with a modular supernode architecture for stage-wise backend 6
+
+swapping, protocols grounded in curated research-method checklists that also define reviewer rubrics, and a diagnostics 7
+
+layer that records file-based artifacts, message traces, and state transitions. We evaluate the system on open-domain 8
+
+QA benchmarks and biomedical/longevity case studies, showing that it can produce checkable research artifacts while 9
+
+exposing pipeline dynamics for rigorous AI co-scientist research. 10 
+
+# 1 Introduction 11 
+
+The vision of an AI system that autonomously conducts scientific research— formulating hypotheses, designing 12 
+
+experiments, executing code, and writing papers—has motivated a growing body of work [ 3, 5, 13 , 19 ]. Recent 13 
+
+advances in large language models have made this vision increasingly tangible: agents can now search literature, 14 
+
+write and debug code, and produce coherent manuscripts. Yet the path from demonstration to rigorous, reproducible 15 
+
+autonomous science remains fraught with under-explored challenges. 16 
+
+Existing systems typically automate only one or two stages of the research lifecycle. ResearchAgent [3] generates 17 
+
+ideas via knowledge-graph traversal and LLM refinement but does not execute experiments or produce manuscripts. 18 
+
+MLAgentBench [17] benchmarks coding agents on machine-learning tasks but lacks literature review, hypothesis 19 
+
+generation, and paper-writing stages. The AI Scientist [19 ] covers the full cycle— ideation, coding, writing, and 20 
+
+self-review—but operates exclusively on ML-template experiments with pre-written scaffolding, uses a monolithic 21 
+
+architecture that cannot swap agent backends, and provides no diagnostics into where or why the pipeline fails. 22 
+
+We identify three gaps that limit progress toward robust autonomous scientific discovery: 23 
+
+G1. Modular agent composition. No existing system lets researchers plug different agent backends into different 24 
+
+stages of the same pipeline. This makes it impossible to perform controlled ablations—e.g., “Does a planner-25 
+
+executor outperform a simple ReAct agent at modeling when ideation and paper-writing are held constant?”—or 26 
+
+to leverage provider-specific strengths (one model/agent/prompt may excel at retrieval, another at code generation). 27 
+
+The lack of modularity also impedes extensibility: adding a new agent architecture requires rewriting the entire 28 
+
+system rather than swapping a single component. As the landscape of LLM agents evolves rapidly, this rigidity 29 
+
+becomes a significant barrier to systematic research. 30 
+
+G2. Systematic prompt grounding. Agent prompts are typically written ad hoc, reflecting the intuitions of individual 31 
+
+developers rather than established methodological principles. Yet decades of scholarship have codified best 32 
+
+practices for scientific reasoning (Pearl’s causal hierarchy [ 21 ], Popper’s falsifiability [ 22], Chamberlin’s multiple 33 
+
+working hypotheses [ 7]), statistical rigor (ASA Statement on p-values [ 26 ], Gelman’s forking-paths analysis [ 8]), 34 
+
+and scientific writing (Schimel’s OCAR structure [24], Toulmin’s argument model [25]). 35 
+
+1
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+We use these frameworks to make agent behavior more disciplined and—crucially—to provide the adversarial 36 
+
+reviewer with concrete, auditable criteria. When instructions and evaluation rubrics derive from the same source, 37 
+
+we eliminate the “misalignment tax” where agents optimize for implicit criteria different from those used to judge 38 
+
+them. The prompts can be studied through benchmark results, but they are also part of the explanation for why 39 
+
+an agent reported a claim, rejected a result, or revised a manuscript. Prior systems such as FARS [ 1 ] and The AI 40 
+
+Scientist [ 19 ] discuss paper acceptance or final quality as evaluation signals; we argue that the process of making 41 
+
+the science, including the quality of intermediate reasoning, should also be inspectable. 42 
+
+G3. State-level observability and multi-phase evaluation. Prior work reports final output quality (e.g., paper 43 
+
+acceptance rates, benchmark scores) but not where in the pipeline the agent struggles or how revision loops affect 44 
+
+quality over time. As autonomous research systems become longer-running and more complex, final-outcome 45 
+
+metrics alone are insufficient. We need fine-grained observability: Which stage consumes the most time? Where 46 
+
+do failures cluster? Do additional revision iterations improve quality, or do they risk context-window exhaustion? 47 
+
+Furthermore, evaluation itself is multifaceted: automated benchmarks with known answers test correctness; AI 48 
+
+reviewers provide scalable quality estimation; and expert case studies validate real-world utility. No prior system 49 
+
+integrates all three evaluation modalities. 50 
+
+CONTINUUM CELL AGENT addresses all three gaps. Its contributions are: 51 
+
+C1. Modular Supernode Architecture (Section 3). We organize the research lifecycle as a LangGraph state machine 52 
+
+with three supernodes —Ideation, Modeling, and Paper—each defined by a protocol, a tool set, message memory, 53 
+
+file artifacts, and an iteration budget. Each supernode is followed by an adversarial review gate that can accept 54 
+
+(advancing to the next stage) or reject and route back to any upstream stage. Crucially, the agent backend 55 
+
+powering each supernode is a configuration choice: command-line flags such as --modeler react and --modeler 56 
+
+planner-executor swap the Modeling backend, enabling controlled experiments. This modularity also facilitates 57 
+
+agent-level hyperparameter optimization —an under-explored research direction where the “hyperparameters” are 58 
+
+architectural choices like agent type, iteration budget, and tool set. 59 
+
+C2. Framework-Grounded Protocols (Section 3.2). We compiled operationalizable methodological frameworks 60 
+
+into a reference document and encoded the relevant subset as stage-specific checklists embedded directly in 61 
+
+agent protocols. For Ideation: Chamberlin’s multiple hypotheses, Popper’s falsifiability, Pearl’s causal ladder, 62 
+
+Heilmeier’s catechism. For Modeling: Tukey’s EDA protocol, Gelman’s forking-paths documentation, ASA’s 63 
+
+statistical rigor. For Paper: Schimel’s OCAR narrative, Toulmin’s argument structure, Feynman’s integrity principle. 64 
+
+The same checklists serve as evaluation rubrics for the adversarial reviewer, ensuring alignment between agent 65 
+
+instructions and assessment criteria. Every stage ends with a Gawande-style DO-CONFIRM exit checklist that 66 
+
+catches systematic omissions before yielding control. 67 
+
+C3. State Dynamics Diagnostics & Multi-Phase Benchmarking (Section 3.3, Section 4). A built-in diagnostics 68 
+
+layer emits structured timeline events ( stage_start , stage_end ) to a JSONL file, recording per-stage wall-clock 69 
+
+time, iteration counts, and outcomes. Analysis scripts produce stage-level profiling, Gantt-style timelines, and 70 
+
+failure-mode taxonomies. We evaluate C ONTINUUM CELL AGENT with biomedical/longevity case studies and 71 
+
+open-domain QA benchmarks, and use the traces to study stage timing, rollback depth, and failure modes. 72 
+
+The remainder of this paper is organized as follows. Section 2 surveys related work and positions C ONTINU -73 
+
+> UM
+
+CELL AGENT within the landscape of autonomous scientific agents. Section 3 details the supernode architecture, 74 
+
+framework-grounded protocols, traceable execution, session isolation, and LLM fallback chain. Section 4 reports 75 
+
+biomedical/longevity case studies and open-domain QA results. Section 5 discusses what the current evidence does and 76 
+
+does not establish, and Section 6 concludes. 77 
+
+# 2 Related Work 78 
+
+Table 1 positions C ONTINUUM CELL AGENT against the most relevant prior systems along six capability axes. 79 
+
+Ideation or search-only systems. ResearchAgent [ 3 ] uses an academic knowledge graph to propose research ideas, 80 
+
+iteratively refined by LLM reviewers. OpenScholar [ 2] retrieves and synthesizes literature with RAG over 45M papers. 81 
+
+Neither executes experiments. 82 
+
+2
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+Table 1: Comparison of autonomous scientific-discovery systems. ✓ = supported, ∼ = partial, ✗ = absent. Columns: Lit. Review (LR), Code Exec. (CE), Paper Draft (PD), Self-Review (SR), Modular Agents (MA), State Diag. (SD). 
+
+# System LR CE PD SR MA SD 
+
+# ResearchAgent [3] ✓ ✗ ✗ ✓ ✗ ✗
+
+# Coscientist [5] ∼ ✓ ✗ ✗ ✗ ✗
+
+# MLAgentBench [17] ✗ ✓ ✗ ✗ ✗ ✗
+
+# Data Interp. [11] ✗ ✓ ✗ ✗ ✗ ✗
+
+# OpenScholar [2] ✓ ✗ ✗ ✗ ✗ ✗
+
+# Popper [14] ✗ ✓ ✗ ✗ ✗ ✗
+
+# AI Scientist [19] ∼ ✓ ✓ ✓ ✗ ✗
+
+# CONTINUUM CELL AGENT (ours) ✓ ✓ ✓ ✓ ✓ ✓
+
+Code-execution agents. MLAgentBench [ 16] and Data Interpreter [ 11 ] excel at coding tasks but lack literature 83 
+
+review and manuscript production. Popper [ 14 ] validates hypotheses via falsification experiments but does not generate 84 
+
+hypotheses or write papers. 85 
+
+Domain-specific agents. ChemCrow/Coscientist [ 5 ] integrates chemistry tools (RDKit, robotic labs) but is single-86 
+
+domain and produces no manuscript. In biomedicine, OmniCellAgent [ 12 ] and Biomni [ 15] integrate domain databases 87 
+
+and specialized analysis tools, but their validation remains field-specific and their designs are less suited to open-ended, 88 
+
+end-to-end scientific studies. Biomedical case studies are a common application for such systems: Robin automates a 89 
+
+path from hypothesis generation to analysis, but its validation is case-study based and its components are not designed 90 
+
+for fine-grained self-evolution or modular backend swaps. Kosmos [ 20 ] extends the scope to a broader range of 91 
+
+open- and closed-ended problems. BioMedAgent [ 6] adds a self-evolving mechanism, but focuses on expert-curated 92 
+
+biomedical analysis questions rather than an end-to-end research workflow that produces a manuscript. 93 
+
+Full-cycle systems. The AI Scientist [ 19 ] is the closest predecessor: it generates ideas, writes code, runs experiments, 94 
+
+drafts papers, and self-reviews. However, it (i) operates only on ML-template experiments with pre-written scaffolding, 95 
+
+(ii) uses a monolithic architecture with no mechanism to swap agent backends per stage, and (iii) provides no state-96 
+
+level diagnostics. CONTINUUM CELL AGENT generalizes the full-cycle approach to arbitrary scientific domains 97 
+
+(demonstrated on biomedical research), introduces modular agent composition, and adds a diagnostics layer for studying 98 
+
+agent dynamics. 99 
+
+# 3 Method 100 
+
+CONTINUUM CELL AGENT is designed as practical research software rather than a single monolithic prompt. Its main 101 
+
+structure is a LangGraph state machine with three major tasks—Ideation, Modeling, and Paper—implemented as 102 
+
+supernodes . Each supernode owns a stage-specific protocol, tool set, working memory, and file-based artifacts, and 103 
+
+each is followed by an adversarial review gate that can accept the result or route execution back to any previous stage 104 
+
+(Figure 1). This design makes the pipeline useful both as an autonomous research assistant and as an experimental 105 
+
+harness: the same task can be rerun with different agents, models, budgets, or tools while preserving the protocol and 106 
+
+trace format. 107 
+
+3
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+Ideation 
+
+budget 20; swappable agent/LLM 
+
+Rev 
+
+Modeling 
+
+budget 30; Docker tools 
+
+Rev 
+
+Paper 
+
+budget 15; manuscript agent 
+
+Rev 
+
+✓ Accept 
+
+phase p
+
+pass pass pass 
+
+web_search fetch_url write/read artifact: proposal execute_code fetch_url write/read/list Docker: Python/R/Julia artifact: diagnosis + plots read/list/write uses all prior artifacts artifact: manuscript 
+
+Tools & artifacts Frameworks (Ideation) 
+
+Chamberlin: competing hypotheses Popper: falsifiability Pearl: causal ladder Heilmeier: research questions Exit: DO-CONFIRM proposal 
+
+Frameworks (Modeling) 
+
+Tukey: EDA first Box: parsimony Gelman: forking paths ASA/Cohen: statistical rigor Exit: executable diagnosis 
+
+Frameworks (Paper) 
+
+Schimel: OCAR narrative Toulmin: argument structure Swales: CARS Feynman: integrity Exit: paper + bibliography 
+
+Frameworks (Review) 
+
+Pearl: causal audit Ioannidis: PPV check Gelman: audit paths Lakatos: revision logic Decision: pass or rollback rollback to any upstream stage 
+
+timeline.jsonl 
+
+stage events + durations 
+
+Phase p complete 
+
+accepted artifacts seed next phase optional phase p+1 improvement cycle 
+
+LangGraph state machine with session-isolated workspaces; 
+
+checklists guide each agent and define reviewer rubrics ; LLM fallback: Gemini [9] → GPT-4.1 → Groq 
+
+Figure 1: Top-down annotated flowchart of C ONTINUUM CELL AGENT . The center spine shows the three supernodes (Ideation, Modeling, Paper)—each with a swappable agent backend and LLM—interleaved with adversarial review gates that either pass forward (green) or roll back to any upstream stage via the dashed red lanes on the far left. A final accept closes one research phase; the accepted artifacts can seed a later phase, shown by the dashed green loop under the phase-complete block, enabling multi-phase improvement rather than treating acceptance as the end of all work. The left column lists the tool set bound to each supernode (only Modeling uses the Docker sandbox); the right column lists the methodological frameworks that ground each stage’s protocol and simultaneously serve as the reviewer’s rubric. 
+
+3.1 Supernodes and Review Gates 108 
+
+Each supernode is defined by a protocol , not by a particular LLM provider. The protocol specifies the stage objective, 109 
+
+allowed tools, memory interface, required output files, iteration budget, and exit checklist. Ideation searches literature 110 
+
+and writes a proposal with competing hypotheses; Modeling writes and executes Python/R/Julia code in a Docker 111 
+
+sandbox and reports statistical results; Paper reads all accumulated artifacts and drafts a manuscript with citations. Full 112 
+
+per-stage tool specifications, budgets, session isolation, and the LLM fallback chain are in Appendix A. 113 
+
+4
+
+.CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint The stages use both file-based state and message-based memory . File tools read and write durable artifacts such as 114 
+
+research_proposal.md , source code, plots, diagnosis_report.md , manuscripts, and bibliographies. The message 115 
+
+state carries the current task, prior reviewer decisions, summaries, and routing context across the LangGraph. This 116 
+
+separation is important in practice: files make scientific outputs inspectable and rerunnable, while memory lets the 117 
+
+agent coordinate long-horizon decisions without re-parsing the whole workspace at every step. 118 
+
+The review gates are lightweight, tool-free LLM calls that fire after every supernode. Each gate scores the stage’s 119 
+
+output on stage-appropriate criteria—gap validity for ideation, statistical rigor for modeling, novelty and soundness 120 
+
+for the paper—and returns either ACCEPT or a routing directive to an upstream stage. Because the gates use the same 121 
+
+framework-grounded rubrics embedded in the supernode protocols (Section 3.2), agent instructions and evaluation 122 
+
+criteria stay aligned. 123 
+
+Swappable agents and adapters. Because a supernode exposes a stable protocol—inputs, tools, required artifacts, 124 
+
+review rubric, and trace schema—the implementation can swap the backend agent without changing the rest of the 125 
+
+pipeline. A command-line flag (e.g., --modeler react or --modeler planner-executor ) can replace the Modeling 126 
+
+backend while holding ideation, paper writing, tools, and review budget fixed. The same adapter pattern generalizes to 127 
+
+other stages and enables heterogeneous configurations, prompt-adjustment variants, and agent-level hyperparameter 128 
+
+optimization over choices such as backend, prompt variant, iteration budget, and tool set. 129 
+
+Prompt-based evolution. Plan-Evolve is a prompt-adjustment variant of Plan-Execute. It starts from the same initial 130 
+
+stage prompt, runs the agent with the available tools, and then lets the agent revise the prompt text as the run proceeds. 131 
+
+Subsequent attempts therefore use adjusted prompts rather than a separate training procedure. The adapter interface 132 
+
+remains the same for comparing ReAct, Plan-Execute, and Plan-Evolve. 133 
+
+3.2 Framework Grounding as Protocol Design 134 
+
+The protocol for each supernode is grounded in methodological checklists rather than ad hoc instructions. We compiled 135 
+
+operationalizable frameworks into a reference document ( FRAMEWORKS_REFERENCE.md , 1705 lines) and encoded the 136 
+
+relevant subset as stage-specific checklists embedded directly in agent protocols. 137 
+
+The right column of Figure 1 summarizes the mapping from frameworks to pipeline stages and shows that the same 138 
+
+checklists drive both agent execution and reviewer evaluation. 139 
+
+Dual-use design. A checklist serves two roles simultaneously: (1) it guides the agent during execution (“have I 140 
+
+classified my hypothesis on Pearl’s causal ladder?”), and (2) it provides the reviewer with concrete criteria to audit 141 
+
+(“did the paper overclaim causation from Rung-1 evidence?”). Because the review gate fires after every supernode, each 142 
+
+stage’s output is validated before downstream stages consume it. This eliminates the common failure mode where agent 143 
+
+and reviewer operate under different implicit standards, and catches errors early (e.g., a flawed hypothesis is rejected 144 
+
+before expensive modeling begins). 145 
+
+DO-CONFIRM exit protocol. Inspired by Gawande’s Checklist Manifesto , every supernode works freely during its 146 
+
+iteration budget, then runs a mandatory exit checklist before yielding control. This catches systematic omissions (e.g., 147 
+
+missing effect sizes, unreported negative results) without constraining the agent’s exploratory freedom during main 148 
+
+execution. 149 
+
+3.3 Traceable Execution and Agent Dynamics 150 
+
+For long-horizon agent evaluation, the intermediate trajectory is as important as the final artifact. CONTINUUM -151 
+
+CELL AGENT therefore logs both durable scientific artifacts and structured execution traces. Every session uses an 152 
+
+isolated workspace with a concrete folder layout so that sources, generated code, figures, diagnosis reports, reviewer 153 
+
+messages, and manuscripts can be inspected after the run. In parallel, every node execution emits structured events to a 154 
+
+timeline.jsonl file: 155 
+
+• stage_start : stage name, wall-clock timestamp, iteration index. 156 
+
+• stage_end : duration in seconds, outcome ( completed or failed ), iteration index. 157 
+
+5
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+Figure 2: State-transition summary across four provider-LLM Plan-Execute case studies (AD, LUAD, Longevity, and PDAC). Each horizontal bar shows elapsed time through Ideation, Modeling, Paper, and review gates, with dashed markers denoting phase boundaries. The aggregate view makes execution policy inspectable at a level that final papers and scalar scores hide: forward progress, reviewer-triggered rollbacks, and repeated stages across cases. We use this diagnostic as descriptive evidence about agent dynamics, not as a standalone quality metric. A companion analysis script ( analyse_timeline.py ) produces: (i) a per-stage breakdown table with wall-clock 158 
+
+time and percentage, (ii) a Gantt-style timeline plot, and (iii) a structured JSON summary. 159 
+
+This traceability is what makes the experiments in this paper possible. The saved sources and executed code make 160 
+
+case-study claims checkable, while the state trace supports analyses of time-to-transition, rollback depth, score-versus-161 
+
+cost tradeoffs, and where the system fails or improves under revision. We view these analyses as an opening for future 162 
+
+agent-dynamics work rather than a solved evaluation protocol. 163 
+
+Stage profiling. The timing trace is an auditing device rather than a deterministic claim about how long each stage 164 
+
+must take. It lets us inspect where a particular controlled run spent time, provided the run configuration is kept visible: 165 
+
+per-stage step budgets, maximum revision count, selected run phases, backend latency, tool runtime, and data availability 166 
+
+all affect the observed allocation. In the reported case studies, modeling is the largest wall-clock component, but we 167 
+
+treat that as a descriptive property of these runs under fixed controls, not as an intrinsic law of the workflow. 168 
+
+Failure-mode taxonomy. We observe three primary failure modes: (1) context-window exhaustion after extended 169 
+
+revision loops (the accumulated conversation exceeds provider limits), (2) sandbox execution errors (missing packages, 170 
+
+data download failures), and (3) reviewer hallucination (the reviewer requests changes already present in the manuscript). 171 
+
+Mode (1) is the most common and suggests a need for context summarization between iterations. 172 
+
+Revision productivity. Not all reviewer-triggered revisions are productive. Our diagnostics let us inspect how 173 
+
+reviewer scores and failure risk change as the run approaches its configured revision cap. In the current runs, early 174 
+
+revision cycles tend to improve the manuscript, while later cycles show diminishing returns and greater context-window 175 
+
+risk; this motivates treating max revisions and enabled run phases as experimental controls rather than assuming an 176 
+
+open-ended revision process is always better. 177 
+
+# 4 Experimental Setup and Results 178 
+
+4.1 Evaluation Questions and Setup 179 
+
+We evaluate three questions that match what the current system can support: (Q1) Can a protocol-grounded agent 180 
+
+complete useful end-to-end scientific workflows with saved sources, executable code, and reported artifacts? (Q2) Can 181 
+
+6
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+the same framework also support open-source question-answering benchmarks, showing that the design is not only a 182 
+
+biomedical demo? and (Q3) Does the traceable implementation make the agent more inspectable—revealing stage 183 
+
+transitions, revision depth, time cost, and failure modes—even when those diagnostics raise new questions rather than 184 
+
+closing them? To answer them, we combine biomedical case studies with open-domain QA benchmarks and trajectory 185 
+
+logs. 186 
+
+Models. For the open-source QA tests, the no-tool baseline and all ReAct, Plan-Execute, and Plan-Evolve agents use 187 
+
+the same locally hosted Qwen3.5-27B model [ 23 ] served with sglang . For the Tier-1 case studies, C ONTINUUM CEL -188 
+
+> L
+
+AGENT uses provider LLMs through a common adapter layer: the case-study traces use Plan-Execute trajectories from 189 
+
+Gemini 3.1 Pro [9] and GPT-family configurations. Serving and sandbox-package details are given in Appendix A. 190 
+
+Tier 1: End-to-end biomedical discovery (reported in this paper). 191 
+
+1. PDAC-research: "Identify key dysfunctional genes and disrupted pathways in pancreatic ductal adenocarcinoma 192 
+
+(PDAC). Perform differential expression and pathway enrichment analysis on public RNA-seq data, report top 193 
+
+dysregulated genes, enriched GO/KEGG terms, and a publication-ready volcano plot." 194 
+
+2. AD-research: "Investigate dysregulated genes and molecular pathways underlying Alzheimer Disease. Analyze 195 
+
+public transcriptomic datasets, perform differential expression and gene-set enrichment, and report candidate 196 
+
+therapeutic targets with supporting statistical evidence." 197 
+
+3. LUAD-research: "Characterize dysfunctional genes and pathway alterations in lung adenocarcinoma (LUAD). 198 
+
+Conduct differential expression analysis on TCGA or GEO data, identify driver pathways via enrichment analysis, 199 
+
+and benchmark against known LUAD driver genes from the literature." 200 
+
+4. Longevity-research: "Find the molecular targets and signaling pathways and other factors of longevity. Survey 201 
+
+the literature and public transcriptomic / multi-omics datasets across long-lived models (e.g. centenarians, 202 
+
+naked mole rat, caloric-restricted cohorts), identify high-confidence longevity-associated genes and pathways 203 
+
+(IGF1/mTOR, AMPK, sirtuins, autophagy, senescence, NAD+ metabolism, etc.), perform differential expression 204 
+
+or set enrichment where data permits, and report ranked candidate targets, supporting statistical evidence, and a 205 
+
+publication-ready visualisation." 206 
+
+Tier 2: Open-domain retrieval and multi-hop QA. To test retrieval reliability, multi-hop reasoning, and answer 207 
+
+faithfulness beyond the biomedical case studies, we run the same agent on TriviaQA, HotpotQA, and 2WikiMultihopQA 208 
+
+from LongBench v1 [ 4], with task counts chosen for available compute and evaluated across the available agent 209 
+
+strategies (ReAct, Plan-Execute, Plan-Evolve) with exact coverage accounting (Section 4.3): 210 
+
+1. TriviaQA , HotpotQA , 2WikiMultihopQA (LongBench v1 English retrieval-QA subsets; 200 questions per subset 211 
+
+for ReAct and Plan-Execute): single- and multi-hop factoid QA with published 30B-class baselines. 212 
+
+Broader agentic-environment benchmarks that require live browser or desktop actuation, including GAIA, WebArena, 213 
+
+VisualWebArena, OSWorld, and AgentBench, fall outside our current text-and-retrieval tool set and are left to future 214 
+
+work (Appendix B). 215 
+
+Tier-2 sampling protocol. Coverage is reported per benchmark and agent. ReAct and Plan-Execute complete the 216 
+
+200-question evaluation sample for each selected LongBench subset; Plan-Evolve is evaluated on its deterministic 217 
+
+120-question run per subset with prompt adjustment enabled. The selected tasks are recorded so that any strategy 218 
+
+comparison can be interpreted with its exact coverage. 219 
+
+Unless noted otherwise, Tier-1 biomedical runs reported in the main text use Gemini 3.1 Pro as the primary LLM, 220 
+
+max 5 revision iterations, and the Docker scientific stack described in Appendix A. 221 
+
+4.2 Main Results 222 
+
+End-to-end capability and checkability. AD and LUAD complete the full research pipeline across five revision 223 
+
+iterations. PDAC completes four full cycles and fails on the fifth modeling invocation because accumulated context 224 
+
+7  
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint react
+> plan-execute
+> plan-evolve
+> Qwen3.5-27B (no agent)
+> R1-base (Qwen2.5-7B) (OS)
+> Search-R1 (Qwen2.5-7B) (OS)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> react
+> plan-execute
+> plan-evolve
+> Qwen3.5-27B (no agent)
+> R1-base (Qwen2.5-7B) (OS)
+> Search-R1 (Qwen2.5-7B) (OS)
+> react
+> plan-execute
+> plan-evolve
+> Qwen3.5-27B (no agent)
+> R1-base (Qwen2.5-7B) (OS)
+> Search-R1 (Qwen2.5-7B) (OS)
+> system
+> score
+> triviaqa hotpotqa 2wikimqa
+> metric
+> EM
+> F1_np
+> substr
+
+Figure 3: Tier-2 results on TriviaQA, HotpotQA, and 2WikiMultihopQA: each agent strategy (ReAct, Plan-Execute, Plan-Evolve) vs. the no-tool Qwen3.5-27B baseline and published anchors, faceted by benchmark and grouped by metric. exceeds provider limits. Each case saves sources, executable Python/R code, plots and metrics, reviewer feedback, a 225 
+
+diagnosis report, and a manuscript with bibliography. We therefore treat completion as an auditable artifact bundle, not 226 
+
+as evidence that the scientific conclusion is correct. 227 
+
+Failure modes and traces. The same artifacts expose scientific failures. In the AD run, the manuscript claims 228 
+
+real-world cohorts although the executed pipeline used generated synthetic data; in PDAC, the agent acquired GEO data 229 
+
+but left pathway-enrichment errors and stromal-contamination concerns unresolved. Stage logs show modeling as the 230 
+
+largest time component in these runs and review as a rollback trigger, but these patterns are descriptive under fixed 231 
+
+controls (revision caps, enabled phases, stage budgets, backend latency, and tool runtime), not deterministic properties 232 
+
+of the tasks. 233 
+
+4.3 Tier 2: Open-Domain QA Results 234 
+
+We evaluate locally hosted Qwen3.5-27B with no tools, with three agent strategies, and against comparable open-source 235 
+
+anchors. Pure-model LongBench anchors come from the LongBench work and released source code [ 4]; Search-R1/R1-236 
+
+base anchors are reported in Search-R1 [ 18 ], with the R1 baseline tied to Guo et al. [ 10 ]. The selected LongBench 237 
+
+rows are provided-context F1 anchors, whereas our agents receive only the question and retrieve evidence by open-web 238 
+
+search. Search-R1 is a question-only EM anchor, but in a controlled Wikipedia-2018/E5 retrieval environment. We 239 
+
+report F1 NP for LongBench-style single-span comparison and EM for question-only QA anchors. 240 
+
+TriviaQA, HotpotQA, and 2WikiMultihopQA. Figure 3 shows that all agent variants improve over no-tool Qwen 241 
+
+on recall and stricter answer-span scoring; even on TriviaQA, where baseline recall is already high, recall increases 242 
+
+slightly. As zero-shot agent loops without benchmark-specific RL training, the best agent variants substantially improve 243 
+
+over the raw Qwen baseline and approach the separate trained-search track despite not receiving LongBench supporting 244 
+
+passages. The raw-model F1 values are conservative because the scorer does not strip Qwen’s emitted thinking process 245 
+
+before final-answer scoring; a Qwen-specific parser may be needed for calibrated no-tool F1. Against provided-context 246 
+
+LongBench anchors, the best agent variants exceed both open-source rows on 2WikiMultihopQA and are mixed on 247 
+
+8
+
+.CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint the other subsets. Plan-Evolve tests whether prompt adjustment during the run helps; in these results it is not a clear 248 
+
+improvement over ReAct. 249 
+
+4.4 Controlled Backend Comparison 250 
+
+The adapter design supports controlled backend comparisons by fixing the prompt, workspace, tools, reviewer rubric, 251 
+
+and trace schema while the agent strategy changes. Tier 2 uses this for ReAct, Plan-Execute, and Plan-Evolve; a paired 252 
+
+biomedical backend ablation remains future work. 253 
+
+# 5 Discussion 254 
+
+The experiments support a narrow claim: protocol-grounded tool loops can produce inspectable biomedical artifacts and 255 
+
+improve a Qwen3.5-27B baseline on TriviaQA, HotpotQA, and 2WikiMultihopQA (Figure 3). They do not establish 256 
+
+autonomous scientific validity. The AD and PDAC cases show why: a run can finish while using synthetic data or 257 
+
+leaving core analysis errors unresolved. The main value is therefore auditability—linking final outputs to sources, code, 258 
+
+state transitions, and reviewer decisions. Timing and rollback traces are instrumentation under a fixed run configuration, 259 
+
+not general metrics. Backend swapping and Plan-Evolve are useful experimental variables only with matched prompts, 260 
+
+tools, and revision budgets. 261 
+
+# 6 Conclusion 262 
+
+We presented C ONTINUUM CELL AGENT , a traceable testbed for protocol-grounded scientific agents. In the current 263 
+
+experiments, it saves code, sources, intermediate states, and reviewer decisions; it also improves a no-tool Qwen3.5-27B 264 
+
+baseline on TriviaQA, HotpotQA, and 2WikiMultihopQA (Figure 3). The caution is equally important: workflow 265 
+
+completion is auditable, but it is not scientific validity. Reliable autonomous science will require stronger provenance 266 
+
+checks, paired backend ablations, and domain-expert review of the biological claims. 267 
+
+# Limitations 268 
+
+The current system remains limited by coupled failure modes common to long-horizon scientific agents: context-window 269 
+
+exhaustion, unstable memory, brittle biomedical data acquisition, mismatches between cited and processed datasets, 270 
+
+shallow recovery from execution errors, and occasional substitution of synthetic or prototype data when real data access 271 
+
+fails. Benchmark results are likewise conditional on task structure, coverage, metric choice, and judging protocol; the 272 
+
+Plan-Evolve rows are also conditional on the prompt-adjustment trajectory used in the run, and this version reports 273 
+
+TriviaQA, HotpotQA, and 2WikiMultihopQA rather than the broader LongBench suite. Finally, automated reviewers 274 
+
+are useful for scalable triage but cannot replace domain-expert review for scientific validity, especially when data 275 
+
+provenance or biological interpretation is at stake. 276 
+
+9
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+# References 277 
+
+[1] Analemma Intelligence. FARS: Fully automated research system, 2026. URL https://analemma.ai/fars/ .278 
+
+Accessed: June 15, 2026. 279 
+
+[2] Akari Asai, Jacqueline He, Rulin Shao, Weijia Shi, Amanpreet Singh, Joseph Chee Chang, Kyle Lo, Luca Soldaini, 280 
+
+Sergey Feldman, Mike D’Arcy, David Wadden, Matt Latzke, Jenna Sparks, Jena D. Hwang, Varsha Kishore, 281 
+
+Minyang Tian, Pan Ji, Shengyan Liu, Hao Tong, Bohao Wu, Yanyu Xiong, Luke Zettlemoyer, Graham Neubig, 282 
+
+Daniel S. Weld, Doug Downey, Wen-tau Yih, Pang Wei Koh, and Hannaneh Hajishirzi. Synthesizing scientific 283 
+
+literature with retrieval-augmented language models. Nature , 650(8103):857–863, Feb 2026. ISSN 1476-4687. 284 
+
+doi: 10.1038/s41586-025-10072-4. URL https://doi.org/10.1038/s41586-025-10072-4 .285 
+
+[3] Jinheon Baek, Sujay Kumar Jauhar, Silviu Cucerzan, and Sung Ju Hwang. Researchagent: Iterative research idea 286 
+
+generation over scientific literature with large language models, 2025. URL https://arxiv.org/abs/2404. 287 
+
+07738 .288 
+
+[4] Yushi Bai, Xin Lv, Jiajie Zhang, Hongchang Lyu, Jiankai Tang, Zhidian Huang, Zhengxiao Du, Xiao Liu, Aohan 289 
+
+Zeng, Lei Hou, Yuxiao Dong, Jie Tang, and Juanzi Li. LongBench: A bilingual, multitask benchmark for long 290 
+
+context understanding. In Lun-Wei Ku, Andre Martins, and Vivek Srikumar, editors, Proceedings of the 62nd 291 
+
+Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 3119–3137, 292 
+
+Bangkok, Thailand, August 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.acl-long.172. 293 
+
+URL https://aclanthology.org/2024.acl-long.172/ .294 
+
+[5] Daniil A. Boiko, Robert MacKnight, Ben Kline, and Gabe Gomes. Autonomous chemical research with large 295 
+
+language models. Nature , 624(7992):570–578, Dec 2023. ISSN 1476-4687. doi: 10.1038/s41586-023-06792-0. 296 
+
+URL https://doi.org/10.1038/s41586-023-06792-0 .297 
+
+[6] Dechao Bu, Jingbo Sun, Kun Li, Zihao He, Wei Huang, Jinlin Hu, Shanshan Zhang, Shuangshuang Lei, Peipei 298 
+
+Huo, Zhihao Wang, Sheng Wang, Tao Wang, Kai Gao, Yang Wu, Lianhe Zhao, Kai Wang, Gen Li, Huan 299 
+
+Song, Yang Jin, Kang Zhang, Runsheng Chen, and Yi Zhao. Empowering ai data scientists using a multi-agent 300 
+
+llm framework with self-evolving capabilities for autonomous, tool-aware biomedical data analyses. Nature 301 
+
+Biomedical Engineering , Mar 2026. ISSN 2157-846X. doi: 10.1038/s41551-026-01634-6. URL https: 302 
+
+//doi.org/10.1038/s41551-026-01634-6 .303 
+
+[7] Thomas C. Chamberlin. The method of multiple working hypotheses. Science , 15(366):92–96, 1890. 304 
+
+[8] Andrew Gelman and Eric Loken. The statistical crisis in science. American Scientist , 102(6):460–465, 2014. 305 
+
+[9] Google. Gemini 3.1 pro. Large language model, 2026. URL https://google.com .306 
+
+[10] Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, 307 
+
+Shirong Ma, Xiao Bi, Xiaokang Zhang, Xingkai Yu, Yu Wu, Z. F. Wu, Zhibin Gou, Zhihong Shao, Zhuoshu Li, 308 
+
+Ziyi Gao, Aixin Liu, Bing Xue, Bingxuan Wang, Bochao Wu, Bei Feng, Chengda Lu, Chenggang Zhao, Chengqi 309 
+
+Deng, Chong Ruan, Damai Dai, Deli Chen, Dongjie Ji, Erhang Li, Fangyun Lin, Fucong Dai, Fuli Luo, Guangbo 310 
+
+Hao, Guanting Chen, Guowei Li, H. Zhang, Hanwei Xu, Honghui Ding, Huazuo Gao, Hui Qu, Hui Li, Jianzhong 311 
+
+Guo, Jiashi Li, Jingchang Chen, Jingyang Yuan, Jinhao Tu, Junjie Qiu, Junlong Li, J. L. Cai, Jiaqi Ni, Jian Liang, 312 
+
+Jin Chen, Kai Dong, Kai Hu, Kaichao You, Kaige Gao, Kang Guan, Kexin Huang, Kuai Yu, Lean Wang, Lecong 313 
+
+Zhang, Liang Zhao, Litong Wang, Liyue Zhang, Lei Xu, Leyi Xia, Mingchuan Zhang, Minghua Zhang, Minghui 314 
+
+Tang, Mingxu Zhou, Meng Li, Miaojun Wang, Mingming Li, Ning Tian, Panpan Huang, Peng Zhang, Qiancheng 315 
+
+Wang, Qinyu Chen, Qiushi Du, Ruiqi Ge, Ruisong Zhang, Ruizhe Pan, Runji Wang, R. J. Chen, R. L. Jin, Ruyi 316 
+
+Chen, Shanghao Lu, Shangyan Zhou, Shanhuang Chen, Shengfeng Ye, Shiyu Wang, Shuiping Yu, Shunfeng Zhou, 317 
+
+Shuting Pan, S. S. Li, Shuang Zhou, Shaoqing Wu, Tao Yun, Tian Pei, Tianyu Sun, T. Wang, Wangding Zeng, 318 
+
+Wen Liu, Wenfeng Liang, Wenjun Gao, Wenqin Yu, Wentao Zhang, W. L. Xiao, Wei An, Xiaodong Liu, Xiaohan 319 
+
+Wang, Xiaokang Chen, Xiaotao Nie, Xin Cheng, Xin Liu, Xin Xie, Xingchao Liu, Xinyu Yang, Xinyuan Li, 320 
+
+Xuecheng Su, Xuheng Lin, X. Q. Li, Xiangyue Jin, Xiaojin Shen, Xiaosha Chen, Xiaowen Sun, Xiaoxiang Wang, 321 
+
+Xinnan Song, Xinyi Zhou, Xianzu Wang, Xinxia Shan, Y. K. Li, Y. Q. Wang, Y. X. Wei, Yang Zhang, Yanhong 322 
+
+Xu, Yao Li, Yao Zhao, Yaofeng Sun, Yaohui Wang, Yi Yu, Yichao Zhang, Yifan Shi, Yiliang Xiong, Ying He, 323 
+
+10 
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+Yishi Piao, Yisong Wang, Yixuan Tan, Yiyang Ma, Yiyuan Liu, Yongqiang Guo, Yuan Ou, Yuduan Wang, Yue 324 
+
+Gong, Yuheng Zou, Yujia He, Yunfan Xiong, Yuxiang Luo, Yuxiang You, Yuxuan Liu, Yuyang Zhou, Y. X. Zhu, 325 
+
+Yanping Huang, Yaohui Li, Yi Zheng, Yuchen Zhu, Yunxian Ma, Ying Tang, Yukun Zha, Yuting Yan, Z. Z. Ren, 326 
+
+Zehui Ren, Zhangli Sha, Zhe Fu, Zhean Xu, Zhenda Xie, Zhengyan Zhang, Zhewen Hao, Zhicheng Ma, Zhigang 327 
+
+Yan, Zhiyu Wu, Zihui Gu, Zijia Zhu, Zijun Liu, Zilin Li, Ziwei Xie, Ziyang Song, Zizheng Pan, Zhen Huang, 328 
+
+Zhipeng Xu, Zhongyu Zhang, and Zhen Zhang. Deepseek-r1 incentivizes reasoning in llms through reinforcement 329 
+
+learning. Nature , 645(8081):633–638, September 2025. ISSN 1476-4687. doi: 10.1038/s41586-025-09422-z. 330 
+
+URL http://dx.doi.org/10.1038/s41586-025-09422-z .331 
+
+[11] Sirui Hong, Yizhang Lin, Bang Liu, Bangbang Liu, Binhao Wu, Ceyao Zhang, Chenxing Wei, Danyang Li, 332 
+
+Jiaqi Chen, Jiayi Zhang, Jinlin Wang, Li Zhang, Lingyao Zhang, Min Yang, Mingchen Zhuge, Taicheng Guo, 333 
+
+Tuo Zhou, Wei Tao, Xiangru Tang, Xiangtao Lu, Xiawu Zheng, Xinbing Liang, Yaying Fei, Yuheng Cheng, 334 
+
+Zhibin Gou, Zongze Xu, and Chenglin Wu. Data interpreter: An llm agent for data science, 2024. URL 335 
+
+https://arxiv.org/abs/2402.18679 .336 
+
+[12] Di Huang, Hao Li, Wenyu Li, Heming Zhang, Tianqi Xu, Yifei Lu, Kaiwen Fang, Zixi Xu, Justin Chen, Patricia 337 
+
+Dickson, Marco Sardiello, William Buchser, Jonathan Cooper, Carlos Cruchaga, Pirooz Eghtesady, Guangfu Li, 338 
+
+S. Peter Goedegebuure, David DeNardo, Li Ding, Ryan C. Fields, Ming Zhan, J Philip Miller, Michael Province, 339 
+
+Yixin Chen, Philip Payne, and Fuhai Li. Omnicellagent: An ai scientist for omic-driven scientific discovery. 340 
+
+bioRxiv , 2026. doi: 10.1101/2025.07.31.667797. URL https://www.biorxiv.org/content/early/2026/05/ 341 
+
+20/2025.07.31.667797 .342 
+
+[13] Kexin Huang, Ying Jin, Ryan Li, Michael Y. Li, Emmanuel Candès, and Jure Leskovec. Automated hypothesis 343 
+
+validation with agentic sequential falsifications, 2025. URL https://arxiv.org/abs/2502.09858 .344 
+
+[14] Kexin Huang, Ying Jin, Ryan Li, Michael Y. Li, Emmanuel Candès, and Jure Leskovec. Automated hypothesis 345 
+
+validation with agentic sequential falsifications, 2025. URL https://arxiv.org/abs/2502.09858 .346 
+
+[15] Kexin Huang, Serena Zhang, Hanchen Wang, Yuanhao Qu, Yingzhou Lu, Yusuf Roohani, Ryan Li, Lin Qiu, Junze 347 
+
+Zhang, Yin Di, et al. Biomni: A general-purpose biomedical ai agent. bioRxiv , pages 2025–05, 2025. 348 
+
+[16] Qian Huang, Jian Vora, Percy Liang, and Jure Leskovec. Mlagentbench: evaluating language agents on machine 349 
+
+learning experimentation. In Proceedings of the 41st International Conference on Machine Learning , ICML’24. 350 
+
+JMLR.org, 2024. 351 
+
+[17] Qian Huang, Jian Vora, Percy Liang, and Jure Leskovec. Mlagentbench: Evaluating language agents on machine 352 
+
+learning experimentation, 2024. URL https://arxiv.org/abs/2310.03302 .353 
+
+[18] Bowen Jin, Hansi Zeng, Zhenrui Yue, Jinsung Yoon, Sercan O Arik, Dong Wang, Hamed Zamani, and Jiawei 354 
+
+Han. Search-r1: Training LLMs to reason and leverage search engines with reinforcement learning. In Second 355 
+
+Conference on Language Modeling , 2025. URL https://openreview.net/forum?id=Rwhi91ideu .356 
+
+[19] Chris Lu, Cong Lu, Robert Tjarko Lange, Yutaro Yamada, Shengran Hu, Jakob Foerster, David Ha, and Jeff Clune. 357 
+
+Towards end-to-end automation of ai research. Nature , 651(8107):914–919, Mar 2026. ISSN 1476-4687. doi: 358 
+
+10.1038/s41586-026-10265-5. URL https://doi.org/10.1038/s41586-026-10265-5 .359 
+
+[20] Ludovico Mitchener, Angela Yiu, Benjamin Chang, Mathieu Bourdenx, Tyler Nadolski, Arvis Sulovari, Eric C. 360 
+
+Landsness, Daniel L. Barabasi, Siddharth Narayanan, Nicky Evans, Shriya Reddy, Martha Foiani, Aizad Kamal, 361 
+
+Leah P. Shriver, Fang Cao, Asmamaw T. Wassie, Jon M. Laurent, Edwin Melville-Green, Mayk Caldas, Albert 362 
+
+Bou, Kaleigh F. Roberts, Sladjana Zagorac, Timothy C. Orr, Miranda E. Orr, Kevin J. Zwezdaryk, Ali E. Ghareeb, 363 
+
+Laurie McCoy, Bruna Gomes, Euan A. Ashley, Karen E. Duff, Tonio Buonassisi, Tom Rainforth, Randall J. 364 
+
+Bateman, Michael Skarlinski, Samuel G. Rodriques, Michaela M. Hinks, and Andrew D. White. Kosmos: An ai 365 
+
+scientist for autonomous discovery, 2025. 366 
+
+[21] Judea Pearl. Causality: Models, Reasoning, and Inference . Cambridge University Press, 2nd edition, 2009. 367 
+
+[22] Karl R. Popper. The Logic of Scientific Discovery . Basic Books, 1959. 368 
+
+[23] Qwen Team. Qwen3.5-Omni Technical Report, 2026. URL https://arxiv.org/abs/2604.15804 .369 
+
+11 
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+[24] Joshua Schimel. Writing Science: How to Write Papers That Get Cited and Proposals That Get Funded . Oxford 370 
+
+University Press, 2011. 371 
+
+[25] Stephen E. Toulmin. The Uses of Argument . Cambridge University Press, 2003. 372 
+
+[26] Ronald L. Wasserstein and Nicole A. Lazar. The ASA statement on p-values: context, process, and purpose. The 373 
+
+American Statistician , 70(2):129–133, 2016. 374 
+
+12 
+
+.CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint Initial prompt 
+
+> stage protocol + tool instructions
+> Agent run
+> question + tools + current prompt
+> Run feedback
+> trace, errors, review notes
+> Prompt edit
+> agent revises prompt text
+> Adjusted prompt
+> used by later attempts
+> next attempt uses the adjusted prompt The evolving object is the prompt text: an initial prompt becomes adjusted prompts for later attempts.
+
+Figure 4: Appendix view of Plan-Evolve prompt adjustment. The agent starts from an initial stage prompt, observes run feedback, edits the prompt, and uses the adjusted prompt in later attempts. 
+
+# A Implementation Details 375 
+
+Model serving and providers. Tier-2 QA runs serve Qwen3.5-27B locally through sglang ; the same served model 376 
+
+is used for the no-tool baseline and all agent loops. Tier-1 case-study runs call provider LLMs through the same adapter 377 
+
+layer: the reported Plan-Execute trajectories include Gemini and GPT-family configurations. 378 
+
+Per-stage tool specifications. Each supernode binds a small, stage-specific tool set. Ideation (20-step budget) 379 
+
+can search, fetch, read, and write, and produces references/research_proposal.md . Modeling (30-step budget) 380 
+
+adds execute_code and list_files , producing code/results/diagnosis_report.md . Paper (15-step budget) uses 381 
+
+read/list/write tools over prior artifacts and produces paper/manuscript.md .382 
+
+Session isolation. Every run creates an ephemeral workspace under instances/<session>/ . All file I/O tools 383 
+
+resolve paths relative to this workspace and reject path-traversal attempts. Code executes in a Docker container 384 
+
+(continuum-sandbox ) with NVIDIA CUDA 12.4, pre-installed Python 3.10 packages (PyTorch, scikit-learn, Scanpy, 385 
+
+NumPy, SciPy, pandas, statsmodels, Matplotlib, and Seaborn), R 4.3 packages (DESeq2, Seurat, and clusterProfiler), 386 
+
+and Julia 1.11. Only the session folder is mounted; the host is never exposed. 387 
+
+LLM fallback chain. CONTINUUM CELL AGENT constructs a LangChain .with_fallbacks() chain from available 388 
+
+API keys: Gemini → OpenAI GPT-4.1 → Groq . If the primary provider returns a 429 or 5xx, the request transparently 389 
+
+retries on the next provider, supporting unattended operation without making availability deterministic. 390 
+
+# B Cross-Domain Benchmark Suite (Tier 2) 391 
+
+To evaluate behavior beyond biomedical case studies, Tier 2 focuses on retrieval-QA tasks that stress retrieval fidelity, 392 
+
+multi-hop reasoning, answer extraction, and cross-domain transfer. 393 
+
+Benchmarks evaluated. This version reports the three LongBench v1 English retrieval-QA subsets used in the main 394 
+
+figure: TriviaQA , HotpotQA , and 2WikiMultihopQA . These probe single-hop retrieval, multi-hop reasoning, and 395 
+
+answer faithfulness under a common LongBench scoring protocol. The harness can also cap other text-QA benchmarks 396 
+
+such as SealQA, FRAMES, and BioASQ for future sweeps, but they are not part of the main reported figure. 397 
+
+Sampling. Each benchmark records the exact evaluated tasks. The three selected LongBench subsets use 200-question 398 
+
+samples for ReAct and Plan-Execute and 120-question Plan-Evolve runs with prompt adjustment enabled. For cost-399 
+
+limited sweeps the harness caps a benchmark to the first N questions in dataset order —a deterministic, reproducible 400 
+
+prefix, not a random independent sample. The selected tasks are persisted with the run metadata; comparisons are 401 
+
+treated as paired only when the same examples are available for the strategies being compared. 402 
+
+Scoring. Every answer is scored under multiple metrics so that verbose research-style outputs are compared fairly 403 
+
+against short-answer leaderboards: a lenient substring match, recall of any gold alias, and three LongBench-style 404 
+
+token-F1 variants over progressively tighter answer-span extractions (first sentence, first bold span, and the noun-405 
+
+phrase-tightened bold span used as the fair single-span estimate). We compare against published LongBench anchors at 406 
+
+matched parameter scale where available. 407 
+
+13 
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+Future agentic-environment benchmarks. Benchmarks requiring live browser or desktop actuation—GAIA, We-408 
+
+bArena / VisualWebArena / WebArena-Infinity, OSWorld, and AgentBench—stress brittle UI grounding, long-horizon 409 
+
+state tracking, and execution recovery, but lie outside our current text-and-retrieval tool set (the agent has search and 410 
+
+document-fetch tools, not a browser driver). We leave these, together with advanced-RAG retrieval benchmarks (BEIR, 411 
+
+MIRACL), to future work. 412 
+
+# C Case Study Reviewer Evaluations 413 
+
+In the following, we reproduce the adversarial reviewer evaluations generated by C ONTINUUM CELL AGENT for four 414 
+
+Tier-1 biomedical case studies. Each evaluation covers the methodological strengths, integrity concerns, and biological 415 
+
+validity of the agent-produced manuscript. 416 
+
+C.1 PDAC (GPT-4 Plan-and-Execute) 417 
+
+Strengths. The agent completes a full analytical pipeline on real large-scale public data, downloading and processing 418 
+
+GSE16515 ( N =52 ) and GSE15471 ( N =78 ) and producing verifiable differential expression outputs with an intact SHA-419 
+
+256 provenance chain. The reproducibility signal is statistically compelling: a cross-cohort directional concordance 420 
+
+of 0.78 against a null expectation of 0.50, corroborated by 100% directional agreement with an external 300-gene 421 
+
+reference set ( p = 8 ×10 −179 ), constitutes publishable replication evidence for a genuine research gap supported 422 
+
+by prior literature. The agent also maintains exemplary transparency by proactively disclosing the substitution of a 423 
+
+microarray workflow for the planned RNA-seq pipeline, clearly reporting the complete failure of enrichment analysis 424 
+
+due to missing dependencies, and consistently distinguishing planned from executed steps. 425 
+
+Weaknesses. The phrase robust replication in the abstract overstates the strength of the findings; it should be revised 426 
+
+to directional agreement under a single analytical framework . Biologically, the study yields no new discoveries: 427 
+
+pathway enrichment failed entirely with no investigation into the cause, foreclosing mechanistic interpretation and 428 
+
+leaving the core research objective unmet. The top-ranked differentially expressed genes are dominated by stromal 429 
+
+markers, and stromal contamination is uncorrected, precluding any inference about tumor cell-intrinsic transcriptional 430 
+
+changes. In sum, the manuscript is methodologically candid but scientifically incomplete, offering a demonstration of 431 
+
+honest legacy microarray analysis rather than an independent scientific contribution. 432 
+
+C.2 AD (Gemini Plan-and-Execute) 433 
+
+Strengths. The agent demonstrates a meaningful degree of methodological self-correction: Phase 2 appropriately 434 
+
+rejects the causal claims regarding ARX made in Phase 1, as the AUPRC of 0.644 fell below the predefined threshold 435 
+
+of 0.85, and a sensitivity analysis was conducted across 12 parameter combinations. The biological gap motivating this 436 
+
+work is genuine: APOE4-associated microglial dysfunction as an early driver of AD represents an active area of inquiry, 437 
+
+and integrating causal inference tools such as SMR and COLOC with single-cell data constitutes a real methodological 438 
+
+gap. The Phase 2 manuscript is more transparent in its framing, explicitly labeling the model as a spatial autoregressive 439 
+
+co-expression model rather than a causal inference system. 440 
+
+Weaknesses. The most critical issue is circular validation: the genes reported as causal drivers of AD were pre-441 
+
+specified in the data-generating process, so the analysis recovers its own input parameters rather than producing genuine 442 
+
+biological discoveries. Additionally, the manuscript claims in Section 3.3 to have analyzed real ROSMAP and MSBB 443 
+
+data, whereas the workspace contains only synthetic files of the form rosmap_synthetic_*.csv with no evidence of 444 
+
+real data acquisition or processing. A second variant of the AD run further portrays a known method—incorporating 445 
+
+aneuploidy score as a covariate in an NB-GLM design—as a novel framework, when this is standard practice in 446 
+
+DESeq2 multivariate design and does not constitute a methodological innovation. As a consequence, the core biological 447 
+
+conclusions are not credible under the available evidence. 448 
+
+14 
+
+> .CC-BY-NC-ND 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 19, 2026. ;https://doi.org/10.64898/2026.06.15.732409 doi: bioRxiv preprint
+
+C.3 LUAD (Gemini Plan-and-Execute) 449 
+
+Strengths. The agent addresses the genuine and active research problem of aneuploidy confounding transcriptomic 450 
+
+differential expression analysis. Employing a multi-factor DESeq2 design that includes CNV covariates is a known 451 
+
+means of dealing with this issue, and the direction pursued by the agent is therefore reasonable in principle. 452 
+
+Weaknesses. The manuscript misleadingly presents synthetic simulated data as if they were genuine patient data. 453 
+
+Additionally, a known method is described as novel: incorporating the aneuploidy score as a covariate in an NB-GLM is 454 
+
+described as a novel framework, yet this is standard practice in the DESeq2 multivariate design and does not constitute 455 
+
+a methodological innovation. 456 
+
+C.4 Longevity (Gemini Plan-and-Execute) 457 
+
+Strengths. The agent maintains basic honesty in Phase 1 by explicitly stating in the manuscript that the data are 100% 458 
+
+synthetic. The differential expression analysis based on N =30 synthetic samples using the Mann–Whitney U test 459 
+
+with FDR correction follows standard methodological practice. The agent also correctly identifies genuine gaps in the 460 
+
+longevity literature with largely reasonable descriptions. 461 
+
+Weaknesses. Several serious integrity issues arise in Phase 2. The GEO dataset accession numbers cited in the 462 
+
+manuscript do not match those actually used in the code, a fundamental inconsistency that undermines reproducibility. 463 
+
+Because the input data in Phase 1 are entirely synthetic, all 38 identified targets lack biological validity. The naked 464 
+
+mole rat (NMR) dataset is further limited by an extremely small sample size of only 9 samples, which severely restricts 465 
+
+any meaningful statistical inference. 466 
+
+15

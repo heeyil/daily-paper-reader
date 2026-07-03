@@ -1,0 +1,323 @@
+Title: PLAIground: SLO-Driven Runtime Model Selection for Compound AI Systems in the Edge-Cloud-Space Continuum
+
+URL Source: https://arxiv.org/pdf/2606.14356v1
+
+Published Time: Mon, 15 Jun 2026 00:50:12 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# PLAIground: SLO-Driven Runtime Model Selection for Compound AI Systems in the Edge-Cloud-Space Continuum 
+
+Milos Gravara 
+
+Distributed Systems Group TU Wien m.gravara@dsg.tuwien.ac.at 
+
+Cynthia Marcelino 
+
+Distributed Systems Group TU Wien c.marcelino@dsg.tuwien.ac.at 
+
+Andrija Stanisic 
+
+Distributed Systems Group TU Wien a.stanisic@dsg.tuwien.ac.at 
+
+Stefan Nastic 
+
+Distributed Systems Group TU Wien s.nastic@dsg.tuwien.ac.at 
+
+Abstract —Applications in the 3D Computing Continuum, which unifies edge, cloud, and space, require combining multiple AI tasks such as object detection, time-series analytics, and natural language processing into Compound AI systems. These systems must satisfy stringent Service Level Objectives (SLOs) on accuracy, latency, and cost. A key mechanism for maintaining SLO compliance of Compound AI systems is runtime model selection, where AI models are dynamically switched for each workflow task. However, existing distributed and compound AI frameworks do not natively support runtime model selection. We present PLAIground, a framework that enables runtime model selection for Compound AI systems. PLAIground introduces Compoundable AI Model (CAIM) abstraction, which decouples task semantics from AI model implementations via Task and Data Contracts, enabling model switching without workflow changes. Additionally, PLAIground introduces Pixie, an SLO-driven runtime model selection algorithm, which dynamically se-lects the most suitable model for each task during execution. Our evaluation on two realistic Compound AI workflows demonstrates that Pixie achieves up to 91.3% accuracy while maintaining SLO compliance where fixed-model strategies either violate cost and latency budgets up to 21x or miss accuracy targets by 4%. 
+
+Index Terms —Compound AI, Programming Models, Edge-Cloud-Space Continuum, 3D Continuum, Model Selection 
+
+I. I NTRODUCTION 
+
+The emerging 3D Computing Continuum [1] unifies Edge, Cloud, and Space, transforming LEO satellites into onboard processing nodes that move computation closer to the data source. Applications in this environment require intelligent processing no single model can provide [2]. For example, wildfire detection combines multiple AI tasks, such as object detection on satellite imagery, time-series analytics on sensor streams and natural language processing for emergency alerts. Such applications naturally decompose into Compound AI systems - distributed AI systems that orchestrate multiple AI models, tools and specialized algorithms into workflows [2], [3]. Compound AI systems operating in the 3D Computing Continuum must satisfy strict Service Level Objectives (SLOs) on accuracy, latency, and cost (e.g. energy consumption). Maintaining SLO compliance is particularly challenging in this environment, as conditions change continuously: satellite coverage shifts, available bandwidth fluctuates, and energy budgets deplete [1], [4]. One of the key mechanisms for achieving SLO compliance in Compound AI systems is model selection [3], [5], [6]. Each task in a Compound AI workflow can be fulfilled by multiple candidate AI models. Selecting the most suitable AI model for each task allows the system to maintain SLO compliance as conditions change [5], [6]. This is especially relevant in the 3D Computing Continuum, where resource constraints limit horizontal scaling. Instead of provisioning additional infras-tructure, adaptation can be achieved by switching between different AI models for each task at runtime, as conditions and observed performance change. Prior work on inference serving has shown that dynamically selecting model variants can reduce costs by up to 10 × over static deployments [7], though only for single-model inference serving. However, Compound AI systems make this problem con-siderably more challenging. Multiple candidate AI models exist for each task, and each exhibits different trade-offs between accuracy, latency, and cost [3], [7], [8]. For instance, a lightweight object detector runs efficiently on resource-constrained devices but yields lower accuracy, while a larger model provides higher accuracy at greater computational cost. With n tasks and m candidates per task, a Compound AI workflow theoretically has mn possible AI model selections. In order to maintain SLO compliance, this space must be navigated continuously, as the most suitable configuration changes when conditions change. This challenge is further complicated by the limitations of existing Compound AI frameworks, which do not provide built-in support for runtime model selection. Frameworks such as LangChain [9] and DSPy [10] couple task definitions to specific AI model implementations, i.e., each AI task explicitly specifies which model to invoke and how to parse its responses. However, various models have different input/out-put formats, API interfaces and deployment configurations. Switching from one model to another requires modifying application code, rewriting API calls, and adjusting data han-dling. There is no separation between what a task performs and which AI model performs it. In this paper, we present PLAIground, a framework that enables SLO-driven runtime model selection for Compound AI systems through novel abstractions that decouple workflow logic from specific AI models and runtime mechanisms that maintain SLO compliance through continuous model assign-ment. Our main contributions include: 
+
+> arXiv:2606.14356v1 [cs.DC] 12 Jun 2026
+
+C-1: Compoundable AI Model (CAIM): A novel program-ming abstraction that encapsulates Compound AI task semantics through Task and Data Contracts, decoupling workflow logic from specific AI models and providing a foundation for runtime model selection. 
+
+C-2: Pixie: SLO-Driven Runtime Model Selection Algo-rithm: A novel runtime model selection algorithm that continuously assigns the most suitable AI model to each CAIM, while ensuring SLO compliance. Evaluation shows that Pixie is the only approach that maintains SLO compliance across two Compound AI workflows, while achieving up to 91.3% accuracy, and reducing costs by up to 21x and latency by 2.5x, compared to static baselines optimizing for a single metric. II. I LLUSTRATIVE SCENARIO AND RESEARCH QUESTIONS 
+
+To motivate the challenges of enabling SLO-driven runtime model selection, we present an illustrative scenario and our main research questions. 
+
+A. Main Illustrative Scenario 
+
+Early detection of wildfires in remote areas requires low-latency data processing and efficient use of heterogeneous hardware resources across the 3D Computing Continuum. In our wildfire scenario (Fig. 1), drones capture video and sensor data, streaming to nearby edge nodes or LEO satellites when ground coverage is unavailable. This data flows through a Compound AI workflow consisting of object detection, data analytics, and alarm generation. Each task can be fulfilled by multiple candidate AI models with different performance characteristics. For object detection alone, options range from lightweight models like YOLOv5n for resource-constrained environments to high-accuracy models like YOLOv8x requir-ing substantial compute. Terrerstrial Network 
+
+> 1Km
+> LEO
+> 160-2000 Km
+> MEO
+> 2000 - 20000 Km
+> Space Network
+> Monitoring area
+> ISL
+> Cloud Center
+> Edge Network
+> 300Mbps
+> Downlink
+
+Fig. 1: Wildfire Illustrative Scenario in the 3D Continuum These workflows operate under SLOs that define acceptable bounds for accuracy, latency, and cost. Consider the object detection task running on a LEO satellite with a limited energy budget. Initially, YOLOv8x satisfies both accuracy and energy SLOs. As the satellite’s battery depletes, YOLOv8x becomes too costly to run and violates the energy constraint. A switch to the lighter YOLOv5n preserves the energy SLO, at the cost of reduced detection accuracy. The most suitable model depends on current conditions, and those conditions change continuously throughout the workflow execution. However, runtime model switching is far from straight-forward. The workflow integrates YOLOv8x through model-specific code for API invocation, input preprocessing, and output parsing. Switching to YOLOv5n requires the developer to have anticipated this scenario, written integration code for both models, and built the switching logic into the application. With multiple tasks in the workflow and multiple candidate models per task, each with different interfaces and deployment requirements, this manual approach does not scale to dynamic environments such as the 3D Computing Continuum. 
+
+B. Research Questions 
+
+We identify following main research questions: 
+
+RQ-1: How to design abstractions that decouple Compound AI workflow specification from underlying AI models and, thus, enable runtime model selection? 
+
+Even when performing same task, different AI models enforce incompatible data interfaces, ranging from raw tensors in hardware optimized runtimes (e.g. Triton) to JSON payloads for proprietary APIs. This causes tight coupling that forces developers to hardcode model-specific logic into the workflow. Enabling runtime switching requires novel abstractions which decouple task semantics from implementation details. 
+
+RQ-2 : How to maintain SLO compliance of Compound AI systems through selection of most suitable models for each task at runtime? 
+
+Given a set of candidate models per task, each candidate exhibits different trade-offs between accuracy, latency, and cost, and the most suitable AI model shifts as conditions change. Selecting too conservatively sacrifices accuracy, while selecting too aggressively risks SLO violations. Navigating these trade-offs across all tasks in a workflow, under con-tinuously changing conditions, necessitates dedicated runtime mechanisms that monitor performance and adapt model as-signments accordingly. III. C OMPOUNDABLE AI M ODEL 
+
+The Compoundable AI Model (CAIM), presented in Fig. 2, is a programming abstraction representing the main building block of Compound AI Workflows. Its main purpose is to facil-itate the development of Compound AI workflows and enable the runtime model selection mechanism without modifying the workflow itself. Consequently, this allows developers to focus on the design of Compound AI applications, delegating execution details of model selection entirely to the runtime. For example, a developer can specify that a certain workflow step needs to perform object detection for wildfires under SLO constraints; the underlying system then finds a set of candidate AI models that can perform the given step and selects the most suitable AI model for execution. When the performance drifts or resources fluctuate, the runtime can switch between the candidate models to maintain the SLO compliance. The CAIM abstraction defines three contracts: 1) Task Con-tract , which mainly specifies functional and non-functional System Contract: Model A Model B Model C      
+
+> Input Data
+> Previous workflow step
+> Output Data
+> Next workflow step
+> Compoundable AI Model
+> Data Contract
+> Input Output Transform
+> Task Contract
+> SLO Task Configuration
+> Model Selection Selected Model Invocation
+
+Fig. 2: Compoundable AI Model Abstraction requirements; 2) Data Contract , defining input/output inter-faces; and 3) System Contract , which contains the candidate AI models capable of executing the specified task, along with their performance profiles and deployment specifications. In the following, we detail the Task and Data Contract as the developer-specified components of the CAIM. System Contract is platform-provided and contains the candidate AI models eligible for runtime selection, along with their perfor-mance profiles and deployment specifications. Producing the System Contract from a broader model registry is orthogonal to this work [3], [8]. 
+
+A. Task Contract 
+
+The Task Contract is a declarative specification that defines what AI task a CAIM is expected to perform, independent of which AI model implementation performs it. It combines functional requirements, specifying the task to be executed, with non-functional requirements, specifying the constraints under which execution must occur. Functional requirements define what type of AI task CAIM is expected to perform and its task-specific configurations. The task type identifies the required capability (e.g., object detection, text generation), while configuration parameters capture task-specific settings such as target classes for detec-tion, or prompt templates for language models. Together, these establish the capability requirements that any candidate AI model must satisfy. For example, specifying object detection with classes [fire, smoke] means only models capable of detecting these classes qualify as candidates. Non-functional requirements specify SLOs that constrain how the task must be performed. The Task Contract distin-guishes two categories: Task SLOs define minimum quality requirements on the output, establishing a quality floor that all candidate AI models must satisfy (e.g., minimum accuracy, precision, or recall thresholds). System SLOs define efficiency constraints on execution, such as maximum latency, monetary cost, or energy consumption. System SLOs can be specified directly per CAIM, or at the workflow level (e.g., total cost budget, end-to-end latency), in which case they are decom-posed into per-CAIM budgets at deployment time (detailed in Section IV). 
+
+B. Data Contract 
+
+The Data Contract defines the strict input and output schemas for a CAIM. Each contract declares specific data types, establishing clear interfaces that allow CAIMs to con-nect into workflows regardless of the underlying AI model executing the task. The schema specification supports simple types as well as complex structures like nested objects, arrays, and domain-specific types such as bounding boxes. Consequently, the Data Contract acts as a normalization layer. Since different underlying AI models may produce outputs in varying formats (e.g., raw tensors vs. JSON strings), the abstraction ensures that all execution outputs are adapted to match the defined Data Contract. This guarantees that runtime model selection does not break the workflow. This means that when AI models are switched dynamically, downstream tasks always receive data in the format defined by the Data Contract. Compound AI workflows are constructed by defining CAIMs as computational steps connected through this explicit data flow. Each step is declared by its Task Contract, with Data Contracts creating the stable interfaces for the complete workflow logic. The workflow logic remains independent of which AI models execute each step, as Task Contracts decouple task semantics from model implementations and Data Contracts guarantee interface consistency. This enables runtime model selection without modifying workflow logic, thereby addressing RQ-1 .IV. P IXIE : SLO-D RIVEN RUNTIME MODEL SELECTION 
+
+Pixie is a runtime model selection algorithm that maximizes accuracy while maintaining SLO compliance. It operates inde-pendently per CAIM, selecting and adapting AI model assign-ments during workflow execution, based on the System Con-tract and the System SLOs. Pixie’s design is grounded in the monotonicity property observed in Compound AI systems [3]: improving accuracy at any individual workflow step does not degrade end-to-end workflow accuracy. Under this property, independent per-CAIM accuracy maximization is sufficient for maximizing workflow-level accuracy. Algorithm 1 presents Pixie. Initially, Pixie greedily selects the highest-accuracy can-didate whose profiled metrics satisfy System SLOs. During execution, Pixie monitors observed resource metrics (e.g., latency, cost, energy) through windowed moving averages. After each request, the observed metrics update the win-dows (line 16). For each System SLO, Pixie computes the normalized gap between the SLO limit and the observed average. The minimum gap across all System SLOs identifies the most constrained resource (line 6). Two configurable thresholds, τlow and τhigh , define three operating zones. If the minimum gap for most constrained resource falls below 
+
+τlow , its System SLO is under pressure, and Pixie down-grades to a less resource-intensive candidate (line 8). If the minimum gap exceeds τhigh , all System SLOs have sufficient headroom, and Pixie upgrades to a higher-accuracy candidate (line 11). Between these thresholds, the current assignment remains unchanged. If no further downgrade or upgrade is available, execution continues with the current AI model. After each model selection decision, Pixie resets the observation windows and enters a cooldown period of k observations before re-evaluating (line 5). This prevents oscillation from noisy measurements after a transition. 
+
+Algorithm 1 Pixie: SLO-Aware Runtime Model Selection                 
+
+> Require: Ordered candidate set Cwith profiles ▷System Contract
+> Require: System SLOs S={(Ri, L i)}ni=1 ▷Task Contract
+> Require: Window size k, thresholds τlow ,τhigh
+
+1: model ← SELECT INITIAL (C, S) ▷ Highest accuracy within SLO bounds 
+
+2: W ← INIT WINDOWS (k)
+
+3: while workflow is running do 
+
+4: d ← NEXT REQUEST 
+
+5: if WINDOW READY (W ) then ▷ Cooldown: skip until k observations 
+
+6: g ← min i (Li − AVG (W, R i)) / L i ▷ Most constrained SLO 
+
+7: if g < τ low then ▷ SLO pressure 
+
+8: model ← DOWNGRADE (model, C)
+
+9: RESET (W )
+
+10: else if g > τ high then ▷ SLO headroom 
+
+11: model ← UPGRADE (model, C)
+
+12: RESET (W )
+
+13: end if 
+
+14: end if 
+
+15: result, o ← EXECUTE (d, model ) ▷ o: observed metrics 
+
+16: UPDATE (W, o)
+
+17: end while 
+
+As System SLOs on cumulative resources (e.g., total cost, end-to-end latency) are typically specified at the workflow level, PLAIground decomposes them into per-CAIM budgets at deployment time. Each CAIM receives a budget share pro-portional to the average resource consumption of its candidates relative to the workflow total, ensuring that CAIMs whose candidates are intrinsically more resource-intensive receive proportionally larger budget shares. Decomposition of Task SLOs (e.g., mapping workflow-level accuracy to per-CAIM accuracy) is essentially an accuracy estimation problem, which remains an open challenge in Compound AI systems [8]. In this paper, we focus on accuracy maximization under SLO constraints and leave Task SLO decomposition as future work. Through continuous runtime model selection, Pixie main-tains SLO compliance while maximizing task accuracy, thus answering RQ-2 .V. E VALUATION 
+
+This section evaluates PLAIground through two Compound AI workflows that represent different application domains and operational constraints: wildfire detection and question answering. PLAIground is implemented in Python as an open-source prototype 1. We evaluate Pixie’s runtime model selection on each workflow individually. 
+
+A. Experimental Setup 1) Workflows: Wildfire Detection. A distributed pipeline for early wildfire detection in remote areas, composed of two CAIMs: (1) object detection on edge hardware (e.g., satellite) to identify fire and smoke in captured imagery, and (2) ground-based alert generation using LLMs to produce emergency notifications. Our evaluation focuses on the object detection stage, which operates under energy constraints. 
+
+> 1
+
+https://github.com/polaris-slo-cloud/PLAIground 
+
+QARouter. A conditional routing workflow for question answering consisting of three CAIMs: a difficulty classifier that routes queries based on complexity, and two QA solvers (Simple QA and Complex QA) that handle easy and hard questions respectively. 
+
+2) Baselines: Table I presents the model selection strategies evaluated in our experiments. TABLE I: Model selection strategies.             
+
+> Strategy Description Selection Mechanism
+> Random Randomly from registry. Baseline (no optimization) Greedy-Cost Selects lowest-cost Static cost minimization Greedy-Latency Selects fastest (p95) Static latency optimization Greedy-Quality Selects highest-accuracy Static quality maximization Pixie (Adaptive) SLO-based dynamic switching. Runtime adaptation
+
+For Wildfire Detection, Greedy-Cost optimizes energy con-sumption (Joules), while for QARouter optimizes for monetary cost ($). Prior approaches [3], [5] address deployment-time optimization for specific domains, while our focus is online adaptation during workflow execution. We, therefore, evaluate against algorithmic baselines representing the optimization tar-gets (cost, latency, accuracy) that Pixie balances dynamically. 
+
+3) Infrastructure and Deployment: Our experimental in-frastructure simulates heterogeneous environments representa-tive of the 3D Compute Continuum. For edge deployment, we use an NVIDIA Jetson Orin Nano (8GB RAM) running Triton Inference Server for object detection. Local compute includes a VM with 32-core CPU, 128GB RAM, and NVIDIA RTX 4090 (24GB VRAM) hosting Ollama. Cloud inference uses OpenAI and Anthropic API endpoints. All tasks execute in Docker containers with NVIDIA runtime for GPU isolation. Local models are pre-loaded in GPU memory, enabling model switches in <10ms without cold starts.    
+
+> Greedy(C) Greedy(Q) Pixie
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Accuracy (%)
+> Eff. Accuracy Accuracy
+
+(a) Accuracy    
+
+> Greedy(C) Greedy(Q) Pixie
+> 0
+> 500
+> 1,000
+> Budget: 450J
+> Energy (J)
+> Consumed Projected
+> Frame 180: Energy depleted
+
+(b) Energy consumption 
+
+Fig. 4: Wildfire workflow performance comparison of model selection algorithms. 
+
+B. Wildfire Detection Evaluation 
+
+We evaluate wildfire detection pipeline deployed on edge hardware under energy constraints. This evaluation demon-strates Pixie’s ability to achieve full workload processing under fixed energy budgets, while maximizing detection quality. 
+
+1) Setup: Candidate Models. The Detector CAIM has three candidate models from the YOLOv8 family, fine-tuned for fire and smoke detection. Their profiles span 88.6–92.8% Greedy(L) 
+
+> Greedy(C)
+> Random
+> Greedy(Q)
+> Pixie
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1
+> Accuracy
+
+(a) Accuracy Distribution   
+
+> 0.6
+> 0.8
+> 1
+> Greedy(L)
+> Greedy(C)
+> Random
+> Greedy(Q)
+> Pixie
+> Accuracy
+> Overall Easy Hard
+
+(b) Accuracy Breakdown 
+
+> Greedy(L)
+> Greedy(C)
+> Random
+> Greedy(Q)
+> Pixie
+> 500
+> 1,000
+> 1,500
+> 2,000
+> 2,500
+> Latency (ms)
+
+(c) P95 Latency 
+
+> Greedy(L)
+> Greedy(C)
+> Random
+> Greedy(Q)
+> Pixie
+> 0
+> 0.1
+> 0.2
+> Cost (USD)
+
+(d) Avg. Workflow Cost 
+
+Fig. 3: QARouter workflow performance comparison of model selection algorithms accuracy and 485–2,492 mJ per inference, making model selection consequential under a fixed energy budget. 
+
+Metrics. We evaluate: (a) effective accuracy - correct pre-dictions over the entire workload, penalizing strategies that exhaust energy budgets; (b) frames processed - frames com-pleted before energy exhaustion; and (c) energy consumption .
+
+Dataset. We use the Wildfire Smoke Dataset [11] containing 4,306 test images with annotated fire and smoke instances across diverse conditions including day/night scenes and vary-ing smoke densities. 
+
+2) Results: Fig. 4 presents the results. The results show that static strategies force a trade-off between detection quality and energy consumption. Greedy(Q) achieves 93.9% per-frame accuracy but exhausts its 450J budget after 180 frames, with a projected energy demand of 1,246J for the full workload. Its effective accuracy drops to 33.8%. Greedy(C) processes all 500 frames using only 242J but achieves the 88.4% effective accuracy. Pixie manages this trade-off, processing all 500 frames at 91.3% effective accuracy, 2.8% higher than Greedy(C). It successfully combines YOLOv8s (394 frames) and YOLOv8x (106 frames), consuming 438J. 
+
+C. QARouter Evaluation 
+
+We evaluate the QARouter workflow under joint SLO constraints on accuracy, latency, and cost. This evaluation demonstrates Pixie’s ability to balance multiple SLO dimen-sions simultaneously. 
+
+1) Setup: Candidate Models. The Difficulty Classifier is fixed to DistilBERT (77% accuracy, ∼25ms, free). The Simple QA pool comprises three local models (Qwen 2.5, LLaMA 3.2, Gemma2) and one cloud model (GPT-3.5-turbo), spanning 76.9–84.9% accuracy, 113–717 ms p95 latency, and $0–0.042 per 1K inputs. The Complex QA pool comprises four cloud models (GPT-4o-mini, Claude 4 Sonnet, Claude 3 Haiku, Claude 4 Opus), spanning 86.8–96.8% accuracy, 1229– 2180 ms p95, and $0.013–1.65 per 1K inputs. The QA solvers exhibit the largest performance and cost variation, so runtime selection focuses on these two CAIMs. 
+
+Metrics. We capture workflow execution metrics across three dimensions: (a) Quality : Overall accuracy, accuracy stratified by difficulty (easy/hard questions). (b) Latency : p95 latencies in milliseconds. (c) Cost : Estimated operational cost per request based on provider pricing models.    
+
+> 0200 400 600
+> 2,000
+> 3,000
+> 4,000
+> 5,000
+> Switch Q51
+
+Question Number 
+
+> Latency (ms)
+
+(a) Complex QA latencies     
+
+> 0200 400 600
+> 500
+> 1,000
+> 1,500
+> 2,000 Switch Q58
+
+Question Number (b) Simple QA latencies 
+
+0 100 200 300 400 500 600 
+
+0
+
+2
+
+4
+
+·10 −2    
+
+> Switch 1 (Q51): Claude Opus →GPT-4o-mini
+> Switch 2 (Q58): Gemma2:2b →Llama3.2:3b
+> Note: Early steep cost growth (Q1–50) stabilizes after switches.
+
+Question Number Cumulative Cost ($) (c) Cumulative cost across all questions with switch markers. 
+
+Fig. 5: Latency and cost behavior with model switches 
+
+Dataset. Experiments use the ARC dataset [12] with 3,600 test samples. All experiments were conducted with 5 inde-pendent runs using different random seeds to account for variability in routing decisions and model performance. 
+
+SLO Configuration. Per-CAIM task SLOs impose quality floors of 75% accuracy for Simple QA and 85% for Complex QA, since harder tasks require more reliable models. System SLOs constrain Pixie’s runtime selection to p95 latency ≤
+
+1000ms and cost ≤ $0.01 per 600 requests, with budgets decomposed across CAIMs in proportion to profiled per-inference costs. We evaluate end-to-end workflow quality using an 80% overall success threshold. 
+
+2) Results: Comparison to Static Baselines. Figure 3 shows Pixie achieves 87.71% accuracy, approaching Greedy-Quality’s 93.44% while using 99% less cost ($0.008 vs $0.81) and being 4.5× faster. Compared to Greedy-Cost’s minimal $0.001 spend, Pixie accepts 8× higher cost to gain 11.7% in accuracy, crossing the SLO threshold that Greedy-Cost misses at 76%. Against Greedy-Latency, Pixie improves accuracy by 10% and reduces cost by 56%, while satisfying latency SLO. Pixie’s runtime model selection is the only strategy satisfy-ing all three SLOs simultaneously. Static baselines optimize single metrics at the expense of others: Greedy(Q) exceeds budget by 21×, while Greedy(C) and Greedy(L) fall 4–6% below accuracy requirements. 
+
+Model Switching Impact. Fig. 5 illustrates Pixie’s dynamic adaptation capabilities through runtime model switching under relaxed SLOs (p95 < 2500ms, cost < $0.05). These SLOs were chosen to force Pixie to initially select high-quality models, and then perform cost-driven switches at Q51 and Q58 when approaching budget constraints. This demonstrates Pixie’s ability to maintain SLO compliance through runtime adaptation. VI. R ELATED WORK 
+
+We review prior work across two areas relevant for enabling runtime model selection: (1) compound AI programming ab-stractions and (2) model selection algorithms. 
+
+A. Compound AI Programming Abstractions 
+
+Existing body of work has proposed various declarative pro-gramming abstractions. DSPy [10] abstracts language model pipelines as parameterized modules with natural language signatures, eliminating manual prompt engineering through automatic optimization. LangChain [9] provides a framework for building LLM applications through composable abstrac-tions. However, both DSPy and LangChain require developers to specify computational pipeline structure and model assign-ments. Murakkab [13] provides a declarative abstraction where workflow tasks are expressed as natural language descriptions and mapped to AI models via an LLM-based orchestrator. However, this mapping still requires the orchestrator to bind specific AI models to tasks before execution. Although these approaches successfully address important aspects of compound AI complexity, they couple workflow definition to specific AI models, preventing adaptation. Com-poundable AI Models address this gap by decoupling work-flow specification from underlying AI models, thus, enabling runtime adaptation through model selection. 
+
+B. Model Selection Algorithms 
+
+Recent advances in model selection for compound AI systems have achieved significant performance improvements. Approaches such as LLMSelector [3] optimize model allo-cation by iteratively selecting modules and allocating mod-els with the highest module-wise performance estimated by LLM diagnosers. Beyond LLM-specific optimization, model selection algorithms address heterogeneous model types across vision, audio, and classification tasks [8]. EdgeAdaptor [5] tackles joint model selection and resource provisioning for edge DNN inference serving through MILP approach, while INFaaS [7] generates a set of model variants for a specified AI model and selects between them. However, existing approaches focus on single model infer-ence serving or perform model selection during deployment time that remain fixed throughout workflow execution. Our work addresses these limitations through CAIM abstraction coupled with Pixie runtime model selection. Contrary to current approaches, Pixie leverages runtime monitoring data to make informed selection decisions during execution, main-taining SLO compliance. VII. C ONCLUSION 
+
+PLAIground demonstrates that SLO compliance in Com-pound AI systems can be maintained through runtime model selection. The CAIM abstraction decouples workflow logic from model implementations via Task, Data, and System Contracts, making runtime model switching possible without modifying application code. Building on this, Pixie continu-ously selects the most suitable candidate model per CAIM by monitoring observed resource metrics against SLO thresholds, upgrading or downgrading assignments as conditions change. Together, these allow Pixie to be the only evaluated strategy satisfying accuracy, latency, and cost SLOs simultaneously, achieving up to 91.3% accuracy while reducing costs by up to 21x over static baselines. Future work includes developing advanced model selection algorithms leveraging predictive de-cision making and multi-objective optimization and novel SLO decomposition algorithms focusing on accuracy estimation for Compound AI workflows. ACKNOWLEDGMENT 
+
+This research was partially funded by the EU’s Horizon Europe Research and Innovation Program as part of the NexaSphere project (GA No. 101192912). REFERENCES [1] T. Pusztai, C. Marcelino, and S. Nastic, “Hyperdrive: Scheduling serverless functions in the edge-cloud-space 3d continuum,” in 2024 IEEE/ACM Symposium on Edge Computing (SEC) , 2024. [2] M. Gravara, A. Stanisic, and S. Nastic, “A novel compound ai model for 6g networks in 3d continuum,” 2025. [Online]. Available: https://api.semanticscholar.org/CorpusID:278498168 [3] L. Chen et al. , “Optimizing model selection for compound ai systems,” 2025. [Online]. Available: https://arxiv.org/abs/2502.14815 [4] C. Marcelino, L. Guelmino, T. Pusztai, and S. Nastic, “Databelt: A continuous data path for serverless workflows in the 3d compute continuum,” Journal of Systems Architecture , 2025. [5] K. Zhao et al. , “Edgeadaptor: Online configuration adaption, model selection and resource provisioning for edge dnn inference serving at scale,” vol. 22, no. 10, pp. 5870–5886, 2023. [6] M. Gravara, J. L. Herrera, and S. Nastic, “Compass: Optimizing com-pound ai workflows for runtime adaptation,” in Proceedings of the IEEE International Symposium on Cluster, Cloud and Internet Computing (CCGrid) , 2026. [7] F. Romero et al. , “INFaaS: Automated Model-less Inference Serving.” [8] Y.-A. Lee, G.-T. Yi et al. , “Compound ai systems optimization: A survey of methods, challenges, and future directions,” 2025. [Online]. Available: https://arxiv.org/abs/2506.08234 [9] H. Chase, “Langchain,” https://github.com/langchain-ai/langchain, 2022. [10] O. Khattab et al. , “Dspy: Compiling declarative language model calls into self-improving pipelines,” 2023. [Online]. Available: https://arxiv.org/abs/2310.03714 [11] DataCluster Labs, “Fire and smoke dataset,” https://www.kaggle.com/datasets/dataclusterlabs/fire-and-smoke-dataset, 2025, accessed: Feb. 2026. [12] P. Clark et al. , “Think you have solved question answering? try arc, the ai2 reasoning challenge,” arXiv:1803.05457v1 , 2018. [13] G. I. Chaudhry et al. , “Murakkab: Resource-efficient agentic workflow orchestration in cloud platforms,” 2025. [Online]. Available: https://arxiv.org/abs/2508.18298

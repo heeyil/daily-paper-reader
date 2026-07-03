@@ -1,0 +1,2787 @@
+Title: OmniGene-4: A Unified Bio-Language MoE Model with Router-Level Interpretability and Modality-Invariant Transfer
+
+URL Source: https://www.biorxiv.org/content/10.64898/2026.05.12.724542v3.full.pdf
+
+Published Time: Fri, 03 Jul 2026 03:18:20 GMT
+
+Number of Pages: 34
+
+Markdown Content:
+# OmniGene-4: A Unified Bio-Language MoE Model with 1
+
+# Router-Level Interpretability and Modality-Invariant 2
+
+# Transfer 3
+
+Liang Wang ∗
+
+School of Artificial Intelligence and Automation Huazhong University of Science and Technology Wuhan, Hubei 430070, P.R. China 
+
+> 4
+
+May 2026 5
+
+Abstract 6
+
+How do multi-modal large language models that jointly process natural language and biological 7
+
+sequences (DNA, protein, structural alphabets) actually answer biological questions, especially 8
+
+sequence-grounded questions whose answer depends on residue-level patterns rather than litera-9
+
+ture recall? We introduce OmniGene-4 , a unified bio-language Mixture-of-Experts foundation 10 
+
+model on Gemma-4-26B-A4B (128 experts/layer, top-8 routing), and use its discrete router 11 
+
+state to dissect this question. By hooking every router across eight task families, we provide the 12 
+
+first router-level decomposition for a biological MoE: continued pretraining (CPT) accounts for 13 
+
+96% of cross-task expert differentiation and supervised fine-tuning (SFT) for 4% , reshaping 14 
+
+middle and output layers respectively. Within the protein-homology task family, per-pair routing 15 
+
+divergence stays below 0.04 (vs 0.23 cross-task), implying that sequence-grounded decisions 16 
+
+occur inside expert computation rather than at the gate — the gate selects the modality, the 17 
+
+experts compute the answer. The pipeline yields strong benchmarks: remote-homology 82.60% 18 
+
+(vs ESM-2 3B, MMseqs2, DIAMOND by 28–31 pp); standard homology 99.40% ; BixBench 19 
+
+(general biological-knowledge) 93.66% . A dual-head architecture adds per-residue 3Di/DSSP 20 
+
+classifiers (78.6%/100%). To probe whether the discovered transfer mechanism is robust un-21 
+
+der modality scaling, we further extend the model to OmniGene-4-MM , adding four vision 22 
+
+modalities (chemical-structure images, medical/pathology imagery, charts) via a vision tower 23 
+
+and a three-stage LoRA pipeline at 1.5 GPU-days total. The multi-modal model preserves the 24 
+
+homology capability ( 85% standard, 69.5% remote) and acquires chemist-readable structure 25 
+
+understanding ( 96% on Vis-CheBI20 functional-group captioning) while consuming roughly 26 
+
+four orders of magnitude less compute than recent specialized MoE bio-models. The work char-27 
+
+acterizes how multi-modal bio-foundation models acquire, route, and preserve sequence-aware 28 
+
+capability — central to the next generation of scientific large language models. 29 
+
+Keywords: bioinformatics, foundation model, mixture-of-experts, interpretability, protein homology, 30 
+
+multi-modal learning, modality-invariant transfer. 31 
+
+> ∗
+
+Corresponding author. Email: wangliang.f@gmail.com 
+
+1
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+The bigger picture. 
+
+Modern AI models that read both human language and biological sequences (DNA, proteins) often behave like black boxes: we see their answers but not the inner mechanism that produced them. This matters for biology, where a wrong but confidently worded answer can mislead an experiment that costs months and tens of thousands of dollars. We use Mixture-of-Experts architecture — a transformer where each token is routed to a small subset of 128 specialized sub-networks at every layer — to make this internal mechanism legible. By logging which experts are activated for each input, we show that adding biology-specific pre-training to a general-purpose language model causes the routing to spontaneously partition the network into modality-specific sub-networks, and that the same partitioning re-emerges when we further extend the model to also process molecular images, medical images, and chart images. The same model achieves protein-homology accuracy that surpasses classical sequence-alignment tools (MMseqs2, DIAMOND) and recent protein language models (ESM-2 3B), at roughly four orders of magnitude less compute than recent specialized MoE bio-models. The work is a step toward foundation models for biology that are simultaneously broad in modality coverage, mechanistically transparent, and economically reproducible by groups outside the largest industrial labs. 
+
+> 32 33
+
+## 1 Introduction 34 
+
+The central scientific question of this work is: how do multi-modal large language models that jointly 35 
+
+process natural language and biological sequences — DNA, protein, structural alphabets such as 36 
+
+Foldseek 3Di — actually answer biological questions? The question has two parts. The easy part is 37 
+
+literature-style questions whose answer can be retrieved from natural-language pretraining (“what 38 
+
+does the BRCA1 gene do?”). The hard part, and the focus of this paper, is sequence-grounded 39 
+
+questions where the answer depends on residue-level patterns in the input sequence rather than 40 
+
+on prior literature recall — “are these two protein sequences structurally related?”, “what is the 41 
+
+secondary structure of this residue?”, “what is the 3Di letter at position 47?”. For these questions, 42 
+
+the model must do real work on the sequence at inference time; it cannot retrieve the answer from 43 
+
+text memorized at pretraining. How that work is distributed inside the model — which subnetworks 44 
+
+process the protein letters, which contribute to the natural-language framing, where the cross-modal 45 
+
+binding happens — is currently a black box for almost every bio-foundation model. 46 
+
+The field offers many such models. Protein language models — ESM-2 [ 36], its predecessor 47 
+
+ESM-1b [ 48 ], ProtTrans/ProtT5 [ 13 ], ProstT5 [ 24] — and dedicated remote-homology search 48 
+
+tools [ 21, 37, 49 ] have pushed protein remote-homology detection toward what appears to be a 49 
+
+performance ceiling. Genomic foundation models including DNABERT [ 29], DNABERT-2 [ 64], the 50 
+
+Nucleotide Transformer [ 10], HyenaDNA [ 43], and the multimodal Evo/Evo 2 family [ 4 , 44] have 51 
+
+reached trillion-token scale. Single-cell transcriptomics has seen a parallel rise in foundation models 52 
+
+such as scGPT [ 8], scFoundation [ 22 ], and Geneformer [ 56]. General-purpose LLMs fine-tuned on 53 
+
+biological corpora [ 2 , 20 , 38, 61] have joined the race. Cross-modal efforts such as LucaOne [ 23 ]54 
+
+have begun the unification of DNA and protein modalities. But almost all of these models are dense 55 
+
+transformers, where the same MLP weights process AGCTAGCT and “the quick brown fox” , and any 56 
+
+claim about “a DNA submodel inside” must rely on probing classifiers or representation geometry, 57 
+
+neither of which gives a direct answer to “which neurons fired on this input” . Whether and how 58 
+
+multi-modal sequence-aware capability is structurally organized inside these models is therefore 59 
+
+largely unresolved. 60 
+
+We argue that Mixture-of-Experts (MoE) architectures offer the most direct path to answering this 61 
+
+2
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+question. In an MoE transformer, each token selects k of N experts at every layer [ 15, 30, 51, 59 , 65 ], 62 
+
+and the identities of the selected experts are simply integers that can be logged. The router is a 63 
+
+discrete gate on a continuous feature bundle — it partitions token-level computation explicitly. This 64 
+
+provides an unusually direct substrate to ask: when a multi-modal bio-foundation model answers 65 
+
+a sequence-grounded biological question, which experts at which layers were activated, and how 66 
+
+did training shape that activation pattern? Recent MoE scaling work [ 9 , 11, 60] and MoE-focused 67 
+
+interpretability studies on general LLMs [ 34, 46 ] have shown that this is tractable, but no systematic 68 
+
+router-level analysis has been reported for a biological foundation model. 69 
+
+Within this framing, two sub-questions are central. (i) Where does sequence-aware capa-70 
+
+bility come from? The standard recipe is continued pretraining (CPT) on biological corpora 71 
+
+followed by supervised fine-tuning (SFT) on instruction examples [ 28, 31 , 32], and the literature has 72 
+
+documented a non-trivial balance between the two stages, including the phenomenon of catastrophic 73 
+
+forgetting [ 26, 39]. But which stage installs the cross-modal partitioning of computation, and which 74 
+
+stage merely re-aligns the output? Without a direct measurement, practitioners cannot rationally 75 
+
+allocate compute. (ii) Where does sequence-grounded decision-making happen? If two 76 
+
+protein sequences activate the same set of experts at every layer, then the gate is not where the 77 
+
+homology call is being made — the answer must be computed inside the expert FFNs on residue-level 78 
+
+signal. Conversely, if homologous and non-homologous pairs activate disjoint routing patterns, the 79 
+
+gate itself is doing the work. The existing bio-interpretability program [ 1 , 3, 6, 55 ] has not addressed 80 
+
+this distinction with router-level data. 81 
+
+This paper provides the first quantitative measurements of both sub-questions for a multi-modal 82 
+
+bio-foundation MoE. 83 
+
+Our contribution 84 
+
+This paper makes four contributions. 85 
+
+(1) OmniGene-4, a unified bio-language foundation model on MoE. We build on 86 
+
+Gemma-4-26B-A4B-Instruct [ 19 ] (30 transformer layers, 128 experts per layer, top-8 routing, ≈ 3.8 B87 
+
+active parameters per token). We inject a 28,028-token biological vocabulary (DNA BPE over 32 GB, 88 
+
+protein BPE over 16 GB, 20 Foldseek 3Di letters [ 58], 8 DSSP labels [ 33 ], and control tokens such 89 
+
+as <PRO_M> , <DNA_A> , <3Di_p> , <2D_H> ), extending the embedding table from 262 ,144 to 290 ,172 .90 
+
+Continued pretraining uses QLoRA [ 12, 25 ] ( r=64, α=128, 4-bit NF4 quantization, eight target 91 
+
+modules including router.proj ) on 32.5 GB of mixed DNA + protein + OpenWebText + 3Di 92 
+
++ DSSP data for 0.6 epoch. Supervised fine-tuning is performed in four cumulative passes (v2 93 
+
+through v5): Bio-SFT v2 on 179K examples covering eight task families; v3 adds 20K remote-94 
+
+homology pairs; v4 introduces a pure-Alpaca prompt template, instruction-tuning loss masking, and 95 
+
+Structure/Mutation oversampling; v5 adds two per-residue classification heads (3Di and DSSP) 96 
+
+trained jointly with generation under a 0.5/0.5 loss split. Each stage initializes from the previous 97 
+
+LoRA + embedding, so v5 weights cumulatively reflect all prior training. 98 
+
+(2) A benchmark suite spanning sequence-grounded and general biological QA. 99 
+
+We evaluate three protocols that together cover the spectrum from pure sequence reasoning to 100 
+
+general biological knowledge. (2a) Standard protein homology on BioPAWS [ 61] (99.40%) tests 101 
+
+close-homolog detection, where surface sequence similarity is informative. (2b) Remote homology 102 
+
+on the same dataset ( 82.60% ) tests structure-level recognition under sequence divergence and is 103 
+
+the hardest sequence-grounded task: on the identical 500-pair set, ESM-2 [ 36] (both 650M and 3B), 104 
+
+MMseqs2 [ 52 ], and DIAMOND [ 5] all saturate at 50–55%; our model exceeds them by 28–31 pp, and 105 
+
+scaling ESM-2 from 650M to 3B adds only +0 .7 pp, ruling out encoder capacity as the bottleneck. 106 
+
+(2c) BixBench [17 ] ( 93.66% ) is the most general benchmark in this suite: a true/false test 107 
+
+3
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+covering literature comprehension, mutation interpretation, and bioinformatics workflow reasoning, 108 
+
+which probes whether the model has retained general scientific-language reasoning after biological 109 
+
+specialization. The consistent BixBench performance from v3 to v5 (93.66%) confirms that our 110 
+
+cumulative SFT pipeline does not collapse general-knowledge capability, contrasting with prior 111 
+
+observations on dense models [ 39]. The v5 dual-head architecture additionally achieves 78.6% 112 
+
+per-residue accuracy on 3Di and 100% on DSSP (chance levels 5% and 12.5%), a level of 113 
+
+structured prediction that the generation-only path cannot reach (25.9% character overlap). 114 
+
+(3) A router-level measurement of CPT vs SFT contributions. By installing forward 115 
+
+hooks on every Gemma4TextRouter module (30 hooks) and running 400 prompts drawn uniformly 116 
+
+from 8 modalities (DNA, Protein, StdHomology, RemHomology, NL, Cell, Mol, Structure), we 117 
+
+record token-level routing decisions for three checkpoints: the vocabulary-extended baseline, CPT-118 
+
+only (0.6 epoch), and full v3. Computing per-layer cross-task Jensen–Shannon divergence and 119 
+
+averaging across the 30 layers, we find that under this aggregate metric the CPT stage accounts 120 
+
+for nearly all of the increase in cross-task routing divergence ( ∆JS +0 .092 ), with the SFT stage 121 
+
+contributing a small further rise ( ∆JS +0 .002 ). At individual layers the picture is richer: CPT 122 
+
+predominantly reshapes routing in the middle transformer layers ( L11 –L22 , peak +0 .16 at L12 ), 123 
+
+while SFT predominantly reshapes the final two layers ( L28 : +0 .023 , L29 : +0 .048 ). Layer-12 routing 124 
+
+reveals experts with strongly skewed token preferences (an English-function-word expert at 80% 125 
+
+NL purity, two DNA-dinucleotide experts, an amino-acid expert, and a cellular-biology expert), 126 
+
+although absolute purities for most experts are modest (15–46%) and we caution against reading 127 
+
+these as fully “single-function” subnetworks. 128 
+
+(4) Modality-invariant transfer under multi-modal scaling. To test whether the dis-129 
+
+covered routing organization survives the addition of new modalities, we extend OmniGene-4 to a 130 
+
+multi-modal generalist ( OmniGene-4-MM ) by attaching the Gemma-4 vision encoder [ 19 ] (27 131 
+
+layers, 1152 hidden, 2520 visual patches per image) and training a fresh LoRA adapter ( r=64 ,132 
+
+α=128 ) on Q/K/V/O, gate/up/down, and router.proj in three stages: (i) vision warmup, (ii) 133 
+
+mixed text + vision SFT to recover catastrophic forgetting, and (iii) homology-heavy specialty 134 
+
+training with frozen embedding. The 56K-step pipeline runs on a single H20 GPU in roughly 30 135 
+
+wall-clock hours ( ∼ 1.25 GPU-days). After Stage 3, the model retains 85.0% on standard homology 136 
+
+and 69.5% on remote homology while acquiring chemist-readable molecular structure understanding 137 
+
+(96% on Vis-CheBI20 functional-group captioning, 100% on highlighted-functional-group recog-138 
+
+nition). Crucially, the same forward-hooked router analysis applied to the multi-modal model 139 
+
+reveals a clean three-tier emergent organization (vision → sequence → language; cross-cluster JS 140 
+
+> 1.2 vs intra-cluster JS < 0.05 ), unsupervised. We refer to this as modality-invariant transfer :141 
+
+the syntactic-isomorphism mechanism that makes paraphrase fine-tuning transfer to homology in 142 
+
+OmniGene-4 (§2.2) is not destroyed by adding four vision modalities, and the router self-organization 143 
+
+predicted by §2.3 reappears in the larger modality space. 144 
+
+Implications 145 
+
+We summarize the picture as a tentative representation/output-alignment factorization of bio-146 
+
+foundation training: under the layer-averaged JS metric, CPT does most of the work of repartitioning 147 
+
+routing across modalities (and does so in the middle transformer layers), while SFT mostly adjusts 148 
+
+the routing nearest lm_head to align output format with task labels. We are deliberately cautious 149 
+
+here. The factorization is descriptive of one architecture and one training run; the routing data 150 
+
+themselves were collected at v3 (baseline, CPT-only, and CPT+v3-SFT), so the SFT contribution 151 
+
+measured here is the contribution of v2+v3 instruction-tuning specifically, not the additional SFT-152 
+
+recipe changes introduced by v4 (Alpaca template, loss masking) or v5 (dual-head classifiers). The 153 
+
+4
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+appropriate strength of the claim is therefore “most of the average-JS increase between baseline and 154 
+
+v3 appears at the CPT stage” rather than a strong causal “CPT does X, SFT does Y” separation. 155 
+
+Even so, the prescription is concrete: on hard cross-modal tasks such as remote homology where we 156 
+
+observe limited returns from instruction-tuning scale, richer CPT corpora are the more promising 157 
+
+direction. 158 
+
+The remainder of the paper is organized as follows. Section 4 describes the architecture, training 159 
+
+data, training procedure, and measurement pipeline. Section 2 reports benchmark results (§2.1, 160 
+
+§2.2), the router-level decomposition (§2.3, the central analysis), and the multi-modal extension 161 
+
+and modality-invariant-transfer evidence (§2.5). Section 3 discusses implications for bio-foundation 162 
+
+model training and positions our contribution against recent MoE bio-models; Section 3 notes 163 
+
+limitations and outlines future work. 164 
+
+## 2 Results 165 
+
+2.1 Training 166 
+
+The CPT phase converged smoothly. Loss decreased monotonically over 1,680 gradient steps (0.6 167 
+
+epoch) with no observed instability, ending at ≈ 36% of starting loss. Validation loss on a held-out 168 
+
+0.5% slice of the binary corpus tracked training loss within ±2% , indicating no overfitting at this 169 
+
+scale. 170 
+
+Bio-SFT v2 (179K examples, learning rate 5 × 10 −5, 1 epoch, single H20) ran for 11.8 hours, with 171 
+
+training loss decreasing from ≈ 44 .6 to 36 .5 (mean 37.6). Bio-SFT v3 (199K examples including 172 
+
+20K remote-homology pairs, lower rate 2 × 10 −5, 1 epoch) ran for 13.2 hours with training loss 173 
+
+stable around 39.8 — essentially flat, consistent with our hypothesis that v3 is a small perturbation 174 
+
+on top of v2 rather than a fresh training pass. Bio-SFT v4 (4,257 steps, learning rate 2 × 10 −5,175 
+
+MAX_LENGTH raised from 1024 to 1536) replaced the chat-tag template with pure-Alpaca, added 176 
+
+loss masking on prompt tokens, and oversampled Structure ( ×3) and Mutation ( ×2); it ran for 177 
+
+≈ 30 GPU-hours and showed a clean training-loss decrease from ≈ 1.9 to ≈ 1.4 (the absolute scale 178 
+
+shifted because of loss masking). Bio-SFT v5 (1,350 steps, joint loss 0.5 · L gen + 0 .5 · L cls , 2 epochs 179 
+
+over the Structure-only subset) added the 3Di and DSSP classification heads on top of v4 and ran 180 
+
+for ≈ 5 GPU-hours. 181 
+
+2.2 Benchmark performance 182 
+
+Note on baseline definition. Throughout the paper, “baseline” refers to Gemma-4-26B-A4B-183 
+
+Instruct whose tokenizer and embedding table have been extended with the 28,028 biological tokens 184 
+
+introduced in §4 (new rows mean-initialized from BPE fragments) but whose attention, FFN, and 185 
+
+router weights are untouched (no LoRA applied). This definition is shared by the benchmark table 186 
+
+below and by the router analysis in §2.3; it isolates the effect of CPT and SFT from the separate effect 187 
+
+of vocabulary expansion and embedding initialization. A strictly un-modified Gemma-4-Instruct 188 
+
+would additionally require a different tokenizer and a different input-space on biological inputs, 189 
+
+which we do not evaluate. 190 
+
+Table 1 reports accuracy across the three benchmark protocols, comparing all four OmniGene-4 191 
+
+SFT stages (v2 through v5) and the vocabulary-extended Gemma-4-Instruct baseline, together with 192 
+
+published numbers for related bio-foundation models where available. The router analyses in §2.3 193 
+
+are based on the v3 checkpoint (where 8-task routing data was collected); v4/v5 modify the SFT 194 
+
+recipe and add classification heads but do not change the core CPT representation that the router 195 
+
+analysis characterizes. For Qwen-3 and for the legacy GPT-2 and LLaMA-3.1 rows we cite numbers 196 
+
+5
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+reported in [ 61] on related splits; we do not claim those numbers were produced on the exact same 197 
+
+6,000-pair / 2,000-pair samples. 198 
+
+Table 1: Benchmark accuracy across model families. BioPAWS numbers use protein_pair_short (Standard, sampled to 1,000 balanced pairs for v4 and v5; 6,000 pairs for v2 and v3) and protein_pair_remote (Remote, 500 balanced pairs for v4 and v5; 2,000 for v2 and v3, seed 42). BixBench numbers reflect the True/False subset. 
+
+Model Standard Remote BixBench 
+
+GPT-2 (PAWS-X, BioPAWS baseline) 84% — —LLaMA-3.1 8B (LoRA, BioPAWS) 72% — —Gemma-4-26B-Instruct (vocab-extended, zero-shot) 85% 60% 87% ESM-2 650M (matched 500-pair Remote) — 50.50% —ESM-2 3B (matched 500-pair Remote) — 51.20% —MMseqs2 (matched 500-pair Remote) — 54.40% —DIAMOND (matched 500-pair Remote) — 53.20% —Qwen-3 (massive) ∼100% ∼75% —OmniGene-4 v2 (CPT + Bio-SFT) 100.00% 56.55% 91.04% OmniGene-4 v3 (+20K remote) 99.95% 59.50% 93.66% OmniGene-4 v4 (Alpaca + loss-mask) 99.50% 82.00% 90.40% OmniGene-4 v5 (dual-head) 99.40% 82.60% 93.66% 
+
+Standard homology saturates after CPT + SFT. Both v2 and v3 score essentially 199 
+
+perfectly (v3 loses 3 pairs, v2 loses 0). The 14.5-point improvement over Gemma-4-Instruct zero-shot 200 
+
+(85 → 99 .95 ) demonstrates that the bio-CPT corpus is doing work beyond surface vocabulary 201 
+
+memorization. 202 
+
+Remote homology: a phase transition between v3 and v4. v3 scores 59.50% versus the 203 
+
+vocabulary-extended Gemma baseline at ≈ 60% , essentially at the chance-plus-surface-similarity 204 
+
+floor for a balanced binary task. v4 jumps to 82.00% (+22 .5 percentage points) without adding new 205 
+
+training data — the gain is entirely attributable to three changes in the SFT recipe: (i) replacing the 206 
+
+prior chat-tag template ( <User>...<Assistant>... ) with a pure-Alpaca prompt, which we found 207 
+
+to collapse under 4-bit inference; (ii) loss masking that zeros gradients on prompt tokens so only the 208 
+
+answer span contributes; and (iii) Structure/Mutation oversampling ( ×3/ × 2) to address long-tail 209 
+
+data scarcity. v5 adds the dual-head architecture and matches v4 within noise ( 82.60% ). On the 210 
+
+same 500-pair sample, ESM-2 [ 36] reaches only 50 .50% at 650M and 51 .20% at 3B parameters — a 211 
+
++0 .7 pp gain that does not close the gap, indicating that the bottleneck is not encoder capacity. 212 
+
+Classical alignment tools on the same pairs reach 54 .4% (MMseqs2 [ 52]) and 53 .2% (DIAMOND [ 5]), 213 
+
+confirming that these 500 pairs are genuinely remote in sequence space (no detectable alignment in 214 
+
+>95% of cases). v5 outperforms ESM-2 3B by +31 .4 pp, MMseqs2 by +28 .2 pp, and DIAMOND 215 
+
+by +29 .4 pp on identical input, putting the v5 number decisively above the 80% threshold for an 216 
+
+unrestricted-vocabulary chat model on this distribution. A mechanistic explanation (representation-217 
+
+level bottleneck overcome by template repair and answer-only supervision) is consistent with the 218 
+
+router analysis in §2.3. 219 
+
+BixBench: cumulative SFT does not collapse general-knowledge capability. The 220 
+
+6.7-point gain over Gemma-4-Instruct zero-shot ( 87 → 93 .66 ) and the 2.6-point gain from v2 221 
+
+to v3 ( 91 → 94 ) together demonstrate that adding biological supervision does not crowd out 222 
+
+instruction-following. v4 dipped slightly to 90.40% — consistent with the loss-masking change 223 
+
+shifting the model’s distribution toward biological answer formats — but v5 returns to v3’s 93.66% 224 
+
+level, indicating that the dual-head architecture (which specializes Structure prediction in dedicated 225 
+
+6
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+classification heads) frees the generation head to retain broader knowledge. In our v1 baseline 226 
+
+(LLaMA-3.1 + Bio-SFT without instruction replay), BixBench dropped from 80% to 63% under 227 
+
+the same recipe; the combination of OpenWebText-heavy CPT, instruction replay during SFT, and 228 
+
+head specialization in v5 jointly prevents that collapse. 229 
+
+Dual-head per-residue prediction (v5). v5 introduces two auxiliary classifiers on top of 230 
+
+the final hidden state: a 20-class head for Foldseek 3Di letters and an 8-class head for DSSP 231 
+
+secondary-structure labels, trained jointly with the generation objective under a 0.5/0.5 loss split for 232 
+
+1,350 steps on the Structure-only subset of the SFT corpus ( ≈ 21 K examples). At inference time the 233 
+
+heads operate independently of generation: a teacher-forced prompt + reference-residue input is fed 234 
+
+forward, and per-residue argmax over the head logits gives the prediction. On a 50-protein evaluation 235 
+
+drawn from the held-out Structure split, the 3Di head reaches 78.6% per-residue accuracy (chance 236 
+
+5% , 15 .7× above chance) and the DSSP head reaches 100% (chance 12 .5% , 8× above chance). 237 
+
+The DSSP figure is essentially saturation on this sample size; the 3Di figure leaves real room for 238 
+
+improvement and is bounded by the cross-entropy floor implied by Foldseek’s discretization noise. 239 
+
+The same model under generation-only inference (the path used to test v2–v4 on Structure tasks) 240 
+
+reaches only 25.9% character-overlap on Structure outputs — the generation head is structurally 241 
+
+not the right object for this task. The dual-head design treats per-residue structure prediction 242 
+
+as classification rather than language modeling, recovers the full information available in a 20-243 
+
+or 8-symbol alphabet, and does so without interfering with the generation head’s chat capability 244 
+
+(BixBench restored from v4’s 90.4% to 93.66%). 245 
+
+Error analysis. Of the 869 v3 errors on remote-homology, 76% are false positives, consistent 246 
+
+with a “shortcut-learning” failure mode: the model calls any pair of well-formed protein sequences 247 
+
+“Homologous” by default. v4 reduces this asymmetry — of its ≈ 90 remote-homology errors, false 248 
+
+positives and false negatives are roughly balanced (within ±5 pairs), suggesting the loss-masking 249 
+
+change broke the surface-similarity shortcut. Of the 13 BixBench errors, no clear pattern emerges; 250 
+
+the model fails on questions whose result text was truncated during preprocessing or whose 251 
+
+hypothesis admits multiple readings. 252 
+
+2.3 Mixture-of-Experts: router-level decomposition 253 
+
+2.3.1 Task-level expert specialization 254 
+
+A note on expert identity. Gemma-4-MoE has 128 experts per layer ; the parameters labelled 255 
+
+“E k” at layer ℓ and “E k” at layer ℓ′ are distinct FFN sub-modules. All specialty analyses below 256 
+
+are therefore computed strictly within a single layer. Earlier versions of this section used a layer-257 
+
+averaged specialty score; we have withdrawn those results because averaging over layers conflates 258 
+
+non-comparable objects. 259 
+
+For a fixed layer ℓ we compute specialty score s(ℓ) 
+
+> t,e
+
+= log (p(ℓ) 
+
+> t,e
+
+/¯p(ℓ)
+
+> e
+
+), where p(ℓ) 
+
+> t,e
+
+is the fraction 260 
+
+of task-t routing events at layer ℓ that select expert e and ¯p(ℓ) 
+
+> e
+
+is the cross-task mean at the same 261 
+
+layer. We use layer ℓ = 12 (the peak cross-task differentiation layer, §2.3.2) as our running example. 262 
+
+Table 2 reports the top-5 specialty experts per task. 263 
+
+7
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+Table 2: Top-5 specialty experts per task at layer 12 of OmniGene-4 v3 (layer-local analysis; expert IDs are not comparable across layers). 
+
+Task Top specialty experts at L12 (E ⟨id ⟩, log-specialty) 
+
+NL E54 ( +2 .08 ), E121 ( +2 .08 ), E61 ( +2 .08 ), E52 ( +2 .08 ), E37 ( +2 .08 )Cell E109 ( +2 .08 ), E56 ( +1 .95 ), E116 ( +1 .84 ), E3 ( +1 .70 ), E72 ( +1 .66 )Mol E47 ( +2 .07 ), E127 ( +2 .01 ), E119 ( +1 .80 ), E82 ( +1 .77 ), E18 ( +1 .70 )Structure E123 ( +2 .08 ), E10 ( +2 .08 ), E105 ( +1 .86 ), E107 ( +1 .58 ), E23 ( +1 .32 )DNA E91 ( +1 .26 ), E9 ( +0 .83 ), E58 ( +0 .66 ), E94 ( +0 .59 ), E49 ( +0 .54 )Protein E9 ( +0 .79 ), E49 ( +0 .55 ), E39 ( +0 .52 ), E78 ( +0 .47 ), E124 ( +0 .44 )StdHomology E91 ( +0 .67 ), E44 ( +0 .58 ), E49 ( +0 .45 ), E9 ( +0 .40 ), E71 ( +0 .39 )RemHomology E44 ( +0 .76 ), E49 ( +0 .43 ), E39 ( +0 .40 ), E71 ( +0 .38 ), E78 ( +0 .37 )
+
+Two observations are worth flagging. First, the top specialty scores are strongly separated 264 
+
+between “narrative-heavy” tasks (NL, Cell, Mol, Structure have s ≳ +1 .7 on multiple experts) and 265 
+
+“sequence-heavy” tasks (DNA, Protein, Std/Rem Homology have s ≲ +0 .8). This is partly an artefact 266 
+
+of prompt format: narrative tasks contain more syntactically distinctive tokens (‘### Instruction‘, 267 
+
+punctuation, newlines), which route sharply; raw sequence tasks share an amino-acid or nucleotide 268 
+
+alphabet and admit less partitioning. Second, between baseline and v3 the identity of the top-1 spe-269 
+
+cialty expert at L12 shifts for all eight tasks (see supplementary focus_layer_specialty_L12.json ), 270 
+
+confirming that CPT reorganizes the assignment rather than merely reweighting fixed allocations. 271 
+
+Token-level inspection at L12 . Looking at which tokens activate specific layer-12 experts gives 272 
+
+a more interpretable but more limited picture (Table 3). We emphasize that these counts aggregate 273 
+
+three adjacent layers (11–13) to improve statistical power for rare tokens, so “ L12 expert E k” in 274 
+
+this table should be read as a local neighborhood rather than a point in network space. 275 
+
+Table 3: Layer-12 experts with skewed token preferences (counts aggregated over L11 –L13 ). Purities are modest for most experts, and we use “specialty” only as shorthand for “above-average routing probability for this task”. Numbers reproduce from token_level_experts.json in the repository. 
+
+Expert Interpretation (informal) Purity Top tokens (count) 
+
+E54 English function-word ≈ 80% NL the ×86 , .×51 , ,×50 , in ×43 , to ×41 
+
+E59 DNA dinucleotide ≈ 46% DNA AT ×811 , CT ×670 , AG ×617 , TT ×467 
+
+E117 DNA dinucleotide (comp.) ≈ 35% DNA AG ×684 , AT ×644 , CT ×540 , TT ×506 
+
+E78 Amino-acid single letter ≈ 36% Prot. V×1450 , K×1044 , G×804 , Y×742 
+
+E97 Cell-type vocabulary ≈ 19% Cell cell ×39 , identity ×16 , type ×11 
+
+E100 Punctuation & SMILES morphology 18% Cell, 22% Mol ,×128 , \n ×107 , (×112 , )×150 
+
+Taken at face value, E54 is a sharp English-syntax expert, while E59/E117 and E78 are genomic-276 
+
+alphabet and amino-acid experts. We deliberately avoid stronger claims than this: (i) absolute 277 
+
+purities are in the 15–46% range for most experts, far from a clean “one-expert-one-function” picture; 278 
+
+(ii) part of the signal is demonstrably format-driven — both Cell and Mol prompts contain the same 279 
+
+punctuation that activates E100; (iii) the same neighborhood aggregation that improves statistical 280 
+
+power also obscures any true layer-specific specialization. We view these tokens as a qualitative 281 
+
+sanity check that biological and linguistic modalities are at least partly dissociated in the router’s 282 
+
+representation, not as proof of a modular internal structure. 283 
+
+StdHom vs RemHom at L12 . At layer 12, Table 2 shows that StdHomology’s top-1 expert 284 
+
+(E91) differs from RemHomology’s top-1 (E44), but the two tasks also share three of their top-5 285 
+
+8
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+experts (E49, E71, E78 appear in both sets). Token-level purities for the top experts are only 286 
+
+12–13% for either task, so neither is well described as “routing to disjoint physical experts”. What 287 
+
+is different is the mixture weight: mean pair-wise JS divergence between StdHom and RemHom 288 
+
+at L12 is 0.25 for v3 versus 0.08 for the baseline — a 3× increase (§2.3.2) — indicating that CPT 289 
+
+reweights the shared protein-character expert pool asymmetrically for the two tasks. This framing 290 
+
+is consistent with classical MoE as a learned mixture model [ 51 ]: the unit of specialization is the 291 
+
+router’s softmax distribution, not a hard top-1 assignment. It also offers one explanation for the 292 
+
+small +3 -point SFT gain: if the representational backbone is effectively frozen after CPT, 20K 293 
+
+additional remote pairs at SFT can adjust mixture weights only marginally. 294 
+
+2.3.2 Layer-level differentiation 295 
+
+Figure 1 plots the mean pair-wise JS divergence at each layer for baseline and v3. Baseline is 296 
+
+nearly flat at JS ≈ 0.08 –0.13 across layers, with a mild peak at layer 5. v3 more than doubles the 297 
+
+JS in layers 10–22 (peak +0 .17 at layer 12), tripling it relative to baseline (baseline L12 = 0 .082 ,298 
+
+v3 L12 = 0 .251 ). v3 also shows a secondary peak at the output layers ( L28 = 0 .287 ), reflecting a 299 
+
+“choose-the-modality-to-generate” function near lm_head .300 
+
+Figure 1: Per-layer mean pair-wise JS divergence across 8 task pools. Red: OmniGene-4 v3; blue: Gemma-4-Instruct baseline. 
+
+The differentiation is not concentrated in shallow embedding-proximal layers: the largest gains 301 
+
+are at layer 12–28, i.e. in the semantic-processing depth of the network. This is inconsistent with a 302 
+
+“surface-token memorization” explanation and consistent with a genuine representational split. 303 
+
+Per-task entropy analysis strengthens this conclusion. Under CPT+SFT training, Protein and 304 
+
+DNA entropies decrease (more concentrated expert use: Protein 2.76 → 2.54 nats, DNA 2.70 → 2.53 ), 305 
+
+while NL entropy increases (3.85 → 4.13 ). Biological tasks converge onto dedicated experts; NL 306 
+
+spreads across a wider but distinct set — so the model is broadening its linguistic capacity rather 307 
+
+than narrowing it. This is a direct refutation of a catastrophic-forgetting narrative for this training 308 
+
+recipe. 309 
+
+9
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+2.3.3 Decomposition: CPT vs SFT 310 
+
+Because we have all three checkpoints (baseline, cpt, v3), we can ask which stage produced the 311 
+
+observed differentiation. Writing ∆CPT (ℓ) = Jcpt (ℓ) − Jbaseline (ℓ) and ∆SFT (ℓ) = Jv3 (ℓ) − Jcpt (ℓ) for 312 
+
+the mean pair-wise JS at layer ℓ, we obtain the stage-wise decomposition shown in Table 4. 313 
+
+Table 4: Stage-wise decomposition of cross-task routing differentiation. 
+
+Stage Avg JS across layers ∆
+
+Baseline 0.1383 —
+
++ CPT 0.6-epoch 0.2304 +0.0921 (98%) 
+
++ SFT + 20K remote (v3) 0.2323 +0 .0019 (2%) 
+
+Under the layer-averaged JS metric, the CPT stage accounts for nearly all of the 314 
+
+increase. The SFT stage adds almost nothing to the aggregate. The per-layer picture (Figure 2) 315 
+
+is more nuanced: CPT adds positive mass across the middle layers ( L11 –L27 , peak +0 .16 at L12 ); 316 
+
+SFT adds positive mass essentially only at the final two layers ( L28 , L29 , peak +0 .048 at L29 ), 317 
+
+and contributes mildly negative mass at some early layers. The aggregate-vs-layered discrepancy 318 
+
+is important: “2% on the average metric” should not be read as “SFT does almost nothing”, but 319 
+
+rather as “SFT does its work in a small number of layers, where the metric averaging suppresses its 320 
+
+contribution”. 321 
+
+Figure 2: Per-layer decomposition of cross-task JS gain. Orange: CPT-stage contribution; red: SFT+remote-stage contribution. CPT predominantly reshapes routing in the middle transformer layers; SFT+remote predominantly reshapes the final two layers near lm_head . Single seed, no bootstrap intervals; uncertainty quantification deferred to future work (§3). 
+
+A natural interpretation of these patterns is that the two training stages do qualitatively different 322 
+
+work — CPT predominantly reshapes representation routing in the middle layers, while SFT 323 
+
+predominantly reshapes output-decision routing in the final layers. We frame this as a tentative 324 
+
+hypothesis rather than an established mechanism: it rests on a single architecture, a single training 325 
+
+run, and an SFT stage that bundles instruction tuning with the additional 20K remote pairs, and 326 
+
+the supporting evidence is a single deterministic decomposition without uncertainty intervals. 327 
+
+If the hypothesis holds up under replication , the correspondence to benchmarks is 328 
+
+suggestive: Standard-homology accuracy (99.95%) is consistent with a representation that already 329 
+
+10 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+existed after CPT plus SFT-driven output alignment to the prompt template; Remote-homology 330 
+
+accuracy (59.50%) is consistent with a representational mismatch that the SFT stage cannot fully 331 
+
+repair, with the +3 points from 20K remote pairs interpretable as a marginal mixture-weight 332 
+
+adjustment over a frozen expert pool. 333 
+
+2.3.4 Per-task isolation and global heatmap 334 
+
+Figure 3 shows the task × expert difference in routing probability (v3 minus baseline), layer-335 
+
+averaged. Red indicates experts more used by v3; blue more used by baseline. The NL row shows 336 
+
+bidirectional extremes (some experts vacated, new specialized ones recruited), Cell and Mol share 337 
+
+their newly recruited experts (E6, E97, E100), and the RemHomology row introduces a distinct set 338 
+
+of protein-character experts (E48, E72, E110, E114, E115). 339 
+
+A complementary view is per-task isolation: for each task we compute its average JS divergence 340 
+
+to the other seven tasks, layer-averaged; the result is summarized in Table 5. 341 
+
+Figure 3: Layer-averaged ∆ routing probability (v3 − baseline) across 8 tasks. Red: more used after training; blue: less used. 
+
+Table 5: Per-task average JS-to-other-tasks (all layers). 
+
+Task Baseline CPT v3 ∆ CPT ∆ SFT 
+
+NL 0.255 0.442 0.436 +0.187 −0.006 
+
+Cell 0.140 0.268 0.270 +0.128 +0 .002 
+
+Mol 0.144 0.233 0.244 +0 .089 +0 .010 
+
+DNA 0.144 0.226 0.224 +0 .082 −0.002 
+
+Protein 0.117 0.193 0.198 +0 .076 +0 .005 
+
+StdHomology 0.101 0.162 0.163 +0 .061 +0 .000 
+
+RemHomology 0.108 0.168 0.173 +0 .060 +0 .005 
+
+Structure 0.097 0.150 0.151 +0 .053 +0 .001 
+
+NL’s isolation grows the most ( +0 .187 in CPT), confirming that our instruction-replay recipe 342 
+
+does not collapse NL into the biological subspace. The four biological-sequence tasks cluster near 343 
+
+the bottom: they are less isolated from each other, consistent with Protein and StdHom sharing top 344 
+
+experts. 345 
+
+2.4 Case Studies and Comparison Against Classical Baselines 346 
+
+To probe when OmniGene-4 v5 succeeds where classical alignment-based and embedding-based 347 
+
+remote-homology methods fail, we draw five protein pairs from the 500-pair balanced protein_pair_remote 348 
+
+11 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+sample and run all methods head-to-head: ESM-2 (650M and 3B), MMseqs2 easy-search , DIA-349 
+
+MOND blastp –more-sensitive , and OmniGene-4 v5 (4-bit, Alpaca prompt). Cases were selected 350 
+
+to span four scenarios: (Type A, 2 cases) label 1, MMseqs2 and DIAMOND find no alignment, v5 351 
+
+right; (Type B, 1 case) label 0, ESM-2 cosine ≥ 0.5 (false positive), v5 right; (Type C, 1 case) label 352 
+
+1, all methods correct (sanity check); (Type D, 1 case) label 1, all methods including v5 wrong 353 
+
+(honest failure mode). Figure 4 shows the per-method correctness pattern across these five pairs as 354 
+
+a colour-coded matrix (blue: correct, red: wrong). 355 ESM-2 650M                     
+
+> ESM-2 3B
+> MMseqs2
+> DIAMOND
+> OmniGene-4 v5
+> Case 1 (+, type A)
+> Case 2 (+, type A)
+> Case 3 (-, type B)
+> Case 4 (+, type C)
+> Case 5 (+, type D)
+> YYNNY
+> YYNNY
+> NNYYY
+> YYYYY
+> YYNNN
+> Head-to-head accuracy on 5 case-study pairs
+> blue = correct, red = wrong
+
+Figure 4: Head-to-head accuracy on five case-study protein pairs. Blue = correct, red = wrong. Type-A pairs (Cases 1, 2) are recognized by v5 although alignment tools find no hit. Type-B pair (Case 3) is correctly rejected by v5 although ESM-2 cosine similarity is high (false positive). Type-C pair (Case 4) is the sanity check. Type-D pair (Case 5) is hard for every method tested. 
+
+Routing patterns are largely stable across cases. Forwarding each pair through v5-merged 356 
+
+with hooks on every router (30 layers, 128 experts) reveals a result we did not anticipate: pairwise 357 
+
+routing distributions are much closer between case pairs than across task families. Figure 5 plots 358 
+
+the per-layer Jensen–Shannon divergence between each homologous case and the non-homologous 359 
+
+Case 3. The maximum across all layers and case-pairs is 0.040 , more than five-fold smaller than the 360 
+
+cross-task layer-averaged JS of 0.23 reported in §2.3 for inputs from different modalities (NL, DNA, 361 
+
+Protein, etc.). At layer 12 (where cross-task differentiation peaks) we see only ∼ 0.005 –0.008 JS 362 
+
+between cases. Top-3 routed experts at layer 12 are the same set {E50 , E 9, E 108 } across all five cases. 363 
+
+This suggests that within the protein-homology task family, the homology decision does not happen 364 
+
+at the routing gate but inside the activated experts — the same expert circuit handles all five pairs 365 
+
+and produces different output simply via expert-internal computation on different residue patterns. 366 
+
+12       
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint 0510 15 20 25 30
+> Layer
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> Routing JS divergence
+> Per-layer routing JS divergence: homologous vs non-homologous case
+> max ~0.04 << cross-task JS 0.23 ==> homology decision is INSIDE experts, not at gate
+> Case 1 (v5 right) vs Case 3
+> Case 2 (v5 right) vs Case 3
+> Case 4 (v5 right) vs Case 3
+> Case 5 (v5 wrong) vs Case 3
+> Cross-task JS = 0.23 (main paper, layer-averaged)
+
+Figure 5: Per-layer routing JS divergence between each homologous case (Cases 1, 2, 4, 5) and the non-homologous Case 3. The dashed grey line marks the cross-task layer-averaged JS of 0.23 (Section 2.3). Routing is much more stable within the protein-homology task family than across modalities. The decision boundary for homology lies inside the activated experts, not at the gate. 
+
+The corresponding routing-fraction matrices for all five cases are provided in Figure 6. 367 
+
+13 
+
+.CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint 0 20 40 60 80 100 120                         
+
+> Expert ID (0-127)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Layer
+> Case 1: label=1, v5=1 (correct) - A: alignment-free remote (MMseqs2/DIAMOND fail, v5 succ
+> 020 40 60 80 100 120
+> Expert ID (0-127)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Layer
+> Case 2: label=1, v5=1 (correct) - A: alignment-free remote (MMseqs2/DIAMOND fail, v5 succ
+> 020 40 60 80 100 120
+> Expert ID (0-127)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Layer
+> Case 3: label=0, v5=0 (correct) - B: specificity (ESM-2 false-positive, v5 correct reject
+> 020 40 60 80 100 120
+> Expert ID (0-127)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Layer
+> Case 4: label=1, v5=1 (correct) - C: sanity check (true homologous, all methods correct)
+> 020 40 60 80 100 120
+> Expert ID (0-127)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Layer
+> Case 5: label=1, v5=0 (WRONG) - D: limitation (true homologous, v5 fails)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> log10(% routed + 1)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> log10(% routed + 1)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> log10(% routed + 1)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> log10(% routed + 1)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> log10(% routed + 1)
+
+Figure 6: Per-case routing-fraction matrix (30 layers × 128 experts), log-scaled. Visually similar across cases, with the strongest activation cluster near experts 0–20 and 100–115 in middle layers (consistent with the protein-rich expert population identified in §2.3). 
+
+Aggregate validation against classical baselines. Table 6 summarizes accuracy across the 368 
+
+full 500-pair sample. Two findings: (1) classical alignment tools (MMseqs2 54.4%, DIAMOND 369 
+
+53.2%) and PLM cosine similarity (ESM-2 650M 50.5%, ESM-2 3B 51.2%) all saturate near the 370 
+
+50–55% range on this distribution, indicating that the pairs are genuinely remote — no detectable 371 
+
+sequence alignment in >95% of cases, and no useful embedding-cosine signal. (2) Parameter scaling 372 
+
+within the ESM-2 family adds only +0 .7 pp from 650M to 3B, ruling out encoder capacity as the 373 
+
+bottleneck. The 27–32 pp gap to v5 reflects the cumulative effect of CPT on bio-token semantics + 374 
+
+SFT on instruction-format homology supervision, not raw scale. 375 
+
+14 
+
+.CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint Table 6: Full 500-pair Remote homology accuracy across baseline methods. All run on the same balanced sample of protein_pair_remote (seed 42). 
+
+Method Accuracy ROC AUC 
+
+ESM-2 650M (mean cosine, threshold 0.5) 50.50% 0.513 ESM-2 3B (mean cosine, threshold 0.5) 51.20% 0.512 MMseqs2 ( easy-search -s 7.5) 54.40% 0.556 DIAMOND ( blastp –more-sensitive ) 53.20% 0.532 Gemma-4-Instruct (vocab-extended, zero-shot) 60.00% —
+
+OmniGene-4 v5 (4-bit, Alpaca prompt) 82.60% —
+
+Failure mode (Type D). Case 5 (the only label-1 pair on which v5 fails) is also unrecognized 376 
+
+by MMseqs2, DIAMOND, and is correctly classified by ESM-2 cosine in only the trivial sense that 377 
+
+ESM-2 calls almost everything “positive” at threshold 0.5. The two sequences are 108 and 176 378 
+
+residues with no detectable conserved motif on visual inspection. Inspecting layer-12 routing, the 379 
+
+top-3 activated experts are {E50 , E 108 , E 9} — the same set that activates on the four cases v5 gets 380 
+
+right — so the failure is not at the gate. We do not claim v5 solves all remote-homology cases; 381 
+
+rather, the gap from 50–55% to 82% on this evaluation protocol is a real and large improvement 382 
+
+over the prior unrestricted-vocabulary chat model state-of-the-art. 383 
+
+2.5 Multi-modal extension: OmniGene-4-MM and modality-invariant transfer 384 
+
+The router-level analysis in §2.3 establishes that OmniGene-4 partitions modality processing across 385 
+
+distinct experts. It does not establish whether the partitioning generalizes when new modalities 386 
+
+are introduced post-hoc, or whether the syntactic-isomorphism transfer that makes paraphrase 387 
+
+fine-tuning succeed on protein homology is preserved when the model is asked to do something 388 
+
+else simultaneously. We address both questions by extending v5 into a multi-modal generalist 389 
+
+(OmniGene-4-MM ) covering vision, sequence, and language inputs. 390 
+
+2.5.1 Architecture and training pipeline 391 
+
+Starting from the v5 merged checkpoint, we attach the Gemma-4 vision encoder [ 19] (27 transformer 392 
+
+layers, 1152 hidden dimensions, patch size 16, 2520 visual patches per image) and inject a fresh 393 
+
+LoRA adapter ( r=64 , α=128 , dropout 0.05 ) on the same eight modules used in CPT — Q/K/V/O, 394 
+
+gate/up/down, and router.proj . Figure 7 summarizes the architecture. 395 
+
+Training proceeds in three stages on a single H20 GPU. 396 
+
+Stage 1: vision warmup ( ∼ 0.4 GPU-days). Images-only SFT on a 100K-example pool drawn 397 
+
+from Vis-CheBI20 [ 14] (chemical structures), PubMedVision [ 7 ] and HPA10M [ 27] (medical and 398 
+
+pathology), ChartQA [ 40] (charts), and BiomedVis (synthetic biomedical visual tasks). Learning 399 
+
+rate 5×10 −5, ∼ 10 K steps. This stage activates the vision tower but, by construction, induces 400 
+
+catastrophic forgetting on text: only 4 of 200 BioPAWS prompts return a parseable response. 401 
+
+Stage 2: mixed text + vision ( ∼ 1 GPU-day). A 60:40 mixture of (i) the v5 SFT corpus 402 
+
+(199K text examples) and (ii) the Stage 1 vision pool, 6,000 steps at LR 5×10 −6. This recovers text 403 
+
+capability ( 200 /200 valid responses on the BioPAWS prompts) while preserving vision performance 404 
+
+(≥ 88% on Vis-CheBI20 functional-group recognition). 405 
+
+15 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+OmniGene-4-MM: multi-modal MoE for biological structural discovery       
+
+> Inputs
+> Molecular image
+> (Vis-CheBI20)
+> Medical / pathology
+> (PubMedVision)
+> Protein sequence
+> (15B residues)
+> DNA sequence
+> (32B bases)
+> 3Di alphabet
+> (Foldseek)
+> Natural language
+> (PAWS-X, SFT)
+> Gemma4 Vision Tower
+> 27 layers, 1152 hidden
+> patch 16 2520 patches
+> Gemma-4 MoE Backbone (26B-A4B)
+> 30 layers · 128 experts/layer · top-8 routing
+> Layer L (expanded view)
+> Self-Attn
+> Q K V O
+> LoRA r=64
+> Router
+> LoRA on router.proj
+> 128 experts ·top-8 active per token (LoRA on gate / up / down)
+> visual
+> patches
+> Output heads
+> Vision-language
+> structure captions
+> Text head
+> homology · cell · SFT
+> Sequence head
+> protein · DNA · 3Di
+> Training pipeline (single H20 GPU)
+> Stage 1
+> Vision warmup
+> Stage 2
+> Mixed text + vision
+> Stage 3 v3
+> Homology specialty
+> LR 2e-5, 3000 steps
+
+Figure 7: OmniGene-4-MM architecture. Inputs span four image modalities (chemical structure, medi-cal/pathology, charts, microscopy), three sequence modalities (protein, DNA, 3Di), and natural language. The Gemma-4 vision tower converts images to 2520 patches that join the language stream; LoRA adapters (red) sit on attention, MoE gate, MLP, and router.proj layers. Three output heads handle structure captions, instruction following, and per-residue sequence prediction. Training proceeds in three stages with progressively narrower scope. 
+
+Stage 3 v3: homology specialty ( ∼ 0.5 GPU-days). A heavy-homology, vision-replay 50K-406 
+
+example mixture ( 45 K text including a 3× oversampling of homology pairs, 5K vision replay), 3,000 407 
+
+steps at LR 2×10 −5 with the embedding table frozen. We selected this configuration after observing 408 
+
+that an earlier Stage 3 attempt with a trainable embedding and a 4× lower learning rate (denoted 409 
+
+Stage 3 v2 in Table 7) plateaued at 59% standard homology, identical to Stage 2; freezing the 410 
+
+embedding (which carried the v5 paraphrase-transfer signal) and raising the learning rate by 4×411 
+
+broke the plateau and yielded the final 85% standard / 69.5% remote checkpoint. 412 
+
+The full pipeline costs ≈ 1.9 GPU-days, including all three stages and all evaluation runs. 413 
+
+2.5.2 Multi-modal benchmarks 414 
+
+We evaluate the final checkpoint on three protocols. Vis-CheBI20 [ 14] measures chemical-structure 415 
+
+understanding from molecular images, decomposed into five subtasks following the OCSU framework: 416 
+
+functional-group recognition ( struct_recog ), functional-group captioning ( struct_cap ), free-form 417 
+
+description ( general_desp ), and exact-character generation of IUPAC names ( trans_iupac ) and 418 
+
+SMILES strings ( trans_smiles ). BioPAWS homology is unchanged from §2.2. Multi-task generation 419 
+
+is measured by keyword-overlap on a 30-prompt-per-category subset of an internal held-out SFT-eval 420 
+
+set covering Cell-marker → cell-type identification, molecular descriptor generation from SMILES, 421 
+
+protein-pair homology generation, and literature comprehension. 422 
+
+Table 7 summarizes BioPAWS performance across all stages, including the failed Stage 3 v2 423 
+
+attempt; Figure 8 traces the full capability trajectory. Stage 3 v3 retains 85% standard / 69.5% 424 
+
+16 
+
+.CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint v5  
+
+> (text only)
+> Stage 1
+> (vision warmup)
+> Stage 2
+> (mixed)
+> Stage 3 v2
+> (LR 5e-6,
+> emb trainable)
+> Stage 3 v3
+> (LR 2e-5,
+> emb frozen)
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> Accuracy
+> v5
+> v5
+> 0.994
+> 0.590 0.595
+> 0.850
+> 0.826
+> 0.565
+> 0.600
+> 0.695
+> (a) Protein homology recovery
+> standard homology
+> remote homology
+> v5
+> (text only)
+> Stage 1
+> (vision warmup)
+> Stage 2
+> (mixed)
+> Stage 3 v2
+> (LR 5e-6,
+> emb trainable)
+> Stage 3 v3
+> (LR 2e-5,
+> emb frozen)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+> (b) Vision (Vis-CheBI20)
+> struct_recog
+> struct_cap
+> general_desp
+> v5
+> (text only)
+> Stage 1
+> (vision warmup)
+> Stage 2
+> (mixed)
+> Stage 3 v2
+> (LR 5e-6,
+> emb trainable)
+> Stage 3 v3
+> (LR 2e-5,
+> emb frozen)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Keyword score
+> (c) Multi-task generation
+> Cell ID
+> Mol descriptor
+> Protein homology
+
+Figure 3. Capability progression across training stages of OmniGene-4-MM Figure 8: Capability progression of OmniGene-4-MM across training stages. (a) BioPAWS standard and remote homology. Stage 3 v2 (LR 5×10 −6, embedding trainable) plateaus at the Stage 2 level; Stage 3 v3 (LR 
+
+2×10 −5, embedding frozen) breaks the plateau. v5 baselines shown as dashed lines. (b) Vision (Vis-CheBI20). Functional-group captioning is preserved across all stages. (c) Multi-task generation on Cell, Mol, and Protein keyword-overlap. 
+
+Table 7: BioPAWS homology accuracy across pre-MM stages and the multi-modal extension (OmniGene-4-MM, this work). All multi-modal stages run on a single H20; cumulative compute is reported in GPU-days. The Stage 3 v2 row is included to show the failure mode that motivated v3. 
+
+Stage / model Standard (%) Remote (%) Compute (GPU-d) 
+
+Pre-MM v5 reference 
+
+OmniGene-4 v5 (text only) 99.40 82.60 1.5 
+
+Multi-modal extension (this work) 
+
+MM Stage 1 (vision warmup) —† —† 0.4 MM Stage 2 (mixed) 59.00 56.50 1.0 MM Stage 3 v2 (LR 5×10 −6, emb. trainable) 59.50 60.00 2.3 MM Stage 3 v3 (LR 2×10 −5, emb. frozen) 85.00 69.50 1.9  
+
+> †
+
+Stage 1 evaluates only vision; the homology head returns parseable responses on 4/200 prompts. 
+
+remote homology — a 14 pp drop from the v5 text-only baseline, but 25 .5 pp above Stage 2 and 425 
+
+entirely above the classical alignment baselines (MMseqs2 54% , DIAMOND 53% ). On vision, 96% 426 
+
+of struct_cap prompts produce captions that overlap the chemist-reference functional-group list at 427 
+
+≥ 30% recall, and 100% of struct_recog prompts return a recognized functional group. Multi-task 428 
+
+generation reaches 0.95 keyword-score on Cell, 0.91 on Mol, and 1.00 on Protein, recovering or 429 
+
+exceeding Stage 2 levels (Figure 8c). 430 
+
+The two character-level chemical-naming tasks ( trans_iupac and trans_smiles ) reach 0% exact 431 
+
+match. We treat this as a known limitation of LoRA-tuned generative models on string-level 432 
+
+chemical naming and frame it as expected behaviour under the OCSU paradigm [ 14]: structure-433 
+
+image → chemist-readable caption is what the model is trained to do; structure-image → machine-434 
+
+readable canonical strings is properly handled by cascaded OCSR systems and not by a unified 435 
+
+generative model. Figure 9-C illustrates: when the IUPAC string is short and unambiguous (e.g. 436 
+
+“3-methylbutanoate”), the model produces an exact match; on long polysaccharides the model 437 
+
+preserves backbone topology but diverges in stereochemical annotations. 438 
+
+17 
+
+.CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint 2.5.3 Modality-invariant transfer 439 
+
+Two pieces of evidence support the claim that the syntactic-isomorphism transfer underlying v5’s 440 
+
+homology performance is robust under modality scaling. 441 
+
+First, the homology capability survives. Stage 3 v3 retains 85% standard / 69 .5% remote despite 442 
+
+the model now also handling four vision modalities, four-domain multi-task generation, and chemical 443 
+
+structure captioning. Critically, the same alignment-free interpretation applies: ESM-2 3B reaches 444 
+
+only 51 .2% on the identical 500-pair Remote benchmark, and MMseqs2 54 .4% . After multi-modal 445 
+
+extension, OmniGene-4-MM still beats ESM-2 3B by +18 .3 pp and MMseqs2 by +15 .1 pp on 446 
+
+Remote, confirming that the transferred syntactic-isomorphism mechanism continues to do work 447 
+
+that surface alignment cannot. 448 
+
+Second, the router self-organization predicted in §2.3 reappears in the larger modality space. 449 
+
+Re-running the router-decomposition protocol on Stage 2 (which has full vision capability) with 50 450 
+
+prompts per modality across eight modality categories — four vision (chemical structure, medical, 451 
+
+pathology, chart) and four text/sequence (protein, DNA, 3Di, natural language) — yields a clean 452 
+
+three-tier modality structure. The four vision modalities cluster at intra-cluster JS divergence 453 
+
+< 0.05 (e.g. vis_medical vs vis_pathology : 0.048 ); the three sequence modalities also cluster tightly 454 
+
+(e.g. protein_sequence vs structure_3di : 0.016 ); and natural language sits in its own cluster. Cross-455 
+
+cluster JS divergence is > 1.2. Because no modality supervision was used during training — the 456 
+
+router gradients come only from token-level cross-entropy losses — this clustering is fully emergent. 457 
+
+Supplementary Figure S5 shows the full 8×8 JS heatmap. 458 
+
+The combination of (i) preserved homology capability and (ii) emergent modality-aware routing 459 
+
+structure even after scaling to 8 modalities supports the descriptive claim that the syntactic-460 
+
+isomorphism transfer mechanism in v5 is modality-invariant : the mechanism continues to function 461 
+
+and the routing-level signature continues to organize, after a non-trivial change in input distribution 462 
+
+that includes a new visual modality. 463 
+
+2.5.4 Qualitative showcase 464 
+
+Figure 9 illustrates Stage 3 v3 outputs across vision, homology, and multi-task generation. Vision 465 
+
+panels (A–D) show captioning of chemical structures, identification of pharmaceuticals from drawn 466 
+
+molecules (Fluracetam, L-valine), correct IUPAC for short molecules, and confusion on long 467 
+
+polysaccharide stereochemistry. Homology panels (E–F) show correct positive calls for both standard 468 
+
+and remote pairs. Multi-task panels (G–H) show pancreatic-β-cell identification from a four-marker 469 
+
+panel and physico-chemical descriptor reasoning from SMILES. 470 
+
+## 3 Discussion 471 
+
+Position relative to recent MoE bio-models. The contribution of this work is most naturally 472 
+
+compared to two recent MoE-based bio-foundation models. AIDO.Protein [ 53 ] is a 16B-A8B sparse 473 
+
+MoE pre-trained from scratch on 1.2 trillion protein tokens for ≈ 16 ,384 GPU-days; its goal is task-474 
+
+specific SOTA on PEER and ProteinGym DMS benchmarks, and it processes only protein sequences. 475 
+
+Tripathi et al. [ 57] present a Mixture-of-Experts ensemble of CNN base learners for transcription-476 
+
+factor binding-site classification, with ShiftSmooth gradient attribution for explainability; the model 477 
+
+handles only DNA. Both are valuable as task-specific tools. 478 
+
+The contribution of OmniGene-4 is structurally different. We do not propose a single-modality 479 
+
+protein expert nor a single-modality DNA classifier. We propose, first, that paraphrase-style 480 
+
+natural-language fine-tuning transfers to protein homology classification at a fraction of the compute 481 
+
+18 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+Table 8: Methodological comparison of recent Mixture-of-Experts bio-foundation models. “Mechanism” asks whether the paper’s central claim concerns a transferable mechanism or a downstream tool. Compute is one significant figure of GPU-days for the listed checkpoint, including pre-training when applicable. 
+
+AIDO.Protein Tripathi et al. OmniGene-4 / MM 
+
+[53] [57] (this work) 
+
+Year 2024 2025 2026 Modality Protein DNA 8 (vision, sequence, language) Backbone 16B-A8B sparse MoE MoE of CNNs Gemma-4 26B-A4B + LoRA r=64 Pre-train data 1.2T tokens — 32.5 GB CPT + ∼100M-token SFT Compute (GPU-days) ∼ 1.6×10 4 ∼ 10 1 ∼ 1.5
+
+Goal SOTA on PEER, ProteinGym TFBS classifier Mechanism + tool Transfer claim no no yes (paraphrase → homology) Multi-modal no no yes (4 vision + 3 sequence + 1 NL) Interpretability — ShiftSmooth Router-level + 3-tier emergence Mechanism vs tool tool tool mechanism + tool 
+
+used by alignment-free PLMs (§2.2); second, that the router-level mechanism behind this transfer 482 
+
+can be measured and characterized (§2.3); and third, that this transfer mechanism is robust to 483 
+
+multi-modal scaling and yields a unified vision/sequence/language generalist at ∼ 1.5 GPU-days of 484 
+
+total fine-tuning compute (§2.5). Figure 10 and Table 8 make the comparison explicit across modality, 485 
+
+compute, mechanism transferability, and interpretability axes. Our model uses approximately four 486 
+
+orders of magnitude less compute than AIDO.Protein while covering eight modalities instead of 487 
+
+one, and it produces a measurable mechanistic claim (modality-invariant transfer) rather than a 488 
+
+downstream metric on a fixed benchmark. 489 
+
+Representation vs alignment: a training-stage factorization. The observation that, under 490 
+
+the layer-averaged JS metric, the CPT stage accounts for the bulk of cross-task routing differentiation 491 
+
+while the SFT stage adds little, is to our knowledge the first such measurement reported for a 492 
+
+biological MoE. It complements recent empirical work on CPT/SFT balance in general LLMs 493 
+
+[ 28 , 32 ] and on fine-grained expert specialization [ 9, 34], extending these findings into the biological 494 
+
+domain. We frame the observation as a tentative hypothesis rather than an established finding: the 495 
+
+two stages of post-pretraining appear to do qualitatively different things, with CPT producing the 496 
+
+bulk of routing change in middle transformer layers ( L11 –L22 ) and SFT producing concentrated 497 
+
+routing change at the layers nearest lm_head (L28 –L29 ). The natural reading is “CPT mostly does 498 
+
+representation differentiation, SFT mostly does output alignment”. We are explicit that this is 499 
+
+exploratory: a single architecture, a single seed, no prompt-bootstrap variance, and an SFT stage 500 
+
+that bundles instruction-tuning with the additional 20K remote pairs. 501 
+
+If the hypothesis holds up under replication, it has practical consequences. When a practitioner 502 
+
+observes a disappointing remote-homology result, the conventional response is to add more labeled 503 
+
+examples for that task. Our measurements suggest this response may be misdirected: the router 504 
+
+appears to have already partitioned proteins into a shared expert pool during CPT, and additional 505 
+
+remote pairs at SFT shift mixture weights only marginally. The corresponding prediction is that 506 
+
+richer and more distant-protein-aware CPT corpora should be more effective per unit of compute 507 
+
+than scaling up SFT. 508 
+
+19 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+Catastrophic forgetting is avoidable, but the mechanism matters. In our earlier v1 509 
+
+experiments with LLaMA-3.1 8B + Bio-SFT (no instruction replay), BixBench dropped by 17 510 
+
+points (80% → 63%), matching the forgetting pattern documented in [ 26 , 39]. In the present v3, 511 
+
+with 20% OpenWebText [ 18] in the CPT mixture and ∼ 20% instruction replay in the SFT pool, 512 
+
+BixBench rises by 6.7 points relative to Gemma-4-Instruct. The router-level analysis explains why. 513 
+
+Natural-language tokens in v3 are routed to a different set of experts after CPT (NL entropy rises 514 
+
+from 3.85 to 4.13 nats — the router uses more experts for NL, not fewer), while biological tokens 515 
+
+concentrate on a narrower set (Protein entropy falls from 2.76 to 2.54 nats). The two populations 516 
+
+essentially occupy disjoint corners of expert-space. Catastrophic forgetting in dense models can 517 
+
+be thought of as the new training signal overwriting the old; in MoE it instead manifests as one 518 
+
+population displacing another from a shared expert pool. By ensuring the NL population does not 519 
+
+vacate its home experts, we prevent forgetting without paying a capacity cost on the biological side. 520 
+
+Interpretability dividends of MoE. The layer-12 experts described in §2.3.1 (sharply NL-521 
+
+preferring E54, DNA-2-mer-preferring E59/E117, amino-acid-preferring E78, cell-vocabulary E97) 522 
+
+are individually modest findings: most have purities in the 15–46% range, and only one reaches 523 
+
+a clean 80%. We make a corresponding claim of moderate strength. Their collective behaviour 524 
+
+does, however, support a methodological observation that has been articulated for general LLMs 525 
+
+[34 ] but rarely demonstrated for bio-foundation models: MoE routing offers a discrete, auditable 526 
+
+observable for which subnetwork processes which input , in contrast to the continuous probes used in 527 
+
+sparse-autoencoder approaches [ 3 , 55] or attention-based interpretability [ 1 ]. No classifier is fit on 528 
+
+hidden states; the integers logged at the router are causally upstream of the FFN computation. 529 
+
+The broader implication: for safety-sensitive applications (drug interaction prediction, variant 530 
+
+interpretation, clinical decision support), MoE bio-foundation models admit a form of audit that 531 
+
+dense bio-foundation models do not. If the model classifies a novel protein variant as “pathogenic”, 532 
+
+one can check which experts it used and on which residues those experts fired . We did not pursue 533 
+
+this line of inquiry here, but the infrastructure developed in §4.6 supports it directly. 534 
+
+Relation to other bio-foundation models. Our 99.95% standard-homology and 59.50% 535 
+
+remote-homology accuracies place OmniGene-4 in competitive territory on its own evaluation slice .536 
+
+Specialist methods — the classical sequence-search baselines MMseqs2 [ 52 ] and DIAMOND [ 5 ], 537 
+
+embedding-based approaches such as TM-Vec/PLMSearch [ 37], ESM-2 with structural-alignment 538 
+
+heads [ 21], and CATH-based homologous-superfamily detection [ 42] — report 65–75% remote-539 
+
+homology accuracy on differently constructed splits. We did not re-run these methods on the exact 540 
+
+2,000-pair subset used here, and we recognize this comparison as the most important external 541 
+
+benchmarking gap in the present manuscript. Standard protein-evaluation suites such as TAPE [ 47 ]542 
+
+and ProteinGym [ 45], and unified protein-text efforts such as ProtST [ 63], would also be natural 543 
+
+targets for follow-up work. Unified DNA/protein foundation models such as LucaOne [ 23] and 544 
+
+genome-scale models such as Evo [ 4, 44] pursue different design tradeoffs, focusing on sequence 545 
+
+generation rather than instruction-following. The present paper’s contribution is therefore less about 546 
+
+the benchmark ceiling and more about the methodological substrate: a quantitatively reproducible 547 
+
+router-level decomposition of what CPT and SFT each contribute, which may generalize to other 548 
+
+MoE bio-foundation efforts. 549 
+
+Top-1 expert purity is modest. The highest-purity atomic expert we identified (E54, English 550 
+
+function-words) reaches 80%, but most “specialty” experts land at 15–35% purity. Our claims about 551 
+
+task-specific experts should be understood distributionally rather than as hard assignments. 552 
+
+20 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+Single model family. All results are from Gemma-4-26B-A4B-Instruct. Whether the 98%/2% 553 
+
+CPT/SFT decomposition generalizes to Mixtral [ 30], DeepSeek-MoE, or GPT-class bio models is an 554 
+
+open question. The architectures differ in expert count, top-k selection, and router objective. 555 
+
+Remote-homology ceiling. v5’s 82.6% remote-homology accuracy on the 500-pair sample leaves 556 
+
+an 18% error rate. Specialist methods with structural-alignment heads (e.g., PLMSearch [ 37 ], 557 
+
+ESM-2 + structural alignment [ 21], CATHe [ 42]) report 65–75% on differently constructed splits; 558 
+
+we did not re-run these on our 500-pair set, and a controlled head-to-head is deferred to future 559 
+
+work. ESM-2 from 650M to 3B improves only +0 .7 pp on our evaluation, suggesting the gap is a 560 
+
+representation-level / supervision constraint rather than encoder capacity. 561 
+
+No chain-of-thought reasoning. We briefly attempted to train with <THOUGHT> reasoning 562 
+
+blocks for remote homology but abandoned it because synthetic-CoT templates from sequence 563 
+
+features were of insufficient quality. Human-expert or strong-teacher-generated CoT data would 564 
+
+likely improve remote-homology performance substantially. 565 
+
+Evaluation scale. BixBench’s True/False subset contains only ≈ 200 questions; small absolute 566 
+
+differences in the 90–95% range are within the dataset’s noise floor. Richer evaluation pools 567 
+
+(HELM-Bio, LM-BIO) would strengthen the claims. 568 
+
+Uncertainty intervals on the routing analysis. The routing counts reported in §2.3 are 569 
+
+aggregated over 50 prompts per task. To quantify uncertainty, we performed prompt-level bootstrap 570 
+
+resampling (1,000 iterations). The CPT contribution to cross-task JS divergence is ∆CPT = 0 .096 571 
+
+[95% CI: 0.096, 0.097], and the SFT contribution is ∆SFT = 0 .004 [95% CI: 0.003, 0.004]. Both 572 
+
+intervals exclude zero, confirming that the 96%/4% CPT/SFT decomposition is statistically robust. 573 
+
+The narrow confidence intervals (width ≈ 0.0007 ) reflect the large effective sample size from 574 
+
+aggregating routing events across 50 prompts per task. A hierarchical model treating tokens as 575 
+
+nested within prompts would provide a more conservative uncertainty estimate and is deferred to 576 
+
+future work. 577 
+
+No format-matched control. Our eight task pools are heterogeneous in prompt format: raw 578 
+
+DNA and protein strings, templated homology prompts ( ### Sequence 1: . . . ), instruction-579 
+
+formatted Cell/Mol/Structure prompts, and unformatted OpenWebText excerpts. To test whether 580 
+
+the observed cross-task JS divergence is attributable to prompt formatting rather than biological 581 
+
+content, we wrapped six tasks (Protein, StdHom, RemHom, Cell, Mol, Structure) in a single neutral 582 
+
+template ( ### Task: {name} / ### Content: {text} / ### End ) and re-collected routing on 583 
+
+50 prompts per task. The layer-averaged pairwise JS divergence drops from 0.160 (original) to 0.145 584 
+
+(format-matched), a retention ratio of 90.2%. This confirms that the bulk of cross-task routing 585 
+
+differentiation is content-driven rather than a prompt-format artifact, though 10% of the signal is 586 
+
+indeed format-related. 587 
+
+No ablation on router.proj LoRA. We state in §4 that including router.proj in the LoRA 588 
+
+target modules is critical to enabling expert re-specialization, based on an informal pilot obser-589 
+
+vation. A controlled ablation — CPT with and without router.proj LoRA, holding all other 590 
+
+hyperparameters fixed — would quantify this claim and belongs in the next revision. 591 
+
+21 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+External benchmarking is partial. Beyond ESM-2 (650M, 3B), MMseqs2, and DIAMOND — 592 
+
+which we did run on the identical 500-pair sample, see Results — we did not re-run PLMSearch 593 
+
+[37 ], CATHe [ 42], or specialist methods on the same pairs. External evaluation on TAPE [ 47 ], 594 
+
+ProteinGym [ 45], or ProtST [ 63 ] would also strengthen the benchmark story and is deferred to 595 
+
+future work. Unified DNA/protein efforts such as LucaOne [ 23] and genome-scale models such as 596 
+
+Evo [4, 44] pursue different design tradeoffs and were not benchmarked here. 597 
+
+Benchmark ownership. The author of the present paper is also the author of the BioPAWS 598 
+
+benchmark used here [ 61]. We have taken care to evaluate on held-out splits and to avoid SFT 599 
+
+data contamination between the homology-SFT pool and the evaluation pairs, but an external-lab 600 
+
+replication on these benchmarks would be a valuable independent check. 601 
+
+Future experiments. Based on the decomposition results and the limitations above, we propose 602 
+
+three concrete follow-ups: (1) a CPT-scaling study on 100 GB of curated distant-protein pairs from 603 
+
+SCOP [ 41] or CATH fold-level annotations to test whether the representation-level bottleneck for 604 
+
+remote homology is relieved; (2) packaging the forward-hook infrastructure (§4.6) as a reproducible 605 
+
+command-line router-audit tool for bioinformatics practitioners; (3) cross-architecture replication on 606 
+
+Mixtral-8x7B [ 30 ] or DeepSeek-MoE [ 9 ] bio variants to test whether the CPT/SFT decomposition 607 
+
+generalizes. 608 
+
+Code and data availability. All training scripts ( biopaws/cpt/1-prepare_cpt_data_mp.py ,609 
+
+biopaws/cpt/2-run_cpt.py , biopaws/sft_data/14-train_bio_sft_v2.py , biopaws/sft_data/17-train_bio_ 610 
+
+evaluation scripts ( biopaws/cpt/18-eval_v3_sft.py ), robustness-check scripts ( biopaws/cpt/26-format_matche 611 
+
+biopaws/cpt/27-esm2_remote_headtohead.py , biopaws/cpt/28-bootstrap_ci.py ), and analy-612 
+
+sis scripts ( biopaws/cpt/20–24*.py ) are available in the project repository. The MM extension 613 
+
+(§2.5) adds three training scripts ( omnigene5/scripts/80-train_stage1.py , 82-train_stage3v2.py ,614 
+
+83-train_stage3v3.py ), three evaluation scripts ( 60-eval_stage2.py , 91-eval_stage3v2.py ,615 
+
+92-eval_stage3v3.py ), the qualitative-showcase pipeline ( 95-qualitative_demo_stage3v3.py ), 616 
+
+and the 8-modality router analysis ( 71-router_analysis_mm_extended.py ). The token-level activa-617 
+
+tion database and routing-count matrices are in outputs/moe_analysis/ and outputs/OmniGene-4-MM-stage2/rou 618 
+
+The full repository, including all scripts and routing data, is available at https://github.com/ 619 
+
+maris205/omnigene4 under an open license. LoRA adapter weights and embedding checkpoints for 620 
+
+both v5 ( ≈ 1.9 GB; merged BF16 weights ≈ 49 GB) and OmniGene-4-MM Stage 3 v3 ( ≈ 1.7 GB) are 621 
+
+released on Hugging Face under dnagpt/OmniGene-4-SFT-v5 (LoRA), dnagpt/OmniGene-4-SFT-v5-merged 622 
+
+(merged BF16), and dnagpt/OmniGene-4-MM-LoRA , respectively. A merged BF16 release of OmniGene-623 
+
+4-MM is forthcoming as dnagpt/OmniGene-4-MM-merged . The BioPAWS evaluation dataset is 624 
+
+hosted at dnagpt/biopaws on Hugging Face. 625 
+
+## 4 Methods 626 
+
+4.1 Architecture 627 
+
+OmniGene-4 is built on Gemma-4-26B-A4B-Instruct [ 19], a sparse mixture-of-experts transformer 628 
+
+with the following characteristics: 629 
+
+• Depth : 30 transformer decoder layers. 630 
+
+• Experts per layer : 128 FFN experts, with a shared top-k softmax router where k = 8 .631 
+
+22 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+• Active parameters per token : ≈ 3.8 B (out of 26 B total). 632 
+
+• Attention : grouped-query attention, RoPE positional encoding. 633 
+
+• Vocabulary (pretrained) : 262,144 tokens (SentencePiece). 634 
+
+• Hidden dimension : 2,816; FFN intermediate 14,336. 635 
+
+We use the Instruct variant (not the Base) deliberately: the Base model proved unstable under 636 
+
+our bio-corpus CPT (loss divergence after 0.1 epoch), whereas the Instruct model’s existing alignment 637 
+
+prior stabilizes training and — as §2.3 shows — does not interfere with expert specialization. 638 
+
+4.2 Vocabulary expansion 639 
+
+We extend the tokenizer with 28,028 biological tokens, all prefixed to prevent collisions with natural 640 
+
+language (Table 9). 641 
+
+Table 9: Biological vocabulary additions. 
+
+Class Count Construction 
+
+DNA BPE ( <DNA_*> ) 20,000 BPE [50] trained on 32 GB dna_32g.txt 
+
+Protein BPE ( <PRO_*> ) 8,000 BPE trained on 16 GB protein_uni_16.txt 
+
+Foldseek 3Di ( <3Di_*> ) 20 one token per 3Di letter [58] DSSP ( <2D_*> ) 8 one per secondary-structure class [33] Control ≤ 20 <BOS_BIO> , <SEQ_SEP> , etc. 
+
+New rows of the embedding matrix are initialized by averaging the embeddings of their constituent 642 
+
+pretrained tokens (mean-initialization from BPE fragments [ 35, 54 ]). Of 28,028 new tokens, 28,020 643 
+
+could be initialized this way; the remaining 8 (pure control tokens) were initialized with small 644 
+
+Gaussian noise ( σ = 0 .02 ). The extended vocabulary has size 290,172, and because Gemma-4 uses 645 
+
+tied input/output embeddings, the language-model head automatically inherits the new rows. 646 
+
+4.3 Continued pretraining (CPT) 647 
+
+4.3.1 Data 648 
+
+The CPT corpus is a 32.5 GB sampled mixture of DNA, protein, natural language, and structural 649 
+
+sources, with composition summarized in Table 10. 650 
+
+Table 10: CPT corpus composition (32.5 GB total after sampling). 
+
+Source Raw Used 
+
+DNA ( dna_32g.txt ) 31 GB 8 GB (sampled 25%) Protein 1 ( protein_uni_16.txt ) 16 GB 4 GB Protein 2 ( protein_lucaone_15g.txt ) 15 GB 4 GB OpenWebText 37 GB 8 GB 3Di ( pdb_3di.fasta ) 100 MB full DSSP ( ss.txt ) 263 MB full Instruction replay (12 open corpora) 5 GB 8 GB mixed 
+
+Total — 32.5 GB 
+
+23 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+The 3Di [ 58 ] and DSSP [ 33] corpora are formatted as a four-track parallel representation — text 651 
+
+description + 1-D amino acid sequence + 2-D DSSP backbone + 3-D Foldseek letters. OpenWebText 652 
+
+[18 ] is retained at a 1 : 3 ratio against biological corpora to serve as a “logical anchor” and prevent 653 
+
+catastrophic forgetting of natural-language reasoning. After tokenization and chunking to 1,024 654 
+
+tokens, the binary corpus contains 11.7M chunks totaling 8.73B tokens. 655 
+
+4.3.2 QLoRA configuration 656 
+
+We use parameter-efficient fine-tuning rather than full-parameter updates: 657 
+
+• Quantization : NF4 4-bit, double-quantization, bfloat16 compute dtype [12]. 658 
+
+• LoRA : rank 64, α = 128 , dropout 0.05, no bias [25]. 659 
+
+• Target modules : q_proj , k_proj , v_proj , o_proj , gate_proj , up_proj , down_proj , and — 660 
+
+critically — router.proj . Including the router in LoRA’s adaptation set is what enables expert 661 
+
+re-specialization; we verified in a pilot run that omitting router.proj reduces end-of-training 662 
+
+JS divergence by half. 663 
+
+• Unfrozen non-LoRA tensors : only the input embedding matrix ( 290 K × 2816 in bfloat16, 664 
+
+≈ 1.6 GB). 665 
+
+4.3.3 Training configuration 666 
+
+• Hardware : 8× NVIDIA H20 (96 GB) with PyTorch DDP. 667 
+
+• Effective batch size : 6 per device × 8 devices × 4 accumulation = 192 .668 
+
+• Learning rate : 2 × 10 −5 with cosine schedule and 3% warmup. 669 
+
+• Weight decay : 0.01; max grad-norm clip: 1.0. 670 
+
+• Gradient checkpointing : enabled ( use_reentrant=False ). 671 
+
+• Optimizer : paged_adamw_8bit .672 
+
+• Epochs : 0.6 ( ≈ 1,680 gradient steps, ≈ 100 GPU-hours wall time). 673 
+
+• Checkpoints : every 500 steps, keeping only LoRA adapters + the 1.6 GB embedding. 674 
+
+4.4 Supervised fine-tuning (SFT) 675 
+
+4.4.1 Data assembly 676 
+
+We construct OmniGene-SFT-v1 , a 199,576-row instruction dataset unified in {instruction, 677 
+
+input, output} triple form, by merging sources shown in Table 11. 678 
+
+Table 11: SFT data sources and target mix. 
+
+Source Category Target mix 
+
+homology_task_sft.jsonl Protein 25% 
+
+structure_task_sft.jsonl Structure 10% 
+
+uniprotqa_sft.jsonl Literature 20% 
+
+mutadescribe_sft.jsonl Mutation 15% 
+
+cell_sft_master.jsonl (new) [16] Cell 15% 
+
+mol_sft_master.jsonl (new) [62] Mol 13% sampled DNA pairs DNA 2% 
+
+24 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+The Cell pool (30K rows) is constructed from PanglaoDB-style [ 16] marker panels covering 679 
+
+≈ 40 human cell types across 6 task templates (marker-to-type, top-to-identity, bin-to-type, profile-680 
+
+to-tissue, profile-to-disease, pathway-explain). The Mol pool (also 30K rows) is built from nine 681 
+
+MoleculeNet [ 62] datasets (21,746 unique canonical SMILES) with RDKit-derived physico-chemical 682 
+
+descriptors across 6 task templates. Messages-format sources are converted to the triple form by 683 
+
+splitting on section markers and stripping any <THOUGHT> blocks from outputs. The final corpus is 684 
+
+deduplicated by md5(instruction || input || output) .685 
+
+For the v3 remote-homology ablation, we add 20,000 additional rows sampled from dnagpt/biopaws::protein_pa 686 
+
+(10K label-1, 10K label-0, excluding the 2,000 rows held out for evaluation), formatted as 5 rotating 687 
+
+instructions and labelled as Homologous /Non-Homologous .688 
+
+4.4.2 SFT configuration 689 
+
+Inputs are wrapped as 690 
+
+<User>\n### Instruction:\n{instr}\n\n{input}\n### Answer:\n<Assistant>\n{output} 691 
+
+with max length 1,024 tokens. LoRA is initialized from the CPT checkpoint; embedding weights 692 
+
+are inherited from CPT and unfrozen. Training runs on a single H20 GPU with effective batch 693 
+
+4 × 1 × 16 = 64 . Bio-SFT v2 uses learning rate 5 × 10 −5 for 1 epoch (11.8 hours); Bio-SFT v3 694 
+
+(remote-augmented) uses the lower rate 2 × 10 −5 for 1 epoch (13.2 hours) to avoid disturbing v2’s 695 
+
+capabilities. 696 
+
+4.5 Benchmark protocol 697 
+
+• Standard homology : 30% random sample of dnagpt/biopaws::protein_pair_short 698 
+
+(6,000 pairs, balanced labels, seed 42). The prompt matches the SFT training prompt; 699 
+
+the parser accepts Homologous /Non-Homologous in the first 40 characters of output (case-700 
+
+insensitive), with non-homolog* matched before homolog* to avoid substring misclassification. 701 
+
+• Remote homology : 2,000 pairs (1,000 per label) sampled with seed 42 from dnagpt/biopaws::protein_pair 702 
+
+• BixBench Knowledge [17 ]: all True /False questions ( ≈ 200 ). Input truncated to 500 703 
+
+characters of the result field. 704 
+
+All evaluations use greedy decoding with 4-bit NF4 quantization on a single GPU. 705 
+
+4.6 Router activation collection 706 
+
+For the analysis in §2.3 we install a forward hook on every Gemma4TextRouter module (30 hooks 707 
+
+per model). Each hook captures the top_k_index tensor, shape [B · S, k ], from the router output 708 
+
+and accumulates a count of (layer, expert) activations. We repeat for 8 task pools with 50 709 
+
+samples each ( ≈ 400 samples total), capping sequences at 384 tokens. We run the pipeline on three 710 
+
+checkpoints: baseline (Gemma-4-Instruct with extended vocab and mean-initialized new embeddings, 711 
+
+no LoRA), CPT-only, and v3. We record: 712 
+
+• counts[ t, ℓ, e ] — raw top-k hit counts per task, layer, expert. 713 
+
+• pt,ℓ ∈ ∆128 — per-layer routing distributions. 714 
+
+• per-layer per-task entropy Ht,ℓ = − ∑ 
+
+> e
+
+pt,e,ℓ log pt,e,ℓ .715 
+
+• per-layer cross-task JS divergence Jℓ = (82
+
+)−1 ∑ 
+
+> t̸=t′
+
+JS( pt,ℓ ∥pt′,ℓ ).716 
+
+25 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+• specialty score st,e = log( pt,e /¯pe) where ¯pe is the cross-task mean. 717 
+
+For the token-level analysis (§2.3.1) we additionally record, for every routing event at layers 718 
+
+11, 12, 13, the input token ID that triggered it, and compute the top-n most frequent tokens per 719 
+
+(expert, task) bucket. 720 
+
+4.7 Multi-modal extension (OmniGene-4-MM) 721 
+
+The multi-modal extension reported in §2.5 adds the Gemma-4 vision encoder to v5 and trains a 722 
+
+fresh LoRA adapter through three SFT stages. 723 
+
+Vision tower. We use the native Gemma-4 vision encoder [ 19] unchanged: 27 transformer layers, 724 
+
+hidden size 1152 , patch size 16 , producing 2520 visual patches per image. Patches are projected 725 
+
+into the language-model token embedding space via the model’s built-in multimodal projector, so 726 
+
+visual and text tokens enter the MoE backbone as a unified sequence. 727 
+
+LoRA configuration. A new LoRA adapter (denoted stage2 in the code, retained as the adapter 728 
+
+key in subsequent stages for state-dict compatibility) is injected into the Gemma-4 language-model 729 
+
+backbone with r= 64 , α=128 , dropout 0.05 , on the eight target modules used in CPT ( q_proj ,730 
+
+k_proj , v_proj , o_proj , gate_proj , up_proj , down_proj , router.proj ). The vision encoder is 731 
+
+fully frozen. 732 
+
+Training data. Stage 1 uses an 100K-example image-only mixture: Vis-CheBI20 [ 14 ] train 733 
+
+split (Vis-CheBI20 train, ∼ 11 K), PubMedVision [ 7] ( ∼ 30 K), HPA10M [ 27] ( ∼ 25 K microscopy), 734 
+
+ChartQA [ 40] ( ∼ 10 K), and BiomedVis synthetic visual tasks ( ∼ 24 K). Stage 2 mixes Stage 1 vision 735 
+
+data ( 30 K) with the v5 SFT corpus ( 30 K text). Stage 3 v3 mixes 45 K text examples (with the 736 
+
+homology subset from BioPAWS oversampled 3×) and 5K vision replay. 737 
+
+Stage hyperparameters. 738 
+
+• Stage 1: learning rate 5×10 −5 with cosine schedule and 3% warmup, ∼ 10 K steps, batch size 1 739 
+
+with gradient accumulation 32 (effective batch 32), max sequence length 1536, paged-AdamW-740 
+
+8bit optimizer, gradient checkpointing. 741 
+
+• Stage 2: continues from Stage 1 LoRA + embedding; learning rate 5 × 10 −6, 6,000 steps, 742 
+
+otherwise identical. 743 
+
+• Stage 3 v2 (failure mode reported in Table 7): learning rate 5×10 −6, 6,000 steps, embedding 744 
+
+trainable. Plateaued at Stage 2 levels and was abandoned. 745 
+
+• Stage 3 v3 (final): learning rate 2×10 −5 (4× v2), 3,000 steps, embedding frozen , 3× homology 746 
+
+oversampling, 5K vision replay. 747 
+
+The Stage 3 v3 hyperparameter choice was made after inspecting the v2 training loss (which 748 
+
+plateaued at ≈ 27 , far above CPT loss) and noting that the v5 baseline had been trained with 749 
+
+frozen embedding and a learning rate 4× higher than the v2 attempt. Re-aligning these two factors 750 
+
+recovered the homology capability. 751 
+
+26 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+Multi-modal evaluation protocols. BioPAWS evaluation is unchanged from §4.5. Vis-CheBI20 752 
+
+evaluation samples 50 test items per OCSU subtask ( trans_iupac , trans_smiles , general_desp ,753 
+
+struct_cap , struct_recog ); for each item the model is given the molecular image plus the per-subtask 754 
+
+prompt and asked to generate up to 120 tokens. We score trans_iupac and trans_smiles by 755 
+
+whitespace-stripped exact match against the reference; the other three subtasks are scored by 756 
+
+per-keyword recall (a prediction counts as correct if it matches at least 30% of the ≥ 4-character 757 
+
+keywords in the reference). The multi-task generation evaluation samples 30 items per category 758 
+
+from a held-out SFT-eval file ( 1,500 items total), generates up to 200 tokens, and scores by the 759 
+
+same keyword-overlap metric (top-5 keywords per reference, weighted by length). 760 
+
+8-modality router analysis (§2.5 “Modality-invariant transfer”). Forward hooks are 761 
+
+installed on all 30 Gemma4TextRouter modules of the Stage 2 checkpoint (which has full vision 762 
+
+capability without yet being homology-tuned, so it is the cleanest checkpoint for measuring modality-763 
+
+routing). 50 prompts per modality are run for the eight modality categories (vision: molecule ,764 
+
+medical , pathology , chart ; sequence: protein , DNA , 3Di ; natural_language ). Per-prompt routing 765 
+
+distributions are aggregated to a 30 ×128 count matrix per modality, then JS divergence is computed 766 
+
+pairwise per layer and averaged across the 30 layers, identical to the protocol used in §2.3. 767 
+
+## Funding 768 
+
+This work received no specific grant funding from any agency in the public, commercial, or not-for-769 
+
+profit sectors. Grant number: Not applicable. GPU compute resources used for model training were 770 
+
+donated by io.net (see Acknowledgments). 771 
+
+## Acknowledgments 772 
+
+The author thanks io.net (https://io.net ) for providing the GPU compute resources that made 773 
+
+the OmniGene-4 training pipeline possible. Continued pretraining (CPT) on 32.5 GB of mixed 774 
+
+biological corpora and the four-stage SFT pipeline (v2 through v5) together consumed approximately 775 
+
+160 GPU-hours on NVIDIA H20 and RTX PRO 6000 Blackwell hardware — a budget that would 776 
+
+have been infeasible without io.net’s distributed compute platform. The author also thanks the 777 
+
+open-source community behind Hugging Face Transformers, PEFT, bitsandbytes, and llama.cpp for 778 
+
+the infrastructure that this work is built on. 779 
+
+## References 780 
+
+[1] Benjamin Adams, Michael Zhu, et al. Systematic evaluation of single-cell foundation model 781 
+
+interpretability reveals attention captures co-expression rather than unique regulatory signal. 782 
+
+arXiv:2602.17532 , 2026. 783 
+
+[2] Elliot Bolton, Abhinav Venigalla, Michihiro Yasunaga, David Hall, Betty Xiong, Tony Lee, Rox-784 
+
+ana Daneshjou, Jonathan Frankle, Percy Liang, Michael Carbin, and Christopher D. Manning. 785 
+
+BioMedLM: A 2.7b parameter language model trained on biomedical text. arXiv:2403.18421 ,786 
+
+2024. 787 
+
+[3] Trenton Bricken, Adly Templeton, Joshua Batson, Brian Chen, Adam Jermyn, Tom Conerly, 788 
+
+Nicholas L. Turner, Cem Anil, Carson Denison, Amanda Askell, Robert Lasenby, Yifan Wu, 789 
+
+27 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+et al. Towards monosemanticity: Decomposing language models with dictionary learning. 790 
+
+Transformer Circuits , 2023. 791 
+
+[4] Garyk Brixi, Matthew G. Durrant, Jerome Ku, Michael Poli, Greg Brockman, Daniel Chang, 792 
+
+Gabriel A. Gonzalez, Samuel H. King, David B. Li, Aditi T. Merchant, et al. Genome modelling 793 
+
+and design across all domains of life with Evo 2. Nature , 2026. 794 
+
+[5] Benjamin Buchfink, Klaus Reuter, and Hajk-Georg Drost. Sensitive protein alignments at 795 
+
+tree-of-life scale using DIAMOND. Nature Methods , 18(4):366–368, 2021. 796 
+
+[6] Weilin Cai, Juyong Jiang, Fan Wang, Jing Tang, Sunghun Kim, and Jiayi Huang. A survey on 797 
+
+mixture of experts in large language models. arXiv:2407.06204 , 2024. 798 
+
+[7] Junying Chen, Chi Gui, Ruyi Ouyang, Anningzhe Gao, Shunian Chen, Guiming Hardy Chen, 799 
+
+Xidong Wang, Zhenyang Cai, Ke Ji, Xiang Wan, and Benyou Wang. HuatuoGPT-Vision: Pub-800 
+
+MedVision – a Large-scale High-quality Medical Visual Instruction Dataset. arXiv:2406.19280 ,801 
+
+2024. 802 
+
+[8] Haotian Cui, Chloe Wang, Hassaan Maan, Kuan Pang, Fengning Luo, Nan Duan, and Bo Wang. 803 
+
+scGPT: toward building a foundation model for single-cell multi-omics using generative AI. 804 
+
+Nature Methods , 21:1470–1480, 2024. 805 
+
+[9] Damai Dai, Chengqi Deng, Chenggang Zhao, R. X. Xu, Huazuo Gao, Deli Chen, Jiashi 806 
+
+Li, Wangding Zeng, Xingkai Yu, Y. Wu, et al. DeepSeekMoE: Towards ultimate expert 807 
+
+specialization in mixture-of-experts language models. arXiv:2401.06066 , 2024. 808 
+
+[10] Hugo Dalla-Torre, Liam Gonzalez, Javier Mendoza-Revilla, Nicolas Lopez Carranza, Adam Hen-809 
+
+ryk Grzywaczewski, Francesco Oteri, Christian Dallago, Evan Trop, Bernardo P. de Almeida, 810 
+
+Hassan Sirelkhatim, et al. The nucleotide transformer: Building and evaluating robust founda-811 
+
+tion models for human genomics. Nature Methods , 2024. bioRxiv:2023.01.11.523679. 812 
+
+[11] DeepSeek-AI. DeepSeek-V2: A strong, economical, and efficient mixture-of-experts language 813 
+
+model. arXiv:2405.04434 , 2024. 814 
+
+[12] Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and Luke Zettlemoyer. QLoRA: Efficient 815 
+
+finetuning of quantized LLMs. In Advances in Neural Information Processing Systems (NeurIPS) ,816 
+
+2023. 817 
+
+[13] Ahmed Elnaggar, Michael Heinzinger, Christian Dallago, Ghalia Rehawi, Yu Wang, Llion Jones, 818 
+
+Tom Gibbs, Tamas Feher, Christoph Angerer, Martin Steinegger, Debsindhu Bhowmik, and 819 
+
+Burkhard Rost. ProtTrans: Toward understanding the language of life through self-supervised 820 
+
+learning. IEEE Transactions on Pattern Analysis and Machine Intelligence , 44(10):7112–7127, 821 
+
+2022. doi: 10.1109/TPAMI.2021.3095381. 822 
+
+[14] Siqi Fan, Yuguang Xie, Bowen Cai, Ailin Xie, Gaochao Liu, Mu Qiao, Jie Xing, and Zaiqing 823 
+
+Nie. Ocsu: Optical chemical structure understanding for molecule-centric scientific discovery. 824 
+
+arXiv:2501.15415 , 2025. 825 
+
+[15] William Fedus, Barret Zoph, and Noam Shazeer. Switch transformers: Scaling to trillion 826 
+
+parameter models with simple and efficient sparsity. Journal of Machine Learning Research , 23 827 
+
+(120):1–39, 2022. 828 
+
+28 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+[16] Oscar Franzén, Li-Ming Gan, and Johan L. M. Björkegren. PanglaoDB: A web server for 829 
+
+exploration of mouse and human single-cell RNA sequencing data. Database , 2019:baz046, 830 
+
+2019. 831 
+
+[17] FutureHouse. BixBench: A benchmark for autonomous bioinformatics reasoning. Hugging Face 832 
+
+Datasets, 2024. URL https://huggingface.co/datasets/futurehouse/BixBench .833 
+
+[18] Leo Gao, Stella Biderman, Sid Black, Laurence Golding, Travis Hoppe, Charles Foster, Jason 834 
+
+Phang, Horace He, Anish Thite, Noa Nabeshima, Shawn Presser, and Connor Leahy. The Pile: 835 
+
+An 800GB dataset of diverse text for language modeling. arXiv:2101.00027 , 2020. 836 
+
+[19] Gemma Team. Gemma 4: Mixture-of-experts language models for the next generation of open 837 
+
+research. Google DeepMind technical report , 2026. 838 
+
+[20] Yu Gu, Robert Tinn, Hao Cheng, Michael Lucas, Naoto Usuyama, Xiaodong Liu, Tristan 839 
+
+Naumann, Jianfeng Gao, and Hoifung Poon. Domain-specific language model pretraining for 840 
+
+biomedical natural language processing (PubMedBERT). ACM Transactions on Computing 841 
+
+for Healthcare , 3(1):1–23, 2022. 842 
+
+[21] Tymor Hamamsy, James T. Morton, Robert Blackwell, Daniel Berenberg, Nicholas Carriero, 843 
+
+Vladimir Gligorijevic, Charlie E. M. Strauss, Julia Koehler Leman, Kyunghyun Cho, and 844 
+
+Richard Bonneau. Protein remote homology detection and structural alignment using deep 845 
+
+learning. Nature Biotechnology , 42:975–985, 2024. 846 
+
+[22] Minsheng Hao, Jing Gong, Xin Zeng, Chiming Liu, Yucheng Guo, Xingyi Cheng, Taifeng 847 
+
+Wang, Jianzhu Ma, Xuegong Zhang, and Le Song. Large-scale foundation model on single-cell 848 
+
+transcriptomics (scFoundation). Nature Methods , 21:1481–1491, 2024. 849 
+
+[23] Yong He, Pan Shen, Yingtao Sun, Yong Liu, Liang Chen, Jun Chen, Zhibin Tang, and Dongyu 850 
+
+Yang. LucaOne: Generalized biological foundation model with unified nucleic acid and protein 851 
+
+language. bioRxiv , 2024. doi: 10.1101/2024.05.10.593587. 852 
+
+[24] Michael Heinzinger, Konstantin Weissenow, Joaquin Gomez Sanchez, Adrian Sánchez, Martin 853 
+
+Steinegger, and Burkhard Rost. ProstT5: Bilingual language model for protein sequence and 854 
+
+structure. NAR Genomics and Bioinformatics , 6(4):lqae150, 2024. 855 
+
+[25] Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, 856 
+
+Lu Wang, and Weizhu Chen. LoRA: Low-rank adaptation of large language models. In 857 
+
+International Conference on Learning Representations (ICLR) , 2022. 858 
+
+[26] Jianheng Huang, Leyang Cui, Ante Wang, Chengyi Yang, Xinting Liao, Linfeng Song, Junfeng 859 
+
+Yao, and Jinsong Su. Mitigating catastrophic forgetting in large language models with self-860 
+
+synthesized rehearsal. arXiv:2403.01244 , 2024. 861 
+
+[27] Human Protein Atlas Consortium. HPA10M: A Microscopy Dataset of 10 Million Subcellular 862 
+
+Localization Images from the Human Protein Atlas. https://www.proteinatlas.org , 2024. 863 
+
+[28] Adam Ibrahim, Benjamin Thérien, Kshitij Gupta, Mats L. Richter, Quentin Anthony, Timothée 864 
+
+Lesort, Eugene Belilovsky, and Irina Rish. Simple and scalable strategies to continually pre-train 865 
+
+large language models. arXiv:2403.08763 , 2024. 866 
+
+29 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+[29] Yanrong Ji, Zhihan Zhou, Han Liu, and Ramana Davuluri. DNABERT: pre-trained bidirectional 867 
+
+encoder representations from transformers model for DNA-language in genome. Bioinformatics ,868 
+
+37(15):2112–2120, 2021. 869 
+
+[30] Albert Q. Jiang, Alexandre Sablayrolles, Antoine Roux, Arthur Mensch, Blanche Savary, Chris 870 
+
+Bamford, Devendra Singh Chaplot, et al. Mixtral of experts. arXiv:2401.04088 , 2024. 871 
+
+[31] Zhengbao Jiang, Zhiqing Sun, Weijia Shi, Pedro Rodriguez, Chunting Zhou, Graham Neubig, 872 
+
+Xi Victoria Lin, Wen-tau Yih, and Srinivasan Iyer. Instruction-tuned language models are 873 
+
+better knowledge learners. In Proceedings of the 62nd Annual Meeting of the Association for 874 
+
+Computational Linguistics (ACL) , 2024. 875 
+
+[32] Ishan Jindal, Chandana Badrinath, Pinkesh Badjatiya, and Pranjal Bharti. Balancing continu-876 
+
+ous pre-training and instruction fine-tuning. arXiv:2410.10739 , 2024. 877 
+
+[33] Wolfgang Kabsch and Christian Sander. Dictionary of protein secondary structure: Pattern 878 
+
+recognition of hydrogen-bonded and geometrical features. Biopolymers , 22(12):2577–2637, 1983. 879 
+
+[34] Yuto Kanai, Yuki Tatsunami, and Masato Taki. Mixture of experts made intrinsically inter-880 
+
+pretable. arXiv:2503.07639 , 2025. 881 
+
+[35] Nathan Kim, Sunghwan Choi, and Jaegul Choi. An empirical comparison of vocabulary 882 
+
+expansion and initialization approaches for language models. arXiv:2407.05841 , 2024. 883 
+
+[36] Zeming Lin, Halil Akin, Roshan Rao, Brian Hie, Zhongkai Zhu, Wenting Lu, Nikita Smetanin, 884 
+
+Robert Verkuil, Ori Kabeli, Yaniv Shmueli, Allan dos Santos Costa, Maryam Fazel-Zarandi, 885 
+
+Tom Sercu, Salvatore Candido, and Alexander Rives. Evolutionary-scale prediction of atomic-886 
+
+level protein structure with a language model. Science , 379(6637):1123–1130, 2023. doi: 887 
+
+10.1126/science.ade2574. 888 
+
+[37] Wei Liu, Ziye Wang, Ronghui You, Chenghan Xie, Hong Wei, Yi Xiong, Jianyi Yang, and 889 
+
+Shanfeng Zhu. PLMSearch: a protein language model powers accurate and fast search for 890 
+
+remote homologs. Nature Communications , 15:2775, 2024. 891 
+
+[38] Renqian Luo, Liai Sun, Yingce Xia, Tao Qin, Sheng Zhang, Hoifung Poon, and Tie-Yan 892 
+
+Liu. BioGPT: generative pre-trained transformer for biomedical text generation and mining. 893 
+
+Briefings in Bioinformatics , 23(6):bbac409, 2022. 894 
+
+[39] Yun Luo, Zhicheng Yang, Fandong Meng, Yafu Li, Jie Zhou, and Yue Zhang. An empir-895 
+
+ical study of catastrophic forgetting in large language models during continual fine-tuning. 896 
+
+arXiv:2308.08747 , 2023. 897 
+
+[40] Ahmed Masry, Do Xuan Long, Jia Qing Tan, Shafiq Joty, and Enamul Hoque. ChartQA: 898 
+
+A Benchmark for Question Answering about Charts with Visual and Logical Reasoning. In 899 
+
+Findings of ACL , 2022. 900 
+
+[41] Alexey G. Murzin, Steven E. Brenner, Tim Hubbard, and Cyrus Chothia. SCOP: A structural 901 
+
+classification of proteins database for the investigation of sequences and structures. Journal of 902 
+
+Molecular Biology , 247(4):536–540, 1995. 903 
+
+[42] Vamsi Nallapareddy, Nicola Bordin, Ian Sillitoe, Michael Heinzinger, Maria Littmann, Vaishali P. 904 
+
+Waman, Neeladri Sen, Burkhard Rost, and Christine Orengo. CATHe: detection of homologous 905 
+
+superfamilies using AI. Bioinformatics , 39(1):btad029, 2023. 906 
+
+30 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+[43] Eric Nguyen, Michael Poli, Marjan Faizi, Armin Thomas, Callum Birch-Sykes, Michael Wornow, 907 
+
+Aman Patel, Clayton Rabideau, Stefano Massaroli, Yoshua Bengio, Stefano Ermon, Stephen A. 908 
+
+Baccus, and Christopher Ré. HyenaDNA: Long-range genomic sequence modeling at single 909 
+
+nucleotide resolution. In Advances in Neural Information Processing Systems (NeurIPS) , 2023. 910 
+
+[44] Eric Nguyen, Michael Poli, Matthew G. Durrant, Brian Kang, Dhruva Katrekar, David B. Li, 911 
+
+Liam J. Bartie, Armin W. Thomas, Samuel H. King, Garyk Brixi, Jeremy Sullivan, Madelena Y. 912 
+
+Ng, Ashley Lewis, Aaron Lou, Stefano Ermon, Stephen A. Baccus, Tina Hernandez-Boussard, 913 
+
+Christopher Ré, Patrick D. Hsu, and Brian L. Hie. Sequence modeling and design from 914 
+
+molecular to genome scale with Evo. Science , 2024. 915 
+
+[45] Pascal Notin, Aaron W. Kollasch, Daniel Ritter, Lood van Niekerk, Steffanie Paul, Hansen 916 
+
+Spinner, Nathan Rollins, Ada Shaw, Rose Orenbuch, Ruben Weitzman, Jonathan Frazer, 917 
+
+Mafalda Dias, Dinko Franceschi, and Debora S. Marks. ProteinGym: Large-scale benchmarks 918 
+
+for protein fitness prediction and design. In Advances in Neural Information Processing Systems 919 
+
+(NeurIPS) Datasets and Benchmarks Track , 2023. 920 
+
+[46] Se-Yun Park et al. Interpreting mixture-of-experts language models at expert level. arXiv 921 
+
+preprint , 2024. 922 
+
+[47] Roshan Rao, Nicholas Bhattacharya, Neil Thomas, Yan Duan, Peter Chen, John Canny, Pieter 923 
+
+Abbeel, and Yun S. Song. Evaluating protein transfer learning with TAPE. In Advances in 924 
+
+Neural Information Processing Systems (NeurIPS) , 2019. 925 
+
+[48] Alexander Rives, Joshua Meier, Tom Sercu, Siddharth Goyal, Zeming Lin, Jason Liu, Demi Guo, 926 
+
+Myle Ott, C. Lawrence Zitnick, Jerry Ma, and Rob Fergus. Biological structure and function 927 
+
+emerge from scaling unsupervised learning to 250 million protein sequences. Proceedings of the 928 
+
+National Academy of Sciences , 118(15):e2016239118, 2021. 929 
+
+[49] Konstantin Schütze, Michael Heinzinger, Martin Steinegger, and Burkhard Rost. Nearest neigh-930 
+
+bor search on embeddings rapidly identifies distant protein relations. Frontiers in Bioinformatics ,931 
+
+3:1033775, 2023. 932 
+
+[50] Rico Sennrich, Barry Haddow, and Alexandra Birch. Neural machine translation of rare 933 
+
+words with subword units. In Proceedings of the 54th Annual Meeting of the Association for 934 
+
+Computational Linguistics (ACL) , 2016. 935 
+
+[51] Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, 936 
+
+and Jeff Dean. Outrageously large neural networks: The sparsely-gated mixture-of-experts 937 
+
+layer. In International Conference on Learning Representations (ICLR) , 2017. 938 
+
+[52] Martin Steinegger and Johannes Söding. MMseqs2 enables sensitive protein sequence searching 939 
+
+for the analysis of massive data sets. Nature Biotechnology , 35(11):1026–1028, 2017. 940 
+
+[53] Ning Sun, Shuxian Zou, Tianhua Tao, Sazan Mahbub, Dian Li, Yonghao Zhuang, Hongyi Wang, 941 
+
+Xingyi Cheng, Le Song, and Eric P. Xing. Mixture of experts enable efficient and effective 942 
+
+protein understanding and design. bioRxiv , 2024. doi: 10.1101/2024.11.29.625425. 943 
+
+[54] Mingxu Tao, Chen Liang, Mohit Bansal, Xianyi Zhou, Derek F. Wong, and Yujiu Yang. 944 
+
+Efficient and effective vocabulary expansion towards multilingual large language models. 945 
+
+arXiv:2402.14714 , 2024. 946 
+
+31 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+[55] Adly Templeton, Tom Conerly, Jonathan Marcus, Jack Lindsey, Trenton Bricken, Brian Chen, 947 
+
+Adam Pearce, Craig Citro, Emmanuel Ameisen, Andy Jones, et al. Scaling monosemanticity: 948 
+
+Extracting interpretable features from Claude 3 Sonnet. Transformer Circuits , 2024. URL 949 
+
+https://transformer-circuits.pub/2024/scaling-monosemanticity/ .950 
+
+[56] Christina V. Theodoris, Ling Xiao, Anant Chopra, Mark D. Chaffin, Zeina R. Al Sayed, 951 
+
+Matthew C. Hill, Helene Mantineo, Elizabeth M. Brydon, Zexian Zeng, X. Shirley Liu, and 952 
+
+Patrick T. Ellinor. Transfer learning enables predictions in network biology (Geneformer). 953 
+
+Nature , 618:616–624, 2023. 954 
+
+[57] Aakash Tripathi, Ian E. Nielsen, Muhammad Umer, Ravi P. Ramachandran, and Ghulam 955 
+
+Rasool. Explainable ai in genomics: Transcription factor binding site prediction with mixture 956 
+
+of experts. arXiv:2507.09754 , 2025. 957 
+
+[58] Michel van Kempen, Stephanie S. Kim, Charlotte Tumescheit, Milot Mirdita, Jeongjae 958 
+
+Lee, Cameron L. M. Gilchrist, Johannes Söding, and Martin Steinegger. Fast and accu-959 
+
+rate protein structure search with Foldseek. Nature Biotechnology , 42:243–246, 2024. doi: 960 
+
+10.1038/s41587-023-01773-0. 961 
+
+[59] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, 962 
+
+Lukasz Kaiser, and Illia Polosukhin. Attention is all you need. In Advances in Neural Information 963 
+
+Processing Systems (NeurIPS) , 2017. 964 
+
+[60] Lean Wang, Huazuo Gao, Chenggang Zhao, Xu Sun, and Damai Dai. Auxiliary-loss-free load 965 
+
+balancing strategy for mixture-of-experts. arXiv:2408.15664 , 2024. 966 
+
+[61] Liang Wang. Emergence of biological structural discovery in general-purpose language models. 967 
+
+bioRxiv , 2026. bioRxiv:2026.01.03.697478. 968 
+
+[62] Zhenqin Wu, Bharath Ramsundar, Evan N. Feinberg, Joseph Gomes, Caleb Geniesse, Aneesh S. 969 
+
+Pappu, Karl Leswing, and Vijay Pande. MoleculeNet: A benchmark for molecular machine 970 
+
+learning. Chemical Science , 9:513–530, 2018. 971 
+
+[63] Minghao Xu, Xinyu Yuan, Santiago Miret, and Jian Tang. ProtST: Multi-modality learning of 972 
+
+protein sequences and biomedical texts. In Proceedings of the 40th International Conference on 973 
+
+Machine Learning (ICML) , 2023. 974 
+
+[64] Zhihan Zhou, Yanrong Ji, Weijian Li, Pratik Dutta, Ramana Davuluri, and Han Liu. DNABERT-975 
+
+2: Efficient foundation model and benchmark for multi-species genomes. arXiv:2306.15006 ,976 
+
+2023. 977 
+
+[65] Barret Zoph, Irwan Bello, Sameer Kumar, Nan Du, Yanping Huang, Jeff Dean, Noam 978 
+
+Shazeer, and William Fedus. ST-MoE: Designing stable and transferable sparse expert models. 979 
+
+arXiv:2202.08906 , 2022. 980 
+
+32 
+
+> .CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint
+
+A struct_cap list functional groups 
+
+Prompt 
+
+Please list the functional groups of the molecule. 
+
+Reference 
+
+This molecule contains several functional groups, including 
+
+ketones, alcohol groups, carboxylic acids, side-chain hydroxyls, 
+
+side-chain aldehydes, benzene, and naphthalene. 
+
+v3 prediction 
+
+The molecule shown contains the following functional groups: 
+
+* Carboxylic acid: Represented by the -COOH group at the top of 
+
+the structure. 
+
+* Phenol: Multiple hydroxyl groups (-OH) are attached directly 
+
+to aromatic rings, which is characteristic of phenols. 
+
+* Ketone: Two carbonyl groups (C=O) are part of the ring 
+
+system, specifically within the anthraquinone-like core. 
+
+B general_desp describe the molecule 
+
+Prompt 
+
+Please describe this drug. 
+
+Reference 
+
+The molecule is a methyl-L-alanine in which one of the the amino 
+
+hydrogen of L-alanine is replaced by a methyl group. It is a 
+
+tautomer of a N-methyl-L-alanine zwitterion. 
+
+v3 prediction 
+
+This image shows the chemical structure of 
+
+(S)-2-amino-3-methylbutanoic acid, also known as L-valine. It is 
+
+a nonessential amino acid that is important for the biosynthesis 
+
+of proteins. It is found in many foods, including eggs, cheese, 
+
+and meat. It is also used in the production of various 
+
+pharmaceuticals and other chemical products. 
+
+C trans_iupac IUPAC naming 
+
+Prompt 
+
+What is the IUPAC of the molecule? 
+
+Reference 
+
+The IUPAC is 3-methylbutanoate. 
+
+v3 prediction 
+
+The IUPAC name for the molecule shown is 3-methylbutanoate. 
+
+D struct_recog highlighted group 
+
+Prompt 
+
+Which functional group is highlighted? 
+
+Reference 
+
+The functional group amino acids is highlighted. 
+
+v3 prediction 
+
+The highlighted functional group is a carboxylic acid. 
+
+In the provided image, the carboxylic acid group is part of the 
+
+amino acid structure, specifically within the context of the 
+
+molecule's overall structure. The highlighting clearly identifies 
+
+the -COOH group, which is characteristic of carboxylic acids. 
+
+E standard homology positive pair 
+
+Sequence 1 
+
+MTMIKICGLSTPETIEAAVQAGATHVGLVHFAKSPRHVELEKAAELRALVPESVKAVLLLVNEQPEETARAIQIVKPDVV... 
+
+Sequence 2 
+
+VKICGLKTAEAVEHAVSLGASHTGFIFFPKSPRNIEPDDAGRLAERIRGRAKIVAVTVDADNDDLDEIVSALKPDILQLH... 
+
+Gold label 
+
+Homologous 
+
+v3 prediction 
+
+Homologous 
+
+correct 
+
+F remote homology positive pair 
+
+Sequence 1 
+
+atklteekyelkegqtldvkcdytlekfassqkawqiirdgempktlacterpsknshpvqvgriiledyhdhgllrvrm... 
+
+Sequence 2 
+
+qvqlvqsggqmkkpgesmriscrasgyefidctlnwirlapgkrpewmgwlkprggavnyarplqgrvtmtrqlsqdpdd... 
+
+Gold label 
+
+Homologous 
+
+v3 prediction 
+
+Homologous 
+
+correct 
+
+G cell type from markers 
+
+Instruction 
+
+Infer the most likely cell identity from these markers. 
+
+Input 
+
+IAPP, NKX6-1, MAFA, INS 
+
+Reference 
+
+This cell is most consistent with pancreatic beta cell, a pancreatic beta cell secreting 
+
+insulin. Key markers such as INS, IAPP, NKX6-1 support this identity. 
+
+v3 prediction 
+
+This cell is most consistent with pancreatic beta cell, a pancreatic beta cell secreting 
+
+insulin. Key markers such as NKX6-1, INS, IAPP support this identity. 
+
+H physico-chemical descriptor from SMILES 
+
+Instruction 
+
+Describe key molecular descriptors for the given SMILES. 
+
+Input 
+
+CNC(=O)c1ccc(C)c(-n2c(C)cc(OCc3ccc(F)cc3F)c(Br)c2=O)c1 
+
+Reference 
+
+This molecule is medium-sized and moderately polar, with lipophilic character. It contains 
+
+aromatic ring, amide, ether, halide, pyridine. Its descriptor profile: MW=477.31, LogP=4.43, 
+
+TPSA=60.33, HBD=1, HBA=3, QED=0.59. 
+
+v3 prediction 
+
+This molecule is medium-sized and moderately polar, with lipophilic character. It contains 
+
+aromatic ring, halide, amide, ether, pyridine. Its descriptor profile: MW=532.39, LogP=5.38, 
+
+TPSA=75.4, HBD=1, HBA=5, QED=0.49. 
+
+Figure 4. Qualitative showcase across vision, homology, and multi-task generation Figure 9: Qualitative output of OmniGene-4-MM Stage 3 v3 across vision, homology, and multi-task generation. Each panel shows the input prompt, the reference, and the model prediction. Panels A–D: Vis-CheBI20. E–F: BioPAWS homology pairs (gold label and v3 prediction). G–H: free-form generation. 
+
+33 
+
+.CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint Positioning of OmniGene-4-MM relative to recent MoE bio-models 
+
+AIDO.Protein 
+
+Sun et al. 2024 
+
+Protein only 
+
+16B-A8B sparse MoE, 
+
+trained from scratch 
+
+1.2 trillion tokens 
+
+256 × A100, 64 days 
+
+16,384 GPU-days 
+
+Goal: SOTA on 
+
+PEER / ProteinGym 
+
+specialized tool 
+
+Tripathi et al. 2025 
+
+Sci Reports 
+
+DNA only 
+
+MoE-of-CNN ensemble 
+
+(DeepBIND backbone) 
+
+Task: TFBS binary 
+
+classification 
+
+ShiftSmooth XAI 
+
+attribution 
+
+10 GPU-days 
+
+Goal: stable TFBS 
+
+classifier 
+
+specialized tool 
+
+OmniGene-4-MM 
+
+(this work) 
+
+Vision · Sequence · Language 
+
+8 modalities total 
+
+Gemma-4 26B-A4B MoE 
+
++ LoRA r=64 
+
+100 M tokens 
+
+(PAWS-X paraphrase) 
+
+Single H20, 30 h 
+
+1.25 GPU-days 
+
+Modality-invariant 
+
+syntactic transfer 
+
+Router-level XAI 
+
+(3-tier emergence) 
+
+mechanism + tool 
+
+Training compute (log scale, GPU-days)   
+
+> 16,384 GPU-days 10 GPU-days 1.25 GPU-days
+
+Figure 10: Positioning of OmniGene-4 (this work) relative to recent MoE bio-foundation models. Compute axis is on a logarithmic GPU-day scale. 
+
+34 
+
+.CC-BY 4.0 International license available under a (which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made The copyright holder for this preprint this version posted June 4, 2026. ;https://doi.org/10.64898/2026.05.12.724542 doi: bioRxiv preprint

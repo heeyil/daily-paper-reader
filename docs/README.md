@@ -6,115 +6,85 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-03 ~ 2026-07-02
-- 运行时间：2026-07-02 02:41:24 UTC
+- 最新运行日期：2026-06-04 ~ 2026-07-03
+- 运行时间：2026-07-03 03:19:56 UTC
 - 运行状态：成功
-- 本次总论文数：31
-- 精读区：17
-- 速读区：14
+- 本次总论文数：21
+- 精读区：9
+- 速读区：12
 
 ### 今日简报（AI）
-1. 今日精读聚焦《SentinelBench》长运行监控智能体基准测试（9.0分），速读覆盖记忆增强、超长软件工程任务及智能体经济学对齐等方向。  
-2. 最值得关注的是SentinelBench对持续监控智能体评估的体系，以及SWE-Marathon对超长周期软件自主任务的探索。  
-3. 建议关注长运行智能体可靠性评估与超长任务自主完成能力，可深入阅读SentinelBench和SWE-Marathon论文。
-- 详情：[/20260603-20260702/README](/20260603-20260702/README)
+过去一个月共筛选21篇论文，精读9篇，重点探索自主智能体强化学习与边缘-云-空间连续体中复合AI系统的运行时优化。
+最值得看的是满分论文《Next-Generation Agentic Reinforcement Learning Systems Enable Self-Evolving Agents》与9.0分论文《PLAIground: SLO-Driven Runtime Model Selection for Compound AI Systems》，前者揭示智能体自我进化机制，后者解决复合系统模型动态选择难题。
+下一步建议优先阅读速读中的《AgentBeats》和《STAGE-Claw》，关注Agentic AI的基准测试标准化与可复现性，以巩固前沿方法论。
+- 详情：[/20260604-20260703/README](/20260604-20260703/README)
 
 ### 精读区论文标签
-1. [SentinelBench: A Benchmark for Long-Running Monitoring Agents](/20260603-20260702/2606.05342v1-sentinelbench-a-benchmark-for-long-running-monitoring-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：长时间运行监控智能体的基准
-2. [SentinelBench: A Benchmark for Long-Running Monitoring Agents](/20260603-20260702/2606.05342v2-sentinelbench-a-benchmark-for-long-running-monitoring-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：长时间运行监控智能体的基准
-3. [SubtleMemory: A Benchmark for Fine-Grained Relational Memory Discrimination in Long-Horizon AI Agents](/20260603-20260702/2606.05761v1-subtlememory-a-benchmark-for-fine-grained-relational-memory-discrimination-in-long-horizon-ai-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：面向长时程代理的细粒度关系记忆基准
-4. [EMBER: Efficient Memory via Budgeted Evidence Retention for Long-Horizon Agents](/20260603-20260702/2606.05894v1-ember-efficient-memory-via-budgeted-evidence-retention-for-long-horizon-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：长视界智能体的预算证据保留
-5. [IR3DE: A Linear Router for Large Language Models](/20260603-20260702/2606.06098v1-ir3de-a-linear-router-for-large-language-models)  
+1. [Next-Generation Agentic Reinforcement Learning Systems Enable Self-Evolving Agents](/20260604-20260703/2607.01120v1-next-generation-agentic-reinforcement-learning-systems-enable-self-evolving-agents)  
+   标签：评分：10.0/10、query:agent-lsh
+   evidence：自演化智能体，通过自身经验持续学习
+2. [PLAIground: SLO-Driven Runtime Model Selection for Compound AI Systems in the Edge-Cloud-Space Continuum](/20260604-20260703/2606.14356v1-plaiground-slo-driven-runtime-model-selection-for-compound-ai-systems-in-the-edge-cloud-space-continuum)  
    标签：评分：9.0/10、query:moe-routing
-   evidence：基于岭回归的LLM推理路由器
-6. [Learning to Route LLMs from Implicit Cost-Performance Preferences via Meta-Learning](/20260603-20260702/2606.06178v1-learning-to-route-llms-from-implicit-cost-performance-preferences-via-meta-learning)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：用于个性化LLM路由的元学习框架
-7. [From Sampled Outcomes to Capability Distributions: Rethinking Supervision for LLM Routing](/20260603-20260702/2606.06924v1-from-sampled-outcomes-to-capability-distributions-rethinking-supervision-for-llm-routing)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：LLM路由监督、分布感知
-8. [Benchmarking Open-Ended Multi-Agent Coordination in Language Agents](/20260603-20260702/2606.08340v1-benchmarking-open-ended-multi-agent-coordination-in-language-agents)  
+   evidence：边缘-云-空间连续体中的运行时模型选择
+3. [Hierarchical Experimentalist Agents](/20260604-20260703/2606.29315v1-hierarchical-experimentalist-agents)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：面向长期多智能体协调任务的基准测试
-9. [Bridging the Agent-World Gap: Text World Models for LLM-based Agents](/20260603-20260702/2606.09032v1-bridging-the-agent-world-gap-text-world-models-for-llm-based-agents)  
+   evidence：通过主动实验实现自我改进的长时域任务框架
+4. [ACE: Pluggable Adaptive Context Elasticizer across Agents](/20260604-20260703/2606.31564v1-ace-pluggable-adaptive-context-elasticizer-across-agents)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：用于长时程环境规划的文本世界模型
-10. [BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference](/20260603-20260702/2606.09514v1-buddy-budget-driven-dynamic-depth-routing-for-adaptive-large-language-model-inference)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：预算驱动的LLM推理动态深度路由
-11. [From Question Answering to Task Completion: A Survey on Agent System and Harness Design](/20260603-20260702/2606.20683v1-from-question-answering-to-task-completion-a-survey-on-agent-system-and-harness-design)  
+   evidence：面向长视界智能体任务的适应性上下文管理
+5. [ContinuumCellAgent: A Framework-Guided Agent for Long-Horizon Scientific Research](/20260604-20260703/biorxiv-10-64898-2026-06-15-732409-v1-continuumcellagent-a-framework-guided-agent-for-long-horizon-scientific-research)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：智能体驾驭与控制的综述
-12. [Efficient and Trainable Language Model Test-Time Scaling via Local Branch Routing](/20260603-20260702/2606.25354v2-efficient-and-trainable-language-model-test-time-scaling-via-local-branch-routing)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：通过局部分支路由实现令牌级测试时间扩展
-13. [The Red Queen Gödel Machine: Co-Evolving Agents and Their Evaluators](/20260603-20260702/2606.26294v2-the-red-queen-gdel-machine-co-evolving-agents-and-their-evaluators)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：非平稳评估者下的递归自我改进
-14. [CRAFT: Counterfactual Credit Assignment from Free Sibling Rollouts for Self-Distilled Agentic Reinforcement Learning](/20260603-20260702/2606.29476v1-craft-counterfactual-credit-assignment-from-free-sibling-rollouts-for-self-distilled-agentic-reinforcement-learning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：自蒸馏智能体强化学习中的反事实信用分配
-15. [Scaling the Horizon, Not the Parameters: Reaching Trillion-Parameter Performance with a 35B Agent](/20260603-20260702/2606.30616v1-scaling-the-horizon-not-the-parameters-reaching-trillion-parameter-performance-with-a-35b-agent)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：通过扩展智能体视野达到万亿参数性能
-16. [Self-Evolving World Models for LLM Agent Planning](/20260603-20260702/2606.30639v1-self-evolving-world-models-for-llm-agent-planning)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：用于长视界LLM智能体规划的自我演化世界模型
-17. [AgentBound: Verifiable Behavioral Governance for Autonomous AI Agents](/20260603-20260702/2606.30970v1-agentbound-verifiable-behavioral-governance-for-autonomous-ai-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：运行时治理框架控制自主AI智能体
+   evidence：面向长周期科学研究的框架引导代理
+6. [What makes a harness a harness: necessary and sufficient conditions for an agent harness](/20260604-20260703/2606.10106v1-what-makes-a-harness-a-harness-necessary-and-sufficient-conditions-for-an-agent-harness)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：定义智能体缰绳以控制智能体
+7. [Hybrid Retriever Evolution for Multimodal Document Reasoning Agents](/20260604-20260703/2606.29648v1-hybrid-retriever-evolution-for-multimodal-document-reasoning-agents)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：元智能体通过演化改进任务智能体的检索协调策略
+8. [Hierarchical 3D Scene Graph Construction and Belief-based Planning for Semantic Navigation](/20260604-20260703/2606.31071v1-hierarchical-3d-scene-graph-construction-and-belief-based-planning-for-semantic-navigation)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：层次化场景图用于长期语义导航规划
+9. [AutoZyme: An Autonomous Agentic Framework to Optimize Bioinformatics Software](/20260604-20260703/biorxiv-10-64898-2026-06-12-731250-v1-autozyme-an-autonomous-agentic-framework-to-optimize-bioinformatics-software)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：自主代理随时间迭代改进代码
 
 ### 速读区论文标签
-1. [AdMem: Advanced Memory for Task-solving Agents](/20260603-20260702/2606.06787v1-admem-advanced-memory-for-task-solving-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：为长时域任务求解代理提供高级记忆
-2. [SWE-Marathon: Can Agents Autonomously Complete Ultra-Long-Horizon Software Work?](/20260603-20260702/2606.07682v1-swe-marathon-can-agents-autonomously-complete-ultra-long-horizon-software-work)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：长期智能体基准、软件工程
-3. [Agent Economics: An Entropy-Controlled Pluralistic Alignment Framework for Preventing Artificial Hivemind in Autonomous Agents](/20260603-20260702/2606.09039v1-agent-economics-an-entropy-controlled-pluralistic-alignment-framework-for-preventing-artificial-hivemind-in-autonomous-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：熵控制对齐以控制智能体
-4. [Agent Economics: An Entropy-Controlled Pluralistic Alignment Framework for Preventing Artificial Hivemind in Autonomous Agents](/20260603-20260702/2606.09039v2-agent-economics-an-entropy-controlled-pluralistic-alignment-framework-for-preventing-artificial-hivemind-in-autonomous-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：熵控制多元对齐框架
-5. [Anything2Skill: Compiling External Knowledge into Reusable Skills for Agents](/20260603-20260702/2606.09316v1-anything2skill-compiling-external-knowledge-into-reusable-skills-for-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：将外部知识编译为智能体可复用的技能
-6. [ConMem: Structured Memory-Guided Adaptation in Training-Free Multi-Agent Systems](/20260603-20260702/2606.08702v1-conmem-structured-memory-guided-adaptation-in-training-free-multi-agent-systems)  
+1. [Autonomous Incident Resolution at Hyperscale: An Agentic AI Architecture for Network Operations](/20260604-20260703/2606.09122v1-autonomous-incident-resolution-at-hyperscale-an-agentic-ai-architecture-for-network-operations)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：无训练的结构化记忆引导多智能体适应
-7. [Anything2Skill: Compiling External Knowledge into Reusable Skills for Agents](/20260603-20260702/2606.09316v2-anything2skill-compiling-external-knowledge-into-reusable-skills-for-agents)  
+   evidence：智能体驾驭与控制技术
+2. [STAGE-Claw: Automated State-based Agent Benchmarking for Realistic Scenarios](/20260604-20260703/2606.10394v1-stage-claw-automated-state-based-agent-benchmarking-for-realistic-scenarios)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：将外部知识编译为可复用技能以支持智能体规划与改进
-8. [Policy Regret for Embedding Model Routing: Contextual Bandits with Low-Rank Experts](/20260603-20260702/2606.14929v1-policy-regret-for-embedding-model-routing-contextual-bandits-with-low-rank-experts)  
-   标签：评分：7.0/10、query:moe-routing
-   evidence：将嵌入模型路由形式化为上下文赌博机
-9. [Reconstructing living materials as a computable design space with multi-agent reasoning](/20260603-20260702/biorxiv-10-64898-2026-02-15-705954-v2-reconstructing-living-materials-as-a-computable-design-space-with-multi-agent-reasoning)  
+   evidence：提供自动框架，在真实场景中评估个人智能体，有助于智能体的驾驭与控制
+3. [AgentBeats: Agentifying Agent Assessment for Openness, Standardization, and Reproducibility](/20260604-20260703/2606.13608v1-agentbeats-agentifying-agent-assessment-for-openness-standardization-and-reproducibility)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：多智能体推理框架用于复杂科学发现
-10. [CascadeMAP: Autonomous Closed-loop Optimization of Enzyme Cascades via Microfluidics, Machine Learning and Agentic AI](/20260603-20260702/biorxiv-10-64898-2026-06-04-730034-v1-cascademap-autonomous-closed-loop-optimization-of-enzyme-cascades-via-microfluidics-machine-learning-and-agentic-ai)  
+   evidence：标准化评估接口用于控制和评估智能体
+4. [AgentBeats: Agentifying Agent Assessment for Openness, Standardization, and Reproducibility](/20260604-20260703/2606.13608v2-agentbeats-agentifying-agent-assessment-for-openness-standardization-and-reproducibility)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：多智能体AI自主闭环优化酶级联反应
-11. [Ahoy: LLMs Enacting Multiagent Interaction Protocols](/20260603-20260702/2606.05390v1-ahoy-llms-enacting-multiagent-interaction-protocols)  
+   evidence：标准化评估接口用于控制和评估智能体
+5. [GBC: Gradient-Based Connections for Optimizing Multi-Agent Systems](/20260604-20260703/2606.28187v1-gbc-gradient-based-connections-for-optimizing-multi-agent-systems)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：提出基于梯度的连接优化多智能体系统，是智能体驾驭技术
+6. [ChatSpatial: Schema-Enforced Agentic Orchestration for Reproducible and Cross-Platform Spatial Transcriptomics](/20260604-20260703/biorxiv-10-64898-2026-02-26-708361-v3-chatspatial-schema-enforced-agentic-orchestration-for-reproducible-and-cross-platform-spatial-transcriptomics)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：通过模式强制编排在复杂环境中利用LLM智能体
+7. [Fix the Mind, Not the Move: Interpretable AI Assistance via Knowledge-Gap Localization](/20260604-20260703/2606.05602v1-fix-the-mind-not-the-move-interpretable-ai-assistance-via-knowledge-gap-localization)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：LLM代理动态执行多代理交互协议以实现控制
-12. [Fix the Mind, Not the Move: Interpretable AI Assistance via Knowledge-Gap Localization](/20260603-20260702/2606.05602v1-fix-the-mind-not-the-move-interpretable-ai-assistance-via-knowledge-gap-localization)  
+   evidence：通过知识差距定位实现长期改进的AI辅助
+8. [Observability for Delegated Execution in Agentic AI Systems](/20260604-20260703/2606.09692v1-observability-for-delegated-execution-in-agentic-ai-systems)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：长视野任务中纠正误解以促进人类长期改进
-13. [Declarative Skills for AI Agents in Knowledge-Grounded Tool-Use Workflows](/20260603-20260702/2606.06923v1-declarative-skills-for-ai-agents-in-knowledge-grounded-tool-use-workflows)  
+   evidence：委托执行的可观测性有助于控制智能体系统
+9. [Decentralized Multi-Agent Systems with Shared Context](/20260604-20260703/2606.10662v1-decentralized-multi-agent-systems-with-shared-context)  
+   标签：评分：6.0/10、query:agent-mix
+   evidence：去中心化多智能体框架，通过共享上下文实现协调
+10. [Closing the Loop: Formally Verified Law as a Reward Signal for Self-Improving Legal AI](/20260604-20260703/2606.23913v1-closing-the-loop-formally-verified-law-as-a-reward-signal-for-self-improving-legal-ai)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：通过自然语言技能文件编排智能体
-14. [AgentCanary: A Security Evaluation Framework for Autonomous AI Agents in Real Executable Environments](/20260603-20260702/2606.10484v1-agentcanary-a-security-evaluation-framework-for-autonomous-ai-agents-in-real-executable-environments)  
+   evidence：通过形式化奖励信号实现自我改进的法律AI
+11. [OmniGene-4: A Unified Bio-Language MoE Model with Router-Level Interpretability](/20260604-20260703/biorxiv-10-64898-2026-05-12-724542-v3-omnigene-4-a-unified-bio-language-moe-model-with-router-level-interpretability)  
+   标签：评分：6.0/10、query:moe-routing
+   evidence：生物MoE模型中的路由器可解释性
+12. [Evaluating agentic AI for biological discovery in autonomous and copilot settings](/20260604-20260703/biorxiv-10-64898-2026-06-04-729919-v1-evaluating-agentic-ai-for-biological-discovery-in-autonomous-and-copilot-settings)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：自主代理安全评估框架用于控制代理
+   evidence：评估智能体AI在复杂生物数据环境中的发现能力
 
 
 <div class="dpr-home-promo-card">
