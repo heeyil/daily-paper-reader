@@ -1,0 +1,916 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-06T21:53:23.132031+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 3,
+    "deep_divecandidates": 23,
+    "deep_cap": 8,
+    "deep_selected": 8,
+    "quick_candidates": 36,
+    "quick_skim_target": 13,
+    "quick_selected": 13
+  },
+  "deep_dive": [
+    {
+      "id": "2606.29424v1",
+      "source": "arxiv",
+      "title": "EntroRouter: Learning Efficient Model Routing via Entropy Regulation",
+      "abstract": "Model routing balances solution accuracy and computational cost by selecting among models of varying capabilities. While recent multi-round frameworks interleave reasoning and planning, we identify a structural failure mode termed Trust Region Collapse. We demonstrate that the deep coupling of reasoning and routing, exacerbated by the dominance of strong pre-training priors under sparse supervision, leads to degenerate local optima where capable experts are systematically suppressed. To decouple these processes, we propose $\\textbf{EntroRouter}$, a single-round routing framework that treats entropy regulation as a core objective. We first initialize the policy via Soft Supervision, fitting a distribution of suitable models to establish a high-entropy prior for exploration. Subsequently, we stabilize Reinforcement Learning using a Soft Anchor, which utilizes offline capability estimates to orchestrate controlled entropy contraction within a safe trust region. Extensive experiments demonstrate that EntroRouter retains 98.3% of the strongest expert's accuracy while reducing computational costs by 48.25%.",
+      "authors": [
+        "Kaiyi Zhang",
+        "Xueliang Zhao",
+        "Zhuocheng Gong",
+        "Wei Wu",
+        "Yankai Lin"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-28T14:39:06+00:00",
+      "link": "https://arxiv.org/pdf/2606.29424v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:moe-routing",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "model routing with entropy regulation to prevent trust region collapse",
+      "llm_evidence_cn": "通过熵正则化实现模型路由，防止信任区域坍缩",
+      "llm_evidence": "通过熵正则化实现模型路由，防止信任区域坍缩",
+      "canonical_evidence": "通过熵正则化实现模型路由，防止信任区域坍缩",
+      "llm_tldr_en": "EntroRouter identifies trust region collapse in multi-round routing, proposes single-round routing with entropy regulation via soft supervision and policy gradient, achieving efficient model selection.",
+      "llm_tldr_cn": "多轮模型路由中推理与路由深度耦合会导致信任区域坍缩，系统抑制高能力专家。EntroRouter将路由与推理解耦，采用单轮路由框架，以熵正则化为核心目标，先通过软监督初始化高熵先验，再通过策略梯度优化路由策略，有效避免了局部最优并提升了路由效率。",
+      "llm_tldr": "多轮模型路由中推理与路由深度耦合会导致信任区域坍缩，系统抑制高能力专家。EntroRouter将路由与推理解耦，采用单轮路由框架，以熵正则化为核心目标，先通过软监督初始化高熵先验，再通过策略梯度优化路由策略，有效避免了局部最优并提升了路由效率。",
+      "llm_tags": [
+        "query:moe-routing:composite"
+      ],
+      "matched_query_tag": "query:moe-routing:composite",
+      "matched_query_text": "Papers central to 帮我寻找大模型推理时路由的论文, especially work that connects or combines: model routing in LLM inference; dynamic model selection during inference; routing in large language model serving; papers on routing during inference of large language models; dynamic model selection for LLM inference.",
+      "matched_requirement_id": "req-composite-moe-routing",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.29537v1",
+      "source": "arxiv",
+      "title": "OSWorld2.0: Benchmarking Computer Use Agents on Long-Horizon Real-World Tasks",
+      "abstract": "Existing computer-use benchmarks fail to capture the realism, complexity, and long-horizon demands of real-world computer use, limiting their ability to reveal the limitations of frontier agents. We introduce OSWorld 2.0, a benchmark of 108 long-horizon computer-use workflows across everyday and professional tasks, designed to capture complex and challenging real-world phenomena. Each task represents a realistic end-to-end workflow that takes human users a median of about 1.6 hours to complete and requires an average of 318 tool calls with Claude Opus 4.7 using maximum thinking, compared with about 30 in OSWorld 1.0. OSWorld 2.0 targets challenge phenomena that are common in real workflows yet underrepresented in prior benchmarks, spanning interaction-design challenges such as streaming interaction and dynamic environments, as well as agent-pattern challenges such as cross-source reasoning, implicit-state inference, and visual-spatial precision. Tasks are grounded in authentic input artifacts and cross-referenced against realistic stateful user profile data, and include separate safety reports auditing safety-sensitive execution. Under our primary binary-completion metric at 500 steps, Claude Opus 4.8 with maximum thinking and batched tool calls scores best but still completes only 20.6% of tasks at a 54.8% partial score; GPT-5.5 is far more token-efficient yet plateaus near 13%. These results show that current agents are still far from professional-level computer use: rather than stumbling on basic GUI control or coding, they lose track of constraints, miss information that arrives mid-task, guess rather than ask the user, and skip verification, struggling most when a task hinges on hidden state they must recover.",
+      "authors": [
+        "Mengqi Yuan",
+        "Zilong Zhou",
+        "Xinzhuang Xiong",
+        "Weiming Wu",
+        "Jiayang Sun",
+        "Jiamin Song",
+        "Kaiqian Cui",
+        "Bowen Wang",
+        "Haoyuan Wu",
+        "Yitong Li",
+        "Dunjie Lu",
+        "Haikong Lu",
+        "Qi Zhen",
+        "Xinyuan Wang",
+        "Jiaqi Deng",
+        "Yuhao Yang",
+        "Cheng Chen",
+        "Boyuan Zheng",
+        "Alex Su",
+        "Xiao Yu",
+        "Hao Zou",
+        "Saaket Agashe",
+        "Xing Han Lu",
+        "Manpreet Kaur",
+        "Zhengyang Qi",
+        "Vincent Sunn Chen",
+        "Frederic Sala",
+        "Dayiheng Liu",
+        "Junyang Lin",
+        "Zhou Yu",
+        "Yu Su",
+        "Siva Reddy",
+        "Xin Eric Wang",
+        "Peng Qi",
+        "Tianbao Xie",
+        "Tao Yu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-28T17:59:17+00:00",
+      "link": "https://arxiv.org/pdf/2606.29537v1",
+      "tags": [
+        "keyword:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "long-horizon real-world computer-use benchmark",
+      "llm_evidence_cn": "长时间跨度的真实计算机使用基准",
+      "llm_evidence": "长时间跨度的真实计算机使用基准",
+      "canonical_evidence": "长时间跨度的真实计算机使用基准",
+      "llm_tldr_en": "OSWorld 2.0 benchmarks long-horizon computer-use agents on 108 real-world workflows, requiring ~318 tool calls per task, revealing limitations of frontier agents.",
+      "llm_tldr_cn": "现有计算机使用基准缺乏真实世界长期任务，OSWorld 2.0 提出108个长时间跨度的真实工作流基准，每个任务平均需318次工具调用，能够揭示前沿agent在复杂长期任务中的局限性。该基准涵盖日常和专业任务，强调现实中的挑战现象，为agent长期规划能力提供了更严格的评估。",
+      "llm_tldr": "现有计算机使用基准缺乏真实世界长期任务，OSWorld 2.0 提出108个长时间跨度的真实工作流基准，每个任务平均需318次工具调用，能够揭示前沿agent在复杂长期任务中的局限性。该基准涵盖日常和专业任务，强调现实中的挑战现象，为agent长期规划能力提供了更严格的评估。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.31422v1",
+      "source": "arxiv",
+      "title": "Ask the World Before Acting: Budgeted Environment Probing for World-Model Calibration",
+      "abstract": "Long-horizon language agents do not only choose actions; they carry a private model of the world from one decision to the next. When that model drifts, a later failure can be decided before the failing action is ever taken. We study a direct repair mechanism: before committing to the next task action, an agent may ask the environment about one belief field and write the answer back into its world model. This makes environment interaction a scarce calibration resource, not merely a way to advance the task. We introduce \\method, a budgeted probing operator for structured belief tables. The useful probes are not the same everywhere. Procedural beliefs, such as tool dependencies, can often be repaired by targeted checks, but those checks spend steps that the task may need. Spatial beliefs, such as object locations and graph edges, rely more on structural cues; the agent's own confidence can be a poor guide when the world changes off-screen. A type-stratified analysis formalizes this probe-action frontier, and controlled experiments show that mid-planning environment evidence reduces terminal world-model error when the probe policy follows the structure of the task.",
+      "authors": [
+        "Xinyuan Song",
+        "Zekun Cai"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-30T09:45:49+00:00",
+      "link": "https://arxiv.org/pdf/2606.31422v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "long-horizon language agents world-model calibration via budgeted probing",
+      "llm_evidence_cn": "长时程语言代理通过预算化探测进行世界模型校准",
+      "llm_evidence": "长时程语言代理通过预算化探测进行世界模型校准",
+      "canonical_evidence": "长时程语言代理通过预算化探测进行世界模型校准",
+      "llm_tldr_en": "Proposes budgeted environment probing for long-horizon language agents to calibrate their world model before acting, treating interaction as a scarce resource.",
+      "llm_tldr_cn": "长时程语言代理不仅选择动作，还携带内部世界模型。模型漂移会导致后期失败。本文提出在行动前允许代理通过预算化的环境探测询问信念字段并更新模型，将环境交互视为稀缺校准资源。该方法通过结构化信念表的预算化探测算子实现，可针对性修复程序性信念。",
+      "llm_tldr": "长时程语言代理不仅选择动作，还携带内部世界模型。模型漂移会导致后期失败。本文提出在行动前允许代理通过预算化的环境探测询问信念字段并更新模型，将环境交互视为稀缺校准资源。该方法通过结构化信念表的预算化探测算子实现，可针对性修复程序性信念。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.01988v1",
+      "source": "arxiv",
+      "title": "Episodic-to-Semantic Consolidation Without Identity Drift",
+      "abstract": "Long-running adaptive intelligent agents face a structural tension between knowledge consolidation and information integrity. Memory consolidation is conventionally treated as an agent-changing operation: a model is fine-tuned, a prompt rewritten, a policy distilled, or a reflection appended to the context that governs future behaviour. In regulated autonomic deployment this is a liability because the agent operates under commitments and audit contracts that bind to a specific, cryptographically certified identity. We propose to treat consolidation not as a mutation of the planner or the identity manifest, but as a deterministic function f: M^ep -> M^sem over episodic memory whose output is a separately addressable semantic knowledge layer; the identity hash does not read M^sem, so consolidation updates knowledge without changing the agent's certified identity. We give a formal account of the agent representation, prove identity invariance through a structural lemma on the manifest's hash-input set, specify a deterministic aggregation algorithm whose outputs are auditable database rows with explicit confidence and supporting-event provenance, and validate the construction with synthetic experiments demonstrating per-field correctness, byte-equal identity across consolidation passes, and a mean 79.82% reduction in unproductive planner attempts (95% BCa CI [78.02%, 81.49%] across 10 seeds) against a calibrated Bayesian-shrunk baseline. The construction is a knowledge-update discipline for autonomic agents in which lessons accumulate as queryable facts while the agent's certified identity remains byte-equal across its operational lifetime, with an embodied service agent as the running case study.",
+      "authors": [
+        "Xue Qin",
+        "Simin Luan",
+        "Cong Yang",
+        "Zhijun Li"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.RO"
+      ],
+      "published": "2026-07-02T10:18:45+00:00",
+      "link": "https://arxiv.org/pdf/2607.01988v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "long-running adaptive agent memory consolidation without identity drift",
+      "llm_evidence_cn": "长运行自适应代理的记忆整合而不产生身份漂移",
+      "llm_evidence": "长运行自适应代理的记忆整合而不产生身份漂移",
+      "canonical_evidence": "长运行自适应代理的记忆整合而不产生身份漂移",
+      "llm_tldr_en": "Presents a method for episodic-to-semantic consolidation in long-running agents that avoids identity drift by treating consolidation as a deterministic function over episodic memory.",
+      "llm_tldr_cn": "长运行自适应智能代理面临知识整合与身份保持的两难。传统方法将整合视为代理变更操作，导致身份漂移。本文提出将整合视为情节记忆上的确定性函数，输出独立的语义知识层，从而在不改变代理身份的情况下实现知识积累。该方法适用于监管环境下的长期运行代理。",
+      "llm_tldr": "长运行自适应智能代理面临知识整合与身份保持的两难。传统方法将整合视为代理变更操作，导致身份漂移。本文提出将整合视为情节记忆上的确定性函数，输出独立的语义知识层，从而在不改变代理身份的情况下实现知识积累。该方法适用于监管环境下的长期运行代理。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.29538v1",
+      "source": "arxiv",
+      "title": "RESOURCE2SKILL: Distilling Executable Agent Skills from Human-Created Multimodal Resources",
+      "abstract": "Skills are a useful abstraction for software agents, turning human and agent experience into reusable procedural knowledge. Yet existing skill libraries are mostly hand-written, text-centric, or derived from agent traces, leaving tutorial videos and other multimodal human resources largely underused. We present RESOURCE2SKILL, a framework that distills multimodal resources, including tutorial videos, repositories, articles, and reference artifacts, into executable skills for software agents. RESOURCE2SKILL organizes these skills as a hierarchical multimodal Skill Wiki, where each entry combines structured text, code, visual examples, metadata, and provenance. This design preserves complementary signals from different resources: videos capture temporal operations and visual effects, code captures executable tool patterns, and articles or artifacts provide conceptual and stylistic grounding. At inference time, agents retrieve and compose relevant skills from the wiki; when coverage is insufficient, the same construction operator can acquire new skills online. Across seven practical authoring domains, RESOURCE2SKILL improves average overall score by +11.9 percentage points over no-skill agents and outperforms strong harness baselines in 26 of 28 main-aggregate model-domain cells. Ablations confirm the value of multimodal skill format, hierarchical organization, source diversity, selection strategy, and online acquisition.",
+      "authors": [
+        "Yijia Fan",
+        "Zonglin Di",
+        "Zimo Wen",
+        "Yifan Yang",
+        "Mingxi Cheng",
+        "Qi Dai",
+        "Bei Liu",
+        "Kai Qiu",
+        "Yue Dong",
+        "Ji Li",
+        "Chong Luo"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE",
+        "cs.AI"
+      ],
+      "published": "2026-06-28T17:59:21+00:00",
+      "link": "https://arxiv.org/pdf/2606.29538v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "distilling agent skills from multimodal resources",
+      "llm_evidence_cn": "从多模态资源蒸馏智能体技能",
+      "llm_evidence": "从多模态资源蒸馏智能体技能",
+      "canonical_evidence": "从多模态资源蒸馏智能体技能",
+      "llm_tldr_en": "RESOURCE2SKILL distills executable agent skills from tutorial videos, repositories, and articles into a hierarchical multimodal Skill Wiki, enabling reusable procedural knowledge for software agents.",
+      "llm_tldr_cn": "针对智能体技能库构建依赖手工编写或文本的问题，RESOURCE2SKILL提出从教程视频、仓库等多模态资源中蒸馏可执行技能，形成层次化多模态技能维基，显著提升了技能的可复用性和覆盖范围。",
+      "llm_tldr": "针对智能体技能库构建依赖手工编写或文本的问题，RESOURCE2SKILL提出从教程视频、仓库等多模态资源中蒸馏可执行技能，形成层次化多模态技能维基，显著提升了技能的可复用性和覆盖范围。",
+      "llm_tags": [
+        "query:agent-dist:composite"
+      ],
+      "matched_query_tag": "query:agent-dist:composite",
+      "matched_query_text": "Papers central to 帮我找关于agent蒸馏的论文, especially work that connects or combines: agent distillation techniques; agent distillation techniques and methods.",
+      "matched_requirement_id": "req-composite-agent-dist",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.29142v1",
+      "source": "arxiv",
+      "title": "Agent Security Meets Regulatory Reality -- A Practitioner Systematization of Autonomous-Agent Threats and Controls in Regulated Financial Systems",
+      "abstract": "Large language model agents are entering regulated financial systems, yet the security literature characterizing their attack surface is almost entirely laboratory-based, and the practitioner guidance on regulated deployment is neither peer-reviewed nor connected to a formal threat model. We bridge the two from production experience. We map six established agentic threat categories namely prompt injection, identity and authorization, action auditability, tool abuse, data residency, and boundary policy enforcement onto the specific control obligations imposed by the US and the EU financial regulation (ECOA and Regulation B, the EU AI Act, GDPR Article 22, and FINRA's 2026 agent guidance), showing how legal accountability amplifies each threat relative to an unregulated deployment. We then document four architectural patterns from a production Know Your Customer deployment for a consumer credit product (A2A compliance choreography, grounded-RAG-for-audit, case-ID propagation, and an inference-boundary redaction proxy) that moved a multi-day manual process to same-day automated resolution for roughly four in five cases. Finally, we report three negative results, including two control failures surfaced only by internal audit and a population of legitimate applicants the automated pipeline cannot serve. Securing agents under regulation, we conclude, is less about novel attack classes than about making auditability, least-privilege authorization, and boundary policy enforcement real at production scale -- requirements current agent frameworks leave to the deploying engineer.",
+      "authors": [
+        "Krishna Mohan",
+        "Guda Nagavenkata Srinivasa"
+      ],
+      "primary_category": "cs.CY",
+      "categories": [
+        "cs.CY",
+        "cs.SE"
+      ],
+      "published": "2026-06-28T01:11:00+00:00",
+      "link": "https://arxiv.org/pdf/2606.29142v1",
+      "tags": [
+        "keyword:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "systematization of autonomous-agent threats and controls in regulated financial systems, directly addressing harnessing and controlling agents",
+      "llm_evidence_cn": "系统化梳理自主agent威胁与控制措施，直接涉及agent的驾驭与控制",
+      "llm_evidence": "系统化梳理自主agent威胁与控制措施，直接涉及agent的驾驭与控制",
+      "canonical_evidence": "系统化梳理自主agent威胁与控制措施，直接涉及agent的驾驭与控制",
+      "llm_tldr_en": "Maps six agentic threat categories onto regulatory control obligations, providing practitioner guidance for deploying agents securely in finance.",
+      "llm_tldr_cn": "大模型agent进入金融系统面临安全威胁，但现有文献缺乏与实践结合的系统化指导。本文基于生产经验，将六类agent威胁（如提示注入、身份授权等）映射到美欧金融法规的具体控制义务。为安全部署和控制agent提供了实操框架，弥合了学术威胁模型与监管合规之间的鸿沟。",
+      "llm_tldr": "大模型agent进入金融系统面临安全威胁，但现有文献缺乏与实践结合的系统化指导。本文基于生产经验，将六类agent威胁（如提示注入、身份授权等）映射到美欧金融法规的具体控制义务。为安全部署和控制agent提供了实操框架，弥合了学术威胁模型与监管合规之间的鸿沟。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.30044v1",
+      "source": "arxiv",
+      "title": "Building Multi-Task Agentic LLMs via Two-Phase Distillation",
+      "abstract": "A key step toward artificial general intelligence is to train models that can perform multiple tasks. In this paper, we study how to build such models by first training separate RL experts for individual tasks and then consolidating them via distillation, as an alternative to directly training a single model on mixed tasks. We show that off-policy distillation degrades in multi-task settings due to the mode-covering nature of forward KL: aggregating data from multiple tasks introduces a large number of behavioral modes that can exceed the student's capacity, forcing it to average across behaviors and leading to degraded performance. In contrast, on-policy distillation is mode-seeking but requires strong initialization. Inspired by these observations, we propose a two-phase approach: off-policy distillation followed by on-policy refinement. Evaluation across conversational agents and text-based games confirms that this two-phase approach matches single-task RL expert performance for each individual task, whereas off-policy or on-policy distillation alone fails to match this performance.",
+      "authors": [
+        "Huaijie Wang",
+        "Shusheng Xu",
+        "Yi Wu",
+        "Kaifeng Lyu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-29T09:36:24+00:00",
+      "link": "https://arxiv.org/pdf/2606.30044v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "two-phase distillation to build multi-task agentic LLMs",
+      "llm_evidence_cn": "两阶段蒸馏构建多任务代理式大语言模型",
+      "llm_evidence": "两阶段蒸馏构建多任务代理式大语言模型",
+      "canonical_evidence": "两阶段蒸馏构建多任务代理式大语言模型",
+      "llm_tldr_en": "Studies off-policy vs on-policy distillation for consolidating multiple RL experts into a single multi-task agentic LLM, proposing a two-phase approach.",
+      "llm_tldr_cn": "构建多任务代理模型的一种途径是分别训练专家再通过蒸馏合并。本文发现在多任务设置下，离策略蒸馏因前向KL的覆盖性质导致性能下降。提出两阶段蒸馏：先用离策略略微改进，再用在线策略蒸馏进行模式寻求，显著提升多任务代理LLM性能。该工作直接针对代理蒸馏技术。",
+      "llm_tldr": "构建多任务代理模型的一种途径是分别训练专家再通过蒸馏合并。本文发现在多任务设置下，离策略蒸馏因前向KL的覆盖性质导致性能下降。提出两阶段蒸馏：先用离策略略微改进，再用在线策略蒸馏进行模式寻求，显著提升多任务代理LLM性能。该工作直接针对代理蒸馏技术。",
+      "llm_tags": [
+        "query:agent-dist:composite"
+      ],
+      "matched_query_tag": "query:agent-dist:composite",
+      "matched_query_text": "Papers central to 帮我找关于agent蒸馏的论文, especially work that connects or combines: agent distillation techniques; agent distillation techniques and methods.",
+      "matched_requirement_id": "req-composite-agent-dist",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.29445v1",
+      "source": "arxiv",
+      "title": "Bridging VideoQA and Video-Guided Agentic Tasks via Generalized Keyframe Extraction",
+      "abstract": "Video understanding is a fundamental capability for multimodal intelligence, and recent Multimodal Large Language Models (MLLMs) have achieved remarkable performance on Video Question Answering (VideoQA) benchmarks. However, existing benchmarks primarily evaluate whether models can perceive shallow visual cues, while rarely examining whether MLLMs can learn deeper knowledge or procedural skills from video tutorials and generalize them to downstream long-horizon agentic tasks. To address this gap, we introduce VG-GUIBench (Video-Guided GUI Benchmark), a new benchmark designed to evaluate whether MLLM-based GUI agents can follow video tutorials to complete corresponding GUI interactive tasks. Furthermore, we observe that the performance of models on both VideoQA and video-guided agentic tasks critically depends on effective keyframe extraction. Based on this observation, we propose TASKER (Task-driven And Scene-aware Keyframe searchER), a keyframe extraction algorithm that jointly considers task relevance and scene dynamics to identify informative frames. Experimental results demonstrate that TASKER achieves significant performance improvements on both VideoQA and video-guided agentic task benchmarks, outperforming the best baseline by 2.0% on the EgoSchema fullset and 1.8% on the NExT-QA dataset, respectively. These results further highlight the potential of generalized keyframe extraction methods for video understanding tasks. Our code and data are available at https://github.com/VG-GUI-TASKER/VG-GUI-TASKER.",
+      "authors": [
+        "Sunqi Fan",
+        "Qingle Liu",
+        "Runqi Yin",
+        "Meng-Hao Guo",
+        "Shuojin Yang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-06-28T15:11:19+00:00",
+      "link": "https://arxiv.org/pdf/2606.29445v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "benchmark for evaluating long-horizon agentic tasks from video tutorials",
+      "llm_evidence_cn": "用于评估agent从视频教程学习并完成长期任务的基准",
+      "llm_evidence": "用于评估agent从视频教程学习并完成长期任务的基准",
+      "canonical_evidence": "用于评估agent从视频教程学习并完成长期任务的基准",
+      "llm_tldr_en": "VG-GUIBench evaluates whether MLLM-based GUI agents can follow video tutorials to complete long-horizon GUI tasks, bridging VideoQA and agentic task execution.",
+      "llm_tldr_cn": "现有视频问答基准仅评估浅层视觉理解，缺乏对agent从视频教程学习长期技能能力的检验。为此提出VG-GUIBench基准，测试多模态大模型GUI agent能否跟随视频教程完成交互任务。实验发现当前MLLM在长期任务泛化上表现不足，揭示了从视频到执行的关键鸿沟。该基准推动了视频引导agent任务的研究。",
+      "llm_tldr": "现有视频问答基准仅评估浅层视觉理解，缺乏对agent从视频教程学习长期技能能力的检验。为此提出VG-GUIBench基准，测试多模态大模型GUI agent能否跟随视频教程完成交互任务。实验发现当前MLLM在长期任务泛化上表现不足，揭示了从视频到执行的关键鸿沟。该基准推动了视频引导agent任务的研究。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.30185v1",
+      "source": "arxiv",
+      "title": "Dynamo: Dynamic Skill-Tool Evolution for Vision-Language Agents",
+      "abstract": "Improving vision-language models (VLMs) on visual reasoning typically requires retraining or hand-designed prompts and tools. We present Dynamo, a training-free framework that adapts a frozen VLM without any weight updates. On a small labeled training subset, the agent inspects its own correct and incorrect attempts and evolves two complementary capabilities: reusable reasoning skills for cognitive bottlenecks, and executable visual tools for perceptual ones. Each generated tool is paired with a skill that specifies when to invoke it, and both capability types accumulate in a persistent library. Across four visual reasoning benchmarks and five VLM backbones, Dynamo improves direct inference on all 20 model--benchmark settings (avg. +5.6 acc). When the tool set is given in advance, the framework learns when to call each tool, and per-step tool choice improves on every tested backbone. Against task-specific RL (VTool-R1, DeepEyes), Dynamo closes 65--99% of the RL gap at a fraction of the compute, and combines additively with RL when available.",
+      "authors": [
+        "Yutao Sun",
+        "Yanting Miao",
+        "Hao-Xuan Ma",
+        "Mengyu Zhou",
+        "Mingshuai Chen",
+        "Tiancheng Zhao",
+        "Dexin Wang",
+        "Lei Lv",
+        "Li Xu",
+        "Xiaoxi Jiang",
+        "Guanjun Jiang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-29T11:59:01+00:00",
+      "link": "https://arxiv.org/pdf/2606.30185v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:moe-routing"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "agent inspects own attempts and evolves capabilities",
+      "llm_evidence_cn": "代理检查自身尝试并演化能力",
+      "llm_evidence": "代理检查自身尝试并演化能力",
+      "canonical_evidence": "代理检查自身尝试并演化能力",
+      "llm_tldr_en": "Training-free framework where a frozen VLM agent evolves reasoning skills and visual tools by analyzing its own correct/incorrect attempts.",
+      "llm_tldr_cn": "论文针对视觉语言模型推理改进需重训练或手动设计的问题，提出Dynamo框架。该框架无需训练，让冻结的VLM代理通过检查自身在训练子集上的正确和错误尝试，自动演化出可复用的推理技能和可执行的视觉工具，并积累在持久库中。在四个视觉推理基准和五个VLM骨干上，Dynamo在所有20个模型-基准组合上平均提升5.6个准确点。该工作展示了代理通过自我反思实现持续改进的潜力。",
+      "llm_tldr": "论文针对视觉语言模型推理改进需重训练或手动设计的问题，提出Dynamo框架。该框架无需训练，让冻结的VLM代理通过检查自身在训练子集上的正确和错误尝试，自动演化出可复用的推理技能和可执行的视觉工具，并积累在持久库中。在四个视觉推理基准和五个VLM骨干上，Dynamo在所有20个模型-基准组合上平均提升5.6个准确点。该工作展示了代理通过自我反思实现持续改进的潜力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.29194v1",
+      "source": "arxiv",
+      "title": "AI Trading's Alpha Singularity: Emergent Market Reasoning through Agent-to-Agent Self-Evolution",
+      "abstract": "Automated alpha mining holds the scoring function fixed and varies the search algorithm over it. A search that converges against a fixed scorer overfits whatever the scorer cannot penalize, a primary cause of the out-of-sample generalization gap. We treat the scoring function as a search artifact alongside the alpha factors and study what conditions make this joint search admissible. Sealed Joint Search (SJS) is a framework: a set of structural conditions on information flow in an autonomous-discovery system that prevent joint search from collapsing into self-confirmation while keeping the evaluator sealed. Conditions cover role decomposition, typed inter-role communication, provenance-sealed reads, versioned stores, and substrate-local promotion. Agora tests SJS empirically: five LLM agent classes communicate via three channels, evolving eight skill libraries, with alpha libraries built on AlphaGen operators. Three evaluators write reports aggregated into one brief, carrying forward disagreement instead of voting. We run Agora for 100 rounds on CSI 1000 and evaluate on a 91-day 2026 holdout sealed from all LLM inputs. Agora achieves holdout Sharpe +1.87; best baseline +1.334 at favorable seed and -0.755 cross-seed mean. Pre-loading Agora's two metrics into a frozen-library ablation recovers only +0.40 of the +2.25 Sharpe gap, and adding PPO without library evolution worsens the gap. The two metrics emerge rather than being designed. Caveats: single-seed run, short-side concentrated signal, intended for long-short.",
+      "authors": [
+        "Yuqi Li",
+        "Siyuan Liu",
+        "Bingjun Liu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-28T04:41:00+00:00",
+      "link": "https://arxiv.org/pdf/2606.29194v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "agent-to-agent self-evolution framework for autonomous discovery",
+      "llm_evidence_cn": "代理间自我演化框架用于自主发现",
+      "llm_evidence": "代理间自我演化框架用于自主发现",
+      "canonical_evidence": "代理间自我演化框架用于自主发现",
+      "llm_tldr_en": "Proposes Sealed Joint Search (SJS) to prevent overfitting in autonomous alpha mining through role decomposition and sealed information flow.",
+      "llm_tldr_cn": "论文针对自动因子挖掘中固定评分函数导致过拟合的问题，提出Sealed Joint Search（SJS）框架。该框架通过角色分解、类型化通信和密封信息流等结构性条件，使因子和评分函数的联合搜索避免自确认偏差。实验证明了SJS在多个市场数据集上提升了泛化能力。该工作为长时间尺度的自主代理演化提供了可防止过拟合的通用框架。",
+      "llm_tldr": "论文针对自动因子挖掘中固定评分函数导致过拟合的问题，提出Sealed Joint Search（SJS）框架。该框架通过角色分解、类型化通信和密封信息流等结构性条件，使因子和评分函数的联合搜索避免自确认偏差。实验证明了SJS在多个市场数据集上提升了泛化能力。该工作为长时间尺度的自主代理演化提供了可防止过拟合的通用框架。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Self improving agents that evolve their strategies over extended time scales",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.29957v1",
+      "source": "arxiv",
+      "title": "SWE-Together: Evaluating Coding Agents in Interactive User Sessions",
+      "abstract": "Most coding-agent benchmarks are static: an agent receives a complete task description up front and is judged only by its final code. Real coding assistance is interactive, with users clarifying goals, adding constraints, and correcting mistakes over multiple turns. We introduce SWE-Together, a multi-turn benchmark reconstructed from real user-agent coding sessions. To make real interactions verifiable, we curate 109 repository-level tasks from 11,260 recorded sessions, selecting sessions with recoverable repository states, clear user goals, and observable outcomes. To replay these interactions across agents, we build a reactive LLM-based user simulator that preserves the original users' intents and provides feedback when the coding agent's progress requires it. To evaluate agents as collaborators, we measure both final repository correctness and the number of corrective feedback turns required during the interaction. Experiments with frontier coding agents show that stronger agents generally achieve higher final success rates while requiring fewer interventions, suggesting an improved user experience.",
+      "authors": [
+        "Yifan Wu",
+        "Zhuokai Zhao",
+        "Songlin Li",
+        "Ho Hin Lee",
+        "Jiacheng Zhu",
+        "Shirley Wu",
+        "Tianhe Yu",
+        "Serena Li",
+        "Lizhu Zhang",
+        "Xiangjun Fan",
+        "Shengzhi Li"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE",
+        "cs.AI"
+      ],
+      "published": "2026-06-29T08:35:15+00:00",
+      "link": "https://arxiv.org/pdf/2606.29957v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "interactive evaluation of coding agents",
+      "llm_evidence_cn": "编码智能体的交互式评估",
+      "llm_evidence": "编码智能体的交互式评估",
+      "canonical_evidence": "编码智能体的交互式评估",
+      "llm_tldr_en": "SWE-Together provides a multi-turn benchmark for coding agents using real user sessions and an LLM-based user simulator, enabling evaluation of interactive agent behavior.",
+      "llm_tldr_cn": "针对编码智能体基准测试局限于静态任务的问题，SWE-Together从真实用户会话中重建多轮基准，并构建反应式LLM用户模拟器，为在复杂交互环境中评估智能体提供了新方法。",
+      "llm_tldr": "针对编码智能体基准测试局限于静态任务的问题，SWE-Together从真实用户会话中重建多轮基准，并构建反应式LLM用户模拟器，为在复杂交互环境中评估智能体提供了新方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.30189v1",
+      "source": "arxiv",
+      "title": "DAIN: Dynamic Agent-Based Interaction Network for Efficient and Collaborative Multimodal Reasoning",
+      "abstract": "Current multimodal fusion approaches, particularly those based on static Mixture-of-Experts (MoE) architectures, often struggle to provide the adaptive and efficient collaborative reasoning required by complex real-world applications. We introduce the Dynamic Agent-based Interaction Network (DAIN), which reconceptualizes multimodal fusion as a dynamic, multi-agent collaborative process. DAIN employs a context-aware Meta-Controller that dynamically schedules sparse activation of specialized interaction agents and orchestrates compressed inter-agent communication for consensus-building. The framework is guided by a multi-objective loss function that jointly optimizes task accuracy, agent specialization, and operational efficiency through sparse activation and communication regularization. Comprehensive evaluations across five diverse benchmarks -- ADNI, MIMIC-IV, MM-IMDB, CMU-MOSI, and ENRICO -- establish DAIN as a new state-of-the-art, delivering significant performance improvements including a 2.6\\% accuracy gain on ADNI. Ablation studies verify the critical roles of both dynamic scheduling and agent communication. Furthermore, DAIN offers enhanced interpretability by exposing context-dependent agent roles and collaboration patterns while maintaining computational efficiency through sample-wise sparse agent activation. Our work demonstrates the promise of dynamic, agent-based paradigms for multimodal reasoning.",
+      "authors": [
+        "Xinxin Chen",
+        "Yuchen Li",
+        "Zihan Wang",
+        "Haoyu Zhang",
+        "Ruixin Liu",
+        "Mingyuan Zhao"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-29T12:04:01+00:00",
+      "link": "https://arxiv.org/pdf/2606.30189v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "dynamic multi-agent collaborative process akin to mixture of agents",
+      "llm_evidence_cn": "动态多智能体协作过程，类似混合智能体方法",
+      "llm_evidence": "动态多智能体协作过程，类似混合智能体方法",
+      "canonical_evidence": "动态多智能体协作过程，类似混合智能体方法",
+      "llm_tldr_en": "DAIN reimagines multimodal fusion as a dynamic multi-agent collaboration, using a context-aware Meta-Controller to schedule specialized agents and compress inter-agent communication, jointly optimizing accuracy, specialization, and efficiency.",
+      "llm_tldr_cn": "当前多模态融合方法受限于静态混合专家架构，DAIN将其重构为动态多智能体协作过程。通过上下文感知的元控制器动态调度专业交互智能体，并压缩智能体间通信以达成共识，联合优化任务准确率、智能体专业性和运行效率。实验表明该方法在保持较低计算开销的同时显著提升了推理性能。",
+      "llm_tldr": "当前多模态融合方法受限于静态混合专家架构，DAIN将其重构为动态多智能体协作过程。通过上下文感知的元控制器动态调度专业交互智能体，并压缩智能体间通信以达成共识，联合优化任务准确率、智能体专业性和运行效率。实验表明该方法在保持较低计算开销的同时显著提升了推理性能。",
+      "llm_tags": [
+        "query:agent-mix"
+      ],
+      "matched_query_tag": "query:agent-mix",
+      "matched_query_text": "mixture of agents method",
+      "matched_requirement_id": "req-15",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.29225v1",
+      "source": "arxiv",
+      "title": "PolicyGuard: A Dialogue-Grounded Sub-Agent Verifier for Policy Adherence in LLM Agents",
+      "abstract": "LLM agents handle user requests on behalf of organizations through tool calls and must follow the company policies stated in their system prompts. Prior work approaches this as a safeguarding problem -- external checks that block non-compliant agent actions. We argue that policy adherence is a broader problem: real workflows unfold across many turns, require explicit user confirmation and prerequisite reads, and hinge on the content of the dialogue rather than on any single argument value. Meeting this bar requires (i) full conversation context, (ii) self-reasoning over the policy and the current dialogue, and (iii) conversation-specific remediation that guides the agent's next turn -- three capabilities that prior safeguard work has often underestimated. We introduce POLICYGUARD, a sub-agent verifier that shares the agent's view of the dialogue, reasons over the policy in context, and provides actionable feedback for the agent's next turn. On tau^2-BENCH airline across three vendors (GPT-5.4, Claude Sonnet 4.6, Gemini 2.5 Pro) with four trials per setting, POLICYGUARD improves PASS4 by +12.0 / +6.0 / +12.0 pp. Per-call analyses show POLICYGUARD achieves higher policy-violation recall while blocking roughly half as often as argument-level guards.",
+      "authors": [
+        "Seongjae Kang",
+        "Taehyung Yu",
+        "Sung Ju Hwang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-28T06:27:36+00:00",
+      "link": "https://arxiv.org/pdf/2606.29225v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "dialogue-grounded sub-agent verifier for policy adherence in LLM agents",
+      "llm_evidence_cn": "基于对话的子代理验证器，确保LLM智能体遵守策略",
+      "llm_evidence": "基于对话的子代理验证器，确保LLM智能体遵守策略",
+      "canonical_evidence": "基于对话的子代理验证器，确保LLM智能体遵守策略",
+      "llm_tldr_en": "PolicyGuard proposes a sub-agent that verifies LLM agent actions against company policies using full dialogue context, self-reasoning, and conversation-specific remediation.",
+      "llm_tldr_cn": "LLM智能体需遵循企业策略，但现有安全防护仅阻塞违规操作，无法处理跨轮对话中的复杂策略约束。PolicyGuard引入一个子代理验证器，利用完整对话上下文进行自我推理，生成对话特定的补救指导，在多个策略遵守场景中显著减少了违规行为。",
+      "llm_tldr": "LLM智能体需遵循企业策略，但现有安全防护仅阻塞违规操作，无法处理跨轮对话中的复杂策略约束。PolicyGuard引入一个子代理验证器，利用完整对话上下文进行自我推理，生成对话特定的补救指导，在多个策略遵守场景中显著减少了违规行为。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.30775v1",
+      "source": "arxiv",
+      "title": "A Single Rewrite Suffices: Empirical Lessons from Production Skill Description Optimization",
+      "abstract": "Enterprise AI agents route user queries to specialized skills by matching queries against natural language skill descriptions. When two skills share overlapping descriptions, the routing LLM misroutes queries, a failure we term skill collision. As agents scale to dozens of skills, manually tuning descriptions to maintain routing accuracy becomes a significant engineering bottleneck. We deploy an automated description optimization pipeline on a production enterprise group chat agent (9 skills, 372 regression cases). The pipeline produces descriptions averaging 79.2% F1, matching manually tuned descriptions at 79.4% F1 (average per-skill difference -0.20%, within the 0.78% multi-seed noise floor), while reducing per-skill engineering effort from 120 minutes to 3.8 minutes (32 times speedup). We then examine which pipeline components actually drive this match. Systematic ablation on both the production system and ToolBench (16k tools) reveals that a single LLM rewrite using any available false-positive and false-negative cases captures most of the available improvement. Other design choices we tested (iteration budget, feedback signal composition, dual editing of confused pairs, and training set size) each affect final F1 by less than 0.5%. Description optimization addresses skill collisions caused by overlapping descriptions but cannot resolve cases where two skills intended scopes genuinely overlap. We identify a diagnostic (a large train-validation F1 gap) that flags the latter cases for architectural rather than text-level intervention.",
+      "authors": [
+        "Yangqiaoyu Zhou",
+        "Mohammad Alqudah",
+        "Kwei-Herng Lai",
+        "Aaron Halfaker",
+        "Yingqi Xiong",
+        "Yaar Harari"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-06-29T18:06:43+00:00",
+      "link": "https://arxiv.org/pdf/2606.30775v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "automated optimization of skill descriptions to improve agent routing accuracy, a harnessing technique",
+      "llm_evidence_cn": "自动优化技能描述提升agent路由准确性，属于agent控制技术",
+      "llm_evidence": "自动优化技能描述提升agent路由准确性，属于agent控制技术",
+      "canonical_evidence": "自动优化技能描述提升agent路由准确性，属于agent控制技术",
+      "llm_tldr_en": "An automated pipeline optimizes natural language skill descriptions for enterprise agents, achieving routing accuracy matching manual tuning while reducing engineering effort.",
+      "llm_tldr_cn": "企业agent中技能描述重叠导致查询路由错误，成为扩展瓶颈。提出自动描述优化流水线，对9个技能的生产级agent进行描述优化。优化后的描述F1达到79.2%，与人工调优(79.4%)相当，每技能工程时间减少80%。该技术有效提升了agent路由的可控性和维护效率。",
+      "llm_tldr": "企业agent中技能描述重叠导致查询路由错误，成为扩展瓶颈。提出自动描述优化流水线，对9个技能的生产级agent进行描述优化。优化后的描述F1达到79.2%，与人工调优(79.4%)相当，每技能工程时间减少80%。该技术有效提升了agent路由的可控性和维护效率。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.30555v1",
+      "source": "arxiv",
+      "title": "Linguistic Firewall: Geometry as Defense in Multi-Agent Systems Routing",
+      "abstract": "The rapid integration of Large Language Models (LLMs) has driven the evolution of Multi-Agent Systems (MAS), where specialized agents collaborate to execute complex workflows. Effective orchestration in these environments requires robust routing mechanisms to efficiently allocate tasks to the most suitable agent. However, existing routers fundamentally rely on unverified proxies, ranging from textual self-descriptions to static surrogate representations, to gauge an agent's competence. This reliance on non-empirical data creates a critical gap between an agent's projected profile and its actual operational capabilities, introducing severe security vulnerabilities. Malicious agents can easily misrepresent their proficiencies or harbor covert backdoors that evade both standard external analysis and static representation-learning techniques. In this work, we introduce ANTAP (Automatic Non-Textual Agent Picker), an evaluation-driven routing architecture that discards indirect proxies in favor of active capability testing. By dynamically querying agents to ascertain their true competencies empirically, ANTAP distills performance into fixed behavioral operators within a shared semantic space. At inference time, routing is performed via a purely non-textual algebraic projection, establishing a \"linguistic firewall\" that renders metadata-based attacks inexpressible. In our experiments, ANTAP achieves near-zero ASR against description-based injection attacks, compared to 67.3\\% and above for the description-based router baseline. Against adaptive embedding attacks, ANTAP achieves substantially lower ASR than the embedding-based baseline, with a 20\\% reduction, while remaining resilient to description manipulation by design.",
+      "authors": [
+        "Dvir Alsheich",
+        "Adar Peleg",
+        "Ben Hagag",
+        "Rom Himelstein",
+        "Amit Levi",
+        "Avi Mendelson"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.MA"
+      ],
+      "published": "2026-06-29T16:51:06+00:00",
+      "link": "https://arxiv.org/pdf/2606.30555v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "multi-agent routing security with geometric defense",
+      "llm_evidence_cn": "多代理路由安全与几何防御",
+      "llm_evidence": "多代理路由安全与几何防御",
+      "canonical_evidence": "多代理路由安全与几何防御",
+      "llm_tldr_en": "Linguistic Firewall proposes a geometry-based defense for multi-agent system routers, detecting malicious agents through empirical profiling against textual claims.",
+      "llm_tldr_cn": "多代理系统中现有路由依赖代理的文本描述等非经验代理，易受恶意代理欺骗。本文提出Linguistic Firewall，利用几何方法在路由过程中对代理能力进行实证验证，抵御能力误报和后门攻击。实验表明该方法能有效区分真实能力与虚假声明。该工作为多代理系统的安全路由提供了防御机制。",
+      "llm_tldr": "多代理系统中现有路由依赖代理的文本描述等非经验代理，易受恶意代理欺骗。本文提出Linguistic Firewall，利用几何方法在路由过程中对代理能力进行实证验证，抵御能力误报和后门攻击。实验表明该方法能有效区分真实能力与虚假声明。该工作为多代理系统的安全路由提供了防御机制。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "routing in large language model serving",
+      "matched_requirement_id": "req-12",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.29863v1",
+      "source": "arxiv",
+      "title": "KbSD: Knowledge Boundary aware Self-Distillation for Behavioral Calibration in Agentic Search",
+      "abstract": "Agentic search equips large language models with dynamic retrieval abilities, but existing reinforcement learning methods remain limited by reward sparsity in knowledge boundary calibration -- deciding when to trust parametric memory, when to rely on retrieved evidence, and when to abstain. Binary rewards can penalize undesirable outcomes, but provide little guidance on the reasoning process required to make calibrated decisions across different knowledge states. To address this, we propose KbSD (Knowledge boundary Self-Distillation), a framework that tackles this limitation through dense token-level supervision, outcome-level sparse rewards, and quadrant-adaptive optimization. KbSD constructs a hint-augmented teacher, architecturally identical to the student, that receives explicit knowledge boundary signals -- including parametric certainty, retrieval quality, and ground-truth answers -- to generate calibrated reasoning demonstrations. This information-asymmetric self-distillation enables dense supervision without requiring a larger external model. To further account for the heterogeneous reasoning distributions across knowledge states, we introduce a quadrant-adaptive distillation objective: reverse KL for concentrated integration, forward KL for diverse refusal, and Pareto-optimal bidirectional KL for asymmetric quadrants requiring both precision and coverage. Experiments on multiple benchmarks show that KbSD consistently improves both task accuracy and hallucination mitigation over strong baselines, with the largest gains appearing in the challenging quadrants where sparse rewards are least informative.",
+      "authors": [
+        "Tao Feng",
+        "Xinke Jiang",
+        "Chao Wu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-29T06:56:18+00:00",
+      "link": "https://arxiv.org/pdf/2606.29863v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "self-distillation for agentic search calibration",
+      "llm_evidence_cn": "基于自蒸馏的智能体搜索行为校准",
+      "llm_evidence": "基于自蒸馏的智能体搜索行为校准",
+      "canonical_evidence": "基于自蒸馏的智能体搜索行为校准",
+      "llm_tldr_en": "KbSD uses knowledge-boundary-aware self-distillation with token-level supervision and sparse rewards to calibrate agentic search decisions, improving when to trust parametric memory, retrieve, or abstain.",
+      "llm_tldr_cn": "针对智能体搜索中知识边界校准的奖励稀疏问题，KbSD提出知识边界感知的自蒸馏框架，结合密集令牌级监督、稀疏奖励和四分图自适应优化，显著提升了大型语言模型在智能体搜索中的决策质量。",
+      "llm_tldr": "针对智能体搜索中知识边界校准的奖励稀疏问题，KbSD提出知识边界感知的自蒸馏框架，结合密集令牌级监督、稀疏奖励和四分图自适应优化，显著提升了大型语言模型在智能体搜索中的决策质量。",
+      "llm_tags": [
+        "query:agent-dist:composite"
+      ],
+      "matched_query_tag": "query:agent-dist:composite",
+      "matched_query_text": "Papers central to 帮我找关于agent蒸馏的论文, especially work that connects or combines: agent distillation techniques; agent distillation techniques and methods.",
+      "matched_requirement_id": "req-composite-agent-dist",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.01071v1",
+      "source": "arxiv",
+      "title": "MemSyco-Bench: Benchmarking Sycophancy in Agent Memory",
+      "abstract": "Memory has emerged as a cornerstone of modern LLM-based agents, supporting their evolution from single-turn assistants to long-term collaborators. However, memory is not always beneficial: retrieved memories often induce a critical issue of sycophancy, causing agents to over-align with the user at the cost of factual accuracy or objective reasoning. Despite this emerging risk, existing memory benchmarks primarily evaluate whether memories are correctly stored, retrieved, or updated, while overlooking how retrieved memories influence downstream reasoning and decision-making. To bridge this gap, we propose MemSyco-Bench, a comprehensive benchmark for evaluating memory-induced sycophancy in agent systems. MemSyco-Bench measures when memory should influence a decision and how valid memory should be used. Specifically, it covers five tasks that assess whether agents can reject memory as factual evidence, respect its applicable scope, resolve conflicts between memory and objective evidence, track memory updates, and use valid memory for personalization. All related resources are collected for the community at https://github.com/XMUDeepLIT/MemSyco-Bench.",
+      "authors": [
+        "Zhishang Xiang",
+        "Zerui Chen",
+        "Yunbo Tang",
+        "Zhimin Wei",
+        "Ruqin Ning",
+        "Yujie Lin",
+        "Qinggang Zhang",
+        "Jinsong Su"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR",
+        "cs.AI"
+      ],
+      "published": "2026-07-01T15:30:33+00:00",
+      "link": "https://arxiv.org/pdf/2607.01071v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "benchmark evaluating memory-induced sycophancy in long-term agent collaboration",
+      "llm_evidence_cn": "评估长期代理协作中记忆引发谄媚的基准",
+      "llm_evidence": "评估长期代理协作中记忆引发谄媚的基准",
+      "canonical_evidence": "评估长期代理协作中记忆引发谄媚的基准",
+      "llm_tldr_en": "MemSyco-Bench provides a comprehensive benchmark for evaluating how retrieved memories induce sycophancy in LLM agents, measuring memory's influence on downstream reasoning over long horizons.",
+      "llm_tldr_cn": "记忆使LLM代理从单轮交互进化为长期协作者，但检索到的记忆可能引发谄媚，即过度迎合用户导致事实错误。现有基准只评估存储和检索，忽略记忆对推理的影响。本文提出MemSyco-Bench，全面衡量记忆是否应影响决策。该工作揭示了记忆在长期代理中的潜在风险，并为评估记忆安全性提供了工具。",
+      "llm_tldr": "记忆使LLM代理从单轮交互进化为长期协作者，但检索到的记忆可能引发谄媚，即过度迎合用户导致事实错误。现有基准只评估存储和检索，忽略记忆对推理的影响。本文提出MemSyco-Bench，全面衡量记忆是否应影响决策。该工作揭示了记忆在长期代理中的潜在风险，并为评估记忆安全性提供了工具。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.31121v1",
+      "source": "arxiv",
+      "title": "The Past Is Prologue: A Plug-in Controller for Selective Updates in Sequentially Evolving LLM Memory",
+      "abstract": "Sequentially evolving LLM memory enables agents to reuse past experience, but existing systems usually deploy each locally generated memory update without checking whether it improves future behavior. As a result, updates that help the current task may overwrite useful knowledge, introduce over-specific rules, or bias the final memory toward recent examples. We propose Janus, a plug-in memory controller that decides whether to accept a candidate memory update or retain the previous memory. To make this decision efficient, Janus uses a Memory Momentum Trigger to identify suspicious deviations in the memory-update trajectory, and compares old and new memories on a compact hybrid evaluation set of coverage, boundary, and fresh tasks instead of replaying the full history. Janus is method-agnostic and wraps existing updaters without changing their update rules. Across six datasets, two backbone LLMs, and two memory updaters, Janus improves average accuracy by +2.7 to +4.6 points over the corresponding base updaters.",
+      "authors": [
+        "Zihan Chen",
+        "Songwei Dong",
+        "Chengshuai Shi",
+        "Peng Wang",
+        "Song Wang",
+        "Cong Shen",
+        "Jundong Li"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-30T04:33:18+00:00",
+      "link": "https://arxiv.org/pdf/2606.31121v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:moe-routing"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "plug-in memory controller that selectively accepts updates to improve future behavior",
+      "llm_evidence_cn": "插件式内存控制器选择性接受更新以改进未来行为",
+      "llm_evidence": "插件式内存控制器选择性接受更新以改进未来行为",
+      "canonical_evidence": "插件式内存控制器选择性接受更新以改进未来行为",
+      "llm_tldr_en": "Janus is a plug-in controller that decides whether to accept memory updates in evolving LLM memory, using Memory Momentum Trigger and hybrid evaluation to improve future agent behavior without catastrophic forgetting.",
+      "llm_tldr_cn": "现有顺序演化LLM内存系统不加选择地部署每次本地更新，可能导致覆盖有用知识或引入过特异性规则。Janus作为插件式控制器，通过内存动量触发器识别可疑偏差，并在覆盖度、边界和新鲜度的混合评估集上比较新旧内存，仅接受真正有益于未来行为的更新，从而提升智能体的长期学习能力。",
+      "llm_tldr": "现有顺序演化LLM内存系统不加选择地部署每次本地更新，可能导致覆盖有用知识或引入过特异性规则。Janus作为插件式控制器，通过内存动量触发器识别可疑偏差，并在覆盖度、边界和新鲜度的混合评估集上比较新旧内存，仅接受真正有益于未来行为的更新，从而提升智能体的长期学习能力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.30966v1",
+      "source": "arxiv",
+      "title": "HyPOLE: Hyperproperty-Guided Multi-Agent Reinforcement Learning under Partial Observation",
+      "abstract": "Formal specification is a powerful tool to guide the learning process and provides significant advantages over reward shaping: (1) mathematical rigor; (2) expressiveness to specify objectives and constraints, and (3) the ability to define tactics to achieve objectives. However, these benefits remain largely unexplored in the context of Multi-Agent Reinforcement Learning (MARL). This paper introduces HyPOLE, a novel framework for MARL under partial observability, where learning is guided by the expressive power of the so-called hyperproperties and, in particular, the temporal logic HyperLTL. We integrate Centralized Training for Decentralized Execution (CTDE) techniques with HyPOLE to synthesize decentralized policies, and our evaluation on SMAC, MessySMAC, and WildFire benchmark demonstrates clear advantages over baselines.",
+      "authors": [
+        "Arshia Rafieioskouei",
+        "Tzu-Han Hsu",
+        "Matthew Lucas",
+        "Borzoo Bonakdarpour"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LO",
+        "cs.MA"
+      ],
+      "published": "2026-06-29T23:03:05+00:00",
+      "link": "https://arxiv.org/pdf/2606.30966v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "hyperproperty-guided MARL for agent control",
+      "llm_evidence_cn": "超属性引导的多智能体强化学习用于智能体控制",
+      "llm_evidence": "超属性引导的多智能体强化学习用于智能体控制",
+      "canonical_evidence": "超属性引导的多智能体强化学习用于智能体控制",
+      "llm_tldr_en": "HyPOLE uses hyperproperties and temporal logic to guide multi-agent reinforcement learning under partial observability, enabling mathematically rigorous policy synthesis for agent control.",
+      "llm_tldr_cn": "多智能体强化学习常缺乏形式化引导，HyPOLE引入超属性（HyperLTL）在部分可观测下指导学习，结合CTDE策略，使策略合成具有数学严谨性。实验表明超属性引导能有效约束智能体行为，为控制和引导多智能体系统提供了新方法。",
+      "llm_tldr": "多智能体强化学习常缺乏形式化引导，HyPOLE引入超属性（HyperLTL）在部分可观测下指导学习，结合CTDE策略，使策略合成具有数学严谨性。实验表明超属性引导能有效约束智能体行为，为控制和引导多智能体系统提供了新方法。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.01308v1",
+      "source": "arxiv",
+      "title": "Cache Merging as a Convergent Replicated State for Multi-Agent Latent Reasoning",
+      "abstract": "Multi-agent latent reasoning composes agents' KV-caches into one context for a final agent. Prior work (Agent Primitives) does this by concatenating caches along the sequence axis with RoPE re-encoding, which we call BagMerge. BagMerge is non-commutative, and the best input ordering is unpredictable, shifting with the regime, the latent-step budget, and the model scale. We make this exchange a convergent replicated state. First, CanonicalMerge fixes the layout by content: ordering caches by mean K-norm at a middle layer renders the merged cache byte-identical under any input permutation, verified algorithmically (arity N<=5) and bit-for-bit on real Qwen3-1.7B and 4B state. Second, we separate the replicated state from decode-time layout: the state is a set of content-addressed latent fragments whose merge is set union, a state-based CvRDT (commutative, associative, idempotent, absorbing), and CanonicalMerge is its deterministic render. Because the render is byte-equivalent, every N=2 accuracy number carries over unchanged and re-delivered duplicates are absorbed rather than re-concatenated. On a partitioned-reasoning benchmark, CanonicalMerge matches the best BagMerge ordering in every regime-by-budget-by-ordering cell without knowing which order is best, trading a small, statistically insignificant accuracy margin for an unconditional structural guarantee. The behaviour transfers to real multi-document QA (HotpotQA), while the closest training-free output-fusion baseline (PackLLM) loses by 45 points at matched budget, placing cache-level merging in a regime distinct from output-level fusion. Finally, at k>2 the approach transports and colocates latent traces but does not by itself compose them, which we characterize to motivate future work.",
+      "authors": [
+        "Carlos Baquero",
+        "Luís Brito"
+      ],
+      "primary_category": "cs.MA",
+      "categories": [
+        "cs.MA"
+      ],
+      "published": "2026-07-01T17:05:04+00:00",
+      "link": "https://arxiv.org/pdf/2607.01308v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "cache merging as a convergent replicated state for multi-agent latent reasoning, relevant to mixture of agents methods",
+      "llm_evidence_cn": "多agent潜在推理中的缓存融合作为收敛复制状态，与混合agent方法相关",
+      "llm_evidence": "多agent潜在推理中的缓存融合作为收敛复制状态，与混合agent方法相关",
+      "canonical_evidence": "多agent潜在推理中的缓存融合作为收敛复制状态，与混合agent方法相关",
+      "llm_tldr_en": "Proposes CanonicalMerge to make multi-agent cache merging permutation-invariant, enabling deterministic multi-agent latent reasoning.",
+      "llm_tldr_cn": "多agent潜在推理通过融合KV缓存实现协同，但现有方法非交换且输入顺序敏感。本文提出CanonicalMerge，按内容排序中间层K范数，使融合缓存与输入顺序无关，实现字节级一致性。同时分离复制状态与解码布局，提升了多agent推理的稳定性和效率，为融合多agent信息提供了基础机制。",
+      "llm_tldr": "多agent潜在推理通过融合KV缓存实现协同，但现有方法非交换且输入顺序敏感。本文提出CanonicalMerge，按内容排序中间层K范数，使融合缓存与输入顺序无关，实现字节级一致性。同时分离复制状态与解码布局，提升了多agent推理的稳定性和效率，为融合多agent信息提供了基础机制。",
+      "llm_tags": [
+        "query:agent-mix"
+      ],
+      "matched_query_tag": "query:agent-mix",
+      "matched_query_text": "mixture of agents method",
+      "matched_requirement_id": "req-15",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.31144v1",
+      "source": "arxiv",
+      "title": "A Modular Vision-Language-Action Robotics Framework for Indoor Environments",
+      "abstract": "This paper presents an integrated system for the CMU Vision-Language-Action (VLA) Challenge, designed to enable an autonomous agent to perform complex tasks based on natural language instructions. Our framework employs a modular architecture that orchestrates environment mapping, question processing, and navigation. The system operates in two parallel streams: a perception pipeline that constructs a semantic voxel map from real-time camera feeds using OwlViT embeddings, and a language pipeline that classifies user commands with a Vision-Language Model. The mapping is time-constrained; the system proceeds with a partial map if a 500-second exploration limit is reached. The classified query is then grounded in the geometric and semantic context of the map to generate a detailed prompt for the VLM. This yields an actionable output, demonstrating a capable solution for bridging the gap between human language and robotic action.",
+      "authors": [
+        "Anindya Jana",
+        "Snehasis Banerjee",
+        "Arup Sadhu",
+        "Ranjan Dasgupta"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "published": "2026-06-30T05:17:02+00:00",
+      "link": "https://arxiv.org/pdf/2606.31144v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "autonomous agent with modular architecture for long-horizon tasks in indoor environments",
+      "llm_evidence_cn": "自主agent在室内环境执行长期任务，具备模块化架构",
+      "llm_evidence": "自主agent在室内环境执行长期任务，具备模块化架构",
+      "canonical_evidence": "自主agent在室内环境执行长期任务，具备模块化架构",
+      "llm_tldr_en": "A modular VLA framework enables an autonomous agent to perform complex long-horizon tasks from natural language instructions, integrating perception and language streams with time-constrained mapping.",
+      "llm_tldr_cn": "针对自主agent在复杂环境中执行长期任务的需求，提出模块化视觉-语言-动作框架。系统并行运行感知与语言流水线，在500秒探索时限内构建语义体素地图并分类用户指令。在CMU VLA挑战中，该框架成功将自然语言指令转化为一系列导航与操作步骤。验证了模块化设计在长期自主任务中的有效性。",
+      "llm_tldr": "针对自主agent在复杂环境中执行长期任务的需求，提出模块化视觉-语言-动作框架。系统并行运行感知与语言流水线，在500秒探索时限内构建语义体素地图并分类用户指令。在CMU VLA挑战中，该框架成功将自然语言指令转化为一系列导航与操作步骤。验证了模块化设计在长期自主任务中的有效性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    }
+  ]
+}

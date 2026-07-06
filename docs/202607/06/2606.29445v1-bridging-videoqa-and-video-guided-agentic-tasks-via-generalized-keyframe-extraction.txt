@@ -1,0 +1,851 @@
+Title: Bridging VideoQA and Video-Guided Agentic Tasks via Generalized Keyframe Extraction
+
+URL Source: https://arxiv.org/pdf/2606.29445v1
+
+Published Time: Tue, 30 Jun 2026 01:30:30 GMT
+
+Number of Pages: 36
+
+Markdown Content:
+# Bridging VideoQA and Video-Guided Agentic Tasks via Generalized Keyframe Extraction 
+
+Sunqi Fan , Qingle Liu , Runqi Yin , Meng-Hao Guo , and Shuojin Yang B
+
+Tsinghua University, Beijing, China 
+
+{fansq20, lql24, yrq24}@mails.tsinghua.edu.cn, {gmh, yangshuojin}@tsinghua.edu.cn 
+
+Project Page: https://vg-gui-tasker.github.io/ 
+
+Abstract. Video understanding is a fundamental capability for mul-timodal intelligence, and recent Multimodal Large Language Models (MLLMs) have achieved remarkable performance on Video Question Answering (VideoQA) benchmarks. However, existing benchmarks pri-marily evaluate whether models can perceive shallow visual cues, while rarely examining whether MLLMs can learn deeper knowledge or pro-cedural skills from video tutorials and generalize them to downstream long-horizon agentic tasks. To address this gap, we introduce VG-GUI-Bench (Video-Guided GUI Benchmark), a new benchmark designed to evaluate whether MLLM-based GUI agents can follow video tutorials to complete corresponding GUI interactive tasks. Furthermore, we observe that the performance of models on both VideoQA and video-guided agen-tic tasks critically depends on effective keyframe extraction. Based on this observation, we propose TASKER (Task-driven And Scene-aware Keyframe searchER), a keyframe extraction algorithm that jointly con-siders task relevance and scene dynamics to identify informative frames. Experimental results demonstrate that TASKER achieves significant per-formance improvements on both VideoQA and video-guided agentic task benchmarks, outperforming the best baseline by 2.0% on the EgoSchema fullset and 1.8% on the NExT-QA dataset, respectively. These results further highlight the potential of generalized keyframe extraction meth-ods for video understanding tasks. Our code and data are available at 
+
+https://github.com/VG-GUI-TASKER/VG-GUI-TASKER .
+
+Keywords: Video Understanding · GUI Agent · Keyframe Extraction 
+
+## 1 Introduction 
+
+Multimodal large language models have recently substantially advanced video understanding, achieving strong results on popular VideoQA benchmarks [12, 59]. Despite this progress, the current evaluation paradigm remains largely cen-tered on shallow perceptual cues, such as recognizing objects, attributes, and short-term actions. As a consequence, existing benchmarks provide limited in-sight into a more fundamental question: can MLLMs learn deeper knowledge or 
+
+B Corresponding author. 
+
+> arXiv:2606.29445v1 [cs.CV] 28 Jun 2026
+
+2 S. Fan et al. Video Question Answering   
+
+> Video
+> Input MLLM Answer
+> Traditional
+> VideoQA
+> Benchmark
+> Question
+
+# +
+
+Video -Guided Agentic Task 
+
+> Task
+> Specification
+
+# +   
+
+> GUI
+> Interaction
+> Mathematical
+> Reasoning
+> Software
+> Engineering
+> Video
+> Tutorial
+> MLLM
+> Game
+> Playing
+> e.g. Derive logical steps for a math problem /
+> Implement a Python function /
+> Control the character to bypass obstacles /
+> Navigate the UI to reset a Discord password / …
+> VG -GUI -Bench
+> (ours)
+> High -Level Understanding
+> e.g. What is the person doing? /
+> How many cats are there in the video? /
+> What happens after the man opens the door ?/
+> Why does the car stop suddenly? / …
+> Low -Level Understanding
+
+Fig. 1: Demonstration of the 2 progressive levels. This work aims to advance video un-derstanding from the VideoQA paradigm (low-level understanding) toward the Video-Guided Agentic Task paradigm (high-level understanding). 
+
+procedural skills from videos and generalize them to solve new tasks that require long-horizon agentic capabilities? This limitation becomes particularly evident in real-world learning scenarios. Video tutorials are widely used to teach com-plex procedures, ranging from software operations to device configuration and daily-life skills. Solving such tasks requires more than recognizing visual events; it involves understanding step-by-step procedures, abstracting key operations, and transferring them to new environments. In other words, models must be able to extract actionable knowledge from videos and apply it to downstream tasks, which is a capability that can be viewed as a form of Video In-Context Learning. To better understand this capability gap, we characterize video understand-ing along two progressive levels, forming a natural hierarchy from perception to action, as in Figure 1: 
+
+– Low-Level: VideoQA. The foundational task of video understanding, where models must identify temporally relevant moments, comprehend visual evi-dence, and perform question-conditioned reasoning to extract factual infor-mation from videos. 
+
+– High-Level: Video-Guided Agentic Tasks. A more advanced setting where models are expected to learn procedural knowledge from video demon-strations and transfer it to long-horizon decision making and execution. For example, a model may watch a tutorial on “how to change a Discord ac-count password” and translate the demonstrated procedure into step-by-step actions within a structured Graphical User Interface (GUI) environment. To further evaluate MLLMs’ high-level video understanding ability, we in-troduce VG-GUI-Bench (Video-Guided GUI Benchmark), a benchmark de-signed to evaluate whether MLLM-based GUI agents can follow video tutorials to complete semantically related tasks. In VG-GUI-Bench , each tutorial video is paired with a corresponding GUI task that requires similar procedural knowl-edge. This pairing enables systematic evaluation of whether models can extract VG-GUI-Bench and TASKER 3
+
+procedural steps from videos and generalize them to new interactive tasks, pro-viding a practical testbed for studying video in-context learning. Beyond benchmark design, our study reveals a shared bottleneck across both VideoQA and video-guided agentic tasks: model performance critically depends on how the model identifies and attends to task-relevant temporal content within videos. Long videos often contain redundant or irrelevant segments, while key procedural evidence may appear only briefly. As a result, naive frame sam-pling strategies either miss critical moments or introduce excessive redundancy, leading to degraded reasoning and inefficient computation. For example, on the NExT-QA benchmark, using GPT-4o with a frame selection strategy improves accuracy by approximately 15% compared to GPT-4o with uniform sampling, with the same number of frames. To tackle this challenge, we propose TASKER (Task-driven And Scene-aware Keyframe searchER), a generalized keyframe extraction method inspired by traditional graph search algorithms. TASKER combines task-driven rele-vance estimation with scene-aware temporal dynamics to select a compact yet informative set of frames that preserves essential procedural evidence while dis-carding redundant content. This design allows TASKER to operate effectively across both VideoQA and video-guided agentic tasks, providing a unified mech-anism for temporal information selection. Extensive experiments demonstrate that TASKER achieves both high ac-curacy and strong frame efficiency across VideoQA and video-guided agentic task benchmarks, consistently outperforming prior temporal selection and video-agent methods such as VideoTree and VideoAgent. In our experiments, TASKER 
+
+achieves 63.1% accuracy on EgoSchema fullset [34] (surpassing the best baseline by 2.0%) and 77.4% average accuracy on NExT-QA [61] (surpassing the best baseline by 1.8%). In Figure 4, we compare the frame efficiency of TASKER 
+
+with two baselines, highlighting its ability to effectively identify key information. These results highlight the effectiveness of generalized keyframe extraction as a mechanism for bridging VideoQA and video-guided agentic tasks. Our contributions can be summarized as follows: 
+
+– We identify a key limitation of existing video benchmarks and propose a two-level taxonomy that connects VideoQA with video-guided agentic tasks, highlighting the role of video in-context learning. 
+
+– We introduce VG-GUI-Bench , a new benchmark that pairs video tutorials with GUI agent tasks to evaluate procedural knowledge transfer from videos. 
+
+– We propose TASKER , a task-driven and scene-aware keyframe extraction algorithm that improves both accuracy and frame efficiency across VideoQA and video-guided agentic tasks. 
+
+## 2 Related Work 
+
+Video Question Answering VideoQA is a core subtask of video understand-ing that evaluates a model’s ability to reason over temporal visual content in 4 S. Fan et al. 
+
+response to language queries [36, 61, 74]. Recent benchmarks increasingly em-phasize long-form videos and complex reasoning [12, 14, 34, 37, 59, 67, 75]. Early approaches relied on CNN-based visual encoders and lightweight fusion mod-ules [3, 16, 17, 24, 48, 49]. With the emergence of LLMs, recent methods typically integrate pretrained visual encoders with projection layers and large language models for reasoning and generation [27, 28, 42, 45, 54, 58, 70, 71]. Beyond end-to-end Video-LLMs, agent-based frameworks [47, 60] further enhance reasoning through prompting, memory, tool use, and planning [9–11, 15, 22, 69]. 
+
+Keyframe Extraction Efficiently identifying informative frames is crucial to understanding long videos. Existing methods adopt diverse strategies, in-cluding learned frame selection [38], attention-based segment extraction [64], uniform sampling with image-grid modeling [65], and recursive agent-guided selection [52]. VideoTree [57] constructs a static hierarchical tree via feature clustering and performs LLM-guided search over the tree. Compared with VideoTree’s precomputing features for all frames, we selectively ex-tract information during the search process, enabling question-aware tree construction with reduced computational overhead. Our primary difference from VideoAgent [52] lies in that our frame selection strat-egy explicitly accounts for intra-video scene transitions as well as the intrinsic structural organization of the video. Video-Guided Tasks Video-guided tasks require models to acquire a task or skill by reasoning over instructional videos [19, 20, 56, 63, 66]. For example, Mobile-Agent-V enables agents to acquire GUI operation knowledge from in-structional videos and apply it to new tasks [50]. On the data and evaluation side, the community has contributed a range of datasets [21, 32, 33, 46, 72] and benchmarks [7, 8, 29–31]. Compared with TongUI [68] and Watch-and-Learn [44], which focus on converting videos to learnable trajectories, our TASKER method works at the frame selection level as a training-free module for both VideoQA and downstream agentic tasks. 
+
+## 3 Method 
+
+In the method section, we first present the details of VG-GUI-Bench , followed by the TASKER algorithm. The preliminaries on classical graph search algo-rithms are provided in Appendix A .
+
+3.1 VG-GUI-Bench 
+
+Despite growing interest in video-guided GUI agents, there remains a lack of high-quality benchmarks for evaluating MLLMs on long-horizon GUI task ex-ecution from video tutorials. To fill this gap, we construct VG-GUI-Bench 
+
+(Video-Guided GUI Benchmark), a dedicated benchmark for systematically as-sessing MLLM performance on video-guided, long-horizon GUI tasks. VG-GUI-Bench and TASKER 5ACTION SPAC E     
+
+> CLICK( 𝑥𝑥 ,𝑦𝑦 )
+> SCROLL( 𝑥𝑥 1,𝑦𝑦 1,𝑥𝑥 2,𝑦𝑦 2)
+> TYPE( content )
+> PRESS( key ∈
+> ENTER BACK HOME
+> )
+> ZOOM()
+> FINISH()
+
+METRICS & FORMULA S                 
+
+> Comp. =1
+> ℰ �𝑒𝑒∈ℰ 𝐶𝐶 𝑒𝑒 𝐿𝐿 𝑒𝑒
+> Acc. = 1
+> 𝑁𝑁 �𝑖𝑖=1 𝑁𝑁 0.3 𝟙𝟙 � 𝑡𝑡 𝑖𝑖 =𝑡𝑡 𝑖𝑖
+> +0.7 𝟙𝟙 � 𝑡𝑡 𝑖𝑖 =𝑡𝑡 𝑖𝑖 𝟙𝟙 � 𝑎𝑎 𝑖𝑖 =𝑎𝑎 𝑖𝑖
+> Eff. = 1
+> 𝑁𝑁 �𝑖𝑖=1 𝑁𝑁 ℱ𝒾𝒾
+
+BENCHMARK PIPELIN E   
+
+> Input
+> Video Tutorial
+> Frame
+> Selection
+> Real-world GUI Interaction
+> Task Instructions
+> Prompt
+> Construction
+> M L L M
+> Evaluation
+> Self
+> Eval
+> Action
+> Series
+> Action
+> Prediction
+> New
+> State
+> PIR = Acc video −Acc no video Acc no video
+
+Fig. 2: Overview of the VG-GUI-Bench benchmark, including benchmark pipeline, action space, metrics and formulas. 
+
+Data Source We build upon the high-quality dataset provided by MON-DAY [21], from which we obtain input tutorial videos, ground-truth action se-quences, and keyframe screenshots as evaluation references. We further design task-specific prompts to guide the model in generating predicted actions at each step. On average, each episode contains 10.71 steps, making VG-GUI-Bench 
+
+a genuinely long-horizon benchmark that requires sustained reasoning over ex-tended action sequences. In total, VG-GUI-Bench has 1,000 test cases. 
+
+Action Space Previous works often adopt inconsistent and ad-hoc action nam-ing conventions, lacking a unified standard and a scientifically grounded tax-onomy. To address this, we define a standardized action space comprising the following six action types: 
+
+– CLICK(x, y) : Perform a tap at the coordinate (x, y ).
+
+– SCROLL(x1, y1, x2, y2) : Perform a swipe or drag gesture from (x1, y 1) to 
+
+(x2, y 2), covering directional interactions that require two coordinate pairs. 
+
+– TYPE(content) : Input a text string specified by the content argument. 
+
+– PRESS(key) : Press a system-level key, where key ∈ {BACK , HOME , ENTER }. These keys carry distinct semantic meanings on mobile platforms and cannot be substituted by other operations. 
+
+– ZOOM() : Perform a pinch-to-zoom gesture. This action takes no arguments. 
+
+– FINISH() : Indicate that the task has been completed. This action takes no arguments. 
+
+Evaluation Pipeline As illustrated in Figure 2, the evaluation pipeline of VG-GUI-Bench operates as follows. The input tutorial video is first processed by a frame selection module, which extracts relevant keyframes from the video. The selected frames, together with the task instruction, are then used to construct a prompt that is fed into the MLLM to predict the next GUI action. The predicted action is executed in the GUI environment, producing a new interaction state. Based on this state, the model continues predicting subsequent actions step by step. The predicted actions are finally evaluated against the ground-truth action 6 S. Fan et al. 
+
+sequence by VG-GUI-Bench . This process repeats iteratively until the episode terminates. 
+
+Evaluation Metrics We propose four complementary metrics to provide a comprehensive assessment: 
+
+– Accuracy measures the correctness of individual action predictions. A pre-diction receives a score of 0.3 if the action type is correct, and an additional 
+
+0.7 if the action arguments are also correct. For argument-free actions ( ZOOM ,
+
+FINISH ), a correct type prediction yields the full score. In addition to the overall accuracy, we also report the type accuracy and score breakdown for each individual action category to provide finer-grained insights into model behavior. 
+
+Acc. = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+1  ˆti = ti
+
+ (0 .3 + 0 .7 × 1 (ˆ ai = ai))  (1) where N denotes the total number of steps, ti and ˆti are the ground-truth and predicted action types, and ai and ˆai are the ground-truth and predicted action arguments. 
+
+– Completion measures the proportion of correctly executed steps within each episode, averaged across all episodes: 
+
+Comp. = 1
+
+|E| 
+
+X
+
+> e∈E
+
+Ce
+
+Le
+
+(2) where E denotes the set of all episodes, Ce is the number of correctly executed steps in episode e, and Le is the total number of steps in episode e.
+
+– Efficiency measures the average number of input frames consumed per pre-diction step, reflecting the computational cost of the frame selection strategy: 
+
+Eff. = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+|F i| (3) where |F i| denotes the number of frames provided to the MLLM at step i.
+
+– Performance Improvement Rate (PIR) measures how much the model can learn from the video: 
+
+PIR = Acc video − Acc no video 
+
+Acc no video 
+
+(4) where Acc no video and Acc video denote the accuracy without and with video tutorial input respectively. 
+
+3.2 TASKER Algorithm 
+
+In this section, we first define the search objective, nodes, cost function, and termination conditions in our TASKER algorithm, providing a comprehensive VG-GUI-Bench and TASKER 7(TASKER -GBFS.1) The MLLM estimates the distance between the              
+
+> current node and the destination (i.e., the question). (TASKER -GBFS. 2)The MLLM then selects the closest node for
+> expansion. Expand segment 3!
+> (TASKER -Dijkstra.1) The MLLM identifies segment with most significant
+> changes .Segment 3 has scene change (moving from outdoor to indoor).
+> (TASKER -Dijkstra .2) Segment 3 is considered the node that minimizes
+> the movement cost function and is subsequently expanded.
+> Destination (Question):
+> What did the person do indoor ?
+> Segment 3 is
+> closest to the
+> objective (most
+> relevant to the
+> question)!
+> Expand
+> segment 3!
+> Segment 3 has
+> scene change
+> (moving from
+> outdoor to
+> indoor)!
+> Expand
+> segment 3!
+
+Fig. 3: Illustration of TASKER ’s cost function evaluation and node expansion steps. 
+
+TASKER-GBFS variant evaluates distance based on question relevance. TASKER-Dijkstra variant evaluates distance based on scene dynamics. 
+
+overview of the tree-structured keyframe search process. We also explain how the algorithm utilizes the retrieved information to answer questions. The key steps of TASKER (leveraging MLLMs to evaluate the cost function and node expansion) are illustrated in Figure 3. 
+
+Search Objective The search objective is to identify a sufficient set of keyframes whose combined information is sufficient to answer the question or complete the agentic task. The ultimate goal is to answer the question. 
+
+Nodes Expansion In TASKER algorithm, we divide the video into multiple video segments, with each video segment representing a node. The initial node 
+
+N0 is the entire video, which is first uniformly split into M segments, where M is a tunable hyper-parameter. These video segments are then put into an open list 
+
+L. The next node to be expanded, or the next video segment to be processed, is selected based on the cost function f (n) we define. The expansion process means further subdividing the selected video segment. In this work, we perform a binary split on the segment for node expansion. 
+
+Answer Prediction We define the first and last frames of all current video segments as Visible Frames Fv . They are connected to each other, meaning that the last frame of one video segment is the first frame of the next. We can fully utilize the information in the visible frames, while the information in the 8 S. Fan et al. 
+
+other frames is temporarily inaccessible. For the visible frames, we can employ two approaches: directly inputting the frames into the MLLM or first generating captions and then performing reasoning in the textual modality. In either way, we predict an answer or action based on the information from the visible frames. 
+
+Cost Function Leveraging the evaluation capability of the MLLMs, we design different cost functions based on different basic search algorithms. 
+
+– TASKER-GBFS : Task-Driven Cost Function In Greedy Best-First Search (GBFS), the cost function h(n) represents the distance from the cur-rent node to the destination. Accordingly, we let the MLLM evaluate the current visible frame’s information and identify what visual information is missing for answering the question. The missing information can be seen as the distance between the current node and the destination. GBFS algorithm selects the node with the smallest h(n) to expand. In our adaptation, the MLLM attempts to identify where the missing visual information is likely located between which two specific invisible frames, determining which video segments should be expanded. This leads to a variant of the TASKER al-gorithm named TASKER-GBFS .
+
+– TASKER-Dijkstra : Scene-Aware Cost Function In Dijkstra’s al-gorithm, the cost function g(n) represents the cost of reaching the current node from the start point. In our adaptation, the MLLM evaluates the visible frames to identify the video segment with the most significant scene change, such as transitions in scenes, figures, or activities between the first and last frames of a segment. Segments with larger scene changes are considered more informative and thus prioritized for further exploration, corresponding to nodes with smaller g(n). Notably, in classical Dijkstra’s algorithm, the cost function does not depend on the destination; similarly, in TASKER-Dijkstra , the MLLM is not driven by the task or question, but instead selects keyframes based on scene changes and the intrinsic structure of the video, making the search purely scene-aware. 
+
+– TASKER-A* : Task Driven & Scene Aware Cost Function For the A* Algorithm, the cost function is the sum of the heuristic evaluation function and the movement cost function, i.e., f (n) = h(n) + g(n), which means that A* Algorithm takes into account both the distance from the current node to the destination and the distance from the start point to the current node. Correspondingly, in our TASKER-A* variant, the MLLM must simultaneously consider two factors: (1) which video segment is likely to contain the missing information, and (2) which video segment exhibits the most significant scene change. Only video segments that satisfy both are prioritized for expansion. 
+
+– TASKER-BFS : Naive Cost Function We also propose a naive algo-rithm variant, TASKER-BFS which does not rely on a MLLM to evaluate the cost function. Instead, it performs a breadth-first expansion, continually splitting all the existing video segments (in the case of no pruning). Like BFS, TASKER-BFS advances in a wave-like manner, steadily progressing. This variant is suitable for situations where a MLLM cannot be accessed, VG-GUI-Bench and TASKER 9
+
+Algorithm 1 Task-driven And Scene-aware Keyframe searchER ( TASKER )
+
+Require: Video v, question q, MLLM F , confidence threshold C, max iteration T ,uniform sampling size M , beam size B, frozen frame set Sfrozen 
+
+Ensure: Answer ˆy, keyframes {F k }
+
+1: N0 ← v
+
+2: N1, N2, ..., NM ← UniformSegment (N0, M )
+
+3: L ← {N 0, N1, ..., NM }
+
+4: Sfrozen ← ∅ 
+
+5: t ← 1
+
+6: while t ≤ T do 
+
+7: {F v } ← ExtractVisibleFrames (L)
+
+8: ˆy ← PredictAnswer (F, {F v }, q )
+
+9: c1, c 2 ← EvaluateConfidence (F, ˆy, {F v }, q )
+
+10: if c1 ≥ C and c2 ≥ C then 
+
+11: break 
+
+12: else 
+
+13: {p} ← EvaluateCostFunction (F, {F v }, L \ S frozen )
+
+14: L ← SelectAndExpandNodes (L, {p}, B )
+
+15: L, Sfrozen ← ValidateNewFrame (L, Sfrozen , F, q )
+
+16: end if 
+
+17: t ← t + 1 
+
+18: end while 
+
+19: {F k } ← {F v }
+
+20: return ˆy, {F k }
+
+or where the overhead introduced by the MLLM is less of a concern, with a greater emphasis on ensuring no information is overlooked. We do not intend to introduce TASKER-DFS variant, as its depth-first expan-sion focuses on a single initial segment. Without strict termination conditions, it is prone to falling into local optima. 
+
+Termination Condition and Confidence Estimation Traditional search algorithms rely on deterministic termination conditions, typically defined by whether the search objective has been reached. In contrast, for keyframe search in VideoQA and Video-Guided Agentic Tasks, such conditions are difficult to de-fine, as it is unclear whether sufficient information has been collected. To address this issue, we leverage the reflection and self-evaluation capabilities of MLLMs to estimate the confidence of the predicted answer and determine whether to terminate the search. TASKER stops when the model produces a sufficiently confident prediction. Specifically, we combine two confidence estimation methods through a voting mechanism, as described below. 
+
+– Self-Evaluation and Self-Reflection MLLMs can be instructed to self-evaluate their responses, reflecting on potential shortcomings in their re-sponses [40,43]. Therefore, after generating an answer, we input the question, information of visible frames, and the MLLM’s previous reasoning chain and 10 S. Fan et al. 
+
+predicted answer back into the model. The MLLM then assesses the accuracy and reliability of its previous answer and output a confidence score ( c1). 
+
+– Temporal Summarization The captions of the sampled frames are dis-crete. To integrate the sampled frames along the temporal dimension, we instruct the MLLM to summarize their captions to form a cohesive overview of the video. We use few-shot examples [2] to generate a more accurate and detailed video summary. Then we prompt the MLLM to predict the answer and output a confidence score ( c2) based on the summary. The advantage of this approach is to consider the sampled frames in a complete temporal context rather than in isolation. We employ a voting mechanism to ensemble the above two methods. The search process only terminates when both methods independently determine that they have sufficient confidence ( c1 ≥ C and c2 ≥ C, C is the threshold). Additionally, after each expansion, we apply a frame validation step: each newly revealed frame is first checked for visual redundancy against existing visi-ble frames, and then assessed by the MLLM for task relevance. Redundant or ir-relevant frames are discarded (with nearby relevant replacements searched when possible), and segments that yield only redundant frames are added to a frozen set Sfrozen to avoid repeated exploration. We summarize TASKER algorithm in Algorithm 1. 
+
+## 4 Experiments 
+
+Our experiments are conducted on two VideoQA benchmarks, EgoSchema [34] and NExT-QA [61], as well as the proposed video-guided agentic task bench-mark, VG-GUI-Bench . Further details of EgoSchema and NExT-QA bench-marks can be found in Appendix B .
+
+4.1 Main Results VideoQA Results We compare the performance of TASKER with various related approaches on LLM-driven VideoQA using TASKER-A* variant. Most of the baselines are mentioned in the related work and Appendix A . Imple-mentation details are provided in Appendix B . Prompts we use are listed in 
+
+Appendix C . Table 1 demonstrates that TASKER significantly outperforms all these baselines. Specifically, TASKER (with GPT-4 as base LLM) achieves 63.1% accuracy on EgoSchema fullset (surpassing the best baseline by 2.0%) and 77.4% accuracy on NExT-QA (surpassing the best baseline by 1.8%). Results based on the open-source MLLM (Qwen3-VL-235B-A22B-Instruct) also show that TASKER consistently outperforms VideoTree [57] and VideoAgent [52]. Moreover, TASKER operates in a training-free, zero-shot setting, while it still outperforms training-based methods such as LVNet [38] and Vamos [51]. Meanwhile, TASKER processes only visible frames, for instance, achieving the reported performance requires only about 15% of the total frames. In contrast, methods like LangRepo [23] and LifelongMemory [55] process all frames without selection. VG-GUI-Bench and TASKER 11 
+
+Table 1: Comparison between TASKER and other methods. We highlight the gain of our method over VideoTree [57] in blue.                                                                                                                                                                
+
+> Model (M)LLM EgoSchema NExT-QA Sub. Full Tem. Cau. Des. Avg. Based on Open-source Captioners and Open-source LLMs
+> MVU [39] Mistral-13B 60.3 37.6 55.4 48.1 64.1 55.2 LangRepo [23] Mixtral-8x7B 66.2 41.2 51.4 64.4 69.1 60.9 Video-LLA+INTP [41] Vicuna-7B v1.5 -38.6 58.6 61.9 72.2 62.7
+> Based on Proprietary MLLMs
+> IG-VLM [25] GPT-4V 59.8 -63.6 69.8 74.7 68.6 LVNet [38] GPT-4o 68.2 61.1 65.5 75.0 81.5 72.9
+> Based on Open-source Captioners and Proprietary LLMs
+> ProViQ [6] GPT-3.5 57.1 ----64.6 MoReVQA [35] PaLM-2 -51.7 64.6 70.2 -69.2 Vamos [51] GPT-4 51.2 48.3 ----LLoVi [69] GPT-4 61.2 -61.0 69.5 75.6 67.7 VideoAgent [52] GPT-4 60.2 54.1 64.5 72.7 81.1 71.3 VideoAgent [11] GPT-4 62.8 60.2 ----LifelongMemory [55] GPT-4 64.1 58.6 ----VideoTree [57] GPT-4 66.2 61.1 70.6 76.5 83.9 75.6
+> TASKER (Ours) GPT-4 68.0 (1.8 ↑)63.1 (2.0 ↑)72.3 (1.7 ↑)78.2 (1.7 ↑)85.4 (1.5 ↑)77.4 (1.8 ↑)
+> TASKER (Ours) GPT-4o 68.6 (2.4 ↑)63.6 (2.5 ↑)72.9 (2.3 ↑)79.0 (2.5 ↑)86.1 (2.2 ↑)78.1 (2.5 ↑)Based on Open-source MLLMs
+> VideoAgent [52] Qwen3-VL 75.8 74.6 79.7 83.5 86.5 82.8 VideoTree [57] Qwen3-VL 77.2 76.7 81.9 85.1 86.3 84.3
+> TASKER (ours) Qwen3-VL 79.4 (2.2 ↑)77.3 (0.6 ↑)83.6 (1.7 ↑)85.3 (0.2 ↑)87.5 (1.2 ↑)85.1 (0.8 ↑)2324252627
+
+Number of frames processed  
+
+> 54
+> 56
+> 58
+> 60
+> 62
+> 64
+> 66
+> 68
+> Accuracy (%)
+> LLoVi [69] VideoAgent [52] VideoTree [57]
+> TASKER (ours)
+
+Fig. 4: Demonstration of TASKER ’s high frame efficiency. When processing the same number of video frames with the same (M)LLM, TASKER achieves higher QA accuracy. 
+
+Additionally, as shown in Figure 4, we compare TASKER ’s frame ef-ficiency with other keyframe extrac-tion methods in the same condi-tion on EgoSchema [34] subset. At the same accuracy level (66%), 
+
+TASKER uses only about 1/4 of the frames required by VideoTree. 
+
+Moreover, VideoTree clusters features of all frames during preprocessing, whereas TASKER only has access to visible frames and does not utilize infor-mation from the rest. The results show that TASKER utilizes frames more efficiently than LLoVi [69], VideoA-gent [52] and VideoTree [57], demon-strating its superior ability to identify key information. 
+
+Video-Guided Agentic Task Results In Table 2, we provide a VG-GUI-bench leaderboard with 7 frontier models. Gemini-3.1-Pro consistently achieves the best overall accuracy, regardless of whether no video input is used or 10 frames are uniformly sampled from the video. Across most models, incorporat-ing 10 uniformly sampled frames consistently improves performance over the 12 S. Fan et al. 
+
+Table 2: VG-GUI-Bench leaderboard. Rank Model Mode Acc.(%) Type Acc.(%) Comp.(%) PIR 
+
+1 Gemini-3.1-Pro No Video 58.51 74.58 78.53 –10 Uniform Frames 61.68 76.25 78.61 0.054 2 GPT-5-mini No Video 55.76 71.93 75.97 –10 Uniform Frames 58.40 75.27 78.96 0.047 3 Kimi-K2.5 No Video 57.22 72.91 76.31 –10 Uniform Frames 58.22 74.78 78.72 0.017 4 Claude-Sonnet-4.6 No Video 44.35 67.81 72.24 –10 Uniform Frames 45.80 67.71 72.35 0.033 5 Seed-2.0-Pro No Video 35.93 70.66 74.75 –10 Uniform Frames 39.78 75.96 79.36 0.107 6 Qwen3-VL-235B-A22B No Video 25.90 66.63 69.73 –10 Uniform Frames 26.88 67.42 71.69 0.038 7 Gemini-3.1-Flash No Video 24.73 67.03 70.54 –10 Uniform Frames 26.02 69.19 72.60 0.052 
+
+Table 3: TAKSER and Baselines’ Results on VG-GUI-Bench . We report Acc., Type Acc., per-action scores, Comp., Eff., and PIR. For the keyframe selection methods, best and second-best results are in red and blue. For all methods, we use Qwen3-VL-235B-A22B-Instruct [1] as the base LLM.                                                                                                                            
+
+> Method Overall(%) Per-Action Score(%) Comp.(%) Eff. ↓PIR Acc. Type Acc. CLICK SCROLL TYPE PRESS ZOOM FINISH
+> Reference Baselines
+> No Video 25.32 65.85 26.89 26.18 3.66 29.23 0069.03 0-All Keyframes 37.21 65.75 49.48 2.38 25.81 5.26 0072.01 13.23 0.470 Uniform Sampling 39.82 66.34 52.90 5.25 15.71 6.50 0070.64 10.88 0.573 Oracle Keyframes 44.32 73.31 60.34 1.92 000076.32 10.750
+> Keyframe Selection Methods
+> VideoTree [57] 40.79 67.52 53.41 7.83 14.75 6.50 0071.93 10.00 0.611 VideoAgent [52] 39.86 67.03 51.61 10.70 13.81 5.26 0071.17 5.12 0.574
+> TASKER-BFS 40.01 69.97 51.87 9.66 17.16 5.26 0073.77 6.10 0.580
+> TASKER-GBFS 40.26 69.97 52.10 9.98 16.75 5.26 0073.75 5.81 0.590
+> TASKER-Dijkstra 40.75 71.05 52.84 9.66 17.48 5.26 0074.39 5.88 0.609
+> TASKER-A* 40.96 67.71 53.68 8.71 13.81 6.50 0071.38 8.24 0.618
+
+no-video setting, demonstrating the benefit of temporal visual information for GUI understanding. Notably, Seed-2.0-Pro exhibits the largest gain in overall accuracy, improving from 35.93% to 39.78%. Our TASKER method’s results on VG-GUI-Bench are presented in Table 3. We consider the following four baselines as references: 
+
+– No Video : The model performs the GUI agent task without taking the video tutorial as input. Since it cannot refer to the tutorial, this baseline yields the weakest performance. 
+
+– All Keyframes : We provide the set of tutorial frames corresponding to all moments where action behaviors occur. With access to these references, the model can closely follow the demonstrated procedure and achieves relatively strong results. VG-GUI-Bench and TASKER 13 
+
+– Uniform Sampling : We uniformly sample frames from the full video. Al-though this does not guarantee coverage of key instructional moments, the stable global context allows it to outperform the All Keyframes baseline. 
+
+– Oracle Keyframe : We provide the specific tutorial frame corresponding to the current GUI action with Set-of-Mark [63] annotations, allowing the model to “peek at the answer”. While this enables high scores by copying vi-sual targets, it encourages over-reliance on visual imitation, causing complete failure on operations like TYPE and PRESS .We also compare against representative keyframe selection methods, VideoTree and VideoAgent. Overall, our TASKER framework demonstrates excellent per-formance. Specifically, TASKER-A* achieves the highest Overall Acc. (40.96), PIR (0.618), and CLICK score (53.68), outperforming the strong VideoTree base-line. Furthermore, compared to other dynamic selection methods, TASKER ef-fectively deduplicates redundant frames, yielding superior accuracy with higher efficiency (fewer frames per step). Beyond accuracy, our approach attains high task completion rates, with TASKER-Dijkstra (74.39) closely approaching the 
+
+Oracle Keyframe upper bound. Finally, the varied search strategies demonstrate the framework’s internal diversity, robustness, and strong extensibility. In addition to the VG-GUI-Bench benchmark, we also collected accompa-nying videos for OSWorld [62] and evaluated whether the TASKER method can improve the capabilities of GUI agents on OSWorld. Detailed results are provided in Appendix G .
+
+4.2 Ablation Studies Basic Search Algorithms In Table 3, we have already compared various vari-ants of the TASKER algorithm and observed that TASKER-A* achieves the best performance.               
+
+> Table 4: Ablation on basic search al-gorithms . We highlight the improvement of TASKER-A* over the naive TASKER-BFS , emphasizing the role of cost-function evaluation.
+> Algorithm Accuracy # Visible
+> TASKER-BFS 64.7 31.2
+> TASKER-GBFS 67.0 27.3
+> TASKER-Dijkstra 66.8 27.6
+> TASKER-A* 68.0 (3.3 ↑)27.9
+
+In Table 4, we further investi-gate performance and frame efficiency of several TASKER algorithm vari-ants with different base search algo-rithms on the EgoSchema subset. The frame efficiency is measured by the number of visible frames. Specifically, on EgoSchema dataset, all videos are three minutes long, and we set the ini-tial frame rate fps = 1 , which means the initial overall frame number is 180. We observe that TASKER-A* achieves the highest accuracy. TASKER-BFS ranks last in accuracy and has the low-est frame efficiency, as TASKER-BFS algorithm exhaustively explores all branches, leading to higher exploration costs. TASKER-GBFS slightly outper-forms TASKER-Dijkstra on both metrics, while TASKER-A* combines the strengths of them, significantly improving accuracy with only a slight compro-mise in frame efficiency. This demonstrates that efficient keyframe localization requires both the heuristic search function and the movement cost function. 14 S. Fan et al. 
+
+Termination Condition In Table 5, we conduct ablation experiments on the termination condition of the search process, using TASKER-A* on the EgoSchema subset. 
+
+Table 5: Ablation on termination condition Method Accuracy # Visible Frames       
+
+> Self-Evaluation 67.4 27.4
+> Summarization 67.3 28.2 Vote 68.0 27.9
+
+The results show that self-evaluation & self-reflection and temporal summa-rization assess information sufficiency from different perspectives. When com-bined, they enhance the reliability of confidence estimation, leading to im-proved algorithm performance. 
+
+Base LLM We also conducted an ab-lation study on the base LLM of the 
+
+TASKER algorithm in Table 6. 
+
+Table 6: Ablation on different base LLMs Base LLM Accuracy # Visible Frames           
+
+> GPT-4 68.0 27.9
+> GPT-4o 68.6 26.7
+> o3-mini 67.3 28.3
+> Deepseek-R1 67.6 26.9
+> LLaMA-3.3-70B 65.2 27.4
+
+We find that GPT-4o achieves the best performance as the base LLM. In contrast, reasoning models such as o3-mini and Deepseek-R1 perform slightly worse than GPT-4o, likely due to the rel-atively straightforward nature of visual reasoning in our tasks. 
+
+## 5 Analysis 
+
+5.1 Comparison with Video-LLMs 
+
+Compared with end-to-end Video-LLMs, the keyframe-based training-free method (e.g., TASKER ) offers advantages in terms of training cost, inference efficiency, and interpretability. A detailed comparison with representative Video-LLMs, in-cluding performance and resource requirements, is provided in Appendix C .
+
+5.2 Visualization 
+
+Figure 5 presents a visualized case study. In this 3-minute video, the key informa-tion for answering the question is located between 126s and 130s. Our TASKER 
+
+algorithm precisely identifies this critical video segment by searching along the video tree and expanding relevant nodes. And it retrieves all frames within the 125s–130s range as keyframes, successfully answering the question. In the video tree, we mark the nodes traversed by the key search path in yellow and mark the final leaf node obtained from the key search path in green. The nodes outside the key search path are barely expanded. 
+
+## 6 Conclusion 
+
+In this work, we take a step toward deeper video understanding by connecting low-level VideoQA with higher-level video-guided agentic tasks. Specifically, we VG-GUI-Bench and TASKER 15 Question : Summarize the process c uses to prepare her brush for painting and 
+
+> how it contributes to the artwork's quality.
+> A. c cleans the paint brush in her right hand in the small cup on the floor,
+> which helps to keep the brush clean and free of debris.
+> B. Skillfully, c mixes paint on the paint board using the brush in her right hand,
+> which enables her to effortlessly create a wide variety of different colors and
+> shades for her artwork.
+> C. Skillfully, c picks paint from the paint board using the brush in her right
+> hand, which conveniently allows her to apply paint gracefully onto the canvas.
+> D. c loosens the color intensity on the paint brush in her right hand in the small
+> cup on the floor, which allows her to create a more subtle and nuanced effect.
+> E. Carefully, c paints with the paint brush skillfully on the art work displayed
+> on the canvas, which is the ultimate, final step in the entire painting process.
+
+Fig. 5: Visualization of tree-search and nodes expansion process of TASKER method solving a VideoQA case from EgoSchema [34]. 
+
+introduce VG-GUI-Bench , a benchmark that pairs tutorial videos with cor-responding GUI interaction episodes to evaluate whether MLLM-based agents can extract procedural knowledge from videos and transfer it to long-horizon decision making. Building on the shared bottleneck of temporal content selec-tion across both settings, we propose TASKER , a task-driven and scene-aware keyframe search algorithm that formulates keyframe extraction as a generalized graph-search problem, with MLLMs used to evaluate cost functions and ter-mination confidence. Extensive experiments on VideoQA benchmarks demon-strate that TASKER consistently improves accuracy while using substantially fewer frames than prior keyframe-based baselines, highlighting a practical per-formance–efficiency trade-off in a training-free regime. 
+
+## 7 Acknowledgement 
+
+This work was supported by Fundamental and Interdisciplinary Disciplines Break-through Plan of the Ministry of Education of China (No. JYB2025XDXM101) and the National Natural Science Foundation of China (project No. 62495061, 62220106003). 16 S. Fan et al. 
+
+## References 
+
+1. Bai, S., Cai, Y., Chen, R., Chen, K., Chen, X., Cheng, Z., Deng, L., Ding, W., Gao, C., Ge, C., Ge, W., Guo, Z., Huang, Q., Huang, J., Huang, F., Hui, B., Jiang, S., Li, Z., Li, M., Li, M., Li, K., Lin, Z., Lin, J., Liu, X., Liu, J., Liu, C., Liu, Y., Liu, D., Liu, S., Lu, D., Luo, R., Lv, C., Men, R., Meng, L., Ren, X., Ren, X., Song, S., Sun, Y., Tang, J., Tu, J., Wan, J., Wang, P., Wang, P., Wang, Q., Wang, Y., Xie, T., Xu, Y., Xu, H., Xu, J., Yang, Z., Yang, M., Yang, J., Yang, A., Yu, B., Zhang, F., Zhang, H., Zhang, X., Zheng, B., Zhong, H., Zhou, J., Zhou, F., Zhou, J., Zhu, Y., Zhu, K.: Qwen3-VL technical report (2025), https://arxiv.org/abs/2511.21631 
+
+12 2. Brown, T.B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., Nee-lakantan, A., Shyam, P., Sastry, G., Askell, A., Agarwal, S., Herbert-Voss, A., Krueger, G., Henighan, T., Child, R., Ramesh, A., Ziegler, D.M., Wu, J., Win-ter, C., Hesse, C., Chen, M., Sigler, E., Litwin, M., Gray, S., Chess, B., Clark, J., Berner, C., McCandlish, S., Radford, A., Sutskever, I., Amodei, D.: Language models are few-shot learners. In: Larochelle, H., Ranzato, M., Hadsell, R., Balcan, M., Lin, H. (eds.) Advances in Neural Information Processing Systems 33: An-nual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual (2020), https://proceedings.neurips.cc/paper/ 2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html 10 3. Carreira, J., Zisserman, A.: Quo vadis, action recognition? A new model and the kinetics dataset. In: 2017 IEEE Conference on Computer Vision and Pattern Recog-nition, CVPR 2017, Honolulu, HI, USA, July 21-26, 2017. pp. 4724–4733. IEEE (2017). https://doi.org/10.1109/CVPR.2017.502 44. Chen, Z., Wang, W., Cao, Y., Liu, Y., Gao, Z., Cui, E., Zhu, J., Ye, S., Tian, H., Liu, Z., Gu, L., Wang, X., Li, Q., Ren, Y., Chen, Z., Luo, J., Wang, J., Jiang, T., Wang, B., He, C., Shi, B., Zhang, X., Lv, H., Wang, Y., Shao, W., Chu, P., Tu, Z., He, T., Wu, Z., Deng, H., Ge, J., Chen, K., Zhang, K., Wang, L., Dou, M., Lu, L., Zhu, X., Lu, T., Lin, D., Qiao, Y., Dai, J., Wang, W.: Expanding performance boundaries of open-source multimodal models with model, data, and test-time scaling (2025), https://arxiv.org/abs/2412.05271 25 5. Cheng, Z., Leng, S., Zhang, H., Xin, Y., Li, X., Chen, G., Zhu, Y., Zhang, W., Luo, Z., Zhao, D., Bing, L.: Videollama 2: Advancing spatial-temporal modeling and audio understanding in video-llms (2024), https://arxiv.org/abs/2406.07476 
+
+26 6. Choudhury, R., Niinuma, K., Kitani, K.M., Jeni, L.A.: Video question answering with procedural programs. In: Leonardis, A., Ricci, E., Roth, S., Russakovsky, O., Sattler, T., Varol, G. (eds.) Computer Vision - ECCV 2024 - 18th Euro-pean Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part XXXVIII. Lecture Notes in Computer Science, vol. 15096, pp. 315–332. Springer (2024). https://doi.org/10.1007/978-3-031-72920-1_18 11 7. Dong, Y., Tian, S., Liu, S., Ding, S., Zang, Y., Dong, X., Cao, Y., Wang, J., Liu, Z.: Demo-ICL: In-context learning for procedural video knowledge acquisition (2026), 
+
+https://arxiv.org/abs/2602.08439 48. Dou, S., Zhang, M., Yin, Z., Huang, C., Shen, Y., Wang, J., Chen, J., Ni, Y., Ye, J., Zhang, C., Xie, H., Hu, J., Wang, S., Wang, W., Xiao, Y., Liu, Y., Xu, Z., Guo, Z., Zhou, P., Gui, T., Wu, Z., Qiu, X., Zhang, Q., Huang, X., Jiang, Y.G., Wang, D., Yao, S.: CL-bench: A benchmark for context learning (2026), 
+
+https://arxiv.org/abs/2602.03587 4VG-GUI-Bench and TASKER 17 9. Fan, S., Cui, J., Guo, M., Yang, S.: Tool-augmented spatiotemporal reasoning for streamlining video question answering task. In: Belgrave, D., Zhang, C., Montoya, L.N., Lin, H., Pascanu, R., Koniusz, P., Ghassemi, M., Chen, N., Ruíz, I.V.M., Loaiza-Bonilla, A. (eds.) Advances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems 2025, NeurIPS 2025, San Diago, CA, USA, December 2-7, 2025 / Mexico City, Mexico, November 30 - December 5, 2025 (2025), http://papers.nips.cc/paper_files/paper/2025/ hash/bbdd9525c5ecd3a03fee43d8fd64bd83-Abstract-Conference.html 410. Fan, S., Guo, M.H., Yang, S.: Agentic keyframe search for video question answering (2025), https://arxiv.org/abs/2503.16032 411. Fan, Y., Ma, X., Wu, R., Du, Y., Li, J., Gao, Z., Li, Q.: VideoAgent: A memory-augmented multimodal agent for video understanding. In: Leonardis, A., Ricci, E., Roth, S., Russakovsky, O., Sattler, T., Varol, G. (eds.) Computer Vision -ECCV 2024 - 18th European Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part XXII. Lecture Notes in Computer Science, vol. 15080, pp. 75–92. Springer (2024). https://doi.org/10.1007/978-3-031-72670-5_5 4, 11 12. Fu, C., Dai, Y., Luo, Y., Li, L., Ren, S., Zhang, R., Wang, Z., Zhou, C., Shen, Y., Zhang, M., Chen, P., Li, Y., Lin, S., Zhao, S., Li, K., Xu, T., Zheng, X., Chen, E., Shan, C., He, R., Sun, X.: Video-mme: The first-ever comprehensive evalua-tion benchmark of multi-modal llms in video analysis. In: IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2025, Nashville, TN, USA, June 11-15, 2025. pp. 24108–24118. IEEE (2025). https://doi.org/10.1109/ CVPR52734.2025.02245 1, 4 13. Gao, L., Zhong, Y., Zeng, Y., Tan, H., Li, D., Zhao, Z.: Linvt: Empower your image-level large language model to understand videos (2024), https://arxiv. org/abs/2412.05185 25 14. Guo, M., Xu, J., Zhang, Y., Song, J., Peng, H., Deng, Y., Dong, X., Nakayama, K., Geng, Z., Wang, C., Ni, B., Yang, G., Rao, Y., Peng, H., Hu, H., Wetzstein, G., Hu, S.: Rbench: Graduate-level multi-disciplinary benchmarks for LLM & MLLM complex reasoning evaluation. In: Singh, A., Fazel, M., Hsu, D., Lacoste-Julien, S., Berkenkamp, F., Maharaj, T., Wagstaff, K., Zhu, J. (eds.) Forty-second Interna-tional Conference on Machine Learning, ICML 2025, Vancouver, BC, Canada, July 13-19, 2025. Proceedings of Machine Learning Research, vol. 267. PMLR (2025), 
+
+https://proceedings.mlr.press/v267/guo25r.html 415. Gupta, T., Kembhavi, A.: Visual programming: Compositional visual reasoning without training. In: IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2023, Vancouver, BC, Canada, June 17-24, 2023. pp. 14953– 14962. IEEE (2023). https://doi.org/10.1109/CVPR52729.2023.01436 416. Hara, K., Kataoka, H., Satoh, Y.: Can spatiotemporal 3d cnns retrace the history of 2d cnns and imagenet? In: 2018 IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2018, Salt Lake City, UT, USA, June 18-22, 2018. pp. 6546–6555. IEEE (2018). https://doi.org/10.1109/CVPR.2018.00685 417. He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image recognition. In: 2016 IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2016, Las Vegas, NV, USA, June 27-30, 2016. pp. 770–778. IEEE (2016). https: //doi.org/10.1109/CVPR.2016.90 418. Hong, W., Wang, W., Lv, Q., Xu, J., Yu, W., Ji, J., Wang, Y., Wang, Z., Zhang, Y., Li, J., Xu, B., Dong, Y., Ding, M., Tang, J.: Cogagent: A visual language model for gui agents (2024), https://arxiv.org/abs/2312.08914 26 18 S. Fan et al. 19. Hu, J., Cheng, Z., Si, C., Li, W., Gong, S.: Cos: Chain-of-shot prompting for long video understanding (2025), https://arxiv.org/abs/2502.06428 420. Hu, S., Lin, K.Q., Shou, M.Z.: Showui-π: Flow-based generative models as gui dexterous hands (2025), https://arxiv.org/abs/2512.24965 421. Jang, Y., Song, Y., Sohn, S., Logeswaran, L., Luo, T., Kim, D., Bae, K., Lee, H.: Scalable video-to-dataset generation for cross-platform mobile agents. In: IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2025, Nashville, TN, USA, June 11-15, 2025. pp. 8604–8614. IEEE (2025). https: //doi.org/10.1109/CVPR52734.2025.00804 4, 5 22. Jeoung, S., Huybrechts, G., Ganesh, B., Galstyan, A., Bodapati, S.: Adaptive video understanding agent: Enhancing efficiency with dynamic frame sampling and feedback-driven reasoning (2024), https://arxiv.org/abs/2410.20252 423. Kahatapitiya, K., Ranasinghe, K., Park, J., Ryoo, M.S.: Language repository for long video understanding. In: Che, W., Nabende, J., Shutova, E., Pilehvar, M.T. (eds.) Findings of the Association for Computational Linguistics, ACL 2025, Vi-enna, Austria, July 27 - August 1, 2025. pp. 5627–5646. Findings of ACL, Associa-tion for Computational Linguistics (2025). https://doi.org/10.18653/V1/2025. FINDINGS-ACL.294 10, 11 24. Karacan, L., Sarıgül, M.: Full-frame video stabilization via spatiotemporal trans-formers. Computational Visual Media 11 (3), 655–667 (2025). https://doi.org/ 10.26599/CVM.2025.9450416 425. Kim, W., Choi, C., Lee, W., Rhee, W.: An image grid can be worth a video: Zero-shot video question answering using a vlm (2024), https://arxiv.org/abs/2403. 18406 11 26. Li, K., Wang, Y., He, Y., Li, Y., Wang, Y., Liu, Y., Wang, Z., Xu, J., Chen, G., Luo, P., Wang, L., Qiao, Y.: Mvbench: A comprehensive multi-modal video understanding benchmark (2024), https://arxiv.org/abs/2311.17005 26 27. Li, R., Wang, X., Zhang, Y., Wang, Z., Yeung-Levy, S.: Temporal preference op-timization for long-form video understanding (2025), https://arxiv.org/abs/ 2501.13919 428. Lin, B., Ye, Y., Zhu, B., Cui, J., Ning, M., Jin, P., Yuan, L.: Video-llava: Learn-ing united visual representation by alignment before projection. In: Al-Onaizan, Y., Bansal, M., Chen, Y. (eds.) Proceedings of the 2024 Conference on Empir-ical Methods in Natural Language Processing, EMNLP 2024, Miami, FL, USA, November 12-16, 2024. pp. 5971–5984. Association for Computational Linguistics (2024). https://doi.org/10.18653/V1/2024.EMNLP-MAIN.342 429. Lin, J., Yu, Z., Karlsson, B.F.: Switch: Benchmarking modeling and handling of tangible interfaces in long-horizon embodied scenarios (2026), https://arxiv. org/abs/2511.17649 430. Lin, K.Q., Hu, S., Li, L., Yang, Z., Wang, L., Torr, P., Shou, M.Z.: Computer-use agents as judges for generative user interface (2025), https://arxiv.org/abs/ 2511.15567 431. Lin, K.Q., Li, L., Gao, D., Wu, Q., Yan, M., Yang, Z., Wang, L., Shou, M.Z.: VideoGUI: A benchmark for GUI automation from instructional videos. In: Globersons, A., Mackey, L., Belgrave, D., Fan, A., Paquet, U., Tomczak, J.M., Zhang, C. (eds.) Advances in Neural Information Processing Systems 37: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024, Vancouver, BC, Canada, December 10 - 15, 2024 (2024), http://papers. nips.cc/paper_files/paper/2024/hash/804e757b7d7043c26701c3a313032101-Abstract-Datasets_and_Benchmarks_Track.html 4VG-GUI-Bench and TASKER 19 32. Liu, G., Zhao, P., Liu, L., Chen, Z., Chai, Y., Ren, S., Wang, H., He, S., Meng, W.: Learnact: Few-shot mobile gui agent with a unified demonstration benchmark (2025), https://arxiv.org/abs/2504.13805 433. Lu, D., Xu, Y., Wang, J., Wu, H., Wang, X., Wang, Z., Yang, J., Su, H., Chen, J., Chen, J., Mao, Y., Zhou, J., Lin, J., Hui, B., Yu, T.: Videoagenttrek: Computer use pretraining from unlabeled videos (2025), https://arxiv.org/abs/2510.19488 434. Mangalam, K., Akshulakov, R., Malik, J.: Egoschema: A diagnostic bench-mark for very long-form video language understanding. In: Oh, A., Nau-mann, T., Globerson, A., Saenko, K., Hardt, M., Levine, S. (eds.) Advances in Neural Information Processing Systems 36: Annual Conference on Neu-ral Information Processing Systems 2023, NeurIPS 2023, New Orleans, LA, USA, December 10 - 16, 2023 (2023), http://papers.nips.cc/paper_files/ paper / 2023 / hash / 90ce332aff156b910b002ce4e6880dec - Abstract - Datasets _ and_Benchmarks.html 3, 4, 10, 11, 15, 24, 25, 26 35. Min, J., Buch, S., Nagrani, A., Cho, M., Schmid, C.: Morevqa: Exploring mod-ular reasoning models for video question answering. In: IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2024, Seattle, WA, USA, June 16-22, 2024. pp. 13235–13245. IEEE (2024). https://doi.org/10.1109/ CVPR52733.2024.01257 11 36. Nguyen, T., Bin, Y., Xiao, J., Qu, L., Li, Y., Wu, J.Z., Nguyen, C., Ng, S., Luu, A.T.: Video-language understanding: A survey from model architecture, model training, and data perspectives. In: Ku, L., Martins, A., Srikumar, V. (eds.) Findings of the Association for Computational Linguistics, ACL 2024, Bangkok, Thailand and virtual meeting, August 11-16, 2024. Findings of ACL, vol. ACL 2024, pp. 3636–3657. Association for Computational Linguistics (2024). 
+
+https://doi.org/10.18653/V1/2024.FINDINGS-ACL.217 437. Ning, M., Zhu, B., Xie, Y., Lin, B., Cui, J., Yuan, L., Chen, D., Yuan, L.: Video-bench: A comprehensive benchmark and toolkit for evaluating video-based large language models. Computational Visual Media 12 (1), 71–84 (2026). https://doi. org/10.26599/CVM.2025.9450516 438. Park, J., Ranasinghe, K., Kahatapitiya, K., Ryu, W., Kim, D., Ryoo, M.S.: Too many frames, not all useful: Efficient strategies for long-form video QA. In: Dem-berg, V., Inui, K., Marquez, L. (eds.) Proceedings of the 19th Conference of the European Chapter of the Association for Computational Linguistics, EACL 2026 - Volume 1: Long Papers, Rabat, Morocco, March 24-29, 2026. pp. 3569–3588. As-sociation for Computational Linguistics (2026). https://doi.org/10.18653/V1/ 2026.EACL-LONG.164 4, 10, 11 39. Ranasinghe, K., Li, X., Kahatapitiya, K., Ryoo, M.S.: Understanding long videos with multimodal language models. In: The Thirteenth International Conference on Learning Representations, ICLR 2025, Singapore, April 24-28, 2025 (2025), 
+
+https://openreview.net/forum?id=OxKi02I29I 11 40. Ren, J., Zhao, Y., Vu, T., Liu, P.J., Lakshminarayanan, B.: Self-evaluation im-proves selective generation in large language models. In: Proceedings of Machine Learning Research. vol. 239, pp. 49–64. PMLR (2023), https://proceedings. mlr.press/v239/ren23a.html 941. Shang, Y., Xu, B., Kang, W., Cai, M., Li, Y., Wen, Z., Dong, Z., Keutzer, K., Lee, Y.J., Yan, Y.: Interpolating video-llms: Toward longer-sequence lmms in a training-free manner (2024), https://arxiv.org/abs/2409.12963 11 42. Shen, X., Xiong, Y., Zhao, C., Wu, L., Chen, J., Zhu, C., Liu, Z., Xiao, F., Varadarajan, B., Bordes, F., Liu, Z., Xu, H., Kim, H.J., Soran, B., Krishnamoor-20 S. Fan et al. thi, R., Elhoseiny, M., Chandra, V.: LongVU: Spatiotemporal adaptive compres-sion for long video-language understanding. In: Proceedings of the 42nd Inter-national Conference on Machine Learning. Proceedings of Machine Learning Re-search, vol. 267, pp. 54582–54599. PMLR (2025), https://proceedings.mlr. press/v267/shen25j.html 443. Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K., Yao, S.: Reflexion: lan-guage agents with verbal reinforcement learning. In: Oh, A., Naumann, T., Glober-son, A., Saenko, K., Hardt, M., Levine, S. (eds.) Advances in Neural Infor-mation Processing Systems 36: Annual Conference on Neural Information Pro-cessing Systems 2023, NeurIPS 2023, New Orleans, LA, USA, December 10 - 16, 2023 (2023), http://papers.nips.cc/paper_files/paper/2023/hash/ 1b44b878bb782e6954cd888628510e90-Abstract-Conference.html 944. Song, C.H., Song, Y., Goyal, P., Su, Y., Riva, O., Palangi, H., Pfister, T.: Watch and learn: Learning to use computers from online videos (2026), https://arxiv. org/abs/2510.04673 445. Song, E., Chai, W., Wang, G., Zhang, Y., Zhou, H., Wu, F., Chi, H., Guo, X., Ye, T., Zhang, Y., Lu, Y., Hwang, J.N., Wang, G.: Moviechat: From dense token to sparse memory for long video understanding (2024), https://arxiv.org/abs/ 2307.16449 446. Sun, Y., Zhao, S., Yu, T., Wen, H., Va, S., Xu, M., Li, Y., Zhang, C.: GUI-Xplore: Empowering generalizable GUI agents with one exploration. In: IEEE/CVF Con-ference on Computer Vision and Pattern Recognition, CVPR 2025, Nashville, TN, USA, June 11-15, 2025. pp. 19477–19486. IEEE (2025). https://doi.org/10. 1109/CVPR52734.2025.01814 447. Tang, Y., Bi, J., Xu, S., Song, L., Liang, S., Wang, T., Zhang, D., An, J., Lin, J., Zhu, R., Vosoughi, A., Huang, C., Zhang, Z., Liu, P., Feng, M., Zheng, F., Zhang, J., Luo, P., Luo, J., Xu, C.: Video understanding with large language models: A survey (2024), https://arxiv.org/abs/2312.17432 448. Tran, D., Bourdev, L.D., Fergus, R., Torresani, L., Paluri, M.: Learning spatiotem-poral features with 3d convolutional networks. In: 2015 IEEE International Con-ference on Computer Vision, ICCV 2015, Santiago, Chile, December 7-13, 2015. pp. 4489–4497. IEEE (2015). https://doi.org/10.1109/ICCV.2015.510 449. Wang, J.W., Shen, L.Y.: Spatiotemporal fusion transformer for video demoiréing. Computational Visual Media 11 (4), 849–869 (2025). https://doi.org/10.26599/ CVM.2025.9450502 450. Wang, J., Xu, H., Zhang, X., Yan, M., Zhang, J., Huang, F., Sang, J.: Mobile-agent-v: A video-guided approach for effortless and efficient operational knowledge injection in mobile automation (2025), https://arxiv.org/abs/2502.17110 451. Wang, S., Zhao, Q., Do, M.Q., Agarwal, N., Lee, K., Sun, C.: Vamos: Versatile action models for video understanding. In: Leonardis, A., Ricci, E., Roth, S., Rus-sakovsky, O., Sattler, T., Varol, G. (eds.) Computer Vision - ECCV 2024 - 18th European Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part XII. Lecture Notes in Computer Science, vol. 15070, pp. 142–160. Springer (2024). https://doi.org/10.1007/978-3-031-73254-6_9 10, 11 52. Wang, X., Zhang, Y., Zohar, O., Yeung-Levy, S.: Videoagent: Long-form video understanding with large language model as agent. In: Leonardis, A., Ricci, E., Roth, S., Russakovsky, O., Sattler, T., Varol, G. (eds.) Computer Vision - ECCV 2024 - 18th European Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part LXXX. Lecture Notes in Computer Science, vol. 15138, pp. 58– VG-GUI-Bench and TASKER 21 76. Springer (2024). https://doi.org/10.1007/978-3-031-72989-8_4 4, 10, 11, 12, 26 53. Wang, X., Liang, J., Wang, C.K., Deng, K., Lou, Y., Lin, M., Yang, S.: Vila: Efficient video-language alignment for video question answering (2024), https: //arxiv.org/abs/2312.08367 26 54. Wang, Y., Li, K., Li, Y., He, Y., Huang, B., Zhao, Z., Zhang, H., Xu, J., Liu, Y., Wang, Z., Xing, S., Chen, G., Pan, J., Yu, J., Wang, Y., Wang, L., Qiao, Y.: InternVideo: General video foundation models via generative and discriminative learning (2022), https://arxiv.org/abs/2212.03191 455. Wang, Y., Yang, Y., Ren, M.: Lifelongmemory: Leveraging llms for answering queries in long-form egocentric videos (2024), https://arxiv.org/abs/2312. 05269 10, 11 56. Wang, Z., Chen, B., Yue, Z., Wang, Y., Qiao, Y., Wang, L., Wang, Y.: Videochat-a1: Thinking with long videos by chain-of-shot reasoning. In: Koenig, S., Jenk-ins, C., Taylor, M.E. (eds.) Fortieth AAAI Conference on Artificial Intelligence, Thirty-Eighth Conference on Innovative Applications of Artificial Intelligence, Sixteenth Symposium on Educational Advances in Artificial Intelligence, AAAI 2026, Singapore, January 20-27, 2026. pp. 10467–10475. AAAI Press (2026). 
+
+https://doi.org/10.1609/AAAI.V40I13.38018 457. Wang, Z., Yu, S., Stengel-Eskin, E., Yoon, J., Cheng, F., Bertasius, G., Bansal, M.: VideoTree: Adaptive tree-based video representation for LLM reasoning on long videos. In: IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2025, Nashville, TN, USA, June 11-15, 2025. pp. 3272–3283. IEEE (2025). 
+
+https://doi.org/10.1109/CVPR52734.2025.00311 4, 10, 11, 12 58. Weng, Y., Han, M., He, H., Chang, X., Zhuang, B.: LongVLM: Efficient long video understanding via large language models. In: Leonardis, A., Ricci, E., Roth, S., Russakovsky, O., Sattler, T., Varol, G. (eds.) Computer Vision - ECCV 2024 - 18th European Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part XXXIII. Lecture Notes in Computer Science, vol. 15091, pp. 453–470. Springer (2024). https://doi.org/10.1007/978-3-031-73414-4_26 459. Wu, H., Li, D., Chen, B., Li, J.: Longvideobench: A benchmark for long-context interleaved video-language understanding. In: Globersons, A., Mackey, L., Belgrave, D., Fan, A., Paquet, U., Tomczak, J.M., Zhang, C. (eds.) Ad-vances in Neural Information Processing Systems 37: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024, Vancouver, BC, Canada, December 10 - 15, 2024 (2024), http://papers.nips.cc/paper_files/ paper / 2024 / hash / 329ad516cf7a6ac306f29882e9c77558 - Abstract - Datasets _ and_Benchmarks_Track.html 1, 4 60. Xiao, J., Huang, N., Qin, H., Li, D., Li, Y., Zhu, F., Tao, Z., Yu, J., Lin, L., Chua, T., Yao, A.: Videoqa in the era of llms: An empirical study. Int. J. Comput. Vis. 
+
+133 (7), 3970–3993 (2025). https://doi.org/10.1007/S11263-025-02385-8 461. Xiao, J., Shang, X., Yao, A., Chua, T.: NExT-QA: Next phase of question-answering to explaining temporal actions. In: IEEE Conference on Computer Vi-sion and Pattern Recognition, CVPR 2021, virtual, June 19-25, 2021. pp. 9777– 9786. IEEE (2021). https://doi.org/10.1109/CVPR46437.2021.00965 3, 4, 10, 25, 26 62. Xie, T., Zhang, D., Chen, J., Li, X., Zhao, S., Cao, R., Hua, T.J., Cheng, Z., Shin, D., Lei, F., Liu, Y., Xu, Y., Zhou, S., Savarese, S., Xiong, C., Zhong, V., Yu, T.: OS-World: Benchmarking multimodal agents for open-ended tasks in real computer en-vironments. In: Globersons, A., Mackey, L., Belgrave, D., Fan, A., Paquet, U., Tom-22 S. Fan et al. czak, J.M., Zhang, C. (eds.) Advances in Neural Information Processing Systems 37: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024, Vancouver, BC, Canada, December 10 - 15, 2024 (2024), http://papers. nips.cc/paper_files/paper/2024/hash/5d413e48f84dc61244b6be550f1cd8f5-Abstract-Datasets_and_Benchmarks_Track.html 13, 36 63. Yang, J., Zhang, H., Li, F., Zou, X., Li, C., Gao, J.: Set-of-mark prompting un-leashes extraordinary visual grounding in gpt-4v (2023), https://arxiv.org/abs/ 2310.11441 4, 13 64. Yang, Z., Chen, G., Li, X., Wang, W., Yang, Y.: Doraemongpt: Toward under-standing dynamic scenes with large language models (exemplified as A video agent). In: Salakhutdinov, R., Kolter, Z., Heller, K.A., Weller, A., Oliver, N., Scarlett, J., Berkenkamp, F. (eds.) Forty-first International Conference on Ma-chine Learning, ICML 2024, Vienna, Austria, July 21-27, 2024. Proceedings of Machine Learning Research, vol. 235, pp. 55976–55997. PMLR (2024), https: //proceedings.mlr.press/v235/yang24d.html 465. Ye, J., Wang, Z., Sun, H., Chandrasegaran, K., Durante, Z., Eyzaguirre, C., Bisk, Y., Niebles, J.C., Adeli, E., Fei-Fei, L., Wu, J., Li, M.: Re-thinking temporal search for long-form video understanding. In: IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2025, Nashville, TN, USA, June 11-15, 2025. pp. 8579–8591. IEEE (2025). https://doi.org/10.1109/CVPR52734.2025.00802 466. Yu, S., Ling, Y., Fang, C., Zhou, Q., Zhao, Y., Chen, C., Zhu, S., Chen, Z.: LLM-guided scenario-based gui testing (2025), https://arxiv.org/abs/2506.05079 
+
+467. Zhang, B., Guo, Y., Yang, R., Zhang, Z., Xie, J., Suo, J.: Darkvision: A benchmark and study for low-light image/video analysis. Computational Visual Media 12 (3), 615–642 (2026). https://doi.org/10.26599/CVM.2025.9450461 468. Zhang, B., Shang, Z., Gao, Z., Zhang, W., Xie, R., Ma, X., Yuan, T., Wu, X., Zhu, S., Li, Q.: Tongui: Internet-scale trajectories from multimodal web tutorials for generalized GUI agents. In: Koenig, S., Jenkins, C., Taylor, M.E. (eds.) Fortieth AAAI Conference on Artificial Intelligence, Thirty-Eighth Conference on Innova-tive Applications of Artificial Intelligence, Sixteenth Symposium on Educational Advances in Artificial Intelligence, AAAI 2026, Singapore, January 20-27, 2026. pp. 12367–12375. AAAI Press (2026). https://doi.org/10.1609/AAAI.V40I15.38229 
+
+469. Zhang, C., Lu, T., Islam, M.M., Wang, Z., Yu, S., Bansal, M., Bertasius, G.: A sim-ple LLM framework for long-range video question-answering. In: Al-Onaizan, Y., Bansal, M., Chen, Y. (eds.) Proceedings of the 2024 Conference on Empirical Meth-ods in Natural Language Processing, EMNLP 2024, Miami, FL, USA, November 12-16, 2024. pp. 21715–21737. Association for Computational Linguistics (2024). 
+
+https://doi.org/10.18653/V1/2024.EMNLP-MAIN.1209 4, 11 70. Zhang, H., Li, X., Bing, L.: Video-llama: An instruction-tuned audio-visual lan-guage model for video understanding. In: Feng, Y., Lefever, E. (eds.) Proceed-ings of the 2023 Conference on Empirical Methods in Natural Language Process-ing, EMNLP 2023 - System Demonstrations, Singapore, December 6-10, 2023. pp. 543–553. Association for Computational Linguistics (2023). https://doi.org/10. 18653/V1/2023.EMNLP-DEMO.49 471. Zhang, Y., Ni, B., Chen, X.S., Zhang, H.R., Rao, Y., Peng, H., Lu, Q., Hu, H., Guo, M.H., Hu, S.M.: Bee: A high-quality corpus and full-stack suite to unlock advanced fully open mllms (2026), https://arxiv.org/abs/2510.13795 4VG-GUI-Bench and TASKER 23 72. Zhang, Y., Guo, X., Goh, Y., Hu, J., Chen, Z., Wang, X., Gao, D., Shou, M.Z.: Showui-aloha: Human-taught gui agent (2026), https://arxiv.org/abs/2601. 07181 473. Zhao, Y., Misra, I., Krähenbühl, P., Girdhar, R.: Learning video representations from large language models (2022), https://arxiv.org/abs/2212.04501 26 74. Zhong, Y., Ji, W., Xiao, J., Li, Y., Deng, W., Chua, T.: Video question answer-ing: Datasets, algorithms and challenges. In: Goldberg, Y., Kozareva, Z., Zhang, Y. (eds.) Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, EMNLP 2022, Abu Dhabi, United Arab Emirates, Decem-ber 7-11, 2022. pp. 6439–6455. Association for Computational Linguistics (2022). 
+
+https://doi.org/10.18653/V1/2022.EMNLP-MAIN.432 475. Zhou, J., Shu, Y., Zhao, B., Wu, B., Liang, Z., Xiao, S., Qin, M., Yang, X., Xiong, Y., Zhang, B., Huang, T., Liu, Z.: MLVU: benchmarking multi-task long video un-derstanding. In: IEEE/CVF Conference on Computer Vision and Pattern Recogni-tion, CVPR 2025, Nashville, TN, USA, June 11-15, 2025. pp. 13691–13701. IEEE (2025). https://doi.org/10.1109/CVPR52734.2025.01278 424 S. Fan et al. 
+
+# Appendix 
+
+## A Preliminary: Classic Search Algorithm 
+
+Our TASKER algorithm is built on classic search algorithm in Algorithm 2. Based on this fundamental process, the following search algorithms are distin-guished by the method to determine priority for selecting nodes. 
+
+Algorithm 2 Basic Search Algorithm                             
+
+> 1: function Search (N0)2: Initialize open list L ← {N 0}
+> 3: while Lis not empty do
+> 4: N ← Pop a node from Lbased on priority 5: if Nis the destination then
+> 6: return N
+> 7: end if
+> 8: Expand Nto obtain neighboring nodes 9: Add neighboring nodes to L
+> 10: end while
+> 11: return None 12: end function
+
+Depth-First Search (DFS) prioritizes nodes with greater depth and explores as far as possible before backtracking. 
+
+Breadth-First Search (BFS) explores all neighbors at the current level before moving on to the next level. 
+
+Greedy Best First Search (GBFS) uses a heuristic evaluation function h(n)
+
+as the cost function, i.e., f (n) = h(n). Here, h(n) represents the cost from the current node to the destination. It can guide the search algorithm towards the destination but does not guarantee an optimal path. 
+
+Dijkstra’s Algorithm uses a movement cost function g(n) as the cost func-tion, i.e., f (n) = g(n). Here, g(n) represents the cost of moving from the starting point to the current node. It finds the shortest path from a starting node to all other nodes by considering the weights of edges. 
+
+A* Algorithm combines the benefits of Dijkstra’s Algorithm and GBFS. The cost function is defined as: f (n) = g(n) + h(n). It balances efficiency and opti-mality, making it highly effective for path planning. 
+
+## B Benchmarks 
+
+EgoSchema [34] dataset comprises over 5,000 human-curated multiple-choice question-answer pairs, making it one of the most widely used datasets for long-form video question and answering. Its subset contains 500 video and QA pairs. VG-GUI-Bench and TASKER 25 
+
+Each video in the datsset is three minutes in length. A notable feature of EgoSchema is its high difficulty level: humans can only achieve 76% accuracy, and current Video-LLMs perform below 70%. The extended video length and increased complexity underscore the importance of keyframe search and key in-formation retrieval. 
+
+NExT-QA [61] dataset consists of 5,440 videos and approximately 52K manu-ally annotated question-answer pairs. Its primary focus is to assess whether QA models truly understand the causal and temporal structures of actions within a video. We use the multiple-choice QA part of NExT-QA. Based on the types, the questions are divided into casual questions, temporal questions and descriptive questions. And based on the type of questions, it is divided into the following three categories. 
+
+– Causal Questions seek to explain the causes or intentions behind actions, either by uncovering past motivations or predicting future outcomes; 
+
+– Temporal Questions evaluate the model’s ability to reason about the se-quence and timing of actions, asking about past, present, or future events; 
+
+– Descriptive Questions focus on detailing the scene by asking about places, objects, attributes, and key actions or events in the video. 
+
+## C Comparison with Video-LLMs 
+
+As previously discussed, there are two primary method for VideoQA task: (I) uti-lizing Video-LLMs for end-to-end computation; (II) employing (M)LLM-driven, keyframe-based, training-free method, like TASKER . We argue that both meth-ods have their respective advantages. The key strength of Method I is that state-of-the-art Video-LLMs [4, 13] outperform Method II. It is suitable for scenarios where high accuracy is required, and computational cost is not a concern. In contrast, the primary advantage of Method II is its practical value for daily video analysis tasks, as it offers a more favorable balance between performance and computational cost. In the following, we use TASKER as an example to illustrate the relative advantages of Method II. 
+
+– Training-Free . The training-free nature of Method II significantly reduces the overall cost. In Table 7, we present the training costs and resource re-quirements of Video-LLMs that achieve comparable performance with our method on EgoSchema [34] and NExT-QA [61] benchmarks. The table high-lights the complexity and high cost of training Video-LLMs, underscoring the training-free advantage of Method II. 
+
+– Lower Inference Overhead . Method II still relies on large model infer-ence. However, TASKER significantly reduces inference overhead by effi-cient keyframe selection instead of processing the whole video. 
+
+– Better Interpretability . TASKER provides greater interpretability by generating intermediate results, such as the keyframe selection and textual reasoning process. In contrast to the end-to-end nature of Method I, this enhances transparency and interpretability. 26 S. Fan et al. 
+
+Table 7: Comparison of computation costs with Video-LLMs Model Train Model Size Tain Data Size Computational Resources EgoSchema NExT-QA                          
+
+> ViLA [53] 4B 36.4K 8×40 GB A100s -75.6 VideoChat2 [26] 7B 4M 32 ×80 GB A100s 54.4 78.6 VideoLLaMA2 [5] 72B 13.6M 32 ×80 GB A100s 63.9 75.6
+> TASKER (ours) Training-free 63.1 77.4
+
+## D Implementation Details 
+
+For EgoSchema and NeXT-QA benchmarks, we first generate captions for the visible frames and then use LLMs to perform reasoning based on these captions. Following VideoAgent [52], we employ CogAgent [18] as the captioner for the NExT-QA [61] benchmark and LaViLa [73] for the EgoSchema [34] benchmark due to its egocentric video pretraining. The specific versions of the base LLMs we use are gpt-4-1106-preview and gpt-4o-2024-11-20. In TASKER , the number of visible frames can be adjusted by modifying the initial number of segments ( M ) and the maximum search iterations ( T ), which in turn affects the final accuracy. In our main experiments, we set M = 10 and T = 6 .
+
+## E Detailed Demonstration of VG-GUI-Bench 
+
+To provide a more intuitive understanding of our proposed VG-GUI-Bench ,we present a detailed case study in Figure 6. This test case evaluates an agent’s ability to execute a multi-step instruction (e.g., saving emails as PDF on an iOS device). As illustrated in the figure, the evaluation pipeline assesses the agent at each step of the interaction. At any given step, the input consists of the current GUI frame, previous actions, and the reference tutorial keyframes automatically extracted by our TASKER algorithm, which serve as essential visual guidance. Based on this input, the MLLM predicts the required action type (e.g., CLICK ,
+
+SCROLL ) and its corresponding arguments (e.g., screen coordinates). We then evaluate the performance by conducting a step-by-step comparison between the model’s predicted actions ( Pred ) and the human-annotated Ground Truth ( GT ). This process iteratively continues until the completion of the episode (e.g., the model outputs a FINISH() action). 
+
+## F Prompts 
+
+F.1 TASKER Keyframe Selector Prompts 
+
+In the keyframe selection phase, we use the following prompts to guide the MLLM in evaluating candidate video segments and determining whether the VG-GUI-Bench and TASKER 27 GT 6
+
+> ZOOM()
+
+GT 4
+
+> SCROLL(0.5,0.2,0.5 ,0.8 )
+
+Step 0  Step 1  Step 4  Step 6 
+
+Test 
+
+Case 
+
+Step NO. 
+
+Keyframes 
+
+Selected by 
+
+Our TASKER 
+
+Algorithm 
+
+> Current
+> Frame
+
++ Previous 
+
+1 Action 
+
+Pred 0
+
+> CLICK(168, 139)
+
+Pred 1
+
+> CLICK(0.473, 0.355)
+
+Pred 4
+
+> CLICK(0.841, 594)
+
+Pred 6
+
+> CLICK(0.776, 88)
+
+Pred 8
+
+> CLICK(0.258, 863)
+
+Pred 16 
+
+> TYPE (mail )
+
+Pred 18 
+
+> CLICK(0.078, 0.931)
+
+Pred 21 
+
+> FINISH()
+
+GT 0
+
+> CLICK(0.154, 0.127)
+
+GT 1
+
+> CLICK (0.405, 0.355 )
+
+GT 8
+
+> SCROLL(0.5, 0.2, 0.5, 0.8)
+
+GT 16 
+
+> TYPE(email)
+
+GT 18 
+
+> PRESS(HOME)
+
+GT 21 
+
+> FINISH()
+
+√
+
+> Type
+
+TASK: How To Save Emails As PDF On iPhone & iPad? 
+
+… …
+
+> Current
+> Frame
+> Current
+> Frame
+> Current
+> Frame
+
++ Previous 
+
+4 Action s
+
++ Previous 
+
+6 Action s
+
+…… …
+
+Step 21  Step 18  Step 16  Step 8
+
+> Current
+> Frame
+> Current
+> Frame
+> Current
+> Frame
+> Current
+> Frame
+
+×
+
+> Args
+
+√
+
+> Args
+
+√
+
+> Type
+
+×
+
+> Type
+
+×
+
+> Args
+
+×  
+
+> Type No Arg s
+
+√   
+
+> Type No Arg s
+
+×
+
+> Type
+
+× 
+
+> Args
+
+√
+
+> Args
+
+√
+
+> Type
+
+×
+
+> Type
+
+×
+
+> Args
+
+Episode 
+
+Completion 
+
++ Previous 
+
+18 Action s
+
++ Previous 
+
+16 Action s
+
++ Previous 
+
+21 Action s
+
+Fig. 6: A detailed demonstration of a test case from the VG-GUI-Bench benchmark. The example presents a multi-step task (i.e., saving emails as PDF on an iOS device), displaying the current GUI frame at each step alongside previous actions and the ref-erence keyframes selected by our TASKER algorithm. It also visualizes the evaluation process by comparing the model’s predicted actions ( Pred , including type and argu-ments) with the ground truth ( GT ) until the completion of the episode. 28 S. Fan et al. 
+
+current keyframes are sufficient. The prompt boxes below show the instructions for different search strategies (BFS, GBFS, Dijkstra, and A*), followed by the prompt for the self-evaluation (QA & Reflect) step. 
+
+Prompt for BFS Strategy 
+
+[System Prompt] You are a highly strict UI navigation assistant designed to output JSON. [User Prompt] You are provided with sequential images sampled from a UI interaction video. Each image is labeled with its frame index. The images are shown in chronological order. Goal: {goal} Candidate video segments (gaps between current frames): {segment_des} (BFS Strategy - Breadth Exploration) Determine which segments are likely to contain crucial missing UI actions necessary to achieve the Goal. You are ALLOWED and ENCOURAGED to select MULTIPLE segments simultaneously if you believe important actions are missing in different video gaps. Return JSON format exactly like this (can contain one or multiple items): {{"frame_descriptions": [ {{"segment_id": "1", "duration": "xxx - xxx", "description": "Missing initial click"}}, {{"segment_id": "3", "duration": "yyy - yyy", "description": "Missing confirmation popup"}} ]}} 
+
+Prompt for GBFS Strategy (Focus on Missing Goal-Critical Actions) 
+
+[System Prompt] You are a highly strict UI navigation assistant designed to output JSON. [User Prompt] You are provided with sequential images sampled from a UI interaction video. Each image is labeled with its frame index. The images are shown in chronological order. VG-GUI-Bench and TASKER 29 
+
+Goal: {goal} Candidate segments (gaps between current frames): {segment_des} (GBFS Strategy - Focus on Missing Goal-Critical Actions) Determine which SINGLE segment is MOST LIKELY to contain the frames showing crucial missing UI actions needed to achieve the goal. Focus on gaps in the operation flow: where does the current frame sequence fail to explain HOW the user got from one state to the next? Return JSON format: {{"frame_descriptions": [{{"segment_id": "1", "duration": "xxx - xxx", "description": "Contains missing goal-critical actions"}}]}} 
+
+Prompt for Dijkstra Strategy (Focus on UI State Changes) 
+
+[System Prompt] You are a highly strict UI navigation assistant designed to output JSON. [User Prompt] You are provided with sequential images sampled from a UI interaction video. Each image is labeled with its frame index. The images are shown in chronological order. Candidate segments (gaps between current frames): {segment_des} (Dijkstra Strategy - Focus on UI State Changes) Identify which SINGLE candidate video segment contains the MOST significant UI state transition between its start frame and end frame. Look at the actual images for the start and end frames of each segment to judge the visual difference. In GUI operations, important UI state changes include (even if visually subtle): - Page or screen navigation (e.g., moving from one view to another) - Dialog boxes, pop-ups, or dropdown menus appearing or disappearing - Button click effects or toggle state changes - Text input or form field content changes - Loading spinners, progress bars, or status indicator updates - Sidebar, tab, or panel switching 30 S. Fan et al. 
+
+Prioritize the segment where the start frame and end frame represent the MOST DISTINCT operational states, even if the pixel-level difference appears small. Return JSON format: {{"frame_descriptions": [{{"segment_id": "1", "duration": "xxx - xxx", "description": "Most significant UI state transition"}}]}} 
+
+Prompt for A* Strategy (Balance Info and State Changes) 
+
+[System Prompt] You are a highly strict UI navigation assistant designed to output JSON. [User Prompt] You are provided with sequential images sampled from a UI interaction video. Each image is labeled with its frame index. The images are shown in chronological order. Goal: {goal} Candidate segments (gaps between current frames): {segment_des} (A* Strategy - Balance missing goal-relevant info and UI state changes) Identify ONE single candidate segment that BEST satisfies BOTH conditions simultaneously: 1. GOAL PROXIMITY: The segment likely contains crucial missing UI actions that are necessary steps toward achieving the Goal. Without seeing the frames in this segment, the operation flow has an unexplained gap. 2. STATE CHANGE MAGNITUDE: Look at the start frame and end frame images of each segment. The segment whose boundary frames show the MOST different UI states is more likely to contain important operations. In GUI operations, even subtle visual differences can represent critical steps (e.g., a single checkbox toggle, a dropdown selection, text typed into a field). Do NOT dismiss segments just because the visual change appears small - focus on whether an operational step is missing. Return JSON format: {{"frame_descriptions": [{{"segment_id": "1", "duration": "xxx - xxx", "description": "Best A* candidate: missing goal step + UI state change"}}]}} VG-GUI-Bench and TASKER 31 
+
+Prompt for Self-Evaluation (QA & Reflect) 
+
+[System Prompt] You are a highly strict UI navigation assistant designed to output JSON. [User Prompt] Task Goal: {goal} Your sequential UI analysis: {answer_str} As a strict UI automation tester, evaluate the VISUAL CONTINUITY of these frames. Can a user replicate this task step-by-step based on these frames? Evaluate your confidence level strictly: 1: Severe Jumps (There are completely missing screens or sudden state changes. E.g., jumping from home to settings without seeing the menu. MUST expand.) 2: Minor Disconnects (The flow makes sense, but some button clicks, typing actions, or intermediate loading states are missing. Should expand.) 3: Strong Continuity (The frames capture all important UI actions and transitions. The operation flow is clear and a user can follow without confusion. Very minor intermediate states may be missing but no key step is skipped.) CRITICAL RULE: UI tasks require high precision. If you have to GUESS what major action happened between any two frames, you MUST output 1 or 2. Do NOT output 3 unless the key action flow is clearly continuous with no important gaps. Output JSON exactly like this: {{"confidence": 1}} 
+
+F.2 VG-GUI-Bench Evaluation Prompts 
+
+For the evaluation on VG-GUI-Bench , the model is required to predict the next action. We define three different settings based on the provided visual context: No Video (baseline), Oracle Keyframe (ground truth guidance), and Selection Methods (keyframes extracted by algorithms like TASKER ). The prompt boxes below detail the system and user prompts used in these settings. 
+
+Prompt for “No Video” Setting 
+
+[System Prompt] You are an expert GUI automation agent. TASK OVERVIEW: 32 S. Fan et al. 
+
+You are assisting a user to complete a task on a mobile device. You are given a single screenshot showing the current state of the device UI. INPUT STRUCTURE: You will receive exactly ONE image and text context (Goal & Previous Actions): 1. **Target Screen (The ONLY image):** This is the Current State of the device UI. This is the screen you must interact with. YOUR REASONING PROCESS: 1. **Understand the goal:** Read the "Task Goal" to understand what the user is trying to accomplish. 2. **Locate your position:** Read the "Previous Actions" carefully. Determine which steps have already been completed and where you currently are in the overall workflow. 3. **Analyze the screen:** Examine the Target Screen thoroughly -identify all visible UI elements, buttons, text fields, menus, and interactive components. 4. **Infer the next step:** Based on the goal, previous actions, and the current screen state, reason about what the immediate next action should be. 5. **Extract coordinates:** Locate the exact UI element to interact with and derive its center coordinates. ### Output Format You must output EXACTLY ONE action using the following function call syntax: 1. **CLICK(x, y)** - Tap at the specific normalized coordinate (0.0-1.0). - Example: ‘CLICK(0.53, 0.81)‘ 2. **SCROLL(x1, y1, x2, y2)** - Swipe from (x1, y1) to (x2, y2). - Example: ‘SCROLL(0.5, 0.8, 0.5, 0.2)‘ 3. **TYPE(content)** - Type text into the focused input field. - Example: ‘TYPE("Search query")‘ 4. **PRESS(key)** - Keys: "BACK", "HOME", "ENTER". - Example: ‘PRESS("BACK")‘ 5. **ZOOM()** - Perform a zoom or multi-touch gesture. VG-GUI-Bench and TASKER 33 
+
+6. **FINISH()** - The task is completed or impossible to continue. ### Strict Rules - The coordinates MUST pinpoint the center of the target UI element on the Target Screen. - Coordinates must be normalized (0.0 to 1.0). - Output NOTHING ELSE but the function call string. No explanations.""" [User Prompt] Task Goal: {} Previous Actions: {} Based on the Task Goal, Previous Actions, and the current Target Screen, what is the exact Next Action? Output ONLY the action format: 
+
+Prompt for “Oracle Keyframe” Setting 
+
+[System Prompt] You are a GUI automation agent. YOUR TASK IS VISUAL EXTRACTION: You have been provided with a sequence of images. 1. The **VERY FIRST** image is the "Ground Truth" key (Target State), where the correct element is explicitly marked with a RED BOX. 2. The **LAST** image is the raw input (Current State) where you need to perform the action. 3. The images **BETWEEN** the first and the last are random examples/noise. **IGNORE THEM COMPLETELY.** CRITICAL INSTRUCTION: 1. FOCUS ONLY on the **FIRST** image. Locate the precise center (x, y) of the RED BOX. 2. IGNORE any red boxes in the intermediate images. 3. Map the coordinates from the FIRST image directly to the LAST image as your ‘CLICK(x, y)‘. 4. Do not perform semantic reasoning. Trust the RED BOX in the FIRST image implicitly. ### Output Format You must output EXACTLY ONE action using the following function call syntax: 1. **CLICK(x, y)** 34 S. Fan et al. 
+
+- Tap at the specific normalized coordinate (0.0-1.0). - Example: ‘CLICK(0.53, 0.81)‘ 2. **SCROLL(x1, y1, x2, y2)** - Perform a drag/swipe gesture. - Example: ‘SCROLL(0.5, 0.8, 0.5, 0.2)‘ 3. **TYPE(content)** - Type text. - Example: ‘TYPE("Hello World")‘ 4. **PRESS(key)** - Keys: "BACK", "HOME", "ENTER". - Example: ‘PRESS("BACK")‘ 5. **ZOOM()** - Perform a zoom or multi-touch gesture. 6. **FINISH()** - The task is completed or impossible to continue. ### Rules - Output ONLY the function call string. - Coordinates must be normalized (0.0 to 1.0). [User Prompt] Instruction: {} Previous Actions: {} Output the Next Action (Extract from the first image): 
+
+Prompt for “Selection Methods” Setting (e.g. TASKER) 
+
+[System Prompt] You are an elite UI automation agent. INPUT STRUCTURE: You will receive a sequence of images: 1. The images before the last one are "Golden Keyframes" dynamically extracted from a video tutorial. They demonstrate the EXACT, flawless visual sequence to successfully complete the user’s overarching goal. 2. The VERY LAST IMAGE is the "Target Screen" (Current State). This is the ONLY screen you will interact with. YOUR MISSION TO SUCCEED: VG-GUI-Bench and TASKER 35 
+
+1. Analyze the "Golden Keyframes" to deeply understand the workflow, the visual changes, and the ultimate intent. 2. Read the "Previous Actions" provided in the prompt to know exactly where you are in the sequence. 3. Determine the EXACT NEXT ACTION required to progress the task, using the Golden Keyframes as your visual cheat sheet. 4. Derive the coordinates (x, y) STRICTLY from the VERY LAST IMAGE (Target Screen). ### Output Format You must output EXACTLY ONE action using the following function call syntax: 1. **CLICK(x, y)** - Tap at the specific normalized coordinate (0.0-1.0). - Example: ‘CLICK(0.53, 0.81)‘ 2. **SCROLL(x1, y1, x2, y2)** - Example: ‘SCROLL(0.5, 0.8, 0.5, 0.2)‘ 3. **TYPE(content)** - Example: ‘TYPE("Search query")‘ 4. **PRESS(key)** - Keys: "BACK", "HOME", "ENTER". - Example: ‘PRESS("BACK")‘ 5. **ZOOM()** - Perform a zoom or multi-touch gesture. 6. **FINISH()** - The task is completed or impossible to continue. ### Strict Rules - The coordinates MUST pinpoint the center of the actionable UI element on the Target Screen. - Output NOTHING ELSE but the function call string. No explanations.""" [User Prompt] Task Goal: {} Previous Actions: {} Based on the provided Reference Frames and the Previous Actions, what is the exact Next Action to perform on the VERY LAST IMAGE (Target Screen)? Output ONLY the action format: 36 S. Fan et al. 
+
+## G Results on OSWorld 
+
+OSWorld [62] are not video-guided by design, so it does not directly match 
+
+TASKER ’s target setting. Still, we collected instructional videos for a subset of OSWorld tasks and evaluated Gemini-3-Flash with no video, uniform-sampled video frames, and TASKER-selected video frames. Table 8 shows that TASKER improves overall performance, though gains vary by domain. 
+
+> Table 8: Task Success Rate of Gemini-3-Flash on OSWorld Subset . The best performances are highlighted in bold.
+
+Method Overall Impress Writer OS ThBrd VSCode No Video 46.27 32.76 46.65 46.67 64.29 38.46 Uniform Sample Frames 49.13 49.19 46.65 46.67 57.14 46.15 TASKER (ours) 50.63 49.49 39.98 40.00 64.29 61.54
