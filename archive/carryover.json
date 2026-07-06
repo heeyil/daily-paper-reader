@@ -1,27 +1,304 @@
 {
-  "generated_at": "2026-07-03T03:09:45.843419+00:00",
-  "updated_date": "20260604-20260703",
+  "generated_at": "2026-07-06T05:46:46.707584+00:00",
+  "updated_date": "20260627-20260706",
   "carryover_days": 9,
   "tag_states": {
     "agent-LSH": {
-      "updated_date": "20260604-20260703",
+      "updated_date": "20260627-20260706",
       "carryover_days": 9,
       "items": []
     },
     "moe-routing": {
-      "updated_date": "20260604-20260703",
+      "updated_date": "20260627-20260706",
       "carryover_days": 9,
-      "items": []
+      "items": [
+        {
+          "id": "2606.31163v2",
+          "source": "arxiv",
+          "title": "ComplianceGate: Classifier-Gated Multi-Tier LLM Routing for Inference in Regulated Industries",
+          "abstract": "Large language models deployed in regulated industries operate under two constraints: compliance enforcement and cost efficiency. Personally identifiable information (PII) in user queries can reach model endpoints before the system determines whether that data should leave its jurisdictional boundary. Serving all queries through a single large model consumes full GPU capacity regardless of query complexity while offering no mechanism for geographic routing. Mixture-of-Experts architectures do not address this routing occurs between expert layers within the model after data has already arrived at the endpoint, with all experts loaded in memory regardless of query complexity. We propose a classifier-gated routing architecture that enforces compliance by design. A trained encoder classifier sits before any decoder inference, evaluating each query for complexity and data sensitivity, then routing it to an appropriately sized dense model in the appropriate geographic location. PII-containing queries route to local endpoints before any LLM computation begins, making data residency violations structurally impossible. Simple queries reach small, fast models at a fraction of the cost. Our evaluation on 600 queries demonstrates 39% median latency reduction, 33-52% cost savings depending on query distribution, and generation throughput of 122-200 tokens/second versus 50-64 for the baseline. The encoder classifier achieves 99.2% accuracy with near-perfect PII recall at 7ms inference overhead, establishing pre-inference classification as a practical path to compliance-by-design LLM deployment.",
+          "authors": [
+            "Abhishek Dey"
+          ],
+          "primary_category": "cs.LG",
+          "categories": [
+            "cs.LG",
+            "cs.AI",
+            "cs.CL"
+          ],
+          "published": "2026-06-30T05:49:50+00:00",
+          "link": "https://arxiv.org/pdf/2606.31163v2",
+          "tags": [
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:moe-routing"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "classifier-gated routing for LLM inference in regulated industries",
+          "llm_evidence_cn": "面向受监管行业的LLM推理分类器门控路由",
+          "llm_evidence": "面向受监管行业的LLM推理分类器门控路由",
+          "canonical_evidence": "面向受监管行业的LLM推理分类器门控路由",
+          "llm_tldr_en": "Proposes a classifier-gated multi-tier routing architecture for LLM inference that enforces compliance and cost efficiency by routing queries based on PII and complexity.",
+          "llm_tldr_cn": "该论文针对受监管行业中LLM部署面临的合规与成本双重约束，提出了一种分类器门控的多层路由架构。该架构在推理前对查询进行分类，根据是否包含PII以及复杂度将查询路由到不同层级或地理端点，避免敏感数据越界并节约GPU资源。实验结果表明该方案能有效平衡合规性与推理成本。",
+          "llm_tldr": "该论文针对受监管行业中LLM部署面临的合规与成本双重约束，提出了一种分类器门控的多层路由架构。该架构在推理前对查询进行分类，根据是否包含PII以及复杂度将查询路由到不同层级或地理端点，避免敏感数据越界并节约GPU资源。实验结果表明该方案能有效平衡合规性与推理成本。",
+          "llm_tags": [
+            "query:moe-routing"
+          ],
+          "matched_query_tag": "query:moe-routing",
+          "matched_query_text": "model routing in LLM inference",
+          "matched_requirement_id": "req-10",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.31163v2",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.00053v1",
+          "source": "arxiv",
+          "title": "SWE-Router: Routing in Multi-turn Agentic Software Engineering Tasks",
+          "abstract": "Large language models (LLMs) embedded in multi-turn agentic harnesses are reshaping software engineering (SWE), but routing every task to a frontier model is wasteful when many issues admit cheap fixes. Existing LLM routers operate on the task description alone, which inherits an information-theoretic Bayes-error floor in agentic settings: a similar issue can hide either a localized typo or a multi-module refactor, and the prompt does not separate the two. We introduce SWE-Router, a value-based temporal approach that lets a cheap model run for a few exploratory turns and reads the resulting partial trajectory before deciding whether to continue cheaply or to escalate to an expensive model. We provide a Bayes-optimality theorem showing that conditioning on the partial trajectory never harms routing and is strictly better whenever exploration is informative. Across the LLM pairs of weak and strong models spanning the contemporary cost--capability frontier, we show that SWE-Router greatly improves the cost efficiency of SWE tasks, while maintaining the majority of the performances of the stronger model. We additionally release a multi-LLM trajectory dataset which allows reproduction of our trajectory-level routing.",
+          "authors": [
+            "Seongho Son",
+            "Sangwoong Yoon",
+            "Jiahua Tang",
+            "Shuhan Wang",
+            "Lorenz Wolf",
+            "Ilija Bogunovic"
+          ],
+          "primary_category": "cs.SE",
+          "categories": [
+            "cs.SE",
+            "cs.AI"
+          ],
+          "published": "2026-06-30T01:46:26+00:00",
+          "link": "https://arxiv.org/pdf/2607.00053v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-dist",
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:agent-LSH",
+            "query:agent-dist",
+            "query:agent-mix",
+            "query:moe-routing"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "value-based temporal routing in multi-turn agentic software engineering tasks",
+          "llm_evidence_cn": "多轮智能软件工程任务中的基于值的时序路由",
+          "llm_evidence": "多轮智能软件工程任务中的基于值的时序路由",
+          "canonical_evidence": "多轮智能软件工程任务中的基于值的时序路由",
+          "llm_tldr_en": "Presents SWE-Router, a value-based temporal routing method that explores cheap model for a few turns before deciding to escalate, improving cost-efficiency in multi-turn agentic tasks.",
+          "llm_tldr_cn": "该论文针对多轮智能软件工程任务中一刀切使用前沿模型导致浪费的问题，提出了SWE-Router路由方法。该方法先让廉价模型运行若干探索轮次，根据部分轨迹评估是否升级到昂贵模型，并提供了贝叶斯最优性证明。实验表明SWE-Router在保持修复率的同时显著降低了推理成本。",
+          "llm_tldr": "该论文针对多轮智能软件工程任务中一刀切使用前沿模型导致浪费的问题，提出了SWE-Router路由方法。该方法先让廉价模型运行若干探索轮次，根据部分轨迹评估是否升级到昂贵模型，并提供了贝叶斯最优性证明。实验表明SWE-Router在保持修复率的同时显著降低了推理成本。",
+          "llm_tags": [
+            "query:moe-routing"
+          ],
+          "matched_query_tag": "query:moe-routing",
+          "matched_query_text": "model routing in LLM inference",
+          "matched_requirement_id": "req-10",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.00053v1",
+          "carry_days": 1
+        }
+      ]
     },
     "agent-dist": {
-      "updated_date": "20260604-20260703",
+      "updated_date": "20260627-20260706",
       "carryover_days": 9,
-      "items": []
+      "items": [
+        {
+          "id": "2606.32014v1",
+          "source": "arxiv",
+          "title": "Scalable Behaviour Cloning on Browser Using via Skill Distillation",
+          "abstract": "Internet users collectively perform an enormous range of skilled work through web browsers, from software development and document editing to search, forms, and enterprise workflows, making human browsing a highly scalable but under-exploited source of reusable browser skills. We argue that the bottleneck for browser agents is decision-making under incomplete information rather than low-level operation, and that the priors agents lack are already implicit in human interaction traces. We therefore study scalable behavior cloning for browser agents via skill distillation, converting user interaction trajectories into compact natural-language skills that agents can read, retrieve, reuse, and compose directly. We further organize the distilled skills into a skill graph so that growth proceeds through consolidation rather than unbounded accumulation. This suggests that the scalability of browser agents may come less from manually designed tasks and more from the collective skills already expressed by internet users. Our project is available at: https://lab.einsia.ai/browserbc/.",
+          "authors": [
+            "Kaisen Yang",
+            "Zheng Jiang",
+            "Yuzhao Peng",
+            "Houde Qian",
+            "Boshi Zhang",
+            "Youjie Zheng",
+            "Shijin Hong",
+            "Qingle Liu",
+            "Ruoyu Han",
+            "Bohan Lyu",
+            "Bingxiang He",
+            "Eren Cai",
+            "Calvin Xiao",
+            "Qinhuai Na"
+          ],
+          "primary_category": "cs.CL",
+          "categories": [
+            "cs.CL"
+          ],
+          "published": "2026-06-30T17:46:23+00:00",
+          "link": "https://arxiv.org/pdf/2606.32014v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-dist",
+            "keyword:agent-mix",
+            "query:agent-LSH",
+            "query:agent-dist",
+            "query:agent-mix"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "studies scalable behavior cloning for browser agents via skill distillation",
+          "llm_evidence_cn": "通过技能蒸馏实现浏览器智能体的可扩展行为克隆",
+          "llm_evidence": "通过技能蒸馏实现浏览器智能体的可扩展行为克隆",
+          "canonical_evidence": "通过技能蒸馏实现浏览器智能体的可扩展行为克隆",
+          "llm_tldr_en": "Scalable Behavior Cloning on Browser via Skill Distillation converts human interaction trajectories into compact natural-language skills, enabling browser agents to reuse and compose skills.",
+          "llm_tldr_cn": "针对浏览器智能体决策信息不完全的瓶颈，本文提出通过技能蒸馏将用户交互轨迹转化为紧凑的自然语言技能。智能体可以直接读取、检索、复用和组合这些技能，并组织成技能库。实验表明该方法能有效提升浏览器智能体的任务完成能力，为智能体蒸馏提供了可扩展的方案。",
+          "llm_tldr": "针对浏览器智能体决策信息不完全的瓶颈，本文提出通过技能蒸馏将用户交互轨迹转化为紧凑的自然语言技能。智能体可以直接读取、检索、复用和组合这些技能，并组织成技能库。实验表明该方法能有效提升浏览器智能体的任务完成能力，为智能体蒸馏提供了可扩展的方案。",
+          "llm_tags": [
+            "query:agent-dist"
+          ],
+          "matched_query_tag": "query:agent-dist",
+          "matched_query_text": "agent distillation techniques",
+          "matched_requirement_id": "req-15",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.32014v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2606.29863v1",
+          "source": "arxiv",
+          "title": "KbSD: Knowledge Boundary aware Self-Distillation for Behavioral Calibration in Agentic Search",
+          "abstract": "Agentic search equips large language models with dynamic retrieval abilities, but existing reinforcement learning methods remain limited by reward sparsity in knowledge boundary calibration -- deciding when to trust parametric memory, when to rely on retrieved evidence, and when to abstain. Binary rewards can penalize undesirable outcomes, but provide little guidance on the reasoning process required to make calibrated decisions across different knowledge states. To address this, we propose KbSD (Knowledge boundary Self-Distillation), a framework that tackles this limitation through dense token-level supervision, outcome-level sparse rewards, and quadrant-adaptive optimization. KbSD constructs a hint-augmented teacher, architecturally identical to the student, that receives explicit knowledge boundary signals -- including parametric certainty, retrieval quality, and ground-truth answers -- to generate calibrated reasoning demonstrations. This information-asymmetric self-distillation enables dense supervision without requiring a larger external model. To further account for the heterogeneous reasoning distributions across knowledge states, we introduce a quadrant-adaptive distillation objective: reverse KL for concentrated integration, forward KL for diverse refusal, and Pareto-optimal bidirectional KL for asymmetric quadrants requiring both precision and coverage. Experiments on multiple benchmarks show that KbSD consistently improves both task accuracy and hallucination mitigation over strong baselines, with the largest gains appearing in the challenging quadrants where sparse rewards are least informative.",
+          "authors": [
+            "Tao Feng",
+            "Xinke Jiang",
+            "Chao Wu"
+          ],
+          "primary_category": "cs.CL",
+          "categories": [
+            "cs.CL"
+          ],
+          "published": "2026-06-29T06:56:18+00:00",
+          "link": "https://arxiv.org/pdf/2606.29863v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-dist",
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:agent-LSH",
+            "query:agent-dist",
+            "query:agent-mix"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "self-distillation for behavioral calibration in agentic search",
+          "llm_evidence_cn": "代理搜索中的自蒸馏行为校准",
+          "llm_evidence": "代理搜索中的自蒸馏行为校准",
+          "canonical_evidence": "代理搜索中的自蒸馏行为校准",
+          "llm_tldr_en": "Proposes KbSD, a knowledge boundary self-distillation framework with dense token-level supervision and quadrant-adaptive optimization for calibrating agent decisions in agentic search.",
+          "llm_tldr_cn": "针对智能体搜索中奖励稀疏导致知识边界校准困难的问题，提出KbSD框架，通过密集令牌级监督和象限自适应优化进行自蒸馏，实现对智能体行为的校准。该方法能有效指导智能体何时信任参数记忆、依赖检索证据或弃权，从而提升决策质量。",
+          "llm_tldr": "针对智能体搜索中奖励稀疏导致知识边界校准困难的问题，提出KbSD框架，通过密集令牌级监督和象限自适应优化进行自蒸馏，实现对智能体行为的校准。该方法能有效指导智能体何时信任参数记忆、依赖检索证据或弃权，从而提升决策质量。",
+          "llm_tags": [
+            "query:agent-dist"
+          ],
+          "matched_query_tag": "query:agent-dist",
+          "matched_query_text": "agent distillation techniques",
+          "matched_requirement_id": "req-15",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.29863v1",
+          "carry_days": 1
+        }
+      ]
     },
     "agent-mix": {
-      "updated_date": "20260604-20260703",
+      "updated_date": "20260627-20260706",
       "carryover_days": 9,
-      "items": []
+      "items": [
+        {
+          "id": "2606.30189v1",
+          "source": "arxiv",
+          "title": "DAIN: Dynamic Agent-Based Interaction Network for Efficient and Collaborative Multimodal Reasoning",
+          "abstract": "Current multimodal fusion approaches, particularly those based on static Mixture-of-Experts (MoE) architectures, often struggle to provide the adaptive and efficient collaborative reasoning required by complex real-world applications. We introduce the Dynamic Agent-based Interaction Network (DAIN), which reconceptualizes multimodal fusion as a dynamic, multi-agent collaborative process. DAIN employs a context-aware Meta-Controller that dynamically schedules sparse activation of specialized interaction agents and orchestrates compressed inter-agent communication for consensus-building. The framework is guided by a multi-objective loss function that jointly optimizes task accuracy, agent specialization, and operational efficiency through sparse activation and communication regularization. Comprehensive evaluations across five diverse benchmarks -- ADNI, MIMIC-IV, MM-IMDB, CMU-MOSI, and ENRICO -- establish DAIN as a new state-of-the-art, delivering significant performance improvements including a 2.6\\% accuracy gain on ADNI. Ablation studies verify the critical roles of both dynamic scheduling and agent communication. Furthermore, DAIN offers enhanced interpretability by exposing context-dependent agent roles and collaboration patterns while maintaining computational efficiency through sample-wise sparse agent activation. Our work demonstrates the promise of dynamic, agent-based paradigms for multimodal reasoning.",
+          "authors": [
+            "Xinxin Chen",
+            "Yuchen Li",
+            "Zihan Wang",
+            "Haoyu Zhang",
+            "Ruixin Liu",
+            "Mingyuan Zhao"
+          ],
+          "primary_category": "cs.CL",
+          "categories": [
+            "cs.CL"
+          ],
+          "published": "2026-06-29T12:04:01+00:00",
+          "link": "https://arxiv.org/pdf/2606.30189v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-dist",
+            "keyword:agent-mix",
+            "query:agent-LSH",
+            "query:agent-dist",
+            "query:agent-mix"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "dynamic scheduling of specialized interaction agents via a Meta-Controller",
+          "llm_evidence_cn": "通过元控制器动态调度专门交互代理",
+          "llm_evidence": "通过元控制器动态调度专门交互代理",
+          "canonical_evidence": "通过元控制器动态调度专门交互代理",
+          "llm_tldr_en": "DAIN reframes multimodal fusion as a dynamic multi-agent collaboration, using a context-aware Meta-Controller to sparsely activate specialized agents and compress inter-agent communication.",
+          "llm_tldr_cn": "论文提出动态基于代理的交互网络（DAIN），将多模态融合转化为多代理协作过程。元控制器根据上下文动态调度专业代理，并通过压缩通信达成共识。多目标损失函数联合优化准确率、专业性和效率，在多个基准上取得优异表现。",
+          "llm_tldr": "论文提出动态基于代理的交互网络（DAIN），将多模态融合转化为多代理协作过程。元控制器根据上下文动态调度专业代理，并通过压缩通信达成共识。多目标损失函数联合优化准确率、专业性和效率，在多个基准上取得优异表现。",
+          "llm_tags": [
+            "query:agent-mix"
+          ],
+          "matched_query_tag": "query:agent-mix",
+          "matched_query_text": "mixture of agents method",
+          "matched_requirement_id": "req-17",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.30189v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2606.31413v1",
+          "source": "arxiv",
+          "title": "Learning to Select, Not Relearn: Hard-Routed Mixtures of Reasoning LoRAs",
+          "abstract": "Composing independently trained LoRA adapters into a single large language model is useful for multi-domain adaptation, especially when the original training data cannot be shared. A common approach is to use MoE-style routing over LoRA experts, but for frozen pretrained adapters, soft weighted combinations can change the unit-scale additive update under which each LoRA module was originally trained. We propose \\textbf{Hard-Routed MoR-LoRA}, a two-stage framework for composing frozen reasoning LoRA experts through unit-scale hard selection. First, domain-specific LoRA adapters are trained independently using reinforcement learning from verifiable feedback to obtain reasoning experts. Then, all experts are frozen, reasoning traces are distilled from them, and only a lightweight shared router together with a small attention LoRA is trained for integration. The router selects exactly one expert per token using hard top-1 routing, while a straight-through estimator enables gradient-based training. Experiments across five benchmarks, multiple model scales, and additional model families show that Hard-Routed MoR-LoRA preserves expert behavior while requiring substantially fewer trainable parameters than soft-routing mixture baselines. Our analysis further shows that normalized soft mixtures often concentrate most routing mass on a single expert, suggesting that hard unit-scale routing provides a simple and efficient abstraction for frozen LoRA expert composition.",
+          "authors": [
+            "Seyed Alireza Molavi",
+            "Zhan Su",
+            "Yan Hu",
+            "Peyman Sheikholharam Mashhadi",
+            "Stefan Byttner",
+            "Prayag Tiwari"
+          ],
+          "primary_category": "cs.AI",
+          "categories": [
+            "cs.AI",
+            "cs.LG"
+          ],
+          "published": "2026-06-30T09:40:38+00:00",
+          "link": "https://arxiv.org/pdf/2606.31413v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:agent-LSH",
+            "query:agent-mix",
+            "query:moe-routing"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "hard-routed mixtures of reasoning LoRAs with distillation, relevant to mixture of agents method",
+          "llm_evidence_cn": "对推理LoRA进行硬路由混合，涉及蒸馏，与混合agent方法相关",
+          "llm_evidence": "对推理LoRA进行硬路由混合，涉及蒸馏，与混合agent方法相关",
+          "canonical_evidence": "对推理LoRA进行硬路由混合，涉及蒸馏，与混合agent方法相关",
+          "llm_tldr_en": "Proposes Hard-Routed MoR-LoRA, a two-stage framework that hard-selects among frozen reasoning LoRA experts and distills traces, enabling efficient composition.",
+          "llm_tldr_cn": "组合独立训练的LoRA适配器到单一模型是多领域适应的常见需求。本文提出硬路由MoR-LoRA框架，先基于强化学习训练领域特定的推理LoRA专家，然后冻结它们并通过硬选择进行组合，同时蒸馏推理轨迹以避免重新学习。该方法实现了高效的多领域推理组合，类似于混合agent的协作方式。",
+          "llm_tldr": "组合独立训练的LoRA适配器到单一模型是多领域适应的常见需求。本文提出硬路由MoR-LoRA框架，先基于强化学习训练领域特定的推理LoRA专家，然后冻结它们并通过硬选择进行组合，同时蒸馏推理轨迹以避免重新学习。该方法实现了高效的多领域推理组合，类似于混合agent的协作方式。",
+          "llm_tags": [
+            "query:agent-mix"
+          ],
+          "matched_query_tag": "query:agent-mix",
+          "matched_query_text": "mixture of agents method",
+          "matched_requirement_id": "req-17",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.31413v1",
+          "carry_days": 1
+        }
+      ]
     }
   }
 }

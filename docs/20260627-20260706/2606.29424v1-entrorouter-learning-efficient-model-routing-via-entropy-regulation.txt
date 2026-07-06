@@ -1,0 +1,728 @@
+Title: EntroRouter: Learning Efficient Model Routing via Entropy Regulation
+
+URL Source: https://arxiv.org/pdf/2606.29424v1
+
+Published Time: Tue, 30 Jun 2026 01:15:20 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# ENTRO ROUTER : Learning Efficient Model Routing via Entropy Regulation 
+
+Kaiyi Zhang 1,2*, Xueliang Zhao 3*, Zhuocheng Gong 4
+
+Wei Wu 2†, Yankai Lin 1†
+
+> 1
+
+Gaoling School of Artificial Intelligence, Renmin University of China 
+
+> 2
+
+Ant International, 3The University of Hong Kong, 4Ant Group 
+
+B {kyzhang, yankailin}@ruc.edu.cn , wuwei19850318@gmail.com 
+
+Abstract 
+
+Model routing balances solution accuracy and computational cost by selecting among models of varying capabilities. While recent multi-round frameworks interleave reasoning and planning, we identify a structural failure mode termed Trust Region Collapse. We demonstrate that the deep coupling of reasoning and rout-ing, exacerbated by the dominance of strong pre-training priors under sparse supervision, leads to degenerate local optima where capa-ble experts are systematically suppressed. To decouple these processes, we propose E NTRO -ROUTER , a single-round routing framework that treats entropy regulation as a core objec-tive. We first initialize the policy via Soft Su-pervision, fitting a distribution of suitable mod-els to establish a high-entropy prior for explo-ration. Subsequently, we stabilize Reinforce-ment Learning using a Soft Anchor, which uti-lizes offline capability estimates to orchestrate controlled entropy contraction within a safe trust region. Extensive experiments demon-strate that E NTRO ROUTER retains 98.3% of the strongest expert’s accuracy while reducing computational costs by 48.25%. 
+
+1 Introduction 
+
+The rapid advancements in Large Language Mod-els (LLMs) have introduced a critical trade-off in deployment: while larger models (e.g., Qwen3-235B) offer superior reasoning capabilities, they incur prohibitive computational costs and latency. Conversely, smaller models (e.g., Qwen3-4B) are efficient but often falter on complex tasks. This trade-off has necessitated the development of model routing systems, which aim to dynami-cally select the most cost-effective model for a given query without compromising solution qual-ity (Chen et al., 2023; Šakota et al., 2024). 
+
+> *Equal Contribution.
+> †Corresponding author: Wei Wu and Yankai Lin.
+
+Current research explores two primary paradigms to solve this routing problem: iterative multi-round agents (Zhang et al., 2025) and deterministic single-round classifiers (Ong et al., 2024). However, despite their architectural differences, we identify that both paradigms fre-quently suffer from a unified structural pathology: 
+
+Premature Entropy Collapse . This failure to properly manage the policy’s uncertainty, whether in the action space or the label space, prevents routers from exploring and learning the optimal cost-accuracy frontier. The emerging multi-round paradigm (e.g., Router-R1) manifests as a collapse in the Action Space. Specifically, the router acts as an agent that decides when to query external experts. How-ever, through empirical replication in the mathe-matical domain, we observe that the Reinforce-ment Learning (RL) process frequently drives the probability of calling external experts to zero (as shown in Figure 1). We demonstrate that this is a structural failure mode arising from the coupling of planning and execution. When a small router fails to comprehend the Out-Of-Distribution rea-soning traces from larger experts, dominated by its strong pre-training priors, it effectively disre-gards the expert’s response. Consequently, the RL optimizer perceives the expert call as a high-cost, zero-gain action, prematurely converging to a de-terministic policy that refuses to route. We term this phenomenon Trust Region Collapse. Parallel to this, traditional single-round ap-proaches suffer from a corresponding collapse in the Label Space. This implies that in the final selec-tion, the router is forced to prematurely commit to a rigid, deterministic choice. Existing baselines (Ong et al., 2024) rely on Hard Supervision (e.g., one-hot labels), forcing the router to mimic a single “best” model. This artificially suppresses the in-herent ambiguity of problem difficulty. By forcing the target probability distribution to collapse to a       
+
+> arXiv:2606.29424v1 [cs.CL] 28 Jun 2026 0510 15 20 25 30
+> Training Step
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Avg. Model Calls
+> Qwen3-4B
+> Qwen3-8B Figure 1: Empirical observation of Trust Region Col-lapse. Despite successful cold-start fine-tuning, the sub-sequent RL process rapidly suppresses the probabil-ity of calling external models (Qwen3-4B/8B) to zero. This represents a premature entropy collapse, effectively abandoning the expert solver.
+
+sharp decision boundary too early during Super-vised Fine-Tuning (SFT), the router loses the rep-resentational entropy required to capture nuanced trade-offs, rendering the policy prone to overfitting. To address these dual failures of entropy manage-ment, we propose E NTRO ROUTER , a framework that treats entropy regulation as a first-class objec-tive. We adopt the single-round routing paradigm and introduce a two-stage training pipeline de-signed to harmonize exploration and exploitation. First, to prevent the label-space collapse typical of hard baselines, we initialize the router via Soft Su-pervision (§ 3.2). Instead of fitting a deterministic label, we train on a distribution of viable models. This establishes a high-entropy prior, preserving the policy’s capacity to recognize difficulty ambi-guity. Second, during the RL phase, we regular-ize the optimization using a Soft Anchor derived from offline capability estimates (§ 3.3). Crucially, this mechanism serves a dual purpose: it defines a safe trust region to prevent the policy from drifting into degeneration, while simultaneously guiding the router to rapidly minimize entropy within this region. This allows the model to transition from the exploratory SFT state to a decisive, cost-efficient strategy that confidently selects reliable experts. We extensively evaluate E NTRO ROUTER on 7 rigorous mathematical reasoning benchmarks. Re-markably, E NTRO ROUTER retains 98.3% of the strongest fixed-expert baseline’s accuracy while reducing computational costs by 48.25% . Further-more, our framework exhibits strong generalization to out-of-distribution tasks. On widely recognized benchmarks, E NTRO ROUTER reduces costs by 
+
+40.5% while maintaining a relative accuracy within 
+
+95.4% of the strongest fixed-expert baseline. Our main contributions are threefold. First ,we formalize a sufficient condition under which multi-round routing suffers Trust Region Col-lapse , a failure regime where strong router pri-ors suppress expert usage. Second , we propose ENTRO ROUTER , a framework that orchestrates a 
+
+controlled entropy contraction process. It uti-lizes Soft Supervision to establish a high-entropy exploration prior and employs a Soft Anchor to reg-ularize RL optimization within a safe trust region. 
+
+Third , we verify the effectiveness of our proposed method through extensive experiments on both mathematical benchmarks and out-of-distribution datasets. 
+
+2 Preliminaries 
+
+In this section, we formalize the problem of LLM routing within the framework of a Markov Deci-sion Process (MDP). We establish the notations used throughout the paper and review the prevail-ing multi-round routing paradigm, exemplified by Router-R1 (Zhang et al., 2025), which serves as the primary baseline for our analysis. 
+
+2.1 Problem Formulation 
+
+We formulate the model routing task as a sequential decision-making process where a policy model (the 
+
+Router ) selects an inference model (the Expert ) at each step to solve the user query. Let x denote the input query, and let M = {m1, m 2, . . . , m K }
+
+represent the set of available candidate models that the router can choose from. We define this process as a tuple ⟨S , A, P, R⟩ . This routing process gen-erates a trajectory τ = ( s0, a 0, . . . , s L) based on the policy and the selected models. The components of the tuple are defined as fol-lows. The State Space ( S) consists of states st ∈ S 
+
+representing the accumulated context at time step 
+
+t, initialized with the user query s0 = x. The Ac-tion Space ( A) is defined as A = M ∪ { mself },comprising both external candidate models and the router itself ( mself ). Regarding Transition Dynam-ics ( P), the state update depends on the selected action: if the router performs internal reasoning (i.e., at = mself ), it generates an output ot, updat-ing the state as st+1 = st ⊕ ot, where ⊕ denotes se-quence concatenation; for external delegation (i.e., 
+
+at ∈ M ), the router formulates a query qt, receives a response ot generated by the external model at,and updates the state to include the interaction as st+1 = st ⊕ qt ⊕ ot. Finally, the Reward Function (R) balances solution correctness against computa-tional cost. We define the total return of a trajectory as R(τ ) = racc − λ · Ctotal , where racc ∈ { 0, 1} is a sparse binary indicator for solution correctness at the terminal state, and Ctotal = P 
+
+> t
+
+C(at) · | ot| rep-resents the accumulated token-based cost, where 
+
+C(at) is the per-token cost of at.The objective of the router is to learn a pol-icy πθ(a | s) that maximizes the expected return: 
+
+J(θ) = Eτ ∼πθ [R(τ )] . In this formulation, λ serves as a hyperparameter controlling the trade-off be-tween accuracy and cost. We operate under the premise of a positive correlation between infer-ence cost and model capability. We assume that 
+
+M consists exclusively of efficient frontier mod-els, thereby precluding cases where a candidate is both more computationally expensive and function-ally inferior to another. In the simplest scenario (single-step routing), the router selects a model based solely on the initial query x without interme-diate reasoning steps. 
+
+2.2 The Multi-Round Routing Paradigm 
+
+Recent advancements, such as Router-R1 (Zhang et al., 2025), generalize the routing task to a sequen-tial setting. In this paradigm, the router operates as an agent interleaving internal reasoning steps (at = mself ) with external model calls ( at ∈ M ). Unlike single-step routing where the router acts solely as a dispatcher, this framework requires the router to effectively interpret and integrate the ex-ternal model’s output ot to update the state and progress toward the solution. Crucially, this formulation intertwines the rout-ing decision with the router’s own reasoning ex-ecution . Consequently, the policy’s potential is bounded by the router’s ability to assimilate com-plex information, a process often obstructed by the dominance of its own pre-training priors. As demonstrated in the following section, this depen-dency can lead to structural failures, where the router struggles to optimize the cost-accuracy trade-off due to stubborn internal priors and capability mismatches under sparse outcome reward. 
+
+3 Methodology 
+
+We begin by defining the theoretical failure mode observed in multi-round routing (§ 3.1). Motivated by this analysis, we propose E NTRO ROUTER , a framework that treats routing as a single-round de-cision process. Specifically, our method is built upon a two-stage training pipeline: In the first stage, we initialize the policy by distributing prob-ability mass across multiple viable models instead of assigning a single hard label. This entropy-preserving initialization prevents premature con-vergence and maintains the capacity for further exploration (§ 3.2). Subsequently, we fine-tune the policy via RL, regularizing updates against a reference distribution derived from offline capa-bility estimates. This stage implements entropy contraction within a safe trust region, dynamically optimizing the trade-off between solution correct-ness and computational cost while sharpening the final routing decision (§ 3.3). 
+
+3.1 Policy Degeneration in Multi-Round Routing 
+
+We identify a critical instability that can arise in the multi-round routing paradigm under sparse out-come supervision and strong router pre-training pri-ors. Despite cold-start fine-tuning, the subsequent RL process frequently drives the probability of uti-lizing the strong model to zero, effectively abandon-ing the expert solver. Consequently, the policy’s exploration frontier collapses into a degenerate lo-cal optimum of “always refusing to escalate,” a phenomenon we term Trust Region Collapse . From an information-theoretic perspective, this manifests as a pathological and premature reduction in policy entropy: the router rapidly converges to a determin-istic, low-entropy state of refusal, thereby eliminat-ing the exploration variance required to discover better strategies. We attribute this collapse to a functional confla-tion of planning and execution, which triggers a fatal causal chain characterized by three distinct phases. First: When the expert model gener-ates a complex reasoning trace in response to the router’s request, the smaller router often struggles to comprehend the logic because the trace is Out-Of-Distribution relative to its own training distribu-tion. Second: Dominated by its own pre-training priors, the router effectively ignores the expert’s provided context and falls back to generating the solution using its own limited capabilities. Third: 
+
+Since the router has reverted to its own capabilities, the final outcome is no better than if it had acted alone. However, under sparse outcome based re-wards, the RL optimizer observes a trajectory with 
+
+high cost (calling the expert) but no performance gain . Lacking progress reward supervision to pin-𝑚 !"#$ 𝑚 % 𝑚 & 𝑚 ' 𝑚 !"#$ 𝑚 % 𝑚 & 𝑚 '               
+
+> Soft Supervision Targets
+> Step 1: Difficulty Estimation Step 2: Target Distribution
+> Pass Rate 𝜅 Target Prob
+> Threshold 𝜏
+> 𝑚 !"#$ 𝑚 %𝑚 &𝑚 '𝑚 !"#$ 𝑚 %𝑚 &𝑚 '
+> Pass Rate 𝜅 Target Prob
+> Hard Supervision
+> Target
+> Scenario A: Probe Fails, g =0
+> Scenario B: Probe Passes, g=1
+> m!"#$
+> ℳ$%&'
+
+(a) Stage I: SFT via Soft Supervision 𝑚 ! 𝑚 " 𝑚 #            
+
+> 𝑚 !𝑚 "𝑚 #
+> Pass Rate 𝜅
+> Threshold 𝜏
+> 𝜋 ref
+> Soft
+> Anchor
+> 𝑚 !𝑚 "𝑚 #
+> 𝑚 !𝑚 "𝑚 #
+> Cost r
+> 𝑚 !𝑚 "𝑚 #
+> Total Reward
+> Capable
+> And Efficient
+> Strong
+> But Costly
+> Cheap
+> But Risky
+> Expected
+> Utility
+
+(b) Stage II: Reinforcement Learning with Soft Anchor 
+
+Figure 2: Overview of the E NTRO ROUTER Training Framework. (a) Stage I: SFT via Soft Supervision. We employ a soft supervision strategy to prevent premature policy collapse. A weak probe mprobe identifies query difficulty: for complex queries (Scenario A), we spread the training target across all qualified experts in Mtopk ,deliberately maintaining a high-entropy policy to preserve exploration capacity. (b) Stage II: Reinforcement Learning with Soft Anchor. We refine the policy via GRPO using an expectation-grounded reward. By regularizing the update with a Soft Anchor (πref ), we constrain the router within a safe trust region while simultaneously penalizing entropy to transition from a broad exploration state to a decisive, high-confidence routing state. 
+
+point the comprehension failure, the optimizer sim-ply penalizes the escalation action. Consequently, from a value-function perspective, the advantage of escalation turns negative. Since calling the expert incurs a computational cost but yields no improvement in accuracy, the optimizer perceives the expert call as strictly inferior to inter-nal reasoning, forcing the policy to collapse. 
+
+Proposed Solution: Single-Round Routing. 
+
+The analysis above shows that the failure stems from forcing the small router to interact with and process the reasoning outputs of external expert models . To alleviate this issue, we adopt E NTRO -ROUTER , a framework built upon the single-round routing paradigm, as the most direct and robust solution. Under E NTRO ROUTER , the router de-cides which model to use based solely on the initial question. This formulation shifts the router’s role: unlike the multi-round reasoner that interacts with and comprehend the external solution, our router operates as a meta-analyzer , estimating the query’s difficulty to dispatch it to the most appropriate can-didate model based solely on the initial question. 
+
+3.2 Stage I: SFT via Soft Supervision 
+
+Our goal is to train a router policy πθ(m | x)* that analyzes the query x complexity via a reasoning 
+
+> *
+
+Following Zhao et al. (2025), we equip the router with an intermediate reasoning step to explicitly assess query com-plexity before selection. 
+
+trace before selecting the most suitable model m.To prevent the router from overfitting to a single deterministic choice, we introduce SFT with soft supervision. Specifically, we first identify the set of most economical and reliable experts based on offline capability estimates; then we construct a target distribution that adaptively switches between hard labels for simple queries and soft distributions for complex ones; finally, we optimize the router policy to minimize its divergence from this adaptive target. To teach the router to prioritize economy, we first determine which models are capable of solving a given query x. To do this, we estimate the ground-truth pass rate κ(m, x ) for each model m, which quantifies the likelihood that model m correctly answers the query x. This pass rate is estimated via Monte Carlo rollouts, where κ(m, x ) is defined as the proportion of N sampled responses from model 
+
+m that match the ground truth. Based on this estimation, we formally define the optimal routing decisions. We operate under the general assumption that model capability correlates positively with inference cost. Under this premise, identifying the optimal expert simplifies to finding the most economical model that meets the reliabil-ity threshold τ . Accordingly, we define the most economical expert mbest as: 
+
+mbest = arg min 
+
+> m∈M , κ (m,x )≥τ
+
+C(m), (1) where C(m) denotes the per-token inference cost of model m. To construct a flexible training target, we further identify the set of the top-k most cost-effective models, denoted as Mtopk . Under our assumption, this set corresponds to the k cheapest models that effectively pass the threshold τ :
+
+Mtopk = arg min  
+
+> S⊆M ,|S|=k
+
+X
+
+> m∈S
+
+C(m)
+
+s.t. ∀m ∈ S, κ (m, x ) ≥ τ. 
+
+(2) Intuitively, this selection criterion filters for the most economical experts among those sufficient for the task. Standard SFT typically forces the router to mimic a single “best” model, which works well for simple queries but fails to capture the inherent am-biguity in more complex queries, where model suit-ability is not straightforward. To explicitly model this ambiguity, we construct a target distribution 
+
+Q(m | x) that preserves the natural uncertainty of the task. We combine hard supervision (for trivial cases) with soft supervision (for complex cases) to prevent overfitting to arbitrary label noise: 
+
+Q(m | x) = g(x) · I[m = mbest ]
+
+| {z }
+
+> Hard Supervision
+
++ (1 − g(x)) · I[m ∈ M topk ]
+
+k| {z }
+
+> Soft Supervision
+
+(3) where I[·] is the indicator function. The gating term g(x) switches the supervision mode based on a lightweight probe model mprobe . For sim-ple queries, where g(x) = 1 , if the probe demon-strates sufficient capability (i.e., κ ≥ τ ), the query is deemed trivial, and the target collapses to the cheapest model in M. For complex queries, where 
+
+g(x) = 0 , the query is identified as complex, and we distribute probability mass uniformly across the valid set Mtopk , ensuring robustness against label noise. We optimize the router to match this target distribution. The loss function is defined as: 
+
+LSFT (θ) = − X
+
+> m∈M
+
+Q(m | x) log πθ(m | x). (4) By minimizing LSFT , the router learns to recognize simple cases for quick routing while maintaining a flexible decision boundary for complex queries. 
+
+3.3 Stage II: Reinforcement Learning with Soft Anchor 
+
+While Stage I provides a reasonable initialization, the resulting policy remains static, ignoring the dy-namic trade-off between correctness and computa-tional efficiency. Stage II addresses this by learning a risk-cost preference through RL. However, uncon-strained optimization risks destabilizing the policy. To enable controlled exploration, we propose a soft anchor mechanism. We implement this by incorpo-rating a reference distribution derived from offline statistics directly into the optimization objective, effectively guiding the policy toward empirically safe and cost-effective regions. We first construct the reference policy πref to embody the ideal risk-cost preference. Based on the offline pass rate κ(m, x ) estimated in Stage I, we define a scalar utility metric μ(m, x ) for each model m ∈ M given query x:
+
+μ(m, x ) = κ(m, x ) − α · C(m), (5) where C(m) is the inference cost and α governs the cost sensitivity. We then convert these utili-ties into a probabilistic prior using a Boltzmann distribution: 
+
+πref (m | x) = exp( μ(m, x )/T )
+
+P 
+
+> m′∈M
+
+exp( μ(m′, x )/T ) , (6) where T is a temperature hyperparameter that reg-ulates the sharpness of the distribution. This distri-bution serves as the “soft anchor”, assigning higher probability mass to models that are empirically reliable and economical. We optimize the router policy πθ using Group Relative Policy Optimiza-tion (GRPO) (Shao et al., 2024). Formally, our objective is to maximize the expected reward while regularizing the policy against the soft anchor: 
+
+max 
+
+> πθ
+
+Em∼πθ [r(m, x )] 
+
+− βDKL [πθ(·| x) ∥ πref (·| x)] − βH(πθ),
+
+(7) where H(πθ) represents the entropy of the policy distribution. The task-performance reward r(m, x )
+
+is defined as the expected utility :
+
+r(m, x ) = κ(m, x )Rsucc + (1 − κ(m, x )) Rfail .
+
+(8) Here, Rsucc represents the cost-aware payoff re-ceived when the selected model provides a correct answer, while Rfail is a failure penalty. The in-clusion of Rfail provides a negative gradient for high-risk candidates, actively suppressing the se-lection of incompetent experts. Our reward refines the raw reward R(τ ) defined in Section 2.1 in two key aspects. First, unlike R(τ ) which relies on bi-nary outcome, r(m, x ) utilizes the offline capabil-ity estimate κ(m, x ) as a dense, expectation-based signal to reduce training variance. Second, instead of a simple cost subtraction ( −λ · Ctotal ), we em-bed the efficiency constraint into the shape of Rsucc .This design enforces a cost-sensitive curriculum: for models cheaper than the optimal expert mbest 
+
+(which are presumed under-qualified under our as-sumption), we clamp the reward to prevent the policy from drifting toward unreliable models; con-versely, for capable but expensive models, we apply a decay penalty to discourage unnecessary compu-tational overhead (see Appendix D.1 for details). Practically, we operationalize the objective in Eq. 7 by incorporating the regularization term di-rectly into the reward function, rather than modi-fying the underlying optimization algorithm. By augmenting the extrinsic task reward with the log-likelihood of the reference distribution, we im-plicitly enforce the dual regularization constraints. As formally derived in Appendix B, maximizing the return of this shaped reward is mathematically equivalent to the objective in Eq. 7. This formula-tion achieves a unique balance between safety and decisiveness through its regularization terms: (1) The −βDKL term functions as a Soft Trust Region. Crucially, it regulates the dynamics of entropy re-duction: by tethering the policy to the reference distribution πref , it prevents the negative entropy term from collapsing the policy into a degenerate, overly sharp state too abruptly. This ensures the router maintains valid exploration variance within the safe zone, preventing premature convergence to suboptimal local minima. (2) The −βH(πθ)
+
+term encourages the router to minimize uncertainty in its final choice. In our reward-shaping imple-mentation, this term is not applied as an additional standalone loss, it is algebraically absorbed into the reference-shaped reward. Once the reasoning process identifies a suitable model, this penalty incentivizes the router to produce a "sharp" and confident decision, preventing the policy from re-maining in an indecisive probabilistic spread. 
+
+4 Experiments 
+
+4.1 Setup Benchmarks. We evaluate ENTROROUTER pri-marily on mathematical reasoning, where instances naturally span a wide range of difficulty levels and thus provide a suitable testbed for cost-aware routing. Our evaluation suite includes AIME 24 (Zhang and Math-AI, 2024), AIME 25 (Zhang and Math-AI, 2025), HMMT Nov 25 (Balunovi´ cet al., 2025), SMT 25 , MATH500 (Hendrycks et al., 2021), AMC (Li et al., 2024), and Olympiad-Bench (He et al., 2024). 
+
+Candidate Models and Costs. The candidate pool M contains three Qwen3 reasoning mod-els (Yang et al., 2025): Qwen3-4B-Thinking-2507, Qwen3-30B-A3B-Thinking-2507, and Qwen3-235B-A22B-Thinking-2507. We abbreviate them as Qwen3-4B, Qwen3-30B, and Qwen3-235B. The largest model serves as the strongest-expert ref-erence. For brevity, we also refer to it as the strongest fixed-expert baseline. Following prior routing work, we use standard API pricing as the cost function C(m).† Router inference cost is ex-cluded since its average overhead is only 1.7×10 −5
+
+dollars per query, which is negligible relative to expert-model costs. 
+
+Training Details and Baselines. We use the non-thinking Qwen3-4B as the router backbone. Follow-ing the data construction pipeline in Appendix C, we first perform SFT and then optimize the router with RL. Full hyperparameters are provided in Ap-pendix D. We compare against heuristic strategies, including random routing and fixed model selec-tion, as well as representative routing methods: 
+
+RouteLLM (Ong et al., 2024), FORC (Šakota et al., 2024), xRouter (Qian et al., 2025), and 
+
+Router-R1 (Zhang et al., 2025). Additional evalu-ation details are reported in Appendix E. 
+
+4.2 Main Results 
+
+The results on mathematical reasoning bench-marks are summarized in Table 1. ENTRO -ROUTER achieves an average accuracy of 88.62% ,outperforming all routing baselines and approach-ing the strongest fixed-expert baseline while sub-stantially reducing cost. The results for Router-R1 and xRouter provide empirical evidence for the 
+
+Trust Region Collapse phenomenon analyzed in Section 3.1. Both multi-round architectures suc-cumb to this instability, where the policy degener-ates into rarely invoking external experts and in-stead relying exclusively on its own limited internal capabilities. Consequently, they yield poor perfor-mance, confirming that coupled reasoning-routing fails to bridge the capability gap under sparse super-                                                                                                                                                                       
+
+> †https://novita.ai/pricing Model HMMT Nov 25 AIME25 OlympiadBench AIME-24 AMC MATH500 SMT2025 Avg. Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)Acc. ( ↑)Cost ( ↓)
+> Heuristic
+> Random 68.8 0.2783 73.3 0.2809 80.3 3.9836 84.6 0.2179 95.3 0.4213 98.0 1.2790 76.4 0.4956 87.1 0.0050 Qwen3-4B 59.0 0.0198 67.1 0.0192 77.5 0.2895 76.9 0.0173 93.8 0.0310 97.4 0.0907 65.3 0.0322 84.5 0.0004 Qwen3-30B 71.7 0.2488 72.1 0.2519 80.2 3.8433 87.5 0.2126 95.6 0.3893 98.2 1.2123 76.2 0.4983 87.2 0.0048 Qwen3-235B 81.5 0.5690 81.7 0.6179 83.6 8.7811 93.3 0.4553 97.6 0.8389 99.2 2.5881 84.2 0.9183 90.1 0.0105
+> Existing Routing Architectures
+> RouteLLM 59.0 0.0559 67.5 0.0408 78.2 1.7300 80.4 0.0433 95.8 0.0848 97.6 0.1042 69.8 0.0712 85.3 0.0015 FORC 70.4 0.2731 75.2 0.2647 80.9 4.6000 90.0 0.3435 96.2 0.5295 98.2 1.7675 77.6 0.5381 87.7 0.0059 Router-R1 21.3 0.0108 28.8 0.0116 60.3 0.2174 41.7 0.0198 72.7 0.0241 93.4 0.0018 35.4 0.0359 70.0 0.0002 xRouter 28.8 0.0041 31.0 0.0033 60.9 0.0668 41.7 0.0018 72.3 0.0010 93.2 0.0009 34.4 0.0069 70.4 0.0001
+> ENTRO ROUTER 80.0 0.4163 78.8 0.2929 81.8 5.2397 90.6 0.2881 96.6 0.3658 98.4 0.5238 80.4 0.5155 88.6 0.0055
+
+Table 1: Comparison across math benchmarks. Avg. aggregates performance on math tasks. Cost is measured as the total cost ( $) for individual benchmarks, but converted to average per-query cost for the Avg. column. The best routing method excluding the strongest fixed expert is highlighted in bold .                                                    
+
+> Method HMMT-Nov AIME25 SMT2025 Avg. Acc Cost Acc Cost Acc Cost Acc Cost ENTRO ROUTER 80.0 0.416 78.8 0.293 80.4 0.516 79.9 0.011 w/o Soft Supervision 72.1 0.294 72.5 0.207 73.1 0.357 72.7 0.008 w/o Gate term g(·)78.1 0.431 77.7 0.429 80.2 0.645 79.0 0.013 w/o Soft Trust Region 71.7 0.280 75.8 0.280 76.7 0.551 75.1 0.010 w/o Performance Reward 69.6 0.385 78.3 0.365 74.8 0.384 74.4 0.010
+
+Table 2: Ablation Study. Impact of removing Soft Supervision, Gating term g(·) , Soft Trust Regions, and Task-performance Reward. 
+
+vision. We provide an additional intuitive explana-tion for this failure mode in Appendix F. By treat-ing routing as a distinct meta-analysis task rather than an interleaved reasoning step, our framework avoids the interference of pre-training priors. Con-sequently, E NTRO ROUTER successfully identifies the cost-accuracy boundary, recovering 98.3% of the strongest expert’s accuracy while reducing com-putational costs by 48.25% .
+
+5 Discussion 
+
+Beyond the main cost–accuracy results, we further analyze E NTRO ROUTER from the perspectives of component effectiveness, routing behavior, and ro-bustness. We first ablate the key design choices in our training pipeline, including Soft Supervision, the gating term, the Soft Trust Region, and the performance reward (§ 5.1). We then inspect the learned policy by visualizing routing distributions across problem-difficulty levels (§ 5.2). Additional studies in the appendix evaluate OOD generaliza-tion (Appendix H), sensitivity to the cost–accuracy coefficient α (Appendix I), transfer to heteroge-neous candidate pools (Appendix J), and robustness to noisy offline estimates (Appendix K). 
+
+5.1 Ablation Study 
+
+We evaluate the contribution of each component in E NTRO ROUTER by comparing it against four variants: (1) replacing Soft Supervision with hard targets; (2) removing the Gating term g(·)
+
+from the SFT target construction; (3) disabling the Soft Trust Region anchor; and (4) substitut-ing our Task-performance Reward with sparse outcome rewards (See Appendix D.2 for details). Results in Table 2 indicate that Soft Supervision is paramount; its removal triggers a significant accu-racy drop, confirming that hard supervision hinders exploration. The Gating term g(·) is essential for cost-efficiency; by enforcing hard supervision for trivial instances during SFT, it explicitly teaches the router to assign simple queries to the cheapest expert. Without it, average costs increase as the policy fails to learn this strict economy for easy tasks. Finally, ablating the Soft Trust Region or 
+
+Performance Reward degrades the trade-off, vali-dating the necessity of anchored regularization and granular feedback for stable optimization. 
+
+5.2 Analysis of Routing Distribution 
+
+To verify whether E NTRO ROUTER successfully aligns model capabilities with problem complexity, we examine the routing distribution across differ-ent difficulty strata. We stratify the evaluation set into three levels based on mbest : Easy ( mbest =
+
+Qwen3-4B), Medium ( mbest = Qwen3-30B-A3B), and Hard (remaining queries). As illustrated in Fig-ure 3, the learned policy exhibits a clear adaptive strategy. For queries classified as Easy , the router prioritizes computational efficiency, dispatching 76.0% of instances to the lightweight Qwen3-4B model. Conversely, as problem complexity in-Easy Medium Hard 
+
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Model Selection Ratio (%)
+> 76.0%
+> 46.1%
+> 25.0%
+> 7.0%
+> 11.5%
+> 9.0%
+> 17.0%
+> 42.3%
+> 66.0%
+> Qwen3-4B
+> Qwen3-30B-A3B
+> Qwen3-235B-A22B
+> Avg. Cost per Token
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Weighted Avg. API Cost (per token)
+
+Figure 3: Routing Distribution & Token Cost Effi-ciency across Difficulty Levels. The stacked bars (left axis) represent the selection ratio of candidate models, while the trend line (right axis) tracks the weighted av-erage API cost. E NTRO ROUTER demonstrates adaptive behavior by escalating model size in response to increas-ing problem difficulty. 
+
+creases, the policy dynamically shifts probability mass towards stronger experts. In the Hard stra-tum, reliance on the efficient 4B model contracts to 25.0%, while the invocation of Qwen3-235B escalates significantly to 66.0%. This distribution results in a weighted average API cost that rises monotonically with difficulty, confirming that E N-
+
+> TRO
+
+ROUTER has effectively internalized the latent relationship between query hardness and necessary reasoning capability. This adaptive distribution empirically validates the efficacy of E NTRO ROUTER ’s entropy regula-tion mechanisms. While conventional routing sys-tems often suffer from uncontrolled entropy decay, our framework orchestrates a precise management of exploration capacity. The Soft Supervision ini-tializes the policy with a high-entropy prior to en-sure diversity. Subsequently, in the RL stage, the reference-shaped reward encourages cost-aware de-cision sharpening, while the Soft Anchor constrains this contraction process. This balanced regulation ensures the router transitions to a decisive state without suffering from precipitous trust region col-lapse, retaining the probabilistic capacity to recog-nize and respond to high-complexity queries. 
+
+6 Related Work 
+
+LLM Routing Systems The rapid proliferation of Large Language Models (LLMs) has neces-sitated the development of sophisticated routing mechanisms to balance performance, cost, and la-tency. Early approaches primarily focused on op-timizing the trade-off between cost and accuracy through heuristic or predictive means. Chen et al. (2023) sequentially invokes models from smaller to larger scales to reduce inference costs while main-taining performance. To standardize the evalua-tion of these growing routing strategies, Router-Bench (Hu et al., 2024) was introduced as a compre-hensive benchmark. Structurally, Feng et al. (2024) constructs interaction graphs between queries and models to capture complex dependencies that lin-ear classifiers might miss. More recently, Ding et al. (2025) introduced a test-time optimal com-pute framework, adaptively allocating computa-tional resources based on the instance-level dif-ficulty. Inspired by the success of RL in reasoning, recent research has formalized routing as a multi-round sequential decision process, where the router acts as an agent to iteratively query and integrate feedback from external experts (Zhang et al., 2025; Qian et al., 2025). 
+
+Reinforcement Learning for Reasoning Re-inforcement Learning has emerged as a criti-cal paradigm to stimulate model reasoning with-out extensive supervision. Traditional RL ap-proaches, such as Proximal Policy Optimization (PPO) (Schulman et al., 2017), rely on a value function and a clipped surrogate objective to stabi-lize training within a trust region. More recently, Group Relative Policy Optimization (GRPO) (Shao et al., 2024) has gained prominence in mathemati-cal reasoning. By estimating the baseline from the group mean of outputs rather than a critic, GRPO significantly improves training efficiency. 
+
+7 Conclusion 
+
+In this work, we identified Trust Region Collapse as a critical failure mode in the emerging multi-round routing paradigm, stemming from the capability mismatch between the router and expert models. To address this, we proposed E NTRO ROUTER , a single-round framework that decouples planning from reasoning. By leveraging Soft Supervision and Soft Anchor regularization, our method estab-lishes a stable optimization landscape that prevents policy degeneration. Empirical results demonstrate that E NTRO ROUTER achieves Pareto efficiency, retaining 98.3% of the strongest expert’s accu-racy while reducing computational costs by 48.2% .These findings suggest that small models are best utilized not merely as weaker reasoners, but as ef-fective meta-controllers for scalable AI systems. Limitations 
+
+This work focuses on establishing a robust and effi-cient routing framework under a single-round deci-sion paradigm. Our analysis of Trust Region Col-lapse characterizes an important failure regime of multi-round routing, where expert calls are costly, supervision is sparse, and the router may not effec-tively use out-of-distribution expert traces. Future work could extend this analysis to richer multi-step routing agents equipped with stronger process su-pervision, explicit verification, or more capable aggregation modules. Similarly, while E NTRO -ROUTER uses offline capability estimates κ(m, x )
+
+to construct training targets and rewards, these es-timates may contain sampling noise or verifier er-rors. We have examined this issue through noisy-estimate perturbation experiments, and a promising future direction is to develop adaptive profiling or periodic re-estimation strategies for dynamically changing model pools. 
+
+References 
+
+OpenAI Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Altman, Andy Applebaum, Edwin Arbus, Rahul K. Arora, Yu Bai, Bowen Baker, Hai-Biao Bao, Boaz Barak, Ally Bennett, Tyler Bertao, N. Archer Brett, Eugene Brevdo, Greg Brockman, Sébastien Bubeck, Cheng Chang, Kai Chen, and 105 others. 2025. gpt-oss-120b&gpt-oss-20b model card. Mislav Balunovi´ c, Jasper Dekoninck, Ivo Petrov, Nikola Jovanovi´ c, and Martin Vechev. 2025. Matharena: Evaluating llms on uncontaminated math competi-tions. Lingjiao Chen, Matei Zaharia, and James Zou. 2023. Frugalgpt: How to use large language models while reducing cost and improving performance. arXiv preprint arXiv:2305.05176 .Dujian Ding, Ankur Mallick, Shaokun Zhang, Chi Wang, Daniel Madrigal, Mirian Del Carmen Hipolito Garcia, Menglin Xia, Laks VS Lakshmanan, Qingyun Wu, and Victor Rühle. 2025. Best-route: Adaptive llm routing with test-time optimal compute. 
+
+arXiv preprint arXiv:2506.22716 .Tao Feng, Yanzhen Shen, and Jiaxuan You. 2024. Graphrouter: A graph-based router for llm selections. 
+
+arXiv preprint arXiv:2410.03834 .Google. 2025. A new era of intelligence with gemini 3. Chaoqun He, Renjie Luo, Yuzhuo Bai, Shengding Hu, Zhen Thai, Junhao Shen, Jinyi Hu, Xu Han, Yujie Huang, Yuxiang Zhang, Jie Liu, Lei Qi, Zhiyuan Liu, and Maosong Sun. 2024. OlympiadBench: A challenging benchmark for promoting AGI with olympiad-level bilingual multimodal scientific prob-lems. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 3828–3850, Bangkok, Thailand. Association for Computational Linguistics. Zhiwei He, Tian Liang, Jiahao Xu, Qiuzhi Liu, Xingyu Chen, Yue Wang, Linfeng Song, Dian Yu, Zhen-wen Liang, Wenxuan Wang, Zhuosheng Zhang, Rui Wang, Zhaopeng Tu, Haitao Mi, and Dong Yu. 2026. Deepmath-103k: A large-scale, challenging, decon-taminated, and verifiable mathematical dataset for ad-vancing reasoning. In The Fourteenth International Conference on Learning Representations .Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Ja-cob Steinhardt. 2021. Measuring mathematical prob-lem solving with the math dataset. arXiv preprint arXiv:2103.03874 .Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. 2024. Router-bench: A benchmark for multi-llm routing system. 
+
+arXiv preprint arXiv:2403.12031 .Jia Li, Edward Beeching, Lewis Tunstall, Ben Lip-kin, Roman Soletskyi, Shengyi Huang, Kashif Rasul, Longhui Yu, Albert Q Jiang, Ziju Shen, and 1 oth-ers. 2024. Numinamath: The largest public dataset in ai4maths with 860k pairs of competition math problems and solutions. Hugging Face repository ,13(9):9. Ian R McKenzie, Alexander Lyzhov, Michael Pieler, Alicia Parrish, Aaron Mueller, Ameya Prabhu, Euan McLean, Aaron Kirtland, Alexis Ross, Alisa Liu, and 1 others. 2023. Inverse scaling: When bigger isn’t better. arXiv preprint arXiv:2306.09479 .Ivan Moshkov, Darragh Hanley, Ivan Sorokin, Shubham Toshniwal, Christof Henkel, Benedikt Schifferer, Wei Du, and Igor Gitman. 2025. Aimo-2 winning solu-tion: Building state-of-the-art mathematical reason-ing models with openmathreasoning dataset. arXiv preprint arXiv:2504.16891 .Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E Gonzalez, M Waleed Kadous, and Ion Stoica. 2024. Routellm: Learning to route llms with preference data. arXiv preprint arXiv:2406.18665 .Cheng Qian, Zuxin Liu, Shirley Kokane, Akshara Prab-hakar, Jielin Qiu, Haolin Chen, Zhiwei Liu, Heng Ji, Weiran Yao, Shelby Heinecke, Silvio Savarese, Caim-ing Xiong, and Huan Wang. 2025. xrouter: Training cost-aware llms orchestration system via reinforce-ment learning. Preprint , arXiv:2510.08439. David Rein, Betty Li Hou, Asa Cooper Stickland, Jack-son Petty, Richard Yuanzhe Pang, Julien Dirani, Ju-lian Michael, and Samuel R Bowman. 2024. Gpqa: A graduate-level google-proof q&a benchmark. In 
+
+First Conference on Language Modeling .Marija Šakota, Maxime Peyrard, and Robert West. 2024. Fly-swat or cannon? cost-effective language model choice via meta-modeling. In Proceedings of the 17th ACM International Conference on Web Search and Data Mining , pages 606–615. John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. Proxi-mal policy optimization algorithms. arXiv preprint arXiv:1707.06347 .Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. 2024. Deepseekmath: Pushing the limits of mathemati-cal reasoning in open language models. Preprint ,arXiv:2402.03300. Guangming Sheng, Chi Zhang, Zilingfeng Ye, Xibin Wu, Wang Zhang, Ru Zhang, Yanghua Peng, Haibin Lin, and Chuan Wu. 2024. Hybridflow: A flexible and efficient rlhf framework. arXiv preprint arXiv: 2409.19256 .Yubo Wang, Xueguang Ma, Ge Zhang, Yuansheng Ni, Abhranil Chandra, Shiguang Guo, Weiming Ren, Aaran Arulraj, Xuan He, Ziyan Jiang, Tianle Li, Max Ku, Kai Wang, Alex Zhuang, Rongqi Fan, Xiang Yue, and Wenhu Chen. 2024. Mmlu-pro: A more robust and challenging multi-task language understanding benchmark. Preprint , arXiv:2406.01574. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 others. 2025. Qwen3 technical report. Preprint ,arXiv:2505.09388. Haozhen Zhang, Tao Feng, and Jiaxuan You. 2025. Router-r1: Teaching llms multi-round routing and ag-gregation via reinforcement learning. In The Thirty-ninth Annual Conference on Neural Information Pro-cessing Systems .Yifan Zhang and Team Math-AI. 2024. American invi-tational mathematics examination (aime) 2024. Yifan Zhang and Team Math-AI. 2025. American invi-tational mathematics examination (aime) 2025. Xueliang Zhao, Wei Wu, Jian Guan, and Lingpeng Kong. 2025. Promptcot: Synthesizing olympiad-level prob-lems for mathematical reasoning in large language models. arXiv preprint arXiv:2503.02324 .
+
+A Theoretical Analysis of Trust Region Collapse 
+
+In this appendix, we provide a formal derivation of the Trust Region Collapse phenomenon. We first define the simplified decision paradigm and the decomposed advantage function. We then justify our core assumption based on the inverse scaling hypothesis and provide a rigorous proof that the ef-fective trust region collapses to an empty set under sparse supervision. 
+
+A.1 Problem Formulation and Advantage Decomposition 
+
+To facilitate our derivation, we abstract the router’s action space into a binary decision paradigm at step 
+
+t:1. Internal Reasoning ( aself ): The router gen-erates the solution using its own parameters (at = mself ), incurring zero marginal cost. 2. External Escalation ( aext ): The router del-egates to the model pool ( at ∈ M pool ). We treat this as a unified, costly action with cost 
+
+C(aext ) = c > 0.The policy optimization is driven by the Advan-tage Function Aπ(s, a ). Let V π(s) be the value function and ¯Cπ(s) the expected baseline cost. The advantage of the costly escalation action aext 
+
+decomposes into a performance gain and a cost penalty: 
+
+Aπ(s, a ext ) = ( E[R | s, a ext ] − Ea∼π[R | s, a ]) 
+
+| {z } 
+
+> Performance Gain (∆ R)
+
+− (c − ¯Cπ(s)) 
+
+| {z } 
+
+> Marginal Cost (∆ C)
+
+(9) Since aext is strictly more expensive than aself , the marginal cost term ∆C remains strictly positive unless the policy has fully converged to aext .
+
+A.2 Justification of Strong Prior Dominance 
+
+We posit that augmenting a weak router with a strong expert does not monotonically improve re-ward under sparse supervision. We formalize this as: 
+
+Assumption A.1 (Strong Prior Dominance) . Let 
+
+πrouter be initialized from a pre-trained LM and optimized via sparse outcome rewards. There exists a regime where the posterior update induced by an out-of-distribution expert trace o ∼ πexpert is dominated by the router’s prior, such that: 
+
+Eo∼πexpert (·| x)[R | x ⊕ o] ≤ E[R | x]. (10) 
+
+Theoretical Grounding. This assumption is grounded in the “Inverse Scaling” taxon-omy (McKenzie et al., 2023). Large language models rely on two information sources: pre-training priors and in-context prompts. When an expert provides a complex, out-of-distribution (OOD) reasoning path, it creates a conflict. • Strong Priors and Unwanted Imitation: As seen in Resisting Correction tasks, models of-ten ignore OOD instructions (the expert trace) and revert to their own high-likelihood gener-ation manifold. The router essentially “talks over” the expert. • Distractor Task Failure: Under sparse su-pervision, the optimizer cannot distinguish between planning failure (wrong routing) and 
+
+execution failure (misinterpreting the expert). The expert trace effectively acts as a “distrac-tor,” causing the router to focus on superfi-cial pattern matching rather than the intended logic, leading to ∆R ≤ 0.
+
+A.3 Proof of Trust Region Collapse 
+
+We formally define the Effective Trust Region Teff 
+
+as the set of policy distributions that satisfy safety constraints, positive expected advantage, and an increased probability of utilizing the expert: 
+
+Teff ≜
+
+
+
+π′ ∈ ∆( A)
+
+DKL (π′ || π) ≤ ϵ, 
+
+(Trust Region )
+
+Ea∼π′ [Aπ(s, a )] > 0,
+
+(Policy Improvement )
+
+π′(aext ) > π (aext )(Escalation Intent )
+
+
+
+(11) Based on the Performance Difference Lemma ,this region represents the viable search space where increasing reliance on the strong solver is theoreti-cally guaranteed to improve the objective. 
+
+Theorem A.2 (Trust Region Collapse) . Under Assumption A.1 and strict positive cost c > 0,the advantage of escalation is strictly negative (Aπ(s, a ext ) < 0). Consequently, Teff = ∅.Proof. The proof proceeds by contradiction. We first establish the sign of the advantage function and then analyze the constraints on π′.
+
+1. Negative Advantage of Escalation. By As-sumption A.1, the expected reward of escalation satisfies E[R|aext ] ≤ E[R|aself ]. The Q-values for the actions are: 
+
+Qπ(s, a self ) = E[R|aself ] (since C = 0) (12) 
+
+Qπ(s, a ext ) = E[R|aext ] − λc (13) Subtracting these yields Qπ(s, a ext ) −
+
+Qπ(s, a self ) ≤ −λc . Since λ, c > 0, we have strict dominance: Qπ(s, a ext ) < Q π(s, a self ).This implies strictly negative advantage: 
+
+Aπ(s, a ext ) < 0 and Aπ(s, a self ) > 0. (14) 
+
+2. Constraint Contradiction. For any can-didate policy π′ ∈ Teff , let ∆p = π′(aext ) −
+
+π(aext ). The Escalation Intent condition requires 
+
+∆p > 0. The Policy Improvement condition re-quires P 
+
+> a
+
+π′(a)Aπ(s, a ) > 0. Using the identity P π(a)Aπ(s, a ) = 0 , we expand this summation: 
+
+Eπ′ [Aπ] = X
+
+> a
+
+(π′(a) − π(a)) Aπ(s, a ) (15) 
+
+= ∆ p · Aπ(s, a ext )+ ( −∆p) · Aπ(s, a self ) (16) 
+
+= ∆ p (Aπ(s, a ext ) − Aπ(s, a self )) 
+
+| {z } 
+
+> Strictly Negative δ
+
+(17) From Step 1, the term δ is strictly negative. For the total expectation to be positive ( ∆p · δ > 0), we must have ∆p < 0.
+
+Conclusion. The condition for Policy Improve-ment ( ∆p < 0) directly contradicts the condition for Escalation Intent ( ∆p > 0). Thus, no policy π′
+
+exists that satisfies both conditions simultaneously. The effective trust region is empty. 
+
+Implication. This result shows that, in the regime characterized by Assumption A.1, collapse is not merely an optimizer accident. It follows from the combination of sparse outcome supervision, posi-tive escalation cost, and the router’s failure to ex-tract reward-improving information from the expert trace. This necessitates the Cognitive Decoupling 
+
+proposed in our method, effectively separating the routing decision from the trace execution. 
+
+Remark on Generalization. It is important to note that while our theoretical derivation assumes a binary action space ( aself vs. aext ) for clarity, the conclusion generalizes to hierarchical multi-model settings. The decision process in a tiered candidate pool (e.g., 4B → 30B → 235B) can be decomposed into a sequence of recursive binary decisions—essentially determining whether to es-calate to the next tier of capability. Therefore, the structural validity of the Trust Region Collapse phenomenon remains applicable to the broader se-lection problem. 
+
+B Theoretical Analysis: Soft Anchor as a Trust Region 
+
+In this appendix, we formally establish the math-ematical equivalence between the Soft Anchor mechanism and a constrained optimization prob-lem solved via Lagrange multipliers. 
+
+Entropy Regularization term H(πθ). In our op-timization objective, the term H(πθ) denotes the Shannon entropy of the stochastic policy πθ(·| x)
+
+over the discrete action space of candidate mod-els M. Formally, for a given input query x, it is defined as: 
+
+H(πθ) = − X
+
+> m∈M
+
+πθ(m|x) log πθ(m|x). (18) While entropy maximization is commonly used in Reinforcement Learning to encourage exploration, we strictly employ a negative coefficient −β to penalize high-entropy states. This mechanism acts as an entropy contraction constraint: it incentivizes the router to minimize decision uncertainty and converge towards a sharp, deterministic selection of the optimal expert, preventing the policy from remaining in an indecisive probabilistic spread at convergence. 
+
+B.1 Problem Formulation via Lagrange Multipliers 
+
+We formulate the router’s objective as a dual-goal optimization problem: we seek to maximize the expected reward while simultaneously minimizing decision uncertainty (decision sharpening), subject to a trust-region constraint anchored to the refer-ence policy πref .Formally, this is expressed as: 
+
+max  
+
+> π
+
+Em∼π[r(m, x )] − βH(π) (19) s.t. DKL (π(· | x) || πref (· | x)) ≤ δ
+
+where H(π) is the entropy term we wish to penalize to ensure decisiveness, and δ defines the radius of the safe trust region. We solve this constrained problem using the method of Lagrange multipliers. The Lagrangian 
+
+L(π, λ ) is: 
+
+L(π, λ ) = Eπ[r(m, x )] − βH(π)
+
+− λ (DKL (π || πref ) − δ) . (20) For simplicity, and to align the regularization strength, we assume a unified coefficient λ = β.The objective effectively becomes maximizing: 
+
+J (π) = Eπ[r(m, x )] − βH(π) − βDKL (π || πref ).
+
+(21) 
+
+B.2 Equivalence to Reward Shaping 
+
+To demonstrate that our implementation (Eq. 7 in the main text) optimizes this Lagrangian, we ex-pand the KL divergence term using the identity 
+
+DKL (π || πref ) = −H (π) − Eπ[log πref ]. Substitut-ing this into the objective: 
+
+J (π) = Eπ[r] − βH(π)
+
+− β (−H (π) − Eπ[log πref ]) = Eπ[r] − βH(π) + βH(π) (22) 
+
++ βEπ[log πref ]= Eπ [r(m, x ) + β log πref (m | x)] . (23) 
+
+Conclusion: This derivation proves that sim-ply augmenting the reward with the log-likelihood of the reference policy (i.e., maximizing E[r +
+
+β log πref ]) is mathematically equivalent to solv-ing the constrained optimization problem in Eq. 19. The implementation elegantly cancels out the in-trinsic entropy bonus typically associated with KL constraints (since −DKL includes +H), thereby implicitly enforcing the entropy penalty required for decision sharpening. 
+
+C Data Construction Details 
+
+In this section, we provide a comprehensive break-down of our data synthesis pipeline, including the criteria for difficulty assessment, the implemen-tation of Soft Supervision, and the generation of reasoning trajectories. 
+
+C.1 SFT Dataset Construction Data Sources and Model Pool. We ini-tially curated a collection of approximately 190k raw mathematical problems from high-quality open-source reasoning datasets, specifically 
+
+OpenMathReasoning (Moshkov et al., 2025) and 
+
+DeepMath (He et al., 2026). Our candidate routing pool M consists of three models with escalating scale: {m4B , m 30B , m 235B }, corresponding to the 
+
+Qwen3-Thinking-2507 series (4B, 30B-A3B, and 235B-A22B, respectively) (Yang et al., 2025). Dis-tinct from this pool, we utilize Qwen3-1.7B exclu-sively as a Calibration Probe (mprobe ) to identify queries at the lower bound of difficulty. We set the threshold τ = 0 .8.
+
+Expert Profiling and Filtering. For each query 
+
+x, we estimate the ground-truth pass rate κ(m, x )
+
+via N = 5 Monte Carlo rollouts. The profil-ing process begins with the probe mprobe . If 
+
+κ(mprobe , x ) ≥ τ , the gating term is set to G(x) = 1, identifying the query as trivial. Under our cost-capability assumption, these samples are assigned to mbest =Qwen3-4B-Thinking-2507, the globally cheapest model in M, to minimize inference over-head. For non-trivial queries ( G(x) = 0 ), we profile the remaining candidates. The most economical expert mbest is determined as the cheapest model satisfying κ(m, x ) ≥ τ (Eq. 1). If no model in 
+
+M meets the reliability threshold, we default to 
+
+mbest = m235B to prioritize correctness. 
+
+Soft Target Construction To implement the Soft Supervision defined in Eq. 3, we construct the soft target support from the most economical qualified experts. For non-trivial instances where at least two candidate models satisfy the reliability threshold, we set Mtop2 to the two cheapest qualified models and distribute the target probability uniformly over them. This soft target avoids forcing the router to imitate a single arbitrary expert when multiple models are empirically viable. For high-difficulty instances where the qualified support degenerates to the strongest expert, the model-label target becomes a singleton, 
+
+Q(m|x) = I[m = m235B ],
+
+rather than an expanded set with duplicate model labels. To strengthen supervision for these extreme cases, we apply Multi-path Reasoning Distilla-tion : for the same query and the same target model label m235B , we synthesize two distinct reasoning trajectories (y(1) 
+
+> CoT
+
+, y (2) 
+
+> CoT
+
+). This duplicates the train-ing signal at the rationale level, not at the model-label level. By exposing the router to diverse an-alytical patterns associated with the strongest ex-pert, the router learns to recognize extreme query complexity from multiple reasoning perspectives, improving the robustness of its query-analysis be-havior for the most challenging instances. Equivalently, this procedure can be viewed as up-weighting extreme-difficulty instances in the SFT corpus while keeping the routing target distribution 
+
+Q(m|x) mathematically well-defined. 
+
+Prevention of Label Inflation. The inclusion of mprobe for initial filtering is a critical design choice. Since mprobe /∈ Mpool , trivial queries (solvable by a 1.7B model) would otherwise be assigned to Qwen3-4B-Thinking-2507. Under our setting, this would shift the target probability to-ward Qwen3-30B-A3B-Thinking-2507, leading to "compute waste" where simple logic is handled by mid-to-large tier models. Our probe-based filtering ensures the router focuses strictly on the appropri-ate reasoning complexity. 
+
+Reasoning Rationale Synthesis. To equip the router with the intermediate reasoning capabil-ities described in Section 3.2, we synthesized high-quality reasoning rationales (CoT) for the valid (x, m best ) pairs. We first utilized Gemini-3-Pro (Google, 2025) to generate a reasoning ex-emplar. Using this as a 1-shot seed, we prompted 
+
+GPT-OSS-120B (Agarwal et al., 2025) to synthe-size reasoning chains for the entire filtered dataset. This distillation process ensures that the router’s analysis phase is grounded in sophisticated logical depth. The final SFT dataset comprises approxi-mately 270k samples, encompassing query analysis traces and their corresponding soft-target routing labels. 
+
+C.2 RL Dataset Construction 
+
+For the Reinforcement Learning stage, we con-structed a dataset designed to test generalization and robustness. We sampled a total of 50k prob-lems from OpenMathReasoning :• Seen Set (30k): Problems re-sampled from the SFT distribution to prevent catastrophic forgetting. • Unseen Set (20k): Novel problems disjoint from the SFT data to encourage generaliza-tion. Similar to the SFT stage, we deter-mined the difficulty reference by run-ning Qwen3-4B-Thinking-2507 and 
+
+Qwen3-30B-A3B-Thinking-2507 for 5 iter-ations each. Crucially, we treat the largest expert Qwen3-235B-A22B-Thinking-2507 
+
+as the performance ceiling of our sys-tem, assigning it a constant pass rate of 
+
+κ(Qwen3-235B-A22B-Thinking-2507 , x ) = 1 .0
+
+for all x. The reference ground truth was assigned to the smallest model achieving a ≥ τ pass rate. This reference is used to compute the reward signal during GRPO training, rewarding the model for selecting the most efficient effective model. We observed that the initial distribution was heavily skewed toward the smallest model (Qwen3-4B-Thinking-2507 ), which could bias the policy toward trivial cost-saving behaviors. To ad-dress this, we performed random downsampling on this class to ensure a balanced distribution. The final curated dataset consists of approximately 35k samples. 
+
+D Training Details 
+
+We detail the hyperparameters and configurations for both the Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL) stages below. 
+
+SFT Configuration. For the SFT stage, we set the learning rate to 2 × 10 −5 with a warmup ratio of 0.1. The models were trained for 5 epochs. 
+
+RL Configuration. Our reinforcement learning framework is implemented using the VeRL (Sheng et al., 2024), employing the standard GRPO algo-rithm (Shao et al., 2024). We set the training batch size to 128 and the maximum sequence length to 
+
+10 , 000 . For each query, we collected 16 rollouts. Notably, we set the KL divergence coefficient to 0.We train the backbone for 40 steps. We also set the failure penalty Rfail to −3.0. Ad-ditionally, we calibrate the cost–performance trade-off in Eq. 5 by setting the hyperparameter α = 0 .6.
+
+D.1 Reward Function Details 
+
+In Section 3.3, we introduced a piecewise success reward Rsucc to balance safety and efficiency. Here we provide the exact formulation. Let mbest be the most economical model that meets the capability threshold τ (as defined in Eq. 1). We distinguish two regimes based on the selected model m’s cost 
+
+C(m):
+
+Risk Zone ( C(m) < C (mbest )). In this regime, the selected model is cheaper than the empirically optimal safe choice. Although it may correctly answer the query (stochastically), it is statistically less reliable. To avoid "reward hacking"—where the model overfits to accidental successes or noise in the verification function—we clamp the success reward to a conservative constant: 
+
+Rsucc = 0 .6. (24) 
+
+Efficiency Zone ( C(m) ≥ C(mbest )). In this regime, the model is qualified but potentially over-expensive. To encourage the router to prefer mbest 
+
+over strictly stronger but wasteful models, we in-troduce a linear cost penalty:         
+
+> Rsucc = max
+> 
+> 1−C(m)−C(mbest )
+> δmax
+> ·(1 −γ), γ
+> 
+> ,
+
+(25) where δmax represents the maximum cost spread in the model pool, and γ (set to 0.2 in our experi-ments) ensures a minimum positive signal for all correct answers. 
+
+D.2 Sparse Outcome Reward for Ablation 
+
+To rigorously evaluate the contribution of our con-tinuous, expectation-based reward shaping, we con-structed a baseline using a discrete, sparse outcome reward signal. Formally, for a given query x, let 
+
+mbest denote the optimal expert defined in Eq. (1) (i.e., the most economical model satisfying the ca-pability threshold). We define the sparse reward function Rsparse (m, x ) as follows: 
+
+Rsparse (m, x ) = 
+
+
+
+1.0, if m = mbest ,
+
+0.5, if C(m) > C (mbest ),
+
+0.0, if C(m) < C (mbest ).
+
+(26) This design imposes a strict step-function logic: • Optimal Match ( 1.0): The router receives maximum reward only if it selects the exact optimal model mbest .• Inefficient Success ( 0.5): If the router selects a model that is more capable but more expen-sive than mbest , it receives partial credit (0.5). This acknowledges correctness but penalizes computational waste. • Failure/Risk ( 0.0): If the router selects a model cheaper than mbest (which is presumed unqualified), it receives zero reward, effec-tively penalizing the risk of incorrectness. E Evaluation Details 
+
+Infrastructure and Deployment. All experi-ments were conducted on a high-performance com-putational node equipped with 8× NVIDIA B200 GPUs. We deployed all external candidate models locally using the vLLM inference engine to ensure efficient high-throughput serving. 
+
+Generation Configuration. We set specific max-imum generation limits to accommodate the rea-soning depth of different models: • Candidate Models: The maximum gener-ation length was set to 32,768 tokens for Qwen3-4B and Qwen3-30B, and 60,000 to-kens for the Qwen3-235B to prevent trunca-tion of long chain-of-thought reasoning. • Router Model: The router’s generation limit was set to 12,000 tokens. 
+
+Robustness Protocol. To mitigate variance and ensure statistical significance on benchmarks with limited sample sizes, we adopted a multi-run aver-aging strategy. We report the average performance over 16 independent runs for smaller datasets (HMMT, AIME 2024, and AIME 2025) and 8 in-dependent runs for AMC and SMT 2025. We refer to Qwen3-235B as the strongest-expert reference and the strongest fixed-expert baseline. 
+
+Answer Verification. To evaluate correctness, we utilized math-verify ‡ to parse the model out-puts and determine if the generated answers were consistent with the ground truth. 
+
+F Intuitive Analysis on the Failure of Multi-round Baselines 
+
+While Section 3.1 characterizes a sufficient regime for Trust Region Collapse, we here offer a comple-mentary intuitive explanation. Existing multi-round agents, such as Router-R1 (Zhang et al., 2025), are largely validated on Knowledge QA tasks. In such contexts, the primary function of the external expert is to supply missing factual information. For a router, assimilating a specific fact (e.g., an entity name) is structurally simple and aligns well with standard token predic-tion. However, the mathematical domain imposes a fundamentally higher cognitive burden: the ex-ternal expert must provide a rigorous, multi-step 
+
+reasoning chain . Compared to factual retrieval, 
+
+> ‡https://github.com/huggingface/Math-Verify
+
+these complex logical traces are highly Out-Of-Distribution (OOD) for a smaller router. The router often fails to “comprehend” this alien logic, per-ceiving the long expert trace as noise rather than a helpful guide, which leads it to revert to its own internal generation. This intuition is strongly corroborated by em-pirical observations from the xRouter (Qian et al., 2025) study. Notably, the authors reported that they failed to successfully train the policy using the Qwen3 family, explicitly attributing this failure to the model’s “excessively strong pre-training priors,” and were consequently forced to revert to Qwen2.5. This independent finding serves as a powerful vali-dation of our Strong Prior Dominance hypothesis: as base models become stronger (possessing more robust internal priors), they become paradoxically more resistant to integrating external reasoning, thereby accelerating the Trust Region Collapse. 
+
+G Comparison with LLM-as-a-Router 
+
+In this section, we provide a detailed compari-son between our method ( Ours ) and the LLM-as-a-Router baseline. The LLM-as-a-Router ap-proach involves using LLMs directly as routers for selecting the best model for each query. We specifically compare our method with two config-urations of LLM-as-a-Router: GPT-OSS-120B and 
+
+Qwen3-235B-A22B-Instruct , both of which are high-capability but high-latency alternatives. The comparison results across these benchmarks are summarized in Table 3. Our method consis-tently outperforms the LLM-as-a-Router baseline, achieving higher accuracy with comparable cost. While LLM-as-a-Router directly uses large LLMs to decide on the routing model for each query, our method leverages a specialized routing policy to achieve stronger accuracy under a comparable cost scale, avoiding direct reliance on large LLMs as routers. This demonstrates the effectiveness of our optimized routing approach compared to us-ing LLMs as routers. Additionally, we evaluate both methods on OOD benchmarks, as shown in Table 4. The results show that E NTRO ROUTER maintains high accuracy, con-firming the practical advantage of our method in diverse real-world scenarios. Model HMMT Nov 25 AIME25 OlympiadBench AIME-24 AMC MATH500 SMT2025 Avg. Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓) Acc. ( ↑) Cost ( ↓)                                                
+
+> GPT-OSS-120B 74.4 0.2974 74.6 0.2996 80.9 4.510 88.3 0.1877 95.6 0.2285 98.2 0.4757 78.3 0.5082 87.7 0.0047 Qwen3-235B-A22B-Instruct 70.0 0.2380 72.7 0.2624 80.0 3.7312 87.1 0.1760 95.8 0.2029 97.6 0.6625 75.7 0.4565 86.8 0.0041
+> ENTRO ROUTER 80.0 0.4163 78.8 0.2929 81.8 5.2397 90.6 0.2881 96.6 0.3658 98.4 0.5238 80.4 0.5155 88.6 0.0055
+
+Table 3: Comparison between E NTRO ROUTER (ours) and LLM-as-a-Router across multiple math benchmarks.                            
+
+> Model GPQA-Diamond MMLU-Pro OOD Average Acc. ( ↑)Cost ↓Acc. ( ↑) Cost ↓Acc. ( ↑) Cost ↓
+> GPT-OSS-120B 71.7 0.6856 77.6 1.0022 76.8 0.0012 Qwen3-235B-A22B-Instruct 72.7 0.3141 79.4 0.8459 78.5 0.0008
+> ENTRO ROUTER 73.2 0.9018 80.6 2.3002 79.5 0.0023
+
+Table 4: Comparison between E NTRO ROUTER (ours) and LLM-as-a-Router across OOD benchmarks. 
+
+H Generalization to Out-of-Distribution Tasks 
+
+To evaluate the cross-domain robustness of our approach, we report performance on two prominent Out-of-Distribution (OOD) benchmarks: GPQA-Diamond (Rein et al., 2024) and MMLU-Pro (Wang et al., 2024). Due to computational constraints, we conduct our evaluation on a ran-domly sampled subset of 1,200 instances from each dataset. As illustrated in Table 5, E NTRO -ROUTER consistently demonstrates superior gen-eralization capabilities across OOD domains. Our method maintains high competitive efficacy with-out domain-specific fine-tuning. Specifically, E N-
+
+TRO ROUTER achieves an accuracy reduction of only 3.8% , while simultaneously yielding a signifi-cant cost saving of 40 .5% relative to the strongest fixed-expert baseline. 
+
+I Impact of Cost Sensitivity α
+
+We further examine the impact of the hyperparam-eter α (Eq. 5), which governs the sensitivity of the Soft Anchor to computational cost. As shown in Table 6, α serves as an effective control knob for navigating the accuracy-efficiency Pareto frontier. Specifically, while a lower setting ( α = 0 .2) yields the highest accuracy 80 .4% , increasing α to 0.6 achieves a significant reduction in computational cost with only a slight performance drop (from 
+
+80 .4% → 79 .9% ). However, an overly aggressive penalty ( α = 1 .0) causes the cost constraint to out-weigh correctness, leading to a sharp performance decline ( 75 .3% ). 
+
+Model GPQA MMLU-Pro Avg. Acc. Cost Acc. Cost Acc. Cost 
+
+Heuristic 
+
+Random 71.2 0.696 79.6 1.927 78.4 0.002 Qwen3-4B 62.6 0.052 75.0 0.168 73.3 0.000 Qwen3-30B 69.7 0.707 80.3 1.874 78.8 0.000 Qwen3-235B 78.8 1.452 84.0 3.749 83.3 0.004 
+
+Existing Routing Architectures 
+
+RouteLLM 65.2 0.271 77.6 0.947 75.8 0.001 FORC 71.7 0.741 78.5 1.644 77.5 0.002 Router-R1 49.5 0.001 49.6 0.002 49.6 0.000 xRouter 42.4 0.005 52.1 0.003 50.7 0.000 
+
+ENTRO ROUTER 73.2 0.902 80.6 2.300 79.5 0.002 
+
+Table 5: Comparison across Out-of-Distribution (OOD) benchmarks. The best performing model is highlighted in bold. 
+
+Method HMMT-Nov AIME25 SMT2025 Average Acc Cost Acc Cost Acc Cost Acc Cost 
+
+ENTRO ROUTER (Ablation on α)
+
+α = 0 .2 79.0 0.479 78.5 0.454 82.3 0.710 80.4 0.015 
+
+α = 0 .6 80.0 0.416 78.8 0.293 80.4 0.516 79.9 0.011 
+
+α = 1 .0 72.3 0.276 75.0 0.255 77.1 0.448 75.3 0.009 
+
+Table 6: Ablation Study on Cost-Performance Trade-off ( α). We evaluate E NTRO ROUTER with varying sen-sitivity to computational cost. Increasing α effectively reduces inference costs but may compromise accuracy if the penalty becomes too aggressive. 
+
+J Generalization to Heterogeneous Model Families 
+
+To examine whether ENTROROUTER is tied to a single model family, we further augment the original Qwen3 candidate pool with two ad-ditional experts from different model families: 
+
+R1-Distill-Llama-8B and GPT-OSS-20B . Unlike the main experiments, where the candidate models follow a relatively clean within-family scaling hier-archy, this setting introduces heterogeneous models with different pre-training recipes, architectures, and reasoning behaviors. It therefore provides a Method AIME25 HMMT-Nov SMT2025 Acc Cost Acc Cost Acc Cost                         
+
+> Random 65.0 0.193 61.3 0.194 66.3 0.320 R1-Distill-Llama-8B 31.9 0.021 27.3 0.023 39.9 0.032 GPT-OSS-20B 42.1 0.033 33.7 0.030 51.7 0.055
+> ENTRO ROUTER 73.7 0.171 70.4 0.213 75.7 0.345
+
+Table 7: Generalization to an augmented heterogeneous candidate pool. We report accuracy and total inference cost on three mathematical reasoning benchmarks. 
+
+more realistic test of whether the router can gener-alize beyond family-specific scaling patterns. Due to the additional cost of profiling the newly added experts and constructing model-specific rout-ing labels, we conduct this study on a subset of the training data. We otherwise follow the same training and evaluation protocol as in the main ex-periments. The results are reported in Table 7. ENTRO ROUTER consistently improves accuracy over both fixed-model selection and random rout-ing. In particular, it outperforms random routing by 8.7, 9.1, and 9.4 percentage points on AIME25, HMMT-Nov, and SMT25, respectively, while main-taining a comparable cost level. These results indi-cate that the learned routing policy is not restricted to a single-family scaling hierarchy, but can also adapt to candidate pools containing models with distinct training recipes and reasoning behaviors.                     
+
+> Perturbation AIME25 HMMT-Nov SMT2025 Acc Cost Acc Cost Acc Cost
+> 0% 78.8 0.293 80.0 0.416 80.4 0.516 10% 79.6 0.357 80.2 0.411 80.0 0.591
+
+Table 8: Robustness to noisy offline estimates. We inject noise into 10% of the training data by perturbing both Stage-I target labels and Stage-II pass-rate estimates. 
+
+Importantly, the heterogeneous setting weakens the simple monotonic relationship between model cost and capability assumed in a clean within-family pool. Models from different families may exhibit different specialization patterns, and their relative performance can vary substantially across benchmarks. Therefore, routing can no longer be reduced to selecting models according to scale or price alone. The gains in Table 7 suggest that ENTROROUTER can leverage empirical capabil-ity estimates and query-dependent routing signals to identify effective experts even when the can-didate pool does not follow a strictly monotonic cost–capability ordering. 
+
+K Robustness to Noisy Offline Estimates 
+
+ENTROROUTER relies on offline capability es-timates κ(m, x ) to construct the SFT targets and the RL reward. Although these estimates are ob-tained through Monte Carlo rollouts, this profiling is a one-time offline cost and does not affect de-ployment: at inference time, the router performs a single forward pass and requires no online rollouts. This preserves the scalability of the single-round routing framework. To examine the robustness of ENTROROUTER to imperfect offline estimates, we conduct a joint-noise stress test on the training data. Specifically, we randomly perturb 10% of the training instances in both stages: (1) for Stage I, we shift the target model label to an adjacent capability tier when available; and (2) for Stage II, we perturb the offline pass-rate estimates κ(m, x ) by ±0.2. This setting is intentionally stronger than an isolated Stage-II perturbation, since it simultaneously corrupts the supervised initialization targets and the RL-stage capability estimates. As shown in Table 8, ENTROROUTER main-tains stable accuracy under this joint-noise pertur-bation. The accuracy changes are small across all three benchmarks, indicating that the learned router is not overly sensitive to moderate corrup-tion in the offline supervision signals. We also observe a mild increase in cost on AIME25 and SMT25, suggesting that noisy estimates can make the router slightly more conservative by assigning more queries to stronger experts. Overall, these results show that ENTROROUTER remains robust under imperfect offline profiling while preserving its core accuracy–cost trade-off.

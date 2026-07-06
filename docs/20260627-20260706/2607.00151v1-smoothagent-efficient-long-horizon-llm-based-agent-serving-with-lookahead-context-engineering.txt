@@ -1,0 +1,950 @@
+Title: SmoothAgent: Efficient Long-Horizon LLM-Based Agent Serving with Lookahead Context Engineering
+
+URL Source: https://arxiv.org/pdf/2607.00151v1
+
+Published Time: Thu, 02 Jul 2026 00:07:49 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# SmoothAgent: Efficient Long-Horizon LLM-Based Agent Serving with Lookahead Context Engineering 
+
+# Zaifeng Pan 
+
+University of California, San Diego zapan@ucsd.edu 
+
+# Qianxu Wang 
+
+University of California, San Diego wqxwqx111@gmail.com 
+
+# Zhengding Hu 
+
+University of California, San Diego zhh068@ucsd.edu 
+
+# Chang Chen 
+
+University of California, San Diego chc278@ucsd.edu 
+
+# Yue Guan 
+
+University of California, San Diego y9guan@ucsd.edu 
+
+# Yanbo Zhou 
+
+University of California, San Diego yaz093@ucsd.edu 
+
+# Steven Swanson 
+
+University of California, San Diego sjswanson@ucsd.edu 
+
+# Yufei Ding 
+
+University of California, San Diego yufeiding@ucsd.edu 
+
+## ABSTRACT 
+
+LLM-based agents execute multi-turn workflows with continuously growing contexts, where LLM calls are interleaved with tool in-vocations and environment feedback. To maintain model quality, modern agent frameworks rely on context engineering strategies such as offloading, reduction, and isolation to control the con-text length. However, these strategies introduce significant context transformation overhead: each transformation invalidates existing KV caches and triggers re-prefill, leading to increased time-to-first-token (TTFT). In this paper, we identify that context transformations are segment-decomposable, where the transformation of a prefix is independent of future tokens. This property enables transformations to be exe-cuted ahead of time. Based on this insight, we propose a lookahead programming model that allows agent frameworks to express con-text transformations as asynchronous operations without modify-ing their execution logic. The runtime proactively executes these transformations and prepares transformed KV caches in advance, enabling direct context replacement without blocking. We further design a lookahead-aware scheduler in LLM serving systems to sup-port these asynchronous requests alongside latency-critical work-loads with controlled interference. We implement our approach to support representative context engineering strategies and integrate it into existing agent frameworks and LLM serving systems. Experi-ments show that our approach effectively eliminates transformation overhead and reduces TTFT by up to 11.9 ×.
+
+PVLDB Reference Format: 
+
+Zaifeng Pan, Qianxu Wang, Zhengding Hu, Chang Chen, Yue Guan, Yanbo Zhou, Steven Swanson, and Yufei Ding. SmoothAgent: Efficient Long-Horizon LLM-Based Agent Serving with Lookahead Context Engineering. PVLDB, 20(X): XXX-XXX, 2027. doi:XX.XX/XXX.XX 
+
+PVLDB Artifact Availability: 
+
+> This work is licensed under the Creative Commons BY-NC-ND 4.0 International License. Visit https://creativecommons.org/licenses/by-nc-nd/4.0/ to view a copy of this license. For any use beyond those covered by this license, obtain permission by emailing info@vldb.org. Copyright is held by the owner/author(s). Publication rights licensed to the VLDB Endowment. Proceedings of the VLDB Endowment, Vol. 20, No. X ISSN 2150-8097. doi:XX.XX/XXX.XX
+
+The source code, data, and/or other artifacts have been made available at https://github.com/PanZaifeng/SmoothAgent. 
+
+## 1 INTRODUCTION 
+
+Large language model (LLM)-based agents [ 3 , 17 , 23 , 36 , 41 , 43 , 45 ,58 , 71 , 74 ] are increasingly deployed in real-world applications, where they execute multi-turn workflows with interleaved model inference, tool usage, and user interaction, as shown in Figure 1(a). In such scenarios, the context continuously accumulates conversa-tion history, tool outputs, and intermediate states, quickly becoming a central factor for both model quality and system efficiency. As Figure 1(b) shows, prior work has identified context rot [ 22 ], where model reliability degrades as the context grows, even within the supported context window. Meanwhile, longer contexts also in-cur higher computational cost and GPU memory usage, making effective context management essential for production LLM agents. To mitigate context rot, production agents [ 26 , 33 , 39 , 46 , 59 ]adopt a variety of context engineering strategies to control the context length. Common context engineering techniques include reduction [ 32 ], which truncates or summarizes historical informa-tion; offloading [ 26 ], which moves parts of the context such as tool outputs to file systems; and isolation [ 13 , 32 ], which launches sub-agents with separate and clean contexts. As the number of interaction turns increases, the accumulated context grows contin-uously, while these strategies periodically reduce or reorganize the context to maintain a manageable size. As shown in Figure 2(a), triggering operations such as offloading or summarization effec-tively controls context growth over time. Context engineering has become a fundamental component of agent harness development and is critical to the effectiveness of agent frameworks. However, although context engineering improves agent accu-racy and robustness, it introduces a new performance challenge. From a system perspective, these techniques fundamentally per-form context transformation, where the original context is mapped to a new representation. This transformation invalidates the exist-ing KV cache, forcing the system to recompute it through a new prefill stage. As a result, each transformation incurs additional latency, which we refer to as context transformation overhead . Fig-ure 3 illustrates this overhead with a summarization example that 
+
+> arXiv:2607.00151v1 [cs.DC] 30 Jun 2026 System Prompt
+> User Query
+> Tool call
+> User Feedback
+> Tool call
+> Thinking
+
+…  
+
+> Round 1 Round 2
+> User Agent
+> (a) Multi -turn LLM agents (b) LLM performance on repeated words tasks
+
+Figure 1: Without context engineering, the contexts of LLM agents will accumulate rapidly through rounds, leading to the context rot phenomenon. The experimental results in (b) are reported by Chroma [22]. 
+
+rewrites earlier turns and changes the context prefix. As illustrated in Figure 2(b), when such transformations are triggered, the time-to-first-token (TTFT) increases significantly, particularly affecting tail latency. In latency-sensitive applications such as real-time sim-ulation [ 56 , 84 ], this increase in tail TTFT can lead to unacceptable violations of service-level objectives (SLOs), severely degrading user experience. To address the context transformation overhead, we first ana-lyze commonly used context engineering techniques and make a key observation: most context transformations exhibit a segment-decomposable property. Intuitively, this property implies that the transformation of a context can be decomposed into transforma-tions over its individual segments, such that applying the transfor-mation to each segment independently and then concatenating the results yields the same outcome as transforming the entire context at once. This means that the transformation of each segment is independent of the tokens that follow it, enabling opportunities to perform transformations in advance. We formalize this segment-decomposable property in Section 3 and show that it holds for various context engineering strategies. Based on this insight, we propose a lookahead programming model that eliminates context transformation overhead by decou-pling transformation from the critical path. The key idea is to maintain a lookahead context alongside the working context and asynchronously compute the KV cache of transformed contexts in advance. When a context transformation is required, the sys-tem can directly replace the KV cache without performing a new prefill. For example, in some agents that offload all tool outputs to file systems once a context limit is reached, the transformed context after each tool call is independent of future tokens. This allows the system to precompute the corresponding KV cache in the lookahead stream after each tool call and seamlessly switch to it when reaching context limit. We demonstrate how various context engineering techniques can be expressed within this programming model and benefit from reduced overhead in Section 3. While lookahead computation reduces transformation latency, it introduces potential interference with foreground requests. Looka-head requests may compete with the main context generation or with requests from other users in a shared serving environment. To 0 50 100 150     
+
+> Turn
+> 0
+> 10
+> 20
+> 30
+> Context Length (K)
+> 050 100 150
+> Turn
+> 0
+> 1
+> 2
+> 3
+> TTFT (s)
+> (a) Context length evolution (b) TTFT across turns
+> Context Summarization Turn
+
+Figure 2: By periodically applying context summarization, LLM agents effectively control the context length, but intro-duce significant context transformation overhead. Turn 1    
+
+> Turn 1 Turn 2
+> Turn 1
+> Turn 2
+> Turn 1 Turn 2 Turn N
+
+…
+
+… Turn N-1 Turn N      
+
+> Turn N-1Turn NSummary Turn N+1
+> Prefix cache hits, only new
+> turn should be computed
+> Context too long,
+> summarize earlier turns
+> Invalidated due to
+> prefix changes
+> Turn N+1
+> TTFT Spike due
+> to context
+> transformation
+> overhead!
+> Cached tokens Non -cached
+
+Figure 3: An illustrative example of context transformation overhead, including KV cache invalidation and additional transformation cost, which leads to TTFT spikes. 
+
+address this challenge, we design a lookahead-aware request sched-uler that minimize interference under both prefill-decode aggrega-tion and disaggregation settings. Specifically, we split lookahead requests into dynamic chunks and propose SLO-aware lookahead and latency-critical request co-batching strategies. These ensure that lookahead computation is performed only when it does not compromise the latency guarantees of other requests. In addition, we introduce a promotion interface in the programming model that prioritizes lookahead requests when a context transformation is imminent, ensuring timely availability of transformed KV caches. We implement our approach by integrating optimized lookahead-based context engineering strategies into popular agent frame-works, including MiniAgent [ 47 ], OpenClaw [ 59 ], LangChain [ 33 ], LlamaIndex [39], and AutoGen [46]. Our evaluation demonstrates that the proposed methods significantly improve tail TTFT by effec-tively hiding context transformation overhead, leading to a more smooth TTFT profile. In summary, this paper makes the following contributions: 
+
+• We identify and characterize the context transformation overhead introduced by context engineering in LLM agent workloads. 
+
+> 2
+
+• We formalize the segment-decomposability property of commonly used context transformations. 
+
+• We propose a lookahead programming model that general-izes across context engineering strategies and eliminates transformation overhead, along with SLO-aware schedul-ing techniques to mitigate request interference. 
+
+• We conduct comprehensive experiments across strategies and agent frameworks, demonstrating up to 11.9 × improve-ment in transform-point TTFT. 
+
+## 2 BACKGROUND AND MOTIVATION 
+
+LLM agents and context engineering. LLM-based agents [ 3, 19 ,71 , 74 ] have emerged as a dominant paradigm for solving complex, multi-step tasks, and are widely adopted in both research and pro-duction systems [ 4 , 6, 13 , 23 , 55 , 64 , 73 ]. Instead of a single forward pass, agents iteratively interact with the environment through in-terleaved LLM calls, tool invocations, and human feedback. Each step produces new observations that are appended to the context, forming a growing execution trace over time. As a result, agent workloads naturally consist of long, multi-turn sessions with rapidly expanding context. This growth introduces two key challenges. First, the context may exceed the model’s con-text window, forcing the system to discard, compress, or external-ize information. Second, even within the limit, models often suffer from context rot [ 22 ], where performance degrades as the context becomes longer and noisier, as illustrated in Figure 1(b). These challenges make context management a first-class con-cern in agent systems. Recent studies and production deployments show that agent performance depends critically on how the con-text is constructed, maintained, and transformed. This has led to the emergence of context engineering [5, 26 , 32 ] as a fundamental component of modern agent frameworks. To manage context growth, agent frameworks apply a range of context engineering strategies [ 5 , 9 , 11 , 19 , 26 , 32 ]. For example, some systems offload past interactions or tool outputs to external storage, others summarize long histories to reduce context length, and many isolate sub-tasks into separate sub-agent contexts with dedicated prompts. These transformations help control context size and improve robustness, but they also introduce execution overhead. Each transformation modifies the input prefix and re-quires recomputing the KV cache, which lies on the critical path of inference and can lead to noticeable TTFT spikes, as shown in Figure 2. 
+
+Agent serving systems. The serving stack for LLM agents typ-ically consists of two loosely coupled layers. At the frontend, agent frameworks [ 4 , 33 , 39 , 47 , 59 ] define the agent harness, including control flow, tool usage, and context management policies. These frameworks focus on expressiveness and task-solving capability, enabling developers to compose complex agent behaviors. At the backend, LLM serving systems such as vLLM [ 31 ] and SGLang [ 79 ] optimize model execution efficiency. They employ techniques such as batching and scheduling [ 2 , 53 , 76 , 80 , 82 ], kernel optimization [ 10 , 12 , 29 , 50 , 75 ], and KV cache management [ 1 , 31 ,54 , 72 ] to improve throughput and reduce latency across concurrent requests. Context C C → T(C) overhead           
+
+> Context engineering applied;
+> transform context C to T(C)
+> (a) Synchronous context engineering
+> timeline
+> S1S2S3
+> T(S1) T(S2)
+> should _lookahea d
+> transform commit
+> T(S3)
+> should_commit
+> Main Context
+> Lookahead Context
+> (b) Lookahead context engineering based on segmen t-decomposability
+> S: segment
+> T: transform function
+
+Figure 4: Execution timeline of the lookahead program-ming model. The main stream proceeds normally while the lookahead stream asynchronously computes the trans-formed segments’ KV cache in advance. At commit time, the pre-computed result is spliced. 
+
+In this work, we improve the execution efficiency of agent sys-tems under context engineering. At the agent framework level, we provide a lookahead programming model that enables context transformations to be expressed in a form that can be executed asynchronously without changing their logic. At the LLM serving system level, we optimize the scheduler to support these lookahead requests, allowing them to run alongside regular requests with controlled interference. 
+
+## 3 LOOKAHEAD PROGRAMMING MODEL FOR CONTEXT TRANSFORMATION 3.1 Segment-Decomposable Transformation 
+
+In this section, we formalize a common structural property that enables more efficient context engineering execution. In particular, we view context engineering as a transformation process over the accumulated context. Let 𝐶 denote the current context of the agent, and let 𝑇 (·) denote a transformation function that is triggered when certain conditions are met, such as the context length exceeding a predefined threshold. The transformed context 𝑇 (𝐶 ) is then used for subsequent LLM invocations to maintain generation quality. In existing systems, such transformations are typically executed synchronously on the critical path of generation, introducing non-trivial overhead. First, applying 𝑇 invalidates the KV cache of the original context, requiring recomputation for the transformed in-put. Second, the transformation itself incurs additional cost, which may involve file system operations, external storage access, or aux-iliary model calls such as summarization. As a result, synchronous transformation increases latency, particularly affecting TTFT in production systems. This motivates the need to execute context transformations ahead of time, without blocking ongoing genera-tion. To understand when such asynchronous execution is possible, consider the example of context offloading. As illustrated in Fig-ure 5, when the context exceeds a threshold, agent frameworks may offload certain components, such as tool outputs, to file systems, 
+
+> 3
+
+thereby reducing the working context length. In this process, the transformation applied to each tool output is independent of others. Once a tool output is produced, its transformed representation is fully determined and does not depend on future tokens or subse-quent interactions. Therefore, its transformation can be computed immediately, rather than waiting for the global offloading trigger. This observation motivates the notion of segment-decomposability .Let the context 𝐶 be partitioned into a sequence of segments {𝑆 1, 𝑆 2,. . . , 𝑆 𝑛 }. A transformation function 𝑇 is segment-decomposable if there exists such a partition where each segment can be transformed independently, and the overall transformation can be expressed as 
+
+𝑇 (𝐶 ) = 𝑇 (𝑆 1) ∥ 𝑇 (𝑆 2) ∥ · · · ∥ 𝑇 (𝑆 𝑛 ),
+
+where ∥ denotes concatenation. Under this property, each segment can be transformed as soon as it becomes available, enabling asyn-chronous execution in advance and avoiding increases in TTFT. In Sections 3.3-3.5, we show that widely used context engineering strategies, including offloading, reduction, and isolation, naturally exhibit this property, which enables their transformation overhead to be hidden via lookahead execution. 
+
+## 3.2 Lookahead Programming Model 
+
+Building on segment-decomposability, we design a lookahead pro-gramming model that expresses context engineering strategies in a form that exposes transformation opportunities to the runtime. The key idea is to maintain a lookahead context alongside the main working context, as illustrated in Figure 4. The model consists of a strategy interface together with a runtime that asynchronously executes lookahead transforms and finally commits their results into the main context. We present their design in the rest of this section. 
+
+State abstractions. The model maintains two state objects cor-responding to the working context and the lookahead context, as shown in Listing 1. MainState captures the current working con-text, including the full message list and per-strategy metadata such as token counts and limits, which are used to determine when to trigger different actions. LookaheadState tracks the progress of lookahead execution. It contains (1) transformed , the accumulated transformed segments constructed incrementally across processed segments; (2) last_segment_end , which marks the end of the pre-fix that has already been incorporated into the lookahead state; and (3) strategy_data , a per-strategy mutable state used to store aux-iliary information such as file handles for offloading or intermediate summaries. 
+
+Strategy interface. As shown in Listing 1, each context engi-neering strategy implements the following methods: 
+
+• should_lookahead() → bool : invoked at segment bound-aries to determine whether the newly available segment should be transformed asynchronously. Different strategies instantiate this condition differently. 
+
+• transform() : incrementally updates the transformed pre-fix using the current segment. The function mutates la_state 
+
+to reflect updated progress. By segment-decomposability, the transformation depends only on the current segment and the existing lookahead state, and is independent of any future tokens. 
+
+• should_commit() → bool : determines whether the pre-computed transformed prefix should be committed into the working context. This condition is typically triggered when the context exceeds the token limit. 
+
+• should_promote() → bool : provides an early signal to increase the scheduling priority of pending lookahead re-quests. By default, this condition aligns with should_commit ,but strategies may override it to promote lookahead exe-cution before the commit point, reducing the likelihood of misses. 
+
+Listing 1: Strategy interface of the programming model                                                 
+
+> 1@dataclass
+> 2class MainState :
+> 3messages: list[Message]
+> 4strategy_data: Dict
+> 56@dataclass
+> 7class LookaheadState :
+> 8transformed: List[Message]
+> 9last_segment_end: int
+> 10 strategy_data: Dict
+> 11 12 class LookaheadStrategy (ABC):
+> 13 def __init__( self ):
+> 14 self .main =MainState (...)
+> 15 self .la =LookaheadState (...)
+> 16 17 @abstractmethod
+> 18 def should_lookahead (self )-> bool: ...
+> 19 20 @abstractmethod
+> 21 def transform (self ): ...
+> 22 23 @abstractmethod
+> 24 def should_commit (self )-> bool: ...
+> 25 26 def should_promote (self )-> bool:
+> 27 return self .should_commit ()
+
+Execution runtime. The runtime maintains two concurrent streams, as illustrated in Figure 4. The main stream executes the agent loop as usual, while the lookahead stream processes segments asynchronously. At each segment boundary, the runtime invokes the function 
+
+> should_lookahead
+
+. If triggered, it extracts the newly available segment and submits a transform call as a lookahead request. Al-though transform is defined over a single segment, its execution in-troduces two challenges. First, LLM calls within transform require KV cache construction that depends on the previously transformed prefix. Second, the lookahead state must be updated incrementally to reflect the progressive construction of the transformed context. To preserve this dependency and for simplicity, lookahead requests are enqueued and executed in order, so that each request observes the appropriate prefix state. All LLM requests issued within the  
+
+> transform
+
+function are marked as lookahead requests and sched-uled outside the latency-critical path. We discuss their scheduling in Section 4. When should_commit fires, the runtime attempts to commit the lookahead result by splicing the transformed prefix into the working context. If the corresponding lookahead computation has completed, the runtime directly replaces the prefix in the work-ing context with the transformed result, thereby avoiding block-ing transformation on the critical path. Otherwise, the runtime promotes the priority of pending lookahead requests so that the scheduler can expedite their execution. Such promotion can also 
+
+> 4
+
+happen proactively before the commit point if should_promote is satisfied. Listing 2 shows how the programming model integrates into a standard agent loop. The runtime encapsulates the complexity of lookahead scheduling and result management, while developers only need to implement the strategy interface and insert lightweight hooks into the agent loop. 
+
+Listing 2: Agent loop with lookahead context engineering                                                                               
+
+> 1strategy =MyLookaheadStrategy (...)
+> 2runtime =LookaheadRuntime (strategy)
+> 34messages =[system_prompt, user_query]
+> 5while not task_done:
+> 6#Commit hook: if context budget is exceeded, await
+> 7#lookahead transforms and promote if necessary.
+> 8#Then splice the transformed prefix:
+> 9#main.messages <= la.transformed
+> 10 #++ T(messages[la.last_segment_end:])
+> 11 messages =runtime.on_commit(messages)
+> 12 13 response =llm.generate(messages)
+> 14 messages.append(response)
+> 15 if response.has_tool_call:
+> 16 obs =execute_tool(response.tool_call)
+> 17 messages.append(obs)
+> 18 19 #Segment hook: extract new segment since last
+> 20 #trigger and enqueue abackground transform.
+> 21 #Completed result is appended to la.transformed.
+> 22 runtime.on_segment_boundary(messages)
+
+In the following sections, we instantiate this programming model with commonly used context engineering strategies, showing how each strategy satisfies segment-decomposability and maps naturally onto the lookahead execution model. 
+
+## 3.3 Offloading 
+
+Context offloading [ 9, 26 ] rewrites the context by moving observa-tions (e.g., tool execution results, environment states) to external storage and replacing them with lightweight references. As illus-trated in Figure 5(a), when the context approaches a predefined limit, earlier observations are written to the file system. Their in-context representations are replaced with pointers such as “Observation 1 written to /path/to/file1”, which triggers a new blocking prefill request. This design preserves the full information in a restorable form while reducing the active context length. Unlike lossy tech-niques such as summarization, offloading maintains exact fidelity and allows the agent to read file contents when needed. Offloading fits naturally into our segment-decomposable abstrac-tion. The decision to offload depends only on the current context up to a segment boundary (e.g., after an observation), and each segment can be transformed independently of future segments. This property enables the system to incrementally construct trans-formed prefixes ahead of time and overlap transformation with ongoing execution. As shown in Figure 5(b), should_trigger is evaluated after each segment is appended to determine whether the current seg-ment should be offloaded. Once triggered, transform incrementally rewrites the prefix by offloading completed segments to external storage and replacing them with references in the lookahead stream, while updating the lookahead state to track the materialized out-puts. In parallel, should_commit is evaluated as the main execution Instruction         
+
+> Action 1
+> Observation 1
+> Action 2
+> Observation 2
+> Action 3
+> Context
+> Instruction
+> Action 1
+> Observation 1
+> Action 2
+> Observation 2
+> Action 3
+> Context
+> File 1
+> File 2
+> File System
+> Reach
+> limit
+> Context
+> Offload
+> Re -prefill
+> required
+> Example of offloaded
+> context: “Observation 1
+> written to /path/to/file1”
+
+(a) Illustrative example of context offloading               
+
+> Lookahead Context T(S1) T(S2) T(S3)
+> transform
+> Instruction Actio n1Observation 1 Action 2Observation 2Action 3
+> S1 S2 S3
+> commit timeline
+
+(b) Lookahead -optimized context offloading 
+
+Figure 5: Offloading transforms bulky observations (e.g., tool outputs) into compact references to external storage. Since each completed observation can be rewritten independently, the transformed KV cache can be prepared ahead of time. 
+
+progresses; when the context reaches the offloading point, the sys-tem replaces the corresponding prefix in the main context with the transformed prefix produced by the lookahead execution. By preparing the transformed prefix in advance, the system avoids performing the transformation and re-prefill synchronously on the critical path, effectively hiding the overhead of context of-floading. 
+
+## 3.4 Reduction 
+
+Context reduction [ 9, 32 , 35 ] controls context growth by discarding or compressing less relevant history while retaining information that is most useful for future reasoning. Two representative forms are truncation and summarization. 
+
+Truncation. Truncation strategies directly discard historical contents to control context growth. The most common and simple strategy is keep-recent-𝐾 [ 11 , 19 ], which retains only the most recent 𝐾 turns while discarding older ones. As shown in Figure 6(a), when a new turn is appended and the number of turns exceeds the limit, the oldest turns are removed. Although the contents in Turns 3 and 4 do not change, a new prefill is still required to rebuild the KV cache for subsequent generations. This approach is simple yet effective, as recent interactions are typically the most relevant for next-step reasoning in agent workloads [40]. The keep-recent-𝐾 example also fits into the segment-decomposable abstraction. Each turn can be treated as a segment, and whether a segment is retained depends only on its relative position within the window. Since removal decisions do not depend on future segments, the transformed prefix can be constructed incrementally. As illustrated in Figure 6(b), should_trigger is evaluated af-ter each new turn to determine whether the window size exceeds the limit. Once triggered, transform incrementally drops outdated                
+
+> 5(b) Lookahead -optimized keep -recent -𝐾
+> (a) Illustrative example of keep -recent -𝐾
+> System prompt
+> Context @ turn 4
+> Keep Recent
+> Re -prefill
+> required
+> Turn 1
+> Turn 2
+> Turn 3
+> System prompt
+> Context @ turn 5
+> Turn 4
+> Turn 5(new)
+> Discard
+> Turn 4
+> Reach
+> turn limit
+> Turn 3
+> Lookahead Context
+> transform
+> System prompt Turn 1 Turn 2 Turn 3
+> S1 S2
+> commit timeline
+> T(S1)=None
+> S3
+> T( S2)
+> Turn 5Turn 4
+
+Figure 6: Keep-recent-𝐾 reduction keeps only the most recent 
+
+𝐾 context segments. The transform is local to the retention boundary, which meets the segment-decomposable property. 
+
+segments and constructs the truncated prefix, computing the cor-responding KV cache in advance. When the window boundary shifts, the system detects the commit signal and replaces the corre-sponding prefix with the truncated version produced by lookahead execution. 
+
+Summarization. Another form of reduction replaces a span of past context with a compact summary generated by an LLM. As shown in Figure 7(a), when the context reaches a predefined limit, a subset of earlier turns is summarized into a shorter representa-tion (e.g., key decisions or high-level descriptions), which is then inserted back into the context. This transformation reduces context length while preserving approximate semantic information. Summarization also exhibits segment-decomposability, but with a coarser granularity. In practice, agents typically preserve recent turns verbatim and only summarize earlier history to maintain fidelity. As a result, summarization only applies to the completed segments before the summarization boundary, making it indepen-dent of future context. Determining the exact summarization boundary may require observing the full context (e.g., when summarizing all but the most recent 𝑁 turns). To enable lookahead execution, we use a soft trig-ger threshold that is slightly smaller than the actual summarization limit. When this soft threshold is reached, should_trigger ini-tiates a lookahead summarization request based on the current prefix. Although the resulting boundary may not exactly match the final one, the discrepancy is bounded by the gap between the soft and hard thresholds. In practice, this introduces negligible impact when the total context is long, and may even improve fidelity by summarizing slightly less content. 
+
+## 3.5 Isolation 
+
+Context isolation [ 5 , 32 ] separates a task into a new execution context, typically by launching a sub-agent with its own system prompt and tool set. This design helps reduce interference from (a) Illustrative example of context summarization          
+
+> (b) Lookahead -optimized context summarization
+> Re -prefill
+> required
+> System prompt
+> Context @ turn 3
+> Turn 1
+> Turn 2
+> Turn 3
+> System prompt
+> Context @ turn 4
+> Summarized
+> Turn 4
+> Summarization
+> boundary
+> Reach
+> limit
+> Summarize Turn 3
+> LLM
+> Overview, key
+> decisions, …
+> Overhead
+> Lookahead Context T(S1)
+> transform
+> System prompt Turn 1 Turn 2
+> S1S2
+> commit timeline
+> T(S2)
+> Turn 3 Turn 4
+> Local context in Turn 3 will not
+> change so we can directly split it
+> Oracle trigger time
+
+Figure 7: Summarization compresses the prefix into a com-pact synopsis. The summary depends only on the completed history, which makes it amenable to lookahead execution. 
+
+irrelevant history, improves modularity, and allows the sub-agent to operate with a specialized prompt and tool configuration tailored to the delegated task. As shown in Figure 8(a), when the main agent delegates a task, it first generates an instruction describing the sub-task, and then switches to a clean context for the sub-agent. This new context consists of the sub-agent’s system prompt and the generated instruction, and requires a fresh prefill before execution. This process can be viewed as a context transformation that replaces the main-agent prefix with a new sub-agent context. Isolation can also be expressed within the segment-decomposable abstraction. We treat the point where the main agent decides to delegate a sub-agent as the first segment boundary, and transform it into the sub-agent system prompt in advance. After that, the main agent generates instructions for the sub-agent. This instruc-tion generation, however, is not naturally decomposed for context transformation. Treating it as a monolithic output delays sub-agent context construction until decoding completes, leading to perfor-mance for long instructions. To address this issue, we reformulate instruction generation as a 
+
+streaming process and partition it into fine-grained segments. Each segment corresponds to a chunk of newly generated tokens and depends only on the previously generated prefix, making it com-patible with segment-decomposability. This enables the system to incrementally construct the sub-agent context alongside decoding, rather than waiting for the full instruction. Since instruction gener-ation is a relatively long-running auto-regressive decoding process, it creates sufficient opportunity to prepare the sub-agent KV cache incrementally. As a result, most of the prefill cost can be amortized and hidden before the context switch occurs. FlashAgents [ 14 ]also leverages similar streaming ideas to accelerate multi-agent workflows. As illustrated in Figure 8(b), should_trigger is activated when the system decides to launch a sub-agent. During instruction gen-eration, the decoding stream is partitioned into segments (S2, S3), each corresponding to a chunk of the instruction. For each segment,        
+
+> 6(a) Illustrative example of context isolation with a sub -agent
+> (b) Lookahead -optimized context isolation
+> Main agent
+> system prompt
+> Main Agent
+> Context
+> Isolation
+> Re -prefill
+> required
+> Instruction
+> Sub agent
+> system prompt
+> Sub Agent
+> History context Instruction
+> Launch a sub -agent
+> with clean context
+> and own tool sets
+> Lookahead Context T(S1) T(S2)
+> transform
+> System prompt History context
+> S1 S2
+> commit
+> timeline
+> T(S1 )=Sub -agent
+> sys prompt
+> S3
+> T(S3)
+> Instruction Turn 4
+> Decompose the streaming
+> instruction into segments
+
+Figure 8: Context isolation launches a sub-agent with a clean context. By decomposing instruction generation into seg-ments, the sub-agent context can be prepared ahead of time.  
+
+> transform
+
+incrementally constructs the target sub-agent context by appending the generated instruction chunk to the sub-agent system prompt and preparing the corresponding KV cache. Since instruction generation is typically slower than prefilling, most of the sub-agent context can be prepared in advance and hidden from the decoding process. Finally, should_commit is evaluated when the instruction gen-eration completes. At this point, the system replaces the main-agent context with the constructed sub-agent context and performs a final short prefill to complete the transition. By preparing the majority of the sub-agent context in advance, the system significantly reduces the blocking prefill overhead of context isolation. 
+
+## 4 LOOKAHEAD-AWARE REQUEST SCHEDULER 
+
+Co-serving lookahead requests with other requests introduces in-terference that can degrade serving latency. On prefill-only in-stances [ 53 , 54 , 82 ], lookahead requests consume service time and in-crease the queuing delay of other requests. In prefill-decoding (PD) co-located deployments [ 2 , 21 , 29 ], including lookahead chunks in a batch increases its execution time, delaying subsequent iterations. As a result, both time-to-first-token (TTFT) and time-between-tokens (TBT) can be negatively affected. These effects are particularly problematic for requests on the critical path of agent execution, including prefills and decode itera-tions in the main context. Their latency directly determines TTFT and TBT, and we refer to them as latency-critical (LC) requests. To mitigate such interference, SmoothAgent treats lookahead requests as best-effort (BE) jobs. Lookahead requests have inherently looser timing requirements: they only need to complete before their corresponding commit point to fully realize their benefit, and can otherwise fall back to synchronous execution without incurring additional overhead compared to the baseline. Therefore, BE jobs are executed only when sufficient slack exists and must never degrade the latency guarantees of LC requests. Concretely, LC requests always take priority, and lookahead computation is admitted only if it does not violate TTFT or TBT constraints. Enforcing this policy requires accurately estimating the latency impact of co-batching lookahead and LC requests. We first present a performance model for batch execution latency, and then describe SLO-aware co-batching strategies for both PD disaggregated and co-located deployments. 
+
+Performance model. Some prior systems [ 2, 20 ] use token budgets based on SLO requirements to enable stall-free piggyback execution, modeling batch latency solely as a function of the total number of tokens. However, this approximation is insufficient in agentic workloads, where requests often carry long KV caches. In this regime, attention cost becomes a dominant factor and depends not only on the number of query tokens but also on the KV cache length. Therefore, the scheduler must explicitly model both effects to make reliable admission decisions. We model the latency of a mixed batch 𝐵 by decomposing trans-former execution into components with distinct scaling behaviors. The key observation is that FFN layers scale with the number of tokens, while attention layers scale with both token count and KV-cache length. 
+
+GEMM. All tokens in the batch, including decode tokens and prefill chunk tokens, are processed by the same dense operators in each transformer layer, including the projection matrices in attention (QKV and output projections) and the FFN layers. Let 
+
+𝑀 = |𝐵 decode | + ∑︁  
+
+> 𝑗 ∈𝐵 prefill
+
+𝑞 𝑗 ,
+
+denote the total number of forward tokens in the batch. The GEMM cost 𝑇 GEMM (𝑀 ) is non-linear in 𝑀 : for small 𝑀 , execution is memory-bound and exhibits near-constant latency, while for larger 𝑀 , it becomes compute-bound and scales approximately linearly. We therefore model 𝑇 GEMM using an offline-profiled lookup table with interpolation. 
+
+Decode attention. Each decode request contributes a single query token that attends to its full KV cache of length 𝐿 𝑗 . This operation is memory-bandwidth bound and its cost scales linearly with the total KV tokens accessed: 
+
+𝛼 d∑︁ 𝑗 ∈𝐵 decode 
+
+𝐿 𝑗 ,
+
+where 𝛼 d is a profiled coefficient. 
+
+Prefill attention. Each prefill chunk 𝑗 contains 𝑞 𝑗 query tokens attending to a KV cache with prefix length prefix 𝑗 . In contrast to decode attention, prefill attention is compute-bound due to the larger number of query tokens per request, and we model its cost based on total attention work. Due to the causal mask, the 𝑖 -th query token attends to prefix 𝑗 + 𝑖 + 1 tokens, leading to 
+
+𝐴 𝑗 = 
+
+> 𝑞 𝑗 −1
+
+∑︁ 
+
+> 𝑖 =0
+
+(prefix 𝑗 + 1 + 𝑖 ) = 𝑞 𝑗 · prefix 𝑗 + 𝑞 𝑗 (𝑞 𝑗 + 1)
+
+2 .
+
+The total prefill attention cost is therefore 
+
+𝛼 p∑︁  
+
+> 𝑗 ∈𝐵 prefill
+
+𝐴 𝑗 ,
+
+where 𝛼 p is a profiled coefficient. 
+
+> 7
+
+Algorithm 1 Prefill Batch Scheduling (PD Disaggregated) 
+
+Input: LC queue QLC , BE queue QBE , LC schedule algorithm ALC ,current time 𝑡 now 
+
+Output: batch to be executed 𝐵 = 𝐵 LC ∪ 𝐵 BE  
+
+> 1:
+
+// Schedule LC reqs based on the original algorithm  
+
+> 2:
+
+QLC ← Schedule (Q LC , ALC ) 
+
+> 3:
+
+// Get minimum slack across LC queue  
+
+> 4:
+
+𝑝 ← 0; 𝑠 min ← +∞  
+
+> 5:
+
+for each request 𝑟 ∈ Q LC do  
+
+> 6:
+
+𝑝 ← 𝑝 + EstPrefillLatency (𝑟 ) 
+
+> 7:
+
+𝑠 𝑗 ←  𝑟 .𝑡 arrival + 𝑟 . SLO TTFT 
+
+ − 𝑡 now − 𝑝  
+
+> 8:
+
+𝑠 min ← min (𝑠 min , 𝑠 𝑗 ) 
+
+> 9:
+
+end for  
+
+> 10:
+
+𝑡 budget ← max (0, 𝑠 min ) 
+
+> 11:
+
+// Construct batch  
+
+> 12:
+
+𝐵 LC ← NextChunks (Q LC ) 
+
+> 13:
+
+𝐵 BE ← ∅  
+
+> 14:
+
+for each candidate chunk 𝑐 ∈ Q BE do  
+
+> 15:
+
+if EstBatchLatency (𝐵 LC ∪ 𝐵 BE ∪ { 𝑐 }) > 𝑡 budget then  
+
+> 16:
+
+break  
+
+> 17:
+
+insert 𝑐 into 𝐵 BE  
+
+> 18:
+
+end for  
+
+> 19:
+
+return 𝐵 LC ∪ 𝐵 BE 
+
+Combining the three components, the estimated batch latency is 
+
+EstBatchLatency (𝐵 ) =
+
+𝑇 GEMM (𝑀 )+ 𝛼 d
+
+Í𝑗 ∈𝐵 decode 𝐿 𝑗 
+
++ 𝛼 p
+
+Í𝑗 ∈𝐵 prefill 𝐴 𝑗 .
+
+(1) This model enables accurate estimation of the latency impact of co-batching decode and prefill requests, and is used to guide SLO-aware scheduling decisions. 
+
+Slack-aware batching for PD disaggregation. In PD disaggre-gated systems [ 53 , 54 , 82 ], prefill and decode are served by separate instances. Lookahead requests correspond to prefill operations and are handled by prefill instances. Our goal is to piggyback lookahead requests on prefill instances without violating the TTFT constraints of other requests. To en-able fine-grained scheduling, we divide prefill requests into small chunks [ 2, 21 , 54 ] and treat each chunk as a schedulable unit. The key idea is to treat lookahead execution as slack-driven computa-tion. Instead of explicitly reserving resources for BE requests, we derive a time budget from the TTFT constraints of LC requests and admit BE chunks only within this budget. This reduces the sched-uling problem to a simple question: how much additional latency can be introduced without violating any LC deadline. As shown in Algorithm 1, the scheduler first applies the original LC scheduling policy (line 2), such as first come first serve (FCFS), and then computes the available slack from LC requests. It iterates over the LC queue (line 5), accumulating the expected prefill latency of preceding requests, and derives a slack value for each request based on its TTFT deadline. The minimum slack determines the time budget 𝑡 budget (line 10). 
+
+Algorithm 2 Hybrid Batch Scheduling (PD Co-Located) 
+
+Input: decode queue Qdec , LC prefill queue QLC , BE prefill queue 
+
+QBE , TBT SLO 𝛿 
+
+Output: batch to be executed 𝐵  
+
+> 1:
+
+𝐵 ← ∅  
+
+> 2:
+
+// Schedule decode requests  
+
+> 3:
+
+for each request 𝑟 ∈ Q dec do  
+
+> 4:
+
+if EstBatchLatency (𝐵 ∪ { 𝑟 }) > 𝛿 then break  
+
+> 5:
+
+insert 𝑟 into 𝐵  
+
+> 6:
+
+end for  
+
+> 7:
+
+// Schedule LC prefill requests  
+
+> 8:
+
+for each chunk candidate 𝑐 𝐿𝐶 ∈ Q LC do  
+
+> 9:
+
+if EstBatchLatency (𝐵 ∪ { 𝑐 𝐿𝐶 }) > 𝛿 then break  
+
+> 10:
+
+insert 𝑐 𝐿𝐶 into 𝐵  
+
+> 11:
+
+end for  
+
+> 12:
+
+// Schedule BE prefill requests  
+
+> 13:
+
+for each chunk candidate 𝑐 𝐵𝐸 ∈ Q BE do  
+
+> 14:
+
+if EstBatchLatency (𝐵 ∪ { 𝑐 𝐵𝐸 }) > 𝛿 then break  
+
+> 15:
+
+insert 𝑐 𝐵𝐸 into 𝐵  
+
+> 16:
+
+end for  
+
+> 17:
+
+return 𝐵 
+
+Using this budget, the scheduler constructs a batch by first se-lecting LC chunks (line 12), and then greedily admitting BE chunks (line 14). Each candidate chunk is included only if the resulting batch latency does not exceed 𝑡 budget , ensuring that BE execution does not delay any LC request. 
+
+TBT-constrained batching for PD co-location. In PD co-located systems [ 2, 21 , 29 ], prefill and decode share the same in-stance and are executed within a hybrid batch. In this setting, de-code requests are subject to TBT SLOs, since each iteration directly affects token generation latency. Unlike the PD disaggregated setting, where slack is derived from queued requests, TBT constraints in co-located systems are enforced at the granularity of each iteration. Each batch is constructed to satisfy the latency bound 𝛿 , and additional work is admitted only if it preserves this constraint. This enables lookahead execution to be interleaved with decode without affecting token generation latency. To further reduce interference, lookahead prefills are divided into small chunks and interleaved with decode iterations. This chun-ked execution allows the scheduler to incrementally utilize slack while ensuring that newly arriving LC requests can be promptly scheduled. To preserve TBT guarantees, as shown in Algorithm 2, the sched-uler constructs the batch in a priority order. It first admits decode requests (line 3), ensuring that the core token generation loop is not delayed. It then schedules LC prefill chunks (line 8), followed by BE lookahead chunks (line 13). At each step, a candidate is admitted only if the resulting batch latency remains within the TBT bound 
+
+𝛿 .         
+
+> 8Lookahead
+> Runtime §3.2
+> Agent Frameworks LangChain MiniAgent LlamaIndex AutoGen …
+> Offload Summarization
+> Sub -agent Sliding -window
+> More customized …
+> Context Engineering Strategies
+> §3.3 -3.5
+> LLM Serving System
+> (SGLang )
+> PD Disaggr
+> PD Co -Loc
+> Lookahead -Aware
+> Scheduler §4
+> Main state
+> Lookahead state
+> Hook
+> Latency -critical &
+> lookahead reqs
+
+Figure 9: System overview of SmoothAgent. 
+
+This ordering, combined with the latency constraint, ensures that decode and LC requests are never delayed by BE execution, while allowing the scheduler to exploit slack within each iteration. 
+
+Discussion on API-based serving. The best-effort abstraction for lookahead requests also enables flexible API design. Service providers can expose lookahead requests as a lower-priority class with discounted pricing, since they consume only spare capacity and carry no latency guarantees. Furthermore, after a lookahead context commits, subsequent generation can directly reuse the cached prefix tokens prepared by lookahead execution, which can be billed at a reduced rate. This creates a natural incentive for users to adopt lookahead context engineering strategies, aligning system efficiency improvements with reduced serving cost. 
+
+## 5 IMPLEMENTATION 
+
+We implement SmoothAgent, a system that enables lookahead exe-cution for context transformation in LLM-based agents. As illus-trated in Figure 9, the SmoothAgent runtime sits between agent frameworks (e.g., MiniAgent [ 47 ] and LangChain [ 33 ]) and the un-derlying LLM serving system to orchestrate lookahead execution. SmoothAgent exposes a unified interface for supporting various context engineering strategies, such as offloading, summarization, and sub-agent isolation. Agent frameworks interact with SmoothA-gent through a simple hook mechanism, allowing lookahead re-quests to be issued alongside latency-critical requests without mod-ifying application logic. Internally, the runtime of SmoothAgent maintains both the main execution state and a separate lookahead state, and manages their interaction through the lookahead pro-gramming model introduced in Section 3.2. To support lookahead requests, SmoothAgent integrates with the LLM serving system, SGLang [ 79 ] v0.5.9, and incorporates a lookahead-aware scheduler. The scheduler supports both prefill-decode co-located and disaggregated deployment settings, enabling best-effort execution of lookahead workloads while preserving la-tency SLO guarantees for foreground requests. This design allows SmoothAgent to overlap context transformation with normal infer-ence, effectively hiding overhead from the critical path. 
+
+## 6 EVALUATION 6.1 Experimental Setup 
+
+Hardware. We evaluate SmoothAgent on NVIDIA H100 GPUs with 80GB HBM, connected via NVLink within a node. Host machines are equipped with AMD EPYC CPUs. 
+
+Models. We evaluate two representative open-source LLMs: Qwen3-8B and Qwen3-32B [ 70 ]. Both models use grouped-query attention (GQA) [ 62 ] and dense feed-forward layers, with a maxi-mum context length of 32K tokens. 
+
+Deployment configurations. We evaluate two deployment settings. In the PD co-located setting, prefill and decode share the same GPU instance. We run Qwen3-8B on a single H100 GPU and Qwen3-32B on four H100 GPUs with tensor parallelism (TP=4), varying the number of concurrent agents from 1 to 16. Rather than modeling request arrivals, we adopt a fixed-concurrency configura-tion: each agent runs a long-lived session with causally interleaved prefill and decode requests, which the arrival-rate-based models for stateless workloads do not capture. Agents are launched at stag-gered start times to avoid burst arrivals, and each agent runs in an isolated process to eliminate event-loop interference. Due to large KV cache footprints at long contexts, we do not scale concurrency further within a single instance. In the PD disaggregated setting, prefill and decode run on sepa-rate instances. Prefill instances serve prefill requests and maintain an SGLang radix cache [ 79 ]; decode instances perform token gener-ation. KV caches are transferred between instances via NIXL [48]. 
+
+Workloads. Each agent executes a multi-step code analysis task. At each step, the agent reads source code from the MiniAgent [ 47 ]codebase via shell commands (e.g., head , tail , sed ) and produces an analysis response, generating realistic workloads with inter-leaved LLM calls and tool executions and causing the context to grow monotonically. Each run consists of 28 steps, with approxi-mately 600-650 tokens added per step. All agents receive unique prompts to prevent radix cache sharing from suppressing context growth. 
+
+Baselines. We compare against synchronous context engineer-ing strategies, denoted as sync , which are widely adopted in existing agent frameworks. In these systems, context transformations are triggered reactively and executed on the critical path, blocking sub-sequent LLM generation. To ensure fair comparison, the baselines implement the same context engineering strategies as SmoothA-gent, but without lookahead execution. Both the baselines and SmoothAgent use SGLang [79] as the LLM serving backend. 
+
+## 6.2 End-to-End Lookahead Strategy Evaluation 
+
+We implement four context engineering strategies based on MiniA-gent [ 47 ], a lightweight agent framework that enables controlled evaluation without framework-specific optimizations. The strate-gies are offloading, keep-recent-𝐾 , summarization, and sub-agent isolation, following the strategy descriptions in Section 3. Each strategy is evaluated independently. We focus on tail TTFT, es-pecially at transformation points where synchronous execution introduces blocking overhead. This allows us to directly evaluate whether lookahead execution removes the latency spikes associated with context transformation. 
+
+PD co-located. Figures 10 and 11 show results on Qwen3-8B and Qwen3-32B in the PD co-located setting. SmoothAgent consistently reduces tail TTFT across all four strategies and both model scales, with an average reduction of 62.0% and 61.5% on Qwen3-8B and Qwen3-32B, respectively.              
+
+> 914816
+> 0
+> 80
+> 160
+> 240
+> 320
+> Tail TTFT (ms)
+> Offloading
+> 14816
+> 0
+> 100
+> 200
+> 300
+> 400
+> Recent-K
+> 14816
+> 0
+> 600
+> 1200
+> 1800
+> 2400
+> Summarize
+> 14816
+> 0
+> 80
+> 160
+> 240
+> 320
+> Sub-Agent
+> # Concurrent Agents
+> Sync Lookahead
+
+Figure 10: Transform-point TTFT for each strategy on Qwen3-8B (PD co-located) at concurrency levels 1, 4, 8, and 16. SmoothA-gent eliminates the transformation-induced TTFT spike across all strategies and concurrency levels. 1 4 8 16           
+
+> 0
+> 150
+> 300
+> 450
+> Tail TTFT (ms)
+> Offloading
+> 14816
+> 0
+> 150
+> 300
+> 450
+> Recent-K
+> 14816
+> 0
+> 600
+> 1200
+> 1800
+> 2400
+> Summarize
+> 14816
+> 0
+> 150
+> 300
+> 450
+> Sub-Agent
+> # Concurrent Agents
+> Sync Lookahead
+
+Figure 11: Transform-point TTFT for each strategy on Qwen3-32B (PD co-located, TP=4 across four H100 GPUs). 
+
+Among these strategies, summarization yields the largest gain, with up to 11.9 × TTFT improvement. Unlike other strategies, sum-marization incurs both an additional LLM generation to produce the summary and a full re-prefill of the resulting context, leading to substantially higher overhead. SmoothAgent moves both opera-tions into the lookahead stream, effectively hiding this compound cost. In contrast, offloading shows smaller improvements, especially under high concurrency. This is because once earlier segments have been offloaded, subsequent transformations operate on already compact representations and incur little additional transformation cost. As a result, the overhead of synchronous execution diminishes over time, reducing the relative benefit of lookahead. In practice, offloading alone does not effectively control context growth after repeated triggers, and is often combined with reduction strategies such as summarization [26]. To understand when transformations are triggered and their im-pact on latency, we plot the context length and TTFT across turns in Figure 12 for a single agent on Qwen3-8B. For offloading, the transformation is triggered when the context exceeds 15K tokens. The first trigger reduces the context size by approximately half, while subsequent triggers yield diminishing reductions as earlier segments have already been offloaded. For keep-recent-𝐾 , the trans-formation is triggered at turn 22, retaining the most recent 10 turns along with the system prompt. For summarization, the transforma-tion is triggered at 15K tokens, keeping recent turns whose total length exceeds 4K tokens and summarizing the remaining context into 128 tokens. A soft threshold at 11K tokens enables lookahead execution to start summarization ahead of the hard trigger. For sub-agent, the main agent generates approximately 800 tokens as delegation instructions. The sub-agent includes an additional 800-token system prompt and reads around 6K tokens from the codebase at startup. As shown in the bottom of Figure 12, all strategies introduce no-ticeable TTFT spikes at transformation points under synchronous execution, despite reducing context growth. By performing trans-formations ahead of time and amortizing the cost across multiple turns, SmoothAgent eliminates these spikes and produces a smooth TTFT profile. 
+
+PD disaggregated. Figure 13 shows results under PD disaggre-gation with up to 64 concurrent agents. We use four H100 GPUs as prefill instances and four H100 GPUs as decode instances to serve Qwen3-8B. SmoothAgent consistently reduces TTFT at transfor-mation points across all strategies, achieving an average reduction of 64.5%. Compared to the co-located setting, both the baseline and SmoothAgent exhibit higher absolute TTFT due to additional KV cache transfer and routing overhead. Despite this overhead, lookahead execution remains effective and continues to eliminate transformation-induced latency spikes. 
+
+Agent framework integration. We further integrate SmoothA-gent into representative agent frameworks, including LangChain [ 33 ](turn/token-based sliding window and summarization), LlamaIn-dex [ 39 ] (sliding window and summarization), AutoGen [ 46 ] (sliding window), and OpenClaw [ 59 ] (summarization). These strategies correspond to the context engineering mechanisms natively sup-ported in each framework. In particular, sliding window is another                
+
+> 10 0
+> 4
+> 8
+> 12
+> 16
+> 20
+> Context (K)  Offloading
+> 0
+> 4
+> 8
+> 12
+> 16
+> 20 Recent-K
+> 0
+> 4
+> 8
+> 12
+> 16
+> 20 Summarize
+> 0
+> 4
+> 8
+> 12
+> 16
+> 20 Sub-Agent
+> 010 20 30
+> 0.00
+> 0.06
+> 0.12
+> 0.18
+> 0.24
+> TTFT (s)
+> 010 20 30
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 010 20 30
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 010 20 30
+> 0.00
+> 0.06
+> 0.12
+> 0.18
+> 0.24
+
+Turn   
+
+> Sync Lookahead Context Transform Turn
+
+Figure 12: Context length (top) and per-turn TTFT (bottom) for a single Qwen3-8B agent under each strategy. Synchronous transformation produces a TTFT spike at each trigger; SmoothAgent absorbs the transformation cost across preceding turns and delivers an uninterrupted TTFT profile. 4 16 32 64           
+
+> 0
+> 200
+> 400
+> 600
+> 800
+> Tail TTFT (ms)
+> Offloading
+> 416 32 64
+> 0
+> 200
+> 400
+> 600
+> Recent-K
+> 416 32 64
+> 0
+> 800
+> 1600
+> 2400
+> Summarize
+> 416 32 64
+> 0
+> 200
+> 400
+> 600
+> 800
+> Sub-Agent
+> # Concurrent Agents
+> Sync Lookahead
+
+Figure 13: Transform-time TTFT on Qwen3-8B in a PD disaggregated deployment with four prefill and four decode instances. 
+
+form of context truncation. It maintains a fixed-size (turns or to-kens) context by continuously evicting old tokens at each turn, whereas keep-recent-𝐾 performs truncation only when the context exceeds a predefined limit, resulting in periodic rather than con-tinuous transformations. We replace these built-in strategies with their lookahead-optimized counterparts without changing the agent logic, and evaluate them under the same workloads. Across these frameworks, SmoothAgent consistently reduces transformation-point TTFT by 26.8% to 80.5%. 
+
+## 6.3 Lookahead-Aware Scheduler Evaluation 
+
+We evaluate whether the lookahead-aware scheduler mitigates in-terference from best-effort (BE) lookahead traffic on latency-critical (LC) requests. We keep the LC workload fixed, vary the intensity of BE lookahead traffic (i.e., number of lookahead requests per second), and compare SmoothAgent with vanilla SGLang, whose scheduler admits BE requests without lookahead-aware control. As shown in Figure 14, the uncontrolled policy causes LC latency to increase rapidly as lookahead load grows. In the PD-disaggregated setting, LC TTFT p99 exceeds the target under high BE traffic; in the co-located setting, LC TBT rises sharply because BE chunks share the same execution loop as decoding. SmoothAgent avoids this behavior by prioritizing LC requests and admitting BE looka-head chunks only when the predicted batch latency fits within the available slack. This keeps LC latency substantially lower across the same BE load range, showing that lookahead-aware admission control allows BE work to make progress without dominating the latency-critical path. We also evaluate the context-aware performance model intro-duced in Section 4, which predicts mixed-batch latency from both the number of forward tokens and the KV-cache lengths accessed by decode and prefill attention. We manually construct batches with four decoding requests and either two or four prefill chunks, where each prefill chunk contains 256 tokens. The amount of new generation work in each batch is fixed, while we vary the number of cached tokens already accumulated by each request. As shown in Figure 15, across the plotted two- and four-prefill-chunk configu-rations, the token-budget-only model reaches a maximum relative error of 41.5%, while our performance model keeps the maximum relative error to 13.7%. This gap shows that a fixed token budget          
+
+> 11 00.5 11.5 2
+> 0
+> 200
+> 400
+> 600
+> 800
+> LC TTFT p99 (ms)
+> TTFT SLO = 500 ms
+> PD-disaggregated
+> 00.5 11.5 2
+> 0
+> 20
+> 40
+> 60
+> 80
+> LC TBT p95 (ms)  TBT SLO = 50 ms
+> Colocated
+> Lookahead Requests / s
+> SGLang Lookahead-Aware Scheduler
+
+Figure 14: Impact of lookahead traffic on latency-critical requests. Our lookahead-aware scheduler effectively reduces the interference as lookahead traffic increases. 4 8 12 16 20       
+
+> 16
+> 24
+> 32
+> 40
+> Batch Latency (ms)  #Prefills = 2
+> 4812 16 20
+> #Prefills = 4
+> Cached tokens (K)
+> Token-Budget Ours Measured
+
+Figure 15: Accuracy of the context-aware performance model from Section 4 under controlled mixed batches with fixed generation work and varying cached-context lengths. 
+
+alone is insufficient: batches with the same amount of forward-token work can have different execution times when their cached contexts differ. By explicitly modeling KV-cache length in both decode and prefill attention, SmoothAgent captures the hidden attention-cost growth caused by long agent contexts and gives the scheduler a more reliable signal for admitting lookahead chunks without violating LC latency constraints. 
+
+## 7 RELATED WORK 
+
+LLM serving systems. A large body of work has focused on op-timizing general-purpose LLM serving systems. vLLM [ 31 ] and SGLang [ 79 ] are among the most widely used open-source serving engines, and they incorporate a range of important optimizations, including continuous batching [ 76 ], paged attention [ 31 ], and pre-fix sharing [ 79 ]. Chunked prefill techniques [ 2, 21 ] split prefilling into smaller chunks and mix them with decoding, preventing long prefills from blocking decoding TBT while improving GPU utiliza-tion in prefill-decode co-located settings. Prefill-decode disaggre-gation [ 53 , 82 ] eliminates interference between prefill and decode requests by dispatching them to separate instances, and has become the de facto design in large-scale datacenter LLM serving. More recent work [ 60 , 83 ] further proposes disaggregating attention and FFN computation in MoE models due to their mismatched com-putational characteristics, enabling decoupled scaling and more effective use of heterogeneous hardware. Our work optimizes the request scheduler in serving engines to support our lookahead programming model under both PD co-located and disaggregated deployments. Lots of work [ 16 , 34 , 42 , 49 , 54 , 72 ] study efficient KV cache man-agement to improve system performance. Prefix caching [ 15 , 18 , 77 ,79 ] stores KV caches on GPUs or external storage after requests complete, avoiding recomputation when subsequent requests share the same prefix. This capability is particularly important in work-loads such as multi-turn conversations. Our lookahead execution also relies on prefix caching to preserve the KV cache of transformed contexts. Another line of work [ 8, 10 , 12 , 29 , 50 , 57 , 65 , 66 , 75 , 81 ]focuses on GPU kernel optimizations for LLM serving. A represen-tative example is FlashInfer [ 75 ], which provides efficient kernels for a variety of serving scenarios and has been integrated into many serving frameworks. These kernel-level optimizations are orthogonal to our work. 
+
+Agent serving optimization. As agentic workloads become in-creasingly important, recent research has begun to explore system-level optimizations for agent serving. Parrot [ 37 ] and Ayo [ 61 ]model static agent workflows as directed acyclic graphs (DAGs) and apply a range of optimizations over the execution graph. In contrast, our work does not assume a static workflow and instead targets more autonomous, multi-turn agents. Other lines of work focus on retrieval-augmented generation (RAG) [ 24 , 25 , 27 , 28 , 38 , 68 , 69 ,72 , 78 ] and on multi-agent simulation [ 52 , 67 ], both of which differ from our target setting. Autellix [ 44 ] mitigates head-of-line block-ing by scheduling at the granularity of agent programs rather than individual requests. InferCept [ 1], KVFlow [ 51 ], and Helium [ 63 ]improve KV cache management for agentic workloads by adopting application-aware eviction and fetching policies instead of conven-tional LRU. ThunderAgent [ 30 ] and CONCUR [ 7] identify memory thrashing in multi-turn agents and propose admission control mech-anisms based on current system load. While these works optimize agent workloads from different perspectives, they do not address inefficiencies arising from context engineering, which is the focus of our work. 
+
+## 8 CONCLUSION 
+
+In this paper, we identify context transformation overhead as a key bottleneck in LLM-based agent systems, arising from KV cache in-validation and recomputation under common context engineering strategies. By observing that these transformations are segment-decomposable, we enable their execution ahead of time. We pro-pose a lookahead programming model that expresses transforma-tions as asynchronous operations, together with a runtime and scheduling support to execute them proactively without impact-ing latency-critical requests. Our results show that this approach effectively eliminates transformation overhead and significantly improves TTFT. 
+
+> 12
+
+## REFERENCES 
+
+[1] Reyna Abhyankar, Zijian He, Vikranth Srivatsa, Hao Zhang, and Yiying Zhang. 2024. Infercept: Efficient intercept support for augmented large language model inference. arXiv preprint arXiv:2402.01869 (2024). [2] Amey Agrawal, Nitin Kedia, Ashish Panwar, Jayashree Mohan, Nipun Kwatra, Bhargav Gulavani, Alexey Tumanov, and Ramachandran Ramjee. 2024. Taming 
+
+{Throughput-Latency } tradeoff in {LLM } inference with {Sarathi-Serve }. In 
+
+18th USENIX symposium on operating systems design and implementation (OSDI 24) . 117–134. [3] Anthropic. 2024. Building effective agents. https://www.anthropic.com/engine ering/building-effective-agents. [4] Anthropic. 2025. Claude Code. https://www.anthropic.com/claude-code. [5] Anthropic. 2025. Effective context engineering for AI agents. https://www.anth ropic.com/engineering/effective-context-engineering-for-ai-agents. [6] Anthropic. 2025. How we built our multi-agent research system. https://www. anthropic.com/engineering/multi-agent-research-system. [7] Qiaoling Chen, Zhisheng Ye, Tian Tang, Peng Sun, Boyu Tian, Guoteng Wang, Shenggui Li, Yonggang Wen, Zhenhua Han, and Tianwei Zhang. 2026. CON-CUR: High-Throughput Agentic Batch Inference of LLM via Congestion-Based Concurrency Control. arXiv preprint arXiv:2601.22705 (2026). [8] Xinhao Cheng, Zhihao Zhang, Yu Zhou, Jianan Ji, Jinchen Jiang, Zepeng Zhao, Ziruo Xiao, Zihao Ye, Yingyi Huang, Ruihang Lai, Hongyi Jin, Bohan Hou, Mengdi Wu, Yixin Dong, Anthony Yip, Zihao Ye, Songting Wang, Wenqin Yang, Xu-peng Miao, Tianqi Chen, and Zhihao Jia. 2025. Mirage Persistent Kernel: A Compiler and Runtime for Mega-Kernelizing Tensor Programs. arXiv preprint arXiv:2512.22219 (2025). [9] Chester Curme and Mason Daugherty. 2026. Context Management for Deep Agents. https://blog.langchain.com/context-management-for-deepagents. [10] Tri Dao, Dan Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. 2022. Flashat-tention: Fast and memory-efficient exact attention with io-awareness. Advances in neural information processing systems 35 (2022), 16344–16359. [11] DeepSeek-AI, Aixin Liu, Aoxue Mei, Bangcai Lin, Bing Xue, Bingxuan Wang, Bingzheng Xu, Bochao Wu, Bowei Zhang, Chaofan Lin, Chen Dong, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenhao Xu, Chong Ruan, Damai Dai, Daya Guo, Dejian Yang, Deli Chen, Erhang Li, Fangqi Zhou, Fangyun Lin, Fucong Dai, Guangbo Hao, Guanting Chen, Guowei Li, H. Zhang, Hanwei Xu, Hao Li, Haofen Liang, Haoran Wei, Haowei Zhang, Haowen Luo, Haozhe Ji, Honghui Ding, Hongxuan Tang, Huanqi Cao, Huazuo Gao, Hui Qu, Hui Zeng, Jialiang Huang, Jiashi Li, Jiaxin Xu, Jiewen Hu, Jingchang Chen, Jingting Xiang, Jingyang Yuan, Jingyuan Cheng, Jinhua Zhu, Jun Ran, Junguang Jiang, Junjie Qiu, Junlong Li, Junxiao Song, Kai Dong, Kaige Gao, Kang Guan, Kexin Huang, Kexing Zhou, Kezhao Huang, Kuai Yu, Lean Wang, Lecong Zhang, Lei Wang, Liang Zhao, Liangsheng Yin, Lihua Guo, Lingxiao Luo, Linwang Ma, Litong Wang, Liyue Zhang, M. S. Di, M. Y Xu, Mingchuan Zhang, Minghua Zhang, Minghui Tang, Mingxu Zhou, Panpan Huang, Peixin Cong, Peiyi Wang, Qiancheng Wang, Qihao Zhu, Qingyang Li, Qinyu Chen, Qiushi Du, Ruiling Xu, Ruiqi Ge, Ruisong Zhang, Ruizhe Pan, Runji Wang, Runqiu Yin, Runxin Xu, Ruomeng Shen, Ruoyu Zhang, S. H. Liu, Shanghao Lu, Shangyan Zhou, Shanhuang Chen, Shaofei Cai, Shaoyuan Chen, Shengding Hu, Shengyu Liu, Shiqiang Hu, Shirong Ma, Shiyu Wang, Shuiping Yu, Shunfeng Zhou, Shuting Pan, Songyang Zhou, Tao Ni, Tao Yun, Tian Pei, Tian Ye, Tianyuan Yue, Wangding Zeng, Wen Liu, Wenfeng Liang, Wenjie Pang, Wenjing Luo, Wenjun Gao, Wentao Zhang, Xi Gao, Xiangwen Wang, Xiao Bi, Xiaodong Liu, Xiaohan Wang, Xiaokang Chen, Xiaokang Zhang, Xiaotao Nie, Xin Cheng, Xin Liu, Xin Xie, Xingchao Liu, Xingkai Yu, Xingyou Li, Xinyu Yang, Xinyuan Li, Xu Chen, Xuecheng Su, Xuehai Pan, Xuheng Lin, Xuwei Fu, Y. Q. Wang, Yang Zhang, Yanhong Xu, Yanru Ma, Yao Li, Yao Li, Yao Zhao, Yaofeng Sun, Yaohui Wang, Yi Qian, Yi Yu, Yichao Zhang, Yifan Ding, Yifan Shi, Yiliang Xiong, Ying He, Ying Zhou, Yinmin Zhong, Yishi Piao, Yisong Wang, Yixiao Chen, Yixuan Tan, Yixuan Wei, Yiyang Ma, Yiyuan Liu, Yonglun Yang, Yongqiang Guo, Yongtong Wu, Yu Wu, Yuan Cheng, Yuan Ou, Yuanfan Xu, Yuduan Wang, Yue Gong, Yuhan Wu, Yuheng Zou, Yukun Li, Yunfan Xiong, Yuxiang Luo, Yuxiang You, Yuxuan Liu, Yuyang Zhou, Z. F. Wu, Z. Z. Ren, Zehua Zhao, Zehui Ren, Zhangli Sha, Zhe Fu, Zhean Xu, Zhenda Xie, Zhengyan Zhang, Zhewen Hao, Zhibin Gou, Zhicheng Ma, Zhigang Yan, Zhihong Shao, Zhixian Huang, Zhiyu Wu, Zhuoshu Li, Zhuping Zhang, Zian Xu, Zihao Wang, Zihui Gu, Zijia Zhu, Zilin Li, Zipeng Zhang, Ziwei Xie, Ziyi Gao, Zizheng Pan, Zongqing Yao, Bei Feng, Hui Li, J. L. Cai, Jiaqi Ni, Lei Xu, Meng Li, Ning Tian, R. J. Chen, R. L. Jin, S. S. Li, Shuang Zhou, Tianyu Sun, X. Q. Li, Xiangyue Jin, Xiaojin Shen, Xiaosha Chen, Xinnan Song, Xinyi Zhou, Y. X. Zhu, Yanping Huang, Yaohui Li, Yi Zheng, Yuchen Zhu, Yunxian Ma, Zhen Huang, Zhipeng Xu, Zhongyu Zhang, Dongjie Ji, Jian Liang, Jianzhong Guo, Jin Chen, Leyi Xia, Miaojun Wang, Mingming Li, Peng Zhang, Ruyi Chen, Shangmian Sun, Shaoqing Wu, Shengfeng Ye, T. Wang, W. L. Xiao, Wei An, Xianzu Wang, Xiaowen Sun, Xiaoxiang Wang, Ying Tang, Yukun Zha, Zekai Zhang, Zhe Ju, Zhen Zhang, and Zihua Qu. 2025. Deepseek-v3. 2: Pushing the frontier of open large language models. arXiv preprint arXiv:2512.02556 (2025). [12] Juechu Dong, Boyuan Feng, Driss Guessous, Yanbo Liang, and Horace He. 2024. Flex attention: A programming model for generating optimized attention kernels. 
+
+arXiv preprint arXiv:2412.05496 2, 3 (2024), 4. [13] Hugging Face. 2025. Open-source DeepResearch - Freeing our search agents. https://huggingface.co/blog/open-deep-research. [14] Taosong Fang, Zhen Zheng, Zhengzhao Ma, Yaojie Lu, Hongyu Lin, Xianpei Han, and Le Sun. 2026. FlashAgents: Accelerating Multi-Agent LLM Systems via Streaming Prefill Overlap. Proceedings of Machine Learning and Systems (2026). [15] Bin Gao, Zhuomin He, Puru Sharma, Qingxuan Kang, Djordje Jevdjic, Junbo Deng, Xingkun Yang, Zhou Yu, and Pengfei Zuo. 2024. {Cost-Efficient } large language model serving for multi-turn conversations with {CachedAttention }.In 2024 USENIX Annual Technical Conference (USENIX ATC 24) . 111–126. [16] Shihong Gao, Xin Zhang, Yanyan Shen, and Lei Chen. 2025. Apt-serve: Adaptive request scheduling on hybrid cache for scalable llm inference serving. Proceedings of the ACM on Management of Data 3, 3 (2025), 1–28. [17] Victor Giannakouris and Immanuel Trummer. 2025. 𝜆 -tune: Harnessing large language models for automated database system tuning. Proceedings of the ACM on Management of Data 3, 1 (2025), 1–26. [18] In Gim, Guojun Chen, Seung-seob Lee, Nikhil Sarda, Anurag Khandelwal, and Lin Zhong. 2024. Prompt cache: Modular attention reuse for low-latency inference. 
+
+Proceedings of Machine Learning and Systems 6 (2024), 325–338. [19] GLM-5-Team, Aohan Zeng, Xin Lv, Zhenyu Hou, Zhengxiao Du, Qinkai Zheng, Bin Chen, Da Yin, Chendi Ge, Chenghua Huang, Chengxing Xie, Chenzheng Zhu, Congfeng Yin, Cunxiang Wang, Gengzheng Pan, Hao Zeng, Haoke Zhang, Haoran Wang, Huilong Chen, Jiajie Zhang, Jian Jiao, Jiaqi Guo, Jingsen Wang, Jingzhao Du, Jinzhu Wu, Kedong Wang, Lei Li, Lin Fan, Lucen Zhong, Ming-dao Liu, Mingming Zhao, Pengfan Du, Qian Dong, Rui Lu, Shuang-Li, Shulin Cao, Song Liu, Ting Jiang, Xiaodong Chen, Xiaohan Zhang, Xuancheng Huang, Xuezhen Dong, Yabo Xu, Yao Wei, Yifan An, Yilin Niu, Yitong Zhu, Yuanhao Wen, Yukuo Cen, Yushi Bai, Zhongpei Qiao, Zihan Wang, Zikang Wang, Zilin Zhu, Ziqiang Liu, Zixuan Li, Bojie Wang, Bosi Wen, Can Huang, Changpeng Cai, Chao Yu, Chen Li, Chengwei Hu, Chenhui Zhang, Dan Zhang, Daoyan Lin, Dayong Yang, Di Wang, Ding Ai, Erle Zhu, Fangzhou Yi, Feiyu Chen, Guohong Wen, Hailong Sun, Haisha Zhao, Haiyi Hu, Hanchen Zhang, Hanrui Liu, Hanyu Zhang, Hao Peng, Hao Tai, Haobo Zhang, He Liu, Hongwei Wang, Hongxi Yan, Hongyu Ge, Huan Liu, Huanpeng Chu, Jia’ni Zhao, Jiachen Wang, Jiajing Zhao, Jiamin Ren, Jiapeng Wang, Jiaxin Zhang, Jiayi Gui, Jiayue Zhao, Jijie Li, Jing An, Jing Li, Jingwei Yuan, Jinhua Du, Jinxin Liu, Junkai Zhi, Junwen Duan, Kaiyue Zhou, Kangjian Wei, Ke Wang, Keyun Luo, Laiqiang Zhang, Leigang Sha, Liang Xu, Lindong Wu, Lintao Ding, Lu Chen, Minghao Li, Nianyi Lin, Pan Ta, Qiang Zou, Rongjun Song, Ruiqi Yang, Shangqing Tu, Shangtong Yang, Shaoxiang Wu, Shengyan Zhang, Shijie Li, Shuang Li, Shuyi Fan, Wei Qin, Wei Tian, Weining Zhang, Wenbo Yu, Wenjie Liang, Xiang Kuang, Xiangmeng Cheng, Xiangyang Li, Xiaoquan Yan, Xiaowei Hu, Xiaoying Ling, Xing Fan, Xingye Xia, Xinyuan Zhang, Xinze Zhang, Xirui Pan, Xu Zou, Xunkai Zhang, Yadi Liu, Yandong Wu, Yanfu Li, Yidong Wang, Yifan Zhu, Yijun Tan, Yilin Zhou, Yiming Pan, Ying Zhang, Yinpei Su, Yipeng Geng, Yong Yan, Yonglin Tan, Yuean Bi, Yuhan Shen, Yuhao Yang, Yujiang Li, Yunan Liu, Yunqing Wang, Yuntao Li, Yurong Wu, Yutao Zhang, Yuxi Duan, Yuxuan Zhang, Zezhen Liu, Zhengtao Jiang, Zhenhe Yan, Zheyu Zhang, Zhixiang Wei, Zhuo Chen, Zhuoer Feng, Zijun Yao, Ziwei Chai, Ziyuan Wang, Zuzhou Zhang, Bin Xu, Minlie Huang, Hongning Wang, Juanzi Li, Yuxiao Dong, and Jie Tang. 2026. GLM-5: from Vibe Coding to Agentic Engineering. arXiv preprint arXiv:2602.15763 (2026). [20] Kanishk Goel, Jayashree Mohan, Nipun Kwatra, Ravi Shreyas Anupindi, and Ramachandran Ramjee. 2026. QoServe: Breaking the Silos of LLM Inference Serving. In Proceedings of the 31st ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 . 1492–1507. [21] Connor Holmes, Masahiro Tanaka, Michael Wyatt, Ammar Ahmad Awan, Jeff Rasley, Samyam Rajbhandari, Reza Yazdani Aminabadi, Heyang Qin, Arash Bakhtiari, Lev Kurilenko, and Yuxiong He. 2024. Deepspeed-fastgen: High-throughput text generation for llms via mii and deepspeed-inference. arXiv preprint arXiv:2401.08671 (2024). [22] Kelly Hong, Anton Troynikov, and Jeff Huber. 2025. Context Rot: How Increasing Input Tokens Impacts LLM Performance . Technical Report. Chroma. https: //research.trychroma.com/context-rot [23] Sirui Hong, Xiawu Zheng, Jonathan Chen, Yuheng Cheng, Jinlin Wang, Ceyao Zhang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, Liyang Zhou, et al . 2023. Metagpt: Meta programming for multi-agent collaborative framework. arXiv preprint arXiv:2308.00352 3, 4 (2023), 6. [24] Zhengding Hu, Vibha Murthy, Zaifeng Pan, Wanlu Li, Xiaoyi Fang, Yufei Ding, and Yuke Wang. 2025. HedraRAG: Co-Optimizing Generation and Retrieval for Heterogeneous RAG Workflows. In Proceedings of the ACM SIGOPS 31st Symposium on Operating Systems Principles . 623–638. [25] Zhengding Hu, Zaifeng Pan, Prabhleen Kaur, Vibha Murthy, Zhongkai Yu, Yue Guan, Zhen Wang, Steven Swanson, and Yufei Ding. 2026. Pancake: Hierarchical Memory System for Multi-Agent LLM Serving. arXiv preprint arXiv:2602.21477 
+
+(2026). 
+
+> 13
+
+[26] Yichao Ji. 2025. Context Engineering for AI Agents: Lessons from Building Manus. https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus. [27] Wenqi Jiang, Marco Zeller, Roger Waleffe, Torsten Hoefler, and Gustavo Alonso. 2024. Chameleon: A Heterogeneous and Disaggregated Accelerator System for Retrieval-Augmented Language Models. Proceedings of the VLDB Endowment 18, 1 (2024), 42–52. [28] Chao Jin, Zili Zhang, Xuanlin Jiang, Fangyue Liu, Shufan Liu, Xuanzhe Liu, and Xin Jin. 2025. Ragcache: Efficient knowledge caching for retrieval-augmented generation. ACM Transactions on Computer Systems 44, 1 (2025), 1–27. [29] Aditya K Kamath, Ramya Prabhu, Jayashree Mohan, Simon Peter, Ramachandran Ramjee, and Ashish Panwar. 2025. Pod-attention: Unlocking full prefill-decode overlap for faster llm inference. In Proceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 . 897–912. [30] Hao Kang, Ziyang Li, Xinyu Yang, Weili Xu, Yinfang Chen, Junxiong Wang, Beidi Chen, Tushar Krishna, Chenfeng Xu, and Simran Arora. 2026. ThunderAgent: A Simple, Fast and Program-Aware Agentic Inference System. arXiv preprint arXiv:2602.13692 (2026). [31] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph Gonzalez, Hao Zhang, and Ion Stoica. 2023. Efficient memory management for large language model serving with pagedattention. In 
+
+Proceedings of the 29th Symposium on Operating Systems Principles . 611–626. [32] LangChain. 2025. Context Engineering. https://blog.langchain.com/context-engineering-for-agents. [33] LangChain. 2026. LangChain: The agent engineering platform. https://www.la ngchain.com. [34] Wonbeom Lee, Jungi Lee, Junghwan Seo, and Jaewoong Sim. 2024. {InfiniGen }:Efficient generative inference of large language models with dynamic {KV }
+
+cache management. In 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24) . 155–172. [35] Yucheng Li, Bo Dong, Frank Guerin, and Chenghua Lin. 2023. Compressing context to enhance inference efficiency of large language models. In Proceedings of the 2023 conference on empirical methods in natural language processing . 6342– 6353. [36] Bill Yuchen Lin, Yicheng Fu, Karina Yang, Faeze Brahman, Shiyu Huang, Chandra Bhagavatula, Prithviraj Ammanabrolu, Yejin Choi, and Xiang Ren. 2023. Swift-sage: A generative agent with fast and slow thinking for complex interactive tasks. Advances in Neural Information Processing Systems 36 (2023), 23813–23825. [37] Chaofan Lin, Zhenhua Han, Chengruidong Zhang, Yuqing Yang, Fan Yang, Chen Chen, and Lili Qiu. 2024. Parrot: Efficient Serving of {LLM-based } Applications with Semantic Variable. In 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24) . 929–945. [38] Chien-Yu Lin, Keisuke Kamahori, Yiyu Liu, Xiaoxiang Shi, Madhav Kashyap, Yile Gu, Rulin Shao, Zihao Ye, Kan Zhu, Rohan Kadekodi, Stephanie Wang, Arvind Krishnamurthy, Luis Ceze, and Baris Kasikci. 2025. TeleRAG: Effi-cient retrieval-augmented generation inference with lookahead retrieval. arXiv preprint arXiv:2502.20969 (2025). [39] Jerry Liu. 2022. LlamaIndex. https://github.com/jerryjliu/llama_index. [40] Nelson F Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. 2024. Lost in the middle: How language models use long contexts. Transactions of the association for computational linguistics 12 (2024), 157–173. [41] Shu Liu, Soujanya Ponnapalli, Shreya Shankar, Sepanta Zeighami, Alan Zhu, Shubham Agarwal, Ruiqi Chen, Samion Suwito, Shuo Yuan, Ion Stoica, Matei Zaharia, Alvin Cheung, Natacha Crooks, Joseph E. Gonzalez, and Aditya G. Parameswaran. 2026. Supporting our ai overlords: Redesigning data systems to be agent-first. Proceedings of CIDR 2026 (2026). [42] Yuhan Liu, Yihua Cheng, Jiayi Yao, Yuwei An, Xiaokun Chen, Shaoting Feng, Yuyang Huang, Samuel Shen, Rui Zhang, Kuntai Du, and Junchen Jiang. 2025. Lmcache: An efficient KV cache layer for enterprise-scale LLM inference. arXiv preprint arXiv:2510.09665 (2025). [43] Kuan Lu, Zhihui Yang, Sai Wu, Ruichen Xia, Dongxiang Zhang, and Gang Chen. 2025. Adda: Towards efficient in-database feature generation via llm-based agents. Proceedings of the ACM on Management of Data 3, 3 (2025), 1–27. [44] Michael Luo, Xiaoxiang Shi, Colin Cai, Tianjun Zhang, Justin Wong, Yichuan Wang, Chi Wang, Yanping Huang, Zhifeng Chen, Joseph E Gonzalez, and Ion Stoica. 2025. Autellix: An efficient serving engine for llm agents as general programs. arXiv preprint arXiv:2502.13965 (2025). [45] Yuyu Luo, Guoliang Li, Ju Fan, and Nan Tang. 2026. Data Agents: Levels, State of the Art, and Open Problems. In Companion of the International Conference on Management of Data . 571–579. [46] Microsoft. 2026. Autogen: Open-Source Framework for Agentic AI. https: //www.microsoft.com/en-us/research/project/autogen. [47] MiniMax. 2026. Mini Agent. https://github.com/MiniMax-AI/Mini-Agent. [48] NVIDIA. 2026. NVIDIA Inference Xfer Library (NIXL). https://github.com/ai-dynamo/nixl. [49] James Pan and Guoliang Li. 2025. Database Perspective on LLM Inference Systems. Proceedings of the VLDB Endowment 18, 12 (2025), 5504–5507. [50] Zaifeng Pan, Yitong Ding, Yue Guan, Zheng Wang, Zhongkai Yu, Xulong Tang, Yida Wang, and Yufei Ding. 2025. FastTree: Optimizing Attention Kernel and Runtime for Tree-Structured LLM Inference. In Proceedings of Machine Learning and Systems .[51] Zaifeng Pan, Ajjkumar Patel, Zhengding Hu, Yipeng Shen, Yue Guan, Wan-Lu Li, Lianhui Qin, Yida Wang, and Yufei Ding. 2025. KVFlow: Efficient Prefix Caching for Accelerating LLM-Based Multi-Agent Workflows. arXiv preprint arXiv:2507.07400 (2025). [52] Zaifeng Pan, Yipeng Shen, Zhengding Hu, Zhuang Wang, Aninda Manocha, Zheng Wang, Zhongkai Yu, Yue Guan, and Yufei Ding. 2026. ScaleSim: Serving Large-Scale Multi-Agent Simulation with Invocation Distance-Based Memory Management. arXiv preprint arXiv:2601.21473 (2026). [53] Pratyush Patel, Esha Choukse, Chaojie Zhang, Aashaka Shah, Íñigo Goiri, Saeed Maleki, and Ricardo Bianchini. 2024. Splitwise: Efficient generative llm inference using phase splitting. In 2024 ACM/IEEE 51st Annual International Symposium on Computer Architecture (ISCA) . IEEE, 118–132. [54] Ruoyu Qin, Zheming Li, Weiran He, Jialei Cui, Feng Ren, Mingxing Zhang, Yongwei Wu, Weimin Zheng, and Xinran Xu. 2025. Mooncake: Trading more storage for less computation—a {KVCache-centric } architecture for serving 
+
+{LLM } chatbot. In 23rd USENIX Conference on File and Storage Technologies (FAST 25) . 155–170. [55] Yujia Qin, Yining Ye, Junjie Fang, Haoming Wang, Shihao Liang, Shizuo Tian, Junda Zhang, Jiahao Li, Yunxin Li, Shijue Huang, Wanjun Zhong, Kuanye Li, Jiale Yang, Yu Miao, Woyu Lin, Longxiang Liu, Xu Jiang, Qianli Ma, Jingyu Li, Xiaojun Xiao, Kai Cai, Chuang Li, Yaowei Zheng, Chaolin Jin, Chen Li, Xiao Zhou, Minchao Wang, Haoli Chen, Zhaojian Li, Haihua Yang, Haifeng Liu, Feng Lin, Tao Peng, Xin Liu, and Guang Shi. 2025. Ui-tars: Pioneering automated gui interaction with native agents. arXiv preprint arXiv:2501.12326 (2025). [56] Jiawei Ren, Yan Zhuang, Xiaokang Ye, Lingjun Mao, Xuhong He, Jianzhi Shen, Mrinaal Dogra, Yiming Liang, Ruixuan Zhang, Tianai Yue, Yiqing Yang, Eric Liu, Ryan Wu, Kevin Benavente, Rajiv Mandya Nagaraju, Muhammad Faayez, Xiyan Zhang, Dhruv Vivek Sharma, Xianrui Zhong, Ziqiao Ma, Tianmin Shu, Zhiting Hu, and Lianhui Qin. 2025. Simworld: An open-ended realistic simulator for autonomous agents in physical and social worlds. arXiv preprint arXiv:2512.01078 
+
+(2025). [57] Rya Sanovar, Srikant Bharadwaj, Renee St Amant, Victor Rühle, and Saravan Rajmohan. 2025. LeanAttention: Hardware-Aware Scalable Attention Mechanism for the Decode-Phase of Transformers. Proceedings of Machine Learning and Systems 7 (2025). [58] Noah Shinn, Federico Cassano, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. Reflexion: Language agents with verbal reinforcement learn-ing. Advances in Neural Information Processing Systems 36 (2023), 8634–8652. [59] Peter Steinberger and OpenClaw Community. 2026. OpenClaw: Personal AI Assistant. https://openclaw.ai. [60] StepFun, Bin Wang, Bojun Wang, Changyi Wan, Guanzhe Huang, Hanpeng Hu, Haonan Jia, Hao Nie, Mingliang Li, Nuo Chen, Siyu Chen, Song Yuan, Wuxun Xie, Xiaoniu Song, Xing Chen, Xingping Yang, Xuelin Zhang, Yanbo Yu, Yaoyu Wang, Yibo Zhu, Yimin Jiang, Yu Zhou, Yuanwei Lu, Houyi Li, Jingcheng Hu, Ka Man Lo, Ailin Huang, Binxing Jiao, Bo Li, Boyu Chen, Changxin Miao, Chang Lou, Chen Hu, Chen Xu, Chenfeng Yu, Chengyuan Yao, Daokuan Lv, Dapeng Shi, Deshan Sun, Ding Huang, Dingyuan Hu, Dongqing Pang, Enle Liu, Fajie Zhang, Fanqi Wan, Gulin Yan, Han Zhang, Han Zhou, Hanghao Wu, Hangyu Guo, Hanqi Chen, Hanshan Zhang, Hao Wu, Haocheng Zhang, Haolong Yan, Haoran Lv, Haoran Wei, Hebin Zhou, Heng Wang, Heng Wang, Hongxin Li, Hongyu Zhou, Hongyuan Wang, Huiyong Guo, Jia Wang, Jiahao Gong, Jialing Xie, Jian Zhou, Jianjian Sun, Jiaoren Wu, Jiaran Zhang, Jiayu Liu, Jie Cheng, Jie Luo, Jie Yan, Jie Yang, Jieyi Hou, Jinguang Zhang, Jinlan Cao, Jisheng Yin, Junfeng Liu, Junhao Huang, Junzhe Lin, Kaijun Tan, Kaixiang Li, Kang An, Kangheng Lin, Kenkun Liu, Lei Yang, Liang Zhao, Liangyu Chen, Lieyu Shi, Liguo Tan, Lin Lin, Lin Zhang, Lina Chen, Liwen Huang, Liying Shi, Longlong Gu, Mei Chen, Mengqiang Ren, Ming Li, Mingzhe Chen, Na Wang, Nan Wu, Qi Han, Qian Zhao, Qiang Zhang, Qianni Liu, Qiaohui Chen, Qiling Wu, Qinglin He, Qinyuan Tan, Qiufeng Wang, Qiuping Wu, Qiuyan Liang, Quan Sun, Rui Li, Ruihang Miao, Ruosi Wan, Ruyan Guo, Shangwu Zhong, Shaoliang Pang, Shengjie Fan, Shijie Shang, Shilei Jiang, Shiliang Yang, Shiming Hao, Shuli Gao, Siming Huang, Siqi Liu, Tiancheng Cao, Tianhao Cheng, Tianhao Peng, Wang You, Wei Ji, Wen Sun, Wenjin Deng, Wenqing He, Wenzhen Zheng, Xi Chen, Xiangwen Kong, Xianzhen Luo, Xiaobo Yang, Xiaojia Liu, Xiaoxiao Ren, Xin Han, Xin Li, Xin Wu, Xu Zhao, Yanan Wei, Yang Li, Yangguang Li, Yangshijie Xu, Yanming Xu, Yaqiang Shi, Yeqing Shen, Yi Yang, Yifei Yang, Yifeng Gong, Yihan Chen, Yijing Yang, Yinmin Zhang, Yizhuang Zhou, Yuanhao Ding, Yuantao Fan, Yuanzhen Yang, Yuchu Luo, Yue Peng, Yufan Lu, Yuhang Deng, Yuhe Yin, Yujie Liu, Yukun Chen, Yuling Zhao, Yun Mou, Yunlong Li, Yunzhou Ju, Yusheng Li, Yuxiang Yang, Yuxiang Zhang, Yuyang Chen, Zejia Weng, Zhe Xie, Zheng Ge, Zheng Gong, Zhenyi Lu, Zhewei Huang, Zhichao Chang, Zhiguo Huang, Zhirui Wang, Zidong Yang, Zili 
+
+> 14
+
+Wang, Ziqi Wang, Zixin Zhang, Binxing Jiao, Daxin Jiang, Heung-Yeung Shum, and Xiangyu Zhang. 2025. Step-3 is large yet affordable: Model-system co-design for cost-effective decoding. arXiv preprint arXiv:2507.19427 (2025). [61] Xin Tan, Yimin Jiang, Yitao Yang, and Hong Xu. 2025. Towards end-to-end optimization of llm-based applications with ayo. In Proceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 . 1302–1316. [62] Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yas-mine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhos-ale, Dan Bikel, Lukas Blecher, Cristian Canton Ferrer, Moya Chen, Guillem Cucurull, David Esiobu, Jude Fernandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami, Naman Goyal, Anthony Hartshorn, Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor Kerkez, Madian Khabsa, Isabel Kloumann, Artem Korenev, Punit Singh Koura, Marie-Anne Lachaux, Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning Mao, Xavier Martinet, Todor Mihaylov, Pushkar Mishra, Igor Molybog, Yixin Nie, Andrew Poulton, Jeremy Reizenstein, Rashi Rungta, Kalyan Saladi, Alan Schelten, Ruan Silva, Eric Michael Smith, Ranjan Subramanian, Xiaoqing Ellen Tan, Binh Tang, Ross Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov, Yuchen Zhang, Angela Fan, Melanie Kambadur, Sharan Narang, Aurelien Rodriguez, Robert Stojnic, Sergey Edunov, and Thomas Scialom. 2023. Llama 2: Open Foundation and Fine-Tuned Chat Models. arXiv preprint arXiv:2307.09288 
+
+(2023). [63] Noppanat Wadlom, Junyi Shen, and Yao Lu. 2026. Efficient LLM serving for agentic workflows: A data systems perspective. Proceedings of the ACM on Management of Data 4, 3 (SIGMOD) (2026), 1–29. [64] Xingyao Wang, Boxuan Li, Yufan Song, Frank F. Xu, Xiangru Tang, Mingchen Zhuge, Jiayi Pan, Yueqi Song, Bowen Li, Jaskirat Singh, Hoang H. Tran, Fuqiang Li, Ren Ma, Mingzhang Zheng, Bill Qian, Yanjun Shao, Niklas Muennighoff, Yizhe Zhang, Binyuan Hui, Junyang Lin, Robert Brennan, Hao Peng, Heng Ji, and Graham Neubig. 2025. OpenHands: An Open Platform for AI Software Developers as Generalist Agents. In ICLR .[65] Mengdi Wu, Xinhao Cheng, Shengyu Liu, Chunan Shi, Jianan Ji, Man Kit Ao, Praveen Velliengiri, Xupeng Miao, Oded Padon, and Zhihao Jia. 2025. Mirage: A 
+
+{Multi-Level } superoptimizer for tensor programs. In 19th USENIX Symposium on Operating Systems Design and Implementation (OSDI 25) . 21–38. [66] Haojun Xia, Zhen Zheng, Yuchao Li, Donglin Zhuang, Zhongzhu Zhou, Xiafei Qiu, Yong Li, Wei Lin, and Shuaiwen Leon Song. 2023. Flash-LLM: Enabling Cost-Effective and Highly-Efficient Large Generative Model Inference with Un-structured Sparsity. Proceedings of the VLDB Endowment 17, 2 (2023), 211–224. [67] Zhiqiang Xie, Hao Kang, Ying Sheng, Tushar Krishna, Kayvon Fatahalian, and Christos Kozyrakis. 2025. Ai metropolis: Scaling large language model-based multi-agent simulation with out-of-order execution. Proceedings of Machine Learning and Systems 7 (2025). [68] Qian Xu, Juan Yang, Feng Zhang, Junda Pan, Kang Chen, Youren Shen, Amelie Chi Zhou, and Xiaoyong Du. 2025. Tribase: A vector data query engine for reliable and lossless pruning compression using triangle inequalities. Proceedings of the ACM on Management of Data 3, 1 (2025), 1–28. [69] Qian Xu, Feng Zhang, Chengxi Li, Lei Cao, Zheng Chen, Jidong Zhai, and Xi-aoyong Du. 2025. Harmony: A scalable distributed vector database for high-throughput approximate nearest neighbor search. Proceedings of the ACM on Management of Data 3, 4 (2025), 1–28. [70] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jing Zhou, Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang, Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yinger Zhang, Yu Wan, Yuqiong Liu, Zekun Wang, Zeyu Cui, Zhenru Zhang, Zhipeng Zhou, and Zihan Qiu. 2025. Qwen3 technical report. 
+
+arXiv preprint arXiv:2505.09388 (2025). [71] John Yang, Carlos E Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao, Karthik Narasimhan, and Ofir Press. 2024. Swe-agent: Agent-computer interfaces enable automated software engineering. Advances in Neural Information Processing Systems 37 (2024), 50528–50652. [72] Jiayi Yao, Hanchen Li, Yuhan Liu, Siddhant Ray, Yihua Cheng, Qizheng Zhang, Kuntai Du, Shan Lu, and Junchen Jiang. 2025. Cacheblend: Fast large language model serving for rag with cached knowledge fusion. In Proceedings of the twentieth European conference on computer systems . 94–109. [73] Shunyu Yao, Howard Chen, John Yang, and Karthik Narasimhan. 2022. Webshop: Towards scalable real-world web interaction with grounded language agents. 
+
+Advances in Neural Information Processing Systems 35 (2022), 20744–20757. [74] Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. React: Synergizing reasoning and acting in language models. In International Conference on Learning Representations (ICLR) .[75] Zihao Ye, Lequn Chen, Ruihang Lai, Wuwei Lin, Yineng Zhang, Stephanie Wang, Tianqi Chen, Baris Kasikci, Vinod Grover, Arvind Krishnamurthy, and Luis Ceze. 2025. FlashInfer: Efficient and Customizable Attention Engine for LLM Inference Serving. In Eighth Conference on Machine Learning and Systems .[76] Gyeong-In Yu, Joo Seong Jeong, Geon-Woo Kim, Soojeong Kim, and Byung-Gon Chun. 2022. Orca: A distributed serving system for {Transformer-Based }
+
+generative models. In 16th USENIX symposium on operating systems design and implementation (OSDI 22) . 521–538. [77] Lingfan Yu, Jinkun Lin, and Jinyang Li. 2025. Stateful large language model serving with pensieve. In Proceedings of the Twentieth European Conference on Computer Systems . 144–158. [78] Runjie Yu, Weizhou Huang, Shuhan Bai, Jian Zhou, and Fei Wu. 2025. AquaPipe: A Quality-Aware Pipeline for Knowledge Retrieval and Large Language Models. 
+
+Proceedings of the ACM on Management of Data 3, 1 (2025), 1–26. [79] Lianmin Zheng, Liangsheng Yin, Zhiqiang Xie, Jeff Huang, Chuyue Sun, Cody Hao Yu, Shiyi Cao, Christos Kozyrakis, Ion Stoica, Joseph E. Gonzalez, Clark W. Barrett, and Ying Sheng. 2024. Sglang: Efficient execution of structured language model programs. Advances in Neural Information Processing Systems 37 (2024), 62557–62583. [80] Zhen Zheng, Xin Ji, Taosong Fang, Fanghao Zhou, Chuanjie Liu, and Gang Peng. 2024. Batchllm: Optimizing large batched llm inference with global prefix sharing and throughput-oriented token batching. arXiv preprint arXiv:2412.03594 (2024). [81] Zhen Zheng, Zaifeng Pan, Dalin Wang, Kai Zhu, Wenyi Zhao, Tianyou Guo, Xiafei Qiu, Minmin Sun, Junjie Bai, Feng Zhang, Xiaoyong Du, Jidong Zhai, and Wei Lin. 2023. BladeDISC: Optimizing dynamic shape machine learning workloads via compiler approach. Proceedings of the ACM on Management of Data 1, 3 (2023), 1–29. [82] Yinmin Zhong, Shengyu Liu, Junda Chen, Jianbo Hu, Yibo Zhu, Xuanzhe Liu, Xin Jin, and Hao Zhang. 2024. {DistServe }: Disaggregating prefill and decoding for goodput-optimized large language model serving. In 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24) . 193–210. [83] Ruidong Zhu, Ziheng Jiang, Chao Jin, Peng Wu, Cesar A Stuardo, Dongyang Wang, Xinlei Zhang, Huaping Zhou, Haoran Wei, Yang Cheng, et al . 2025. MegaScale-Infer: Serving Mixture-of-Experts at Scale with Disaggregated Expert Parallelism. arXiv preprint arXiv:2504.02263 (2025). [84] Yan Zhuang, Jiawei Ren, Xiaokang Ye, Jianzhi Shen, Ruixuan Zhang, Tianai Yue, Muhammad Faayez, Xuhong He, Ziqiao Ma, Lianhui Qin, Zhiting Hu, and Tianmin Shu. 2025. Simworld-robotics: Synthesizing photorealistic and dynamic urban environments for multimodal robot navigation and collaboration. arXiv preprint arXiv:2512.10046 (2025).
