@@ -1,0 +1,273 @@
+Title: TacEvo: Self-Evolving Architecture Discovery for Robotic Tactile Perception via LLM-Driven Quality-Diversity Search
+
+URL Source: https://arxiv.org/pdf/2606.30109v1
+
+Published Time: Tue, 30 Jun 2026 02:05:04 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# TacEvo: Self-Evolving Architecture Discovery for Robotic Tactile Perception via LLM-Driven Quality-Diversity Search 
+
+Mohammed AbuSadeh, Lan Wei B, Dandan Zhang B
+
+Abstract —Vision-based tactile sensing converts contact-induced surface deformation into images, enabling robots to infer contact forces and fine surface textures that are not accessible through conventional vision alone. However, tactile images are sensor- and physics-specific, so effective architectures often require expert intuition and extensive manual iteration. Existing neural architecture search (NAS) pipelines can re-duce this burden, but they are often computationally expensive and restricted to hand-designed search spaces, which limits architectural novelty and diversity. We introduce TacEvo, aself-evolving architecture discovery framework that improves network designs from downstream feedback. TacEvo uses an LLM to generate code-level mutations and crossovers, and a MAP-Elites quality-diversity loop that preserves diverse elite ar-chitectures while preferentially reusing prompts that consistently yield improvements. Exploration is guided by two behavioural descriptors, Architectural Diversity and Efficiency Ratio , which en-courage coverage across structural variations and compute–size trade-offs. On ViTacTip force regression and grating classifi-cation, TacEvo achieves high autonomous generation reliability (96.0%/94.5% trainable) and improves best validation fitness over 20 generations by 56.1%/96.1%. In a 20-seed post-search high-fidelity evaluation, TacEvo matches the expert baseline on force prediction and outperforms it on fine-grained grating classification. These results suggest that LLM-driven self-evolving search constitutes a practical paradigm for AI-assisted scientific discovery in specialised robotic sensing. 
+
+I. I NTRODUCTION 
+
+Robots that manipulate and interact with the physical world must perceive properties that vision alone cannot reliably recover, such as contact location, shear and normal forces, incipient slip, compliance, and fine surface texture [1]. Vision-based tactile sensors (VBTSs) bridge this gap by providing high-resolution, dense, and spatially distributed measurements of contact interactions. These sensors capture subtle deforma-tions of a sensing surface, enabling estimation of forces, slips, and textures that are otherwise imperceptible through vision alone [2]. The images produced by VBTSs differ fundamen-tally from natural-image statistics: the most informative cues originate from subtle, geometry-driven changes in deformation patterns and marker displacements [3]. As a result, achieving high-performance tactile perception typically requires task-and sensor-specific neural architectures [4]. Designing these architectures remains heavily dependent on expert intuition, iterative tuning, and substantial engineering effort. Neural Architecture Search (NAS) was introduced to au-tomate architecture design by exploring candidate networks 
+
+> Corresponding: l.wei24@imperial.ac.uk and d.zhang17@imperial.ac.uk. All authors are with the Department of Bioengineering, Imperial-X Initia-tive, Imperial College London, London, United Kingdom. Code is available at: https://github.com/LannWei/TacEvo.
+
+and selecting models that optimise task performance under compute and memory constraints [5]. Classical reinforcement learning– and evolution-based NAS approaches have achieved strong performance on mainstream vision benchmarks [6]. However, these methods typically require training and evaluat-ing a large number of candidate models, resulting in substantial computational cost. This requirement limits their practicality in many robotics settings, where compute resources are con-strained and rapid iteration is often necessary. While later work has improved efficiency via weight-sharing and differentiable search, many of these methods still rely on a fixed, hand-specified search space and can be biased toward conventional architectural motifs [7]. In specialised sensing domains, such as tactile perception, this emphasis on predefined search op-erators can restrict novelty and may miss architectures whose inductive biases better match the underlying physics of contact and deformation. Recent advances in large language models (LLMs) suggest an alternative paradigm for neural architecture design. Instead of searching within a predefined set of operations, an LLM can directly generate architectural variations at the code level, enabling more flexible and open-ended exploration of the design space [8]. This opens the search space substantially and leverages prior architectural knowledge implicitly encoded in large-scale code and text corpora [9]. However, open-ended generation also introduces practical challenges: (i) the search can collapse to narrow families of architectures without explicit diversity pressure [10], (ii) generated code may be syntactically correct yet untrainable or incompatible with the task’s I/O constraints [11], and (iii) naive exploration can waste evaluations by repeatedly proposing similar candidates [12]. To be useful for robotics, LLM-driven architecture discovery must therefore be grounded in downstream task feedback, re-liable as a code-producing operator, and explicitly designed to maintain a broad set of viable solutions rather than converging to a single design. In this work, we cast tactile architecture design as a self-evolving discovery process: the system repeatedly proposes architectural hypotheses, tests them via downstream-task train-ing, and updates an explicit memory of what works both in the architectures it retains and in the generation strategies that produced them. We introduce TacEvo, an LLM-driven archi-tecture evolutionary framework coupled with quality-diversity (QD) optimisation for vision-based tactile sensing. TacEvo treats the LLM as a code-level mutation/crossover operator that edits the network, while a Centroidal Voronoi Tessellation MAP-Elites (CVT MAP-Elites) [13] archive performs selec-tion and long-term retention of diverse, high-quality candi-
+
+> arXiv:2606.30109v1 [cs.RO] 29 Jun 2026
+
+dates. Crucially, TacEvo maintains two cooperative archives: a network archive of elite architectures and a prompt archive that ranks prompting strategies; prompts receive a curiosity signal when they generate architectures accepted into the network archive, enabling the system to co-evolve its generator policy alongside the architectures it discovers. To make QD effective in this open-ended, code-level generation setting, we introduce two behavioural descriptors: Architectural Diversity and Efficiency Ratio. These descriptors guide the archive to-ward illuminating solutions across structural heterogeneity and compute-size trade-offs, preventing the search from collapsing onto a single architectural motif. We evaluate TacEvo using the ViTacTip [14], a VBTS, on two representative tasks spanning regression and fine-grained classification: 3-axis force prediction and 7-class grat-ing classification [15]. TacEvo runs for 20 generations with 50 LLM-proposed candidates per generation, using low-fidelity training (10 epochs) to provide rapid feedback during search, followed by a post-search high-fidelity evaluation that fully trains the top discovered models across multiple random seeds for comparison against a strong expert-designed baseline. Empirically, TacEvo exhibits key properties of a self-evolving system: it consistently generates trainable networks across generations, progressively improves the best validation fitness, and maintains broad archive growth and coverage, indicating sustained exploration of diverse architectural niches. Under the high-fidelity evaluation protocol, the discovered architectures are competitive with the expert baseline on force prediction, with the best TacEvo variants statistically indistinguishable from the baseline, and significantly outperform the baseline on grating classification. This paper makes the following contributions: 1) A self-evolving, LLM-in-the-loop architecture search-ing system for tactile perception, closing the hypothe-sis–evaluation–memory loop by using downstream task performance feedback to iteratively refine architecture proposals. 2) A dual-archive QD formulation with a network archive and a prompt archive, enabling co-evolution of architec-tures and generation strategies for reliable and diverse search. 3) Two architecture-centric behavioural descriptors: Archi-tectural Diversity and Efficiency Ratio that enable CVT MAP-Elites to illuminate tactile architectures across structural and efficiency trade-offs, rather than collaps-ing to a single motif. 4) An empirical study on two ViTacTip tactile tasks demonstrating stable autonomous generation, quality-diversity exploration, and competitive-to-superior down-stream performance relative to the expert baseline with-out manual architecture tuning. II. R ELATED WORK 
+
+A. Closed-loop Architecture Discovery 
+
+Many scientific and engineering advances follow a closed loop: propose a hypothesis, test it, and update the next hypothesis based on measured feedback. In machine learning, AutoML [16], [17] and NAS [18], [19] instantiate this loop by generating candidate models, evaluating them, and iteratively refining the search toward better architectures. In robotics, self-adaptive systems further emphasise continual improvement under changing conditions, where maintaining and reusing a repertoire of solutions can enable rapid adaptation with-out restarting optimisation from scratch [20]. Despite this progress, most architecture-discovery pipelines still focus on single-objective optimisation. They also offer limited support for preserving multiple viable designs, even though such diversity is important when deployment constraints, sensing conditions, and task requirements vary across robots and environments. Related work has also studied self-evolution at the sensing-system level. For example, Xu et al. [21] optimised forcemyo-graphy sensor placement for arm movement recognition using greedy local search, while Zenatti et al. [22] optimised passive sensor placement for robot localisation. These works show that heuristic search can improve complete sensing systems when the sensor configuration and objective are explicitly defined. In contrast, TacEvo keeps the tactile sensor hardware fixed and evolves the neural architecture that interprets tactile images, targeting self-improvement at the perception-model level. 
+
+B. LLM-based Model Generation 
+
+Transformer-based LLMs have demonstrated strong code-generation capabilities, motivating their use as open-ended proposal engines that can write executable network definitions rather than selecting from a fixed operator set [23]. Recent work reframes the LLM as an evolutionary operator: given a parent architecture and an instruction, the model produces a code-level mutation, or merges two parents via crossover [24]. Building on this view, LLMatic couples LLM proposals with evolutionary search to discover competitive architectures with relatively few evaluations [25]. However, unconstrained gen-eration can yield invalid or untrainable programs, and search can collapse to repetitive patterns without explicit diversity pressure. These limitations highlight the need for systematic validation, feedback-driven guidance, and mechanisms that stabilise and diversify generation when LLMs are used as operators inside autonomous discovery loops. 
+
+C. Quality-Diversity (QD) Algorithm for Exploration 
+
+QD methods, exemplified by MAP-Elites, aim to illuminate a search space by filling an archive with the best-performing solution in each behavioural niche, producing a diverse reper-toire of elites rather than a single optimum [26]. CVT MAP-Elites scales this concept by using centroidal Voronoi tessel-lations to create well-distributed niches in higher-dimensional descriptor spaces [27]. In robotics design, QD repertoires have enabled fast adaptation by offering diverse behaviours that can be selected and refined [28]. In model and architecture discovery, QD provides a principled way to retain multiple high-quality architectural motifs while exploring trade-offs instead of converging prematurely to one design family [25]. A key practical challenge is descriptor design: behavioural descriptors must meaningfully capture the diversity dimen-sions that matter for the domain, otherwise the archive may fail to represent genuinely distinct solutions and the search degenerates into near-single-objective optimisation. Building on these threads, we propose an LLM-driven model evolutionary framework coupled with CVT MAP-Elites to realise closed-loop, self-evolving architecture discovery for vision-based tactile perception. While generic coding agents such as AlphaEvolve [29] provide a broader framework for evolving arbitrary executable programs, TacEvo focuses on tactile-specific architecture discovery under fixed sensor in-put/output constraints, downstream tactile-task evaluation, and QD descriptors designed to capture structural and efficiency trade-offs in tactile perception models. III. M ETHODOLOGY 
+
+A. Problem Setup and Objective 
+
+We consider a vision-based tactile learning problem with a training split Dtrain and a validation split Dval . Let a ∈A denote a candidate neural architecture, and let w∗ 
+
+> a
+
+be the weights obtained by optimising a on Dtrain . The architecture discovery objective is to find an architecture that minimises the downstream validation loss: 
+
+a∗ = arg min  
+
+> a∈A
+
+Lval (a; w∗
+
+> a
+
+, D val ) . (1) TacEvo realises this objective as a closed loop that repeat-edly proposes code-level architectural hypotheses, tests them via training on the downstream task, and updates an explicit memory of what works. This memory consists of a repertoire of diverse high-performing architectures, together with book-keeping signals about which prompting configurations tend to yield archive-improving candidates. 
+
+B. TacEvo Architecture Discovery 1) System Overview: TacEvo couples an LLM-based pro-gram generator with quality-diversity optimisation to imple-ment a closed-loop architecture discovery process, as shown in Algorithm 1. At each generation, the pipeline samples elite parent architectures from a network archive, samples a single evolutionary operator for the generation (mutation or crossover), invokes the LLM to produce executable code for candidate child architectures, validates the generated code, and evaluates valid candidates using a low-fidelity training budget to obtain fast downstream feedback. Candidates compete for niches in a CVT MAP-Elites archive defined over behaviour descriptors; archive insertion and replacement provide se-lection pressure while archive-wide diversity is maintained by construction. In addition, the implementation maintains a prompt archive that records prompt configurations and their outcomes; however, mutation prompts are drawn from a per-generation randomly sampled prompt pool rather than being selected from the prompt archive. 
+
+Algorithm 1 TacEvo Self-evolving Architecture Discovery  
+
+> 1:
+
+Initialise Network Archive AN from mutations of baseline 
+
+a0; initialise Prompt Archive AP ; set global temperature 
+
+T1. 
+
+> 2:
+
+for g = 1 , . . . , G do  
+
+> 3:
+
+Sample a single operator op g ∈ { mut , cross } for the generation.  
+
+> 4:
+
+Sample a prompt pool Pg uniformly at random from a predefined prompt library.  
+
+> 5:
+
+Generate a batch of B candidate architectures Bg using 
+
+op g and temperature Tg . 
+
+> 6:
+
+Validate Bg for syntax, compilability, and trainability to obtain the valid subset ˜Bg (invalid candidates are discarded; no resampling).  
+
+> 7:
+
+for all a′ ∈ ˜Bg do  
+
+> 8:
+
+Evaluate fitness f (a′) via low-fidelity training; compute descriptors d(a′); map to niche n. 
+
+> 9:
+
+Insert/replace AN [n] if a′ improves fitness.  
+
+> 10:
+
+if op g = mut then  
+
+> 11:
+
+Let s = ( i, T g ) be the prompt configuration used to generate a′ (prompt index i sampled from Pg ).  
+
+> 12:
+
+Update AP using the binary success signal 
+
+r(s) and record curiosity c(s). 
+
+> 13:
+
+end if  
+
+> 14:
+
+end for  
+
+> 15:
+
+Update Tg+1 ← TempUpdate( Tg , AN ). 
+
+> 16:
+
+end for  
+
+> 17:
+
+return AN , AP .
+
+2) Search Space and Baseline Constraints: TacEvo per-forms search at the level of executable network code, but under strict task compatibility constraints. The search is seeded by a manually designed baseline CNN a0 (the same input resolution and channel convention as the tactile images, and a task-specific output layer), which serves as the genetic foundation for evolution. All candidates must preserve the I/O contract of the downstream task (e.g., a fixed-dimensional regression output or a fixed number of class logits), and must implement a valid forward pass with consistent tensor shapes. Within these constraints, candidates may alter depth, width, connectivity, pooling and normalisation choices, activation functions, and higher-level motifs such as residual/skip connections or atten-tion blocks, provided the resulting program remains trainable under standard gradient-based optimisation. 
+
+3) LLM as an Evolutionary Operator: TacEvo treats the LLM as a stochastic evolutionary operator that edits code. Generation is driven by a task-specific system prompt that enforces formatting and I/O requirements, and an instruction prompt that specifies the intended architectural transformation. The evolutionary operator is sampled once per generation :with probability pm the generation applies mutation, and with probability 1 − pm it applies crossover. Under mutation, each candidate is produced by selecting an elite parent architecture 
+
+a from the network archive and sampling an instruction prompt p from the generation’s prompt pool Pg ; the LLM Fig. 1. Overview of TacEvo. (a) Closed-loop self-evolving architecture discovery with LLM-based code generation, candidate validation, low-fidelity evaluation, and dual-archive memory. (b) LLM-driven mutation and crossover for network evolution. 
+
+outputs a mutated child a′. Under crossover, each candidate is produced by selecting two elite parents (a1, a 2) from the network archive and using a fixed crossover instruction; the LLM outputs a hybrid child a′. Because the code generation may fail in subtle ways, every LLM output passes a validation gate before evaluation; a candidate is considered valid only if it is syntactically correct, instantiable, and trainable (i.e., it supports forward/backward computation under the task loss). Invalid candidates are discarded prior to training. 
+
+4) Quality-Diversity Optimization: TacEvo uses CVT MAP-Elites to turn downstream feedback into a persistent repertoire of solutions. Each evaluated architecture a′ is as-signed a scalar fitness f (a′) (the final validation loss from low-fidelity training) and a behavioural descriptor vector d(a′)
+
+(Section III-B5). CVT partitions the descriptor space into niches using a fixed set of centroids, and the network archive 
+
+AN stores at most one elite per niche. A candidate a′ is inserted into niche n if the niche is empty or if f (a′) is better than the current occupant. This archive-based competition prevents collapse to a single architectural motif and explic-itly preserves diverse elites across structural and efficiency regimes. 
+
+5) Network Archive Descriptors: To make QD search informative for architecture discovery in tactile perception, we define two descriptors and min-max normalise them to 
+
+[0 , 1] before CVT mapping. The first descriptor, Architectural Diversity , summarises structural heterogeneity by combining operation-type entropy, connection density, and layer hetero-geneity. Let pi be the fraction of occurrences of operation type 
+
+i among N operation types (excluding trivial containers and simple activations). The normalised operation entropy is 
+
+Hnorm = − PNi=1 pi log 2 pi
+
+log 2 N . (2) Connection density measures how richly layers are connected (including skip connections): 
+
+Density = Cactual 
+
+Cpossible 
+
+. (3) Layer heterogeneity is computed as the mean coefficient of variation across P layer properties xk (e.g., channels, kernel sizes, hidden widths): 
+
+CV = 1
+
+P
+
+> P
+
+X
+
+> k=1
+
+pVar( xk)Mean( xk) . (4) The Architectural Diversity score is then 
+
+ArchDiv = Hnorm + Density + CV 3 . (5) The second descriptor, Efficiency Ratio , captures a compute– structure trade-off by relating FLOPs to the combined struc-tural cost of parameter count and width-to-depth ratio: 
+
+EffRatio = FLOPs Params × (W /D) . (6) Here W/D is computed as the maximum layer width divided by the network depth. Higher EffRatio corresponds to ar-chitectures that are more computationally dense relative to size and shape cost, enabling the archive to illuminate diverse efficiency regimes rather than optimising only accuracy. 
+
+C. Prompt Tracking, Exploration Control, and Fast Feedback 1) Prompt Archive and Curiosity Signals: TacEvo main-tains a prompt archive AP as a parallel CVT MAP-Elites archive over prompt configurations s = ( i, T ), where i denotes the prompt index and T is the temperature used for generation. Prompts used for mutation are sampled from a per-generation prompt pool Pg drawn uniformly at random from the prompt library; AP is updated to record which prompt configurations were productive. After a mutation-generated candidate a′ is evaluated and mapped to niche n in the network archive, we define a binary prompt fitness 
+
+r(s) = Iins (a′) ∈ { 0, 1}, (7) where Iins (a′) = 1 iff a′ is inserted into (or replaces the occupant of) its network archive niche. This binary signal is used for niche competition in the prompt archive. In addition, Fig. 2. Data representation for the two ViTacTip tactile tasks: grating classification and 3-axis force prediction. 
+
+we compute an auxiliary curiosity score that assigns a penalty to unproductive prompt configurations and rewards successful ones proportionally to their achieved loss: 
+
+c(s) = (1 − r(s)) · 0.5 + r(s) ·
+
+
+
+1 + 11 + f (a′)
+
+
+
+. (8) This yields c(s) ∈ { 0.5} ∪ (1 , 2] and provides a more graded measure of prompt usefulness for analysis and logging. 
+
+2) Exploration Control via Temperature Scheduling: Tem-perature scheduling provides a continuous control knob for balancing exploration and refinement. TacEvo maintains a global temperature state Tg ∈ [0 , 1] updated once per gen-eration from the progress of the network archive. Let f ⋆g
+
+denote the best fitness (lowest validation loss) observed in AN
+
+after generation g. We update temperature using a progress-conditioned rule: 
+
+Tg+1 = clip  Tg + η · I[f ⋆g ≤ f ⋆g−1] − η · I[f ⋆g > f ⋆g−1], 0, 1 ,
+
+(9) where η is a step size and clip( ·) enforces the valid range. During candidate generation we apply a small intra-generation perturbation T = clip( Tg +ϵ, 0, 1) with ϵ drawn from a narrow zero-mean distribution to increase proposal diversity. 
+
+3) Low-Fidelity Evaluation for Fast Feedback: To scale evaluation across generations, TacEvo uses low-fidelity train-ing as a fast experimental proxy for downstream utility. Each validated candidate architecture is trained for a short budget of 
+
+E epochs using a fixed optimiser and task loss, and its fitness is defined as the final validation loss f (a′) = Lval (a′; Dval ) from this run. This fitness drives network archive competition and, through r(s) in Eq. (7), provides a binary success signal for updating the prompt archive; invalid candidates are discarded prior to this evaluation and are not resampled. IV. E XPERIMENTS 
+
+A. Experiments Setting 1) Sensor, Tasks, and Datasets: We evaluate TacEvo on vision-based tactile perception using the ViTacTip sensor. ViTacTip captures contact-induced deformation of a compliant surface as an image stream, enabling learning-based inference of physical interaction signals. The experimental setup and representative inputs for the two target tasks are shown in Fig. 2. We conduct two downstream tasks that span regression and fine-grained classification. Force Prediction predicts a 3-axis force vector from a tactile image, using a dataset of 3,000 labelled images. Grating Classification distinguishes fine textures across 7 grating-spacing classes using 3,507 images evenly distributed across classes. For both tasks, images are normalised and resized to a uniform 256 × 256 resolution and split into 80%/10%/10% train/validation/test partitions to ensure consistent evaluation across architectures. 
+
+2) Baseline and Training Recipes: TacEvo is seeded with a CNN baseline, which consists of three convolutional blocks followed by a fully connected head, with the final output layer adjusted to the task (3 outputs for force regression and 7 logits for grating classification). During the evolutionary search, candidate architectures are evaluated with a low-fidelity budget to produce a fast fitness signal (Section IV-A4). 
+
+3) Search Configuration: TacEvo is run for G=20 genera-tions, with Claude 3 Haiku [30] as the LLM proposing up to 
+
+B=50 candidate architectures per generation. At the beginning of each generation, the pipeline samples an evolutionary operator, mutation with probability 0.85 or crossover with probability 0.15; the chosen operator is then applied to all proposals within that generation. For mutation generations, a fresh pool of instruction prompts is sampled uniformly at random from a predefined prompt library, and each candidate mutation selects its prompt from this pool. All generated candidates are passed through code validation for syntactic correctness, compilability, and trainability; candidates that fail validation are discarded, and therefore, the number of evalu-ated networks is strictly smaller than B. TacEvo uses a CVT MAP-Elites network archive over two behavioural descriptors: Architectural Diversity and Efficiency Ratio (Section III) and a parallel prompt archive that records prompt outcomes. 
+
+4) Search-phase Evaluation Protocol: We evaluate the search process using search-time signals only. Each validated candidate is trained for 10 epochs and assigned a fitness equal to its final validation loss; lower fitness indicates better downstream performance. We characterise the search along three axes: (i) quality, tracked by the best and median fitness in the archive over generations; (ii) reliability, measured by the number of candidates that pass validation and remain trainable per generation; and (iii) diversity/illumination, assessed by archive heatmaps and archive growth/coverage over time. 
+
+B. Results 1) Search-phase Dynamics: Evidence of Self-evolving Dis-covery: Fig. 3 shows the evolution of best and median fitness (validation loss) over 20 generations for both tasks. TacEvo exhibits a clear downward trend, indicating that downstream feedback steadily guides the discovery process toward higher-quality architectures. The largest improvements occur within the first 7-10 generations, after which the search begins to sta-bilise, suggesting efficient navigation of the architecture space under the given budget. Overall, the relative improvement in Fig. 3. Best and median archive fitness over 20 generations under low-fidelity evaluation. TacEvo improves best fitness by 56.1% on Force Prediction (MSE, top) and 96.1% on Grating Classification (cross-entropy, bottom).  
+
+> Fig. 4. Number of valid, trainable networks per generation. Candidates must pass syntax/compilation checks and be trainable under the task loss.
+
+the best fitness reaches 56.1% for Force Prediction and 96.1% for Grating Classification by the final generation. Beyond quality, TacEvo maintains high generation reliabil-ity. As shown in Fig. 4, the LLM produces a consistently high number of trainable candidates per generation (defined as pass-ing validation and supporting training), with average success rates of 96.0% for Force and 94.5% for Grating. This indicates that the closed-loop system can operate autonomously at scale without frequent manual intervention for code failures. Finally, TacEvo demonstrates continuous exploration rather than collapsing to a single architectural motif. The final CVT archive heatmaps in Fig. 5 show elites distributed broadly across the descriptor space, and Fig. 6 quantifies the steady increase in filled niches throughout the run. In particular, the final Network Archive coverage reaches 88.0% (Force) and 92.0% (Grating), confirming that the QD mechanism successfully illuminates diverse regions of the architecture space while continuing to improve quality.  
+
+> Fig. 5. Four CVT maps showing the final state of the network and prompt archives for both tasks. The heatmaps visualise the distribution of elite individuals. Brighter cells indicate higher quality (lower fitness for network archives, higher curiosity for prompt archives).
+> Fig. 6. Archive growth over 20 generations, measured by the number of filled niches in the network and prompt archives for Force and Grating.
+
+2) Post-search High-fidelity Evaluation: Force Prediction: 
+
+Fig. 7 shows the distribution of test-set MSE values over 20 in-dependent training seeds for the baseline and the four TacEvo variants on Force Prediction, where lower is better. In Figs. 7 and 8, overlaid markers denote individual seed runs; their horizontal offsets are jittered within each model category for visual clarity only and do not encode any additional variable. The baseline achieves the lowest median MSE (0.006), but the key question is whether differences are statistically meaningful across seeds. Table I summarises Mann-Whitney U tests with Holm-Bonferroni correction. Variants 1 and 2 are differ from Fig. 7. Force prediction test-set MSE over 20 training seeds for the expert baseline and four TacEvo-discovered variants; boxes show the seed-wise distribution and markers denote individual runs. 
+
+Fig. 8. Grating classification test accuracy over 20 training seeds for the expert baseline and four TacEvo-discovered variants; boxplots show the seed-wise distribution with individual runs overlaid. 
+
+the expert baseline ( padj <0.001 ), whereas Variants 3 and 4 are statistically indistinguishable from the baseline ( padj =0 .25 
+
+and 0.40 ). Combined with the MSE distributions in Fig. 7, this indicates that TacEvo discovers multiple architecturally distinct solutions, two of which remain competitive with the expert-designed model on force prediction. 
+
+3) Post-search High-fidelity Evaluation: Fig. 8 reports test-set accuracy distributions over 20 seeds for Grating Clas-sification, where higher is better. All four TacEvo variants achieve higher median accuracy than the baseline; Variants 1 and 3 reach a perfect median accuracy of 100.0%, while the baseline median is 99.7%. Importantly, these improvements re-main statistically significant under non-parametric testing with Holm–Bonferroni correction (Table II, all padj <0.05 ). This proves that TacEvo can autonomously discover architectures that outperform a human-designed baseline on a fine-grained tactile discrimination task. To inspect per-class behaviour, Fig. 9 shows confusion matrices on the test set for a representative seed. All models present strong diagonals, indicating robust generalisation. In this seed, the baseline and Variants 1-2 exhibit a single 
+
+TABLE I MANN –W HITNEY U TESTS ON FORCE PREDICTION TEST MSE  
+
+> COMPARING EACH
+
+TAC EVO VARIANT AGAINST THE EXPERT BASELINE ACROSS 20 SEEDS .Comparison p padj Sig. ( α=0 .05 )Variant 1 vs Baseline < 0.001 < 0.001 Yes Variant 2 vs Baseline < 0.001 < 0.001 Yes Variant 3 vs Baseline 0.25 0.25 No Variant 4 vs Baseline 0.20 0.40 No TABLE II MANN -W HITNEY U TEST FOR GRATING CLASSIFICATION , COMPARING EACH VARIANT AGAINST THE BASELINE .Comparison p padj Sig. ( α=0 .05 )Variant 1 vs Baseline 0.0018 0.0055 Yes Variant 2 vs Baseline 0.0064 0.0064 Yes Variant 3 vs Baseline 0.0015 0.0060 Yes Variant 4 vs Baseline 0.0041 0.0082 Yes TABLE III MOTIF -LEVEL SUMMARY OF RECURRENT ARCHITECTURAL CHANGES OBSERVED AMONG THE TOP TAC EVO -DISCOVERED VARIANTS FOR FORCE PREDICTION AND GRATING CLASSIFICATION .Task Recurrent motifs in top variants Force regression Spatial attention; maxpool → strided conv; depth/shape tweaks (2–4 conv blocks); occasional 1×1 conv refine-ments. Grating classifi-cation Wider conv layers; deeper FC head; ReLU → GELU; residual blocks; dropout removed; BN/LN added in head. 
+
+misclassification, whereas Variants 3-4 achieve accurate clas-sification, further supporting the high accuracy observed in the seed-aggregated evaluation. 
+
+4) Qualitative Summary of Discovered Architectural Motifs: 
+
+As shown in Table III, for force prediction, competitive variants frequently introduce lightweight spatial attention and replace max pooling with strided convolutions, alongside mod-est changes in convolutional depth. For Grating Classification, the most successful variants tend to widen convolutional layers, deepen the classifier head, replace ReLU with GELU, add residual connections, and remove dropout while adding normalisation in the head, which suggests that fine-grained tactile texture discrimination benefits from higher-capacity and better-conditioned feature processing. V. C ONCLUSION 
+
+We introduced TacEvo, a self-evolving architecture discov-ery framework for vision-based tactile sensing that closes the loop between code-level hypothesis generation and down-stream task feedback. By combining an LLM as a mu-tation/crossover operator with quality-diversity search and a dual-archive memory (architectures and prompting strate-gies), TacEvo autonomously produces a diverse repertoire of high-quality tactile models rather than converging to a single design. Across two tasks, TacEvo reliably generates trainable networks, improves search fitness over generations, and discovers architectures that match the expert baseline on force prediction while outperforming it on fine-grained grating classification. This work shows that LLM-driven, Fig. 9. Test-set confusion matrices for grating classification for the baseline and four TacEvo variants on the same seed, showing per-class performance across the seven grating classes. 
+
+feedback-grounded quality-diversity search is a practical AI-for-scientific-discovery mechanism for specialised robotic sensing, enabling automated, continual refinement of both architectures and the generation policy that proposes them. REFERENCES [1] N. Navarro-Guerrero, S. Toprak, J. Josifovski, and L. Jamone, “Visuo-haptic object perception for robots: an overview,” Autonomous Robots ,vol. 47, no. 4, pp. 377–403, 2023. [2] W. Yuan, S. Dong, and E. H. Adelson, “Gelsight: High-resolution robot tactile sensors for estimating geometry and force,” Sensors , vol. 17, no. 12, p. 2762, 2017. [3] Q. Cong, S. Oh, W. Fan, S. Luo, K. Althoefer, and D. Zhang, “Taceva: A performance evaluation framework for vision-based tactile sensors,” 
+
+Advanced Intelligent Systems , p. e202501179, 2025. [4] C. Higuera, A. Sharma, C. K. Bodduluri, T. Fan, P. Lancaster, M. Kalakr-ishnan, M. Kaess, B. Boots, M. Lambeta, T. Wu et al. , “Sparsh: Self-supervised touch representations for vision-based tactile sensing,” arXiv preprint arXiv:2410.24090 , 2024. [5] P. Ren, Y. Xiao, X. Chang, P.-Y. Huang, Z. Li, X. Chen, and X. Wang, “A comprehensive survey of neural architecture search: Challenges and solutions,” ACM Computing Surveys (CSUR) , vol. 54, no. 4, pp. 1–34, 2021. [6] J. Guo, X. Wang, and Y. Guo, “A review of neural architecture search methods for super-resolution imaging,” Artificial Intelligence Review ,2026. [7] L. Xie, X. Chen, K. Bi, L. Wei, Y. Xu, L. Wang, Z. Chen, A. Xiao, J. Chang, X. Zhang et al. , “Weight-sharing neural architecture search: A battle to shrink the optimization gap,” ACM Computing Surveys (CSUR) ,vol. 54, no. 9, pp. 1–37, 2021. [8] J. Wang and Y. Chen, “A review on code generation with llms: Application and evaluation,” in 2023 IEEE International Conference on Medical Artificial Intelligence (MedAI) . IEEE, 2023, pp. 284–289. [9] Y. Dong, X. Jiang, J. Qian, T. Wang, K. Zhang, Z. Jin, and G. Li, “A survey on code generation with llm-based agents,” arXiv preprint arXiv:2508.00083 , 2025. [10] M. Chen, J. Tworek, H. Jun, Q. Yuan, H. P. D. O. Pinto, J. Kaplan, H. Edwards, Y. Burda, N. Joseph, G. Brockman et al. , “Evaluating large language models trained on code,” arXiv preprint arXiv:2107.03374 ,2021. [11] B. Romera-Paredes, M. Barekatain, A. Novikov, M. Balog, M. P. Kumar, E. Dupont, F. J. Ruiz, J. S. Ellenberg, P. Wang, O. Fawzi et al. ,“Mathematical discoveries from program search with large language models,” Nature , vol. 625, no. 7995, pp. 468–475, 2024. [12] C. Ying, A. Klein, E. Christiansen, E. Real, K. Murphy, and F. Hutter, “Nas-bench-101: Towards reproducible neural architecture search,” in 
+
+International conference on machine learning . PMLR, 2019, pp. 7105– 7114. [13] V. Vassiliades, K. Chatzilygeroudis, and J.-B. Mouret, “Using centroidal vorono¨ ı tessellations to scale up the multi-dimensional archive of phe-notypic elites algorithm,” arXiv preprint arXiv:1610.05729 , 2016. [14] W. Fan, H. Li, W. Si, S. Luo, N. Lepora, and D. Zhang, “Vitactip: Design and verification of a novel biomimetic physical vision-tactile fusion sensor,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 1056–1062. [15] D. Zhang, W. Fan, J. Lin, H. Li, Q. Cong, W. Liu, N. F. Lepora, and S. Luo, “Design and benchmarking of a multimodality sensor for robotic manipulation with gan-based cross-modality interpretation,” 
+
+IEEE Transactions on Robotics , vol. 41, pp. 1278–1295, 2025. [16] X. He, K. Zhao, and X. Chu, “Automl: A survey of the state-of-the-art,” 
+
+Knowledge-based systems , vol. 212, p. 106622, 2021. [17] R. Barbudo, S. Ventura, and J. R. Romero, “Eight years of automl: categorisation, review and trends,” Knowledge and Information Systems ,vol. 65, no. 12, pp. 5097–5149, 2023. [18] T. Elsken, J. H. Metzen, and F. Hutter, “Neural architecture search: A survey,” Journal of Machine Learning Research , vol. 20, no. 55, pp. 1–21, 2019. [19] X. Zhou, X. Wu, L. Feng, Z. Lu, and K. C. Tan, “Design principle transfer in neural architecture search via large language models,” in 
+
+Proceedings of the AAAI Conference on Artificial Intelligence , vol. 39, no. 21, 2025, pp. 23 000–23 008. [20] E. Alberts, I. Gerostathopoulos, I. Malavolta, C. H. Corbato, and P. Lago, “Software architecture-based self-adaptation in robotics,” Journal of Systems and Software , vol. 219, p. 112258, 2025. [21] X. Xu, Z. Du, H. Zhang, R. Zhang, Z. Hong, Q. Huang, and B. Han, “Optimization of forcemyography sensor placement for arm movement recognition,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2022, pp. 9845–9850. [22] F. Zenatti, D. Fontanelli, L. Palopoli, D. Macii, and P. Nazemzadeh, “Optimal placement of passive sensors for robot localisation,” in 2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2016, pp. 4586–4593. [23] H. Wang, J. Gong, H. Zhang, J. Xu, and Z. Wang, “Ai agentic programming: A survey of techniques, challenges, and opportunities,” 
+
+arXiv preprint arXiv:2508.11126 , 2025. [24] A. Chen, D. M. Dohan, and D. R. So, “EvoPrompting: Language models for code-level neural architecture search,” arXiv preprint arXiv:2302.14838 , 2023. [Online]. Available: https://arxiv.org/abs/2302. 14838 [25] M. U. Nasir, S. Earle, J. Togelius, S. James, and C. Cleghorn, “LL-Matic: Neural architecture search via large language models and quality diversity optimization,” arXiv preprint arXiv:2306.01102 , 2024. [26] J.-B. Mouret and J. Clune, “Illuminating search spaces by mapping elites,” arXiv preprint arXiv:1504.04909 , 2015. [27] V. Vassiliades, K. Chatzilygeroudis, and J.-B. Mouret, “Using cen-troidal voronoi tessellations to scale up the multidimensional archive of phenotypic elites algorithm,” IEEE Transactions on Evolutionary Computation , vol. 22, no. 4, pp. 623–630, 2017. [28] A. Cully, J. Clune, D. Tarapore, and J.-B. Mouret, “Robots that can adapt like animals,” Nature , vol. 521, no. 7553, pp. 503–507, 2015. [29] A. Novikov, N. V˜ u, M. Eisenberger, E. Dupont, P.-S. Huang, A. Z. Wagner, S. Shirobokov, B. Kozlovskii, F. J. Ruiz, A. Mehrabian et al. ,“Alphaevolve: A coding agent for scientific and algorithmic discovery,” 
+
+arXiv preprint arXiv:2506.13131 , 2025. [30] Anthropic, “The claude 3 model family: Opus, sonnet, haiku,” 2024, accessed: 2026-03-05. [Online]. Available: https://www.anthropic.com/ news/claude-3-family
