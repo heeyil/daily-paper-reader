@@ -1,0 +1,6747 @@
+Title: How Much of the Routing Gap Is Real? Decomposing the Router-to-Oracle Gap into Reproducible Specialist Advantage and Single-Draw Label Noise
+
+URL Source: https://arxiv.org/pdf/2607.03436v1
+
+Published Time: Tue, 07 Jul 2026 01:08:46 GMT
+
+Number of Pages: 28
+
+Markdown Content:
+> PREPRINT, JULY 2026 1
+
+# How Much of the Routing Gap Is Real? Decomposing the Router-to-Oracle Gap into Reproducible Specialist Advantage and Single-Draw Label Noise 
+
+Teng-Ruei Chen 
+
+Abstract —Routing among large language models (LLMs) promises better quality at lower cost, and a central motivation of the field is the large reported gap between learned routers and a per-instance oracle. However, that oracle is computed from a single correctness label per (query, model), so under stochastic decoding it is one Bernoulli draw rather than a re-producible property. This work recasts the question structurally: the expected per-instance oracle decomposes, Oexp = Orepro +∆ ,into reproducible single-commit headroom Orepro (the ceiling a clairvoyant oracle-weight router can reach) and a single-commit selection floor ∆ = Oexp − Orepro ≥ 0. The main result of this work is a recoverability asymmetry : this floor is closed by no single-commit router—deterministic or randomized—yet is provably recovered by test-time sampling [1], [2] (at the oracle’s own K-draw budget, best-of-K on the committed best model already weakly dominates the independent-pool single-draw oracle, and the general-coupling oracle as n → ∞ ). The selection cap needs no cross-model independence, pinning “not recoverable” to single-commit selection rather than to information in general; this work proves it together with the exact non-negative decomposition and analytic noise-share bounds that collapse as the sampling budget grows. The procedure introduces no new router, only resampling. The magnitude of the floor is a prospective, conservative localiza-tion, not an audit: the primary target LLMRouterBench ( 33 mod-els, 391 ,645 instances) defines its oracle—in its own aggregator code and Sec. 3.4—as a per-query union over single generations at temperature 0.2, so the reported ∼20 -point gap is by construction 
+
+a union of stochastic single draws; but Orepro is non-identifiable from the released k=1 matrix, so we estimate the noise share of the gap by fresh T =0 .2, k ≥ 20 resampling under one-sided, dependence- and guessing-floor-corrected bounds, reframing the “model-recall failure” diagnosis as thin-support union inflation. RouterBench (decoding undisclosed) is a secondary illustration. On a controlled open-model re-generation, single-draw noise accounts for a substantial minority of the router-to-oracle gap— larger on an unsaturated benchmark than on a saturated one, and approaching half on the hardest queries where no model is reliable—while the majority remains recoverable specialist advantage (quantified in the body). This work releases a multi-sample oracle evaluation protocol that routing benchmarks can adopt. 
+
+Index Terms —LLM routing, model selection, evaluation methodology, oracle bias, stochastic decoding, benchmark reli-ability. 
+
+I. I NTRODUCTION T.-R. Chen is with (1) the Institute of Bioinformatics and Systems Biology, National Yang Ming Chiao Tung University, Hsinchu 300, Taiwan; and (2) Krixvon AI, Taiwan (e-mail: luka@krixvon.com). 
+
+# SERVING large language models (LLMs) at scale forces a cost–quality trade-off, and selecting or combining among models per query has become the principal means of navigat-ing it. Three paradigms have emerged: routing (commit to one model up front), cascading (escalate from cheap to expensive), and fusion (run several and aggregate). All rest on a shared premise of model complementarity —no single model is best on every input [3], [4], [5], [6]. This premise is operationalized through a per-instance ora-cle : the model that is best on each query, chosen in hindsight. RouterBench [7] and, at far larger scale, LLMRouterBench [8] report the gap between deployed routers and this oracle as the field’s central measure of remaining opportunity. That gap—and its diagnosis as “model-recall failure”, the router’s failure to select the lone correct specialist—now motivates a growing literature, from preference-trained routers [4] to unified routing–cascading theory [5] and sub-task routing [9]. Yet the oracle is computed from a single correctness label per (query, model). Under stochastic decoding (temperature 
+
+T > 0), that label is one Bernoulli sample of a latent suc-cess probability, so the oracle—a maximum over many such single draws—inherits the upward bias that inflates best-of-N
+
+estimates [10], [11], [12], [13]. Concurrent work has begun to correct this oracle inflation by debiasing it [14]; this work instead asks which part of the routing gap is irrecoverable —a reproducible ceiling that no single-commit router can pass— versus recoverable only by test-time resampling, and proves a 
+
+recoverability asymmetry the debiasing view does not address. As a concrete example, a pool of 10 models that each solve a query with probability 0.1 yields a single-draw oracle of 
+
+1−0.910 ≈ 0.65 , yet no model is reliable and a single-commit router can reach only 0.1: of the apparent 0.65 , only 0.1 is recoverable and 0.55 is single-draw noise (Fig. 2). This paper asks exactly that. We re-estimate per-(query, model) correctness as a probability from k ≥ 10 samples, define an expected and a reproducible oracle, and decompose the router-to-oracle gap into recoverable specialist advantage and single-draw label noise; Fig. 1 previews how the proofs and the experiments fit together. 
+
+Contributions. 
+
+1) Bias analysis (proved analytically; magnitude local-ized empirically). This work proves that the single-draw per-instance routing oracle is an upward-biased estimator of any reproducible ceiling under temperature  
+
+> arXiv:2607.03436v1 [cs.LG] 3 Jul 2026 PREPRINT, JULY 2026 2
+
+Theory & 
+
+Assumptions 
+
+A1–A7 
+
+(stated, proved) 
+
+Main Theorems 
+
+recoverability 
+
+asymmetry; 
+
+G = Grec +Gnoise 
+
+Method 
+
+multi-sample 
+
+re-estimate; 
+
+no new router 
+
+Experiment 
+
+localize Gnoise ;
+
+best-of-K; gates 
+
+Evaluation 
+
+noise share, 
+
+CIs, strata 
+
+proof = core falsifiable test 
+
+feedback refines assumptions & localized magnitude only — never the theorems                 
+
+> Closed loop: theorems hold by proof; experiments validate observable implications
+> Fig. 1. The paper as a closed loop. The theory and its assumptions (A1–A7) yield, by deduction and independent of any data , the main theorems—the recoverability asymmetry (Thm. 2) and the exact non-negative decomposition G=Grec +Gnoise (Thm. 1), shaded. The method introduces no new router; it only re-samples. The experiment then localizes the empirical magnitude of Gnoise and runs the single falsifiable check (best-of-K), gated by assumption tests. The feedback path (dashed) can revise only the assumptions and the localized magnitude —never the theorems, which stand on proof. Throughout, experiments validate observable implications; they do not substitute for the proofs.
+
+0% 
+
+10% 
+
+65% 
+
+100% 
+
+claimed oracle 
+
+≈ 1 − 0.9 10 = 65% 
+
+55%: single-draw noise 
+
+(no single-commit router can reach) 
+
+10%: reproducible 
+
+(a router can commit) 
+
+10 models, each correct w.p. p = 0.1 
+
+A worked example: a 65% oracle, mostly single-draw noise              
+
+> Fig. 2. A worked example. With 10 models each correct with probability p= 0 .1, the single-draw oracle reaches 1−0.910 ≈65% , but only the 10%
+> reproducible mass (grey) is reachable by a router that commits to one model; the remaining 55% (blue) is single-draw label noise no router can capture.
+
+> 0, porting the max-of-noisy-Bernoulli result of [10] from ensembling to the routing benchmark oracle. This work further gives an exact closed form for the inflation and two analytic quantifications of it: a noise share of the oracle S(K) ↑ 1−p for homogeneously hard queries (Cor. 1), and a lower bound showing a Θ(1 −¯p) fraction of every router’s gap is single-draw noise not recoverable by single-commit routing—though recoverable by test-time sampling—whenever no model is reliable (Cor. 2, Thm. 2). These are theorems: they hold by deduction, independent of any experiment. 2) Gap decomposition (main). This work partitions the router-to-oracle gap into (a) recoverable specialist ad-vantage and (b) single-draw label noise — an exact, non-negative decomposition (Thm. 1) — quantifying how much of the gap and of “model-recall failure” [8] sur-vives multi-sample re-estimation. The experiment only 
+
+localizes the empirical magnitude of (b) on real pools; that the gap contains an analytically bounded noise term (Cor. 1, 2) is established mathematically above. 3) Protocol + artifact. This work defines the expected and reproducible oracles (with a threshold variant) for routing benchmarks and releases a corrected oracle and PREPRINT, JULY 2026 3
+
+re-estimation code. 1
+
+The inflation identified here is orthogonal to the deterministic measurement artifacts studied by [15], which uses greedy decoding and argues against a multi-sample oracle; this paper shows why greedy decoding is insufficient under temperature 
+
+> 0.
+
+The remainder of this paper is organized as follows. Sec-tion III formalizes the oracles, the single-draw bias, and which part of it is recoverable; Section IV gives the re-estimation and decomposition method; Section V describes the experimental setup; Section VI reports the recomputed gap and its decomposition; and Section VII discusses implications for routing research and benchmark design. II. R ELATED WORK 
+
+We organize prior work along two axes: multi-LLM systems that exploit complementarity, and the evaluation ceilings used to judge them. 
+
+Multi-LLM systems. The cost–quality view descends from API-selection and cascading [5], [16]. Preference-trained bi-nary routers [4], [17], unified routing–cascading [5], and sub-task routing [9] select among models, whereas Mixture-of-Agents [3] and compound multi-call systems [18] fuse several outputs—a premise contested by Self-MoA [19]; see [6] for a survey. All of these methods improve upon, or compare against, the per-instance oracle, yet treat that oracle as ground truth. 
+
+Evaluation ceilings and their bias. RouterBench [7], RouterEval [20], and the large-scale LLMRouterBench [8] define and popularize the per-instance oracle and the ∼20 -point gap (“model-recall failure”). These ceilings are built from a single correctness draw per (query, model), and that draw is itself stochastic. LLMRouterBench’s oracle is a per-query union —it deems a query solvable if any model pro-duces a correct prediction in hindsight (Sec. 3.4 of [8]; 
+
+aggregators.py )—over predictions sampled at tempera-ture 0.2 [8], i.e. a union of stochastic single draws. Router-Bench instead defines a best-single-model (argmax over per-model scores) oracle; its decoding parameters are undisclosed, so the single-draw stochasticity is plausible but unverified, and on binary correctness its argmax coincides numerically with a union. In either construction the reported oracle Oexp 
+
+is, under stochastic decoding, an upward-biased estimate of a reproducible solve probability [21], [22], [13], [23], [24], [25], [26]—a special case of the classical winner’s curse for maxima over noisy estimates [11], [27], [28], [29], [30], [31], with Best-of-∞ [10] exhibiting precisely this for test-time ensembling. The reproducible oracle Orepro therefore sits below Oexp , and the difference Gnoise is single-draw label noise rather than recoverable routing headroom. This work carries the statistical observation to the routing-benchmark oracle; the observation itself is not claimed as novel. Two recent works also argue the routing ceiling is in-flated; they differ from this work as follows. The Unsolvabil-ity Ceiling [15] recomputes RouterBench/LLMRouterBench-style oracles, decomposes the gap, and proposes a corrected 
+
+> 1Code, corrected oracles, and the per-model correctness data are available at https://github.com/luka-krixvon/routing-oracle-experiment.
+
+protocol—but its mechanism is deterministic (LLM-judge ver-bosity bias, truncation, format mismatch) under greedy (T =0 )decoding, its decomposition axis is label misalignment vs. imbalance, and its fix is dual-judge / exact-match anchoring; it contains no stochastic-sampling analysis. “When Routing Collapses” [32] attributes the gap to a router-side objective– decision mismatch (routers degenerately default to the most capable model) rather than to the oracle’s measurement. This work therefore frames oracle inflation as having two orthogonal sources —deterministic evaluation artifacts (prior work) and stochastic single-draw label noise at T > 0 (this paper)—and contributes the missing axis: a k ≥ 10 multi-sample re-estimation (per-model solve-probability technique following [33]), a reproducible-specialist-vs-single-draw-noise decomposition, and a multi-sample oracle protocol (Table I). A separate line uses multi-sample success probabilities to build 
+
+routers [34], [35] rather than to audit the oracle. 
+
+Concurrent decomposition work. Two contemporaneous works decompose the oracle gap along the same axis and clarify where the contribution of this work lies. Closest is the Capability Frontier [14], which independently observes that the per-instance oracle takes a maximum over noisy sam-ple means—inflating it through single-model and single-run bias—and de-biases it by extrapolating over many generations. This work takes the opposite direction: rather than extrapolate the inflation away, it shows the single-run component is an 
+
+irreducible floor for any single-commit router (Thm. 2(a)) and characterizes a recoverability asymmetry —the floor is un-capturable by selection yet closed by test-time sampling [36], [37], and only up to a verifier-gated ceiling [38], [39]—which the debiasing view does not address. “When Does Combining LMs Help?” [40] asks the same question as this paper but through a deterministic error-correlation (co-failure) ceiling, an axis orthogonal to the stochastic single-draw axis studied here. The contribution of this work is thus the irreducibility framing and the recoverability asymmetry—not the observa-tion that oracles are inflated, which is now shared. III. P ROBLEM SETUP , B IAS ANALYSIS , AND 
+
+RECOVERABILITY 
+
+For a query xi and model m ∈ M = {1, . . . , K },correctness under decoding temperature T > 0 is a random variable Bim ∼ Bernoulli( pim ), where pim is the repro-ducible probability that m solves xi. Existing benchmarks [7], [8] record a single realization bim ∈ { 0, 1}.
+
+Assumption 1. We use the following, naming each where it is invoked: (A1) for every (i, m ) the draws are i.i.d. 
+
+Bernoulli( pim ); (A2) at every recorded draw (replicate), the draws are independent across models for a fixed i; (A3) the recorded benchmark label is one such draw; (A4) a per-query router commits to one model r(i) and is scored by that model’s reproducible probability qri = pi,r (i).
+
+We define the oracles per query: 
+
+Osingle  
+
+> i
+
+= max  
+
+> m
+
+bim , E[Osingle  
+
+> i
+
+] =: Oexp  
+
+> i
+
+, (1) 
+
+Orepro  
+
+> i
+
+= max  
+
+> m
+
+pim , Othr  
+
+> i
+
+(τ ) = ⊮
+
+n
+
+max  
+
+> m
+
+pim ≥ τ
+
+o
+
+. (2) PREPRINT, JULY 2026 4       
+
+> TABLE I WHERE THIS WORK SITS RELATIVE TO THE CLOSEST PRIOR ART (†:THE UNSOLVABILITY CEILING ADDRESSES deterministic GREEDY -DECODING ARTIFACTS ,A DIFFERENT AXIS ).
+
+Questions Multi-sample Routing Gap Corrected Recover. oracle? (T > 0)? specific? decomp.? protocol? asymmetry? RouterBench [7] ✓
+
+RouterEval [20] ✓
+
+LLMRouterBench [8] ✓
+
+Best-of-∞ [10] ✓ ✓
+
+Unsolvability [15] ✓ — ✓ † †
+
+Capability Frontier [14] ✓ ✓ ✓ ✓
+
+Combining LMs [40] ✓ — ✓ ✓
+
+Ours ✓ ✓ ✓ ✓ ✓ ✓
+
+> TABLE II NOTATION .
+
+Symbol Meaning 
+
+pim reproducible success probability of model 
+
+m on query ibim , ˆpim one recorded draw; ˆpim = 1
+
+> k
+
+P 
+
+> j
+
+b(j)
+
+> im
+
+Osingle  
+
+> i
+
+, O exp  
+
+> i
+
+single-draw oracle and its expectation 
+
+Orepro  
+
+> i
+
+reproducible (committable) oracle 
+
+max m pim 
+
+Othr  
+
+> i
+
+(τ ) threshold oracle ⊮{max m pim ≥ τ }
+
+qri , G router correctness; gap 1
+
+> N
+
+P
+
+> i
+
+(Oexp  
+
+> i
+
+−qri )∆i per-query inflation Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+≥ 0
+
+Grec , G noise gap components (Thm. 1): 
+
+> 1
+> N
+
+P
+
+> i
+
+(Orepro  
+
+> i
+
+− qri ) and 1
+
+> N
+
+P 
+
+> i
+
+∆i
+
+Oagg  
+
+> i
+
+verifier-free aggregation ceiling (majority vote, Lemma 4) 
+
+Oexp ,⊥ 
+
+> i
+
+Oexp  
+
+> i
+
+under cross-model independence (A2), 1 − Q
+
+> m
+
+(1 − pim )
+
+S(K) noise share of the single-draw oracle, 
+
+∆i/O exp  
+
+> i
+
+(Cor. 1) 
+
+Here Oexp  
+
+> i
+
+:= E[Osingle  
+
+> i
+
+] is the expected single-draw oracle under the draws’ actual (possibly cross-model dependent) coupling; under independence (A2) it takes the closed form 
+
+Oexp  
+
+> i
+
+= 1 − Q
+
+> m
+
+(1 − pim ) =: Oexp ,⊥ 
+
+> i
+
+(Prop. 1), which Prop. 3 shows is the maximal-inflation case. Orepro  
+
+> i
+
+is the ceiling a per-query router can reproduce by committing to one model; Othr is an auxiliary strict-reliability view (reported across τ ). Intuitively, Oexp  
+
+> i
+
+rewards any lucky correct draw the pool occasionally produces, whereas a router must commit in advance and is judged on its chosen model’s reproducible behaviour; the non-negative gap Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+is headroom that exists only on paper and grows with the pool, even when no model is genuinely reliable (Fig. 4, Fig. 5; the selection-versus-sampling asymmetry is summarized in Fig. 3). We now make these statements precise under Assumption 1; full proofs are in Appendix A. 
+
+A. The single-draw oracle is an inflated union 
+
+We first fix what the recorded oracle measures and show it overstates any ceiling a committed router can reproduce. Fix a query i over the pool M = {1, . . . , K } at decoding temperature T > 0, and let bim ∈ { 0, 1} be the single recorded draw of model m, with reproducible success probability pim =
+
+E[bim ] (assumption (A1)). A router commits to one model 
+
+r(i) and is scored by that model’s reproducible probability, 
+
+qri = pi,r (i) (A4). Define the single-draw (recorded) oracle 
+
+Osingle  
+
+> i
+
+= max m bim , its expectation Oexp  
+
+> i
+
+= E[Osingle  
+
+> i
+
+], and the reproducible ceiling Orepro  
+
+> i
+
+= max m pim .
+
+Proposition 1 (The recorded oracle dominates the repro-ducible ceiling) . For every query i and any joint law of the draws (bi1, . . . , b iK ) with the given Bernoulli marginals pim 
+
+— in particular without cross-model independence (A2) — 
+
+Oexp  
+
+> i
+
+= E
+
+h
+
+max  
+
+> m
+
+bim 
+
+i
+
+≥ max  
+
+> m
+
+pim = Orepro  
+
+> i
+
+,
+
+by monotonicity of the maximum. Under independence (A2) the recorded oracle has the closed form Oexp  
+
+> i
+
+= 1 −Q
+
+> m
+
+(1 −pim )
+
+and the upward bias is exactly 
+
+∆i := Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= (1 − p⋆i )
+
+
+
+1 − Y
+
+> m̸=m⋆
+
+(1 − pim )
+
+
+
+≥ 0,
+
+where p⋆i = Orepro  
+
+> i
+
+is attained at m⋆. The bias only grows with the pool: for a homogeneous pool ( pim ≡ p) it is ∆i =(1 − p) − (1 − p)K ↑ 1 − p as K → ∞ . (Expectation/product form, sharp Fréchet bounds, and the monotone-inflation limit are deferred to App. A, Prop. 2 and Thm. 3.) B. Exact gap decomposition and the noise share 
+
+The ordering Oexp  
+
+> i
+
+≥ Orepro  
+
+> i
+
+splits the router-to-oracle gap exactly into a recoverable part and a non-negative noise part. 
+
+Theorem 1 (Exact gap decomposition) . Fix a finite benchmark 
+
+i = 1 , . . . , N over M = {1, . . . , K }, temperature T > 0, and a per-query router r with qri = pi,r (i). With bim ∈ { 0, 1} the single realized draw, 
+
+Osingle  
+
+> i
+
+= max  
+
+> m
+
+bim , Oexp  
+
+> i
+
+= E[Osingle  
+
+> i
+
+],Orepro  
+
+> i
+
+= max  
+
+> m
+
+pim ,
+
+and G = 1
+
+> N
+
+P
+
+> i
+
+(Oexp  
+
+> i
+
+− qri ).
+
+(a) Exact decomposition (algebraic, assumption-free). 
+
+G = Grec + Gnoise ,Grec = 1
+
+> N
+
+X
+
+> i
+
+(Orepro  
+
+> i
+
+− qri ),Gnoise = 1
+
+> N
+
+X
+
+> i
+
+(Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+).PREPRINT, JULY 2026 5
+
+(b) Non-negativity of the noise term. Under (A1) alone, 
+
+Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+≥ 0 for every i (Jensen on the convex map 
+
+max ; no independence (A2) needed), hence Gnoise ≥ 0.
+
+Equality (requires (A2)). Under (A1)+(A2), Oexp  
+
+> i
+
+= 1 −Q
+
+> m
+
+(1 − pim ), and writing P = max m pim with m⋆ ∈
+
+arg max m pim ,
+
+Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= (1 − P )
+
+
+
+1 − Y
+
+> m̸=m⋆
+
+(1 − pim )
+
+
+
+.
+
+Thus, under (A2), the per-query noise is 0 iff P = 1 or pim =0 for every m̸ = m⋆ (the empty product when K = 1 giving noise 0 for any p). Equivalently, Oexp  
+
+> i
+
+= Orepro  
+
+> i
+
+iff 1−Q
+
+> m
+
+(1 −
+
+pim ) = max m pim —a strictly larger set than {max m pim ∈{0, 1}} (e.g. pi = (0 .5, 0, 0) gives noise 0 at max m pim =0.5). Without (A2), equality can also hold at non-degenerate marginals under positive coupling (e.g. comonotone draws), but ≥ 0 always holds. 
+
+(c) Bound on the noise term (sum-bounds need only (A1)). 
+
+For every i, using the pointwise union bound max m bim ≤
+
+min {P 
+
+> m
+
+bim , 1} (any joint law) and (A1), 
+
+0 ≤ Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+≤ min 
+
+nP 
+
+> m
+
+pim , 1
+
+o
+
+− max m pim ≤ 1.
+
+These upper bounds do not require (A2); only (A1) marginals and additivity of expectation enter. Under (A2) the sharper bound Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= (1 − P ) 1 − Q 
+
+> m̸=m⋆
+
+(1 − pim ) ≤
+
+1 − P ≤ 1 also holds. Averaging, 
+
+0 ≤ Gnoise ≤ 1
+
+> N
+
+X
+
+> i
+
+
+
+min {P 
+
+> m
+
+pim , 1} − max m pim 
+
+
+
+≤ 1.
+
+The best committable router attains the ceiling: r⋆(i) = arg max m pim gives qr⋆ 
+
+> i
+
+= Orepro  
+
+> i
+
+, so Grec is a genuine, vanishing regret and Gnoise is the residual gap of the best 
+
+committable router itself (App. A, Lem. 1). The next two corollaries quantify Gnoise in closed form, with no appeal to any measurement. 
+
+Corollary 1 (Noise share of the single-draw oracle; homoge-neous pool) . Under (A1)+(A2), suppose query i is homoge-neously hard : pim = p ∈ (0 , 1) for all m ∈ M , |M| = K.Then the inflation is in exact closed form 
+
+∆( K) := Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= (1 − p) − (1 − p)K ,
+
+strictly increasing in K with exact remainder (1 −p)−∆( K) = (1 − p)K , hence ∆( K) ↑ 1 − p. The noise share of the single-draw oracle, S(K) := ∆( K)/O exp  
+
+> i
+
+= 1 − p
+
+1 − (1 − p)K ,obeys the exact identity 
+
+1 − S(K) = p
+
+1 − (1 − p)K = 1
+
+PK−1 
+
+> j=0
+
+(1 − p)j ,
+
+is strictly increasing with S(1) = 0, and is bracketed by (1 − p) 1 − (1 − p)K−1 ≤ S(K) < 1 − p with 
+
+S(K) ↑ 1 − p. Consequently S(K) ≥ 1 − 2p as soon as 
+
+K ≥ ln 2 / ln 11−p
+
+ = Θ(1 /p ); in the doubly hard limit 
+
+K → ∞ and p → 0 (no single model is reliable), S(K) → 1:the single-draw oracle is asymptotically all label noise. 
+
+Corollary 2 (Noise fraction of the routing gap not recoverable by single-commit routing) . Under (A1)+(A2), suppose (H1) no model is reliable on query i: pim ≤ ¯p < 1 for all m (so any committed router has qri ≤ Orepro  
+
+> i
+
+≤ ¯p); and (H2) at least L′ ≥ 1 models other than a fixed maximizer m⋆ satisfy 
+
+pim ≥ p > 0. Then, with c := (1 − ¯p) 1 − (1 − p)L′  > 0,the per-query inflation obeys ∆i ≥ c, and for every per-query router whose gap gi = ( Orepro  
+
+> i
+
+− qri ) + ∆ i is positive, 
+
+∆i
+
+gi
+
+≥ c
+
+¯p + c −−−−→ 
+
+> L′→∞
+
+1 − ¯p. 
+
+Using 1−(1 −p)L′
+
+≥ 1−e−pL ′
+
+, already pL ′ ≥ 3 forces ∆i ≥
+
+0.95 (1 − ¯p). Thus when no single model is reliable, a Θ(1 −
+
+¯p) fraction of every router’s gap to the single-draw oracle is single-draw label noise that no single-commit router can recover (though test-time sampling can; Thm. 2), not routing suboptimality. C. What the noise is—and is not: a recoverability asymmetry 
+
+Given that floor, is the noise term recoverable at all? The answer is an asymmetry: it is uncapturable along the model-
+
+selection axis—no single-commit router, even randomized, beats Orepro  
+
+> i
+
+—yet recoverable along the sampling axis, by re-drawing a committed model. We score a possibly randomized single-commit router by the linear extension of (A4): the router draws a model Mi ∼ πi from a selection law πi on M,commits to it, and is scored score i(π) = P 
+
+> m
+
+πi(m) pim , with 
+
+Mi independent of the draw on which it is scored (fresh-draw scoring, (A5)). Under (A5) the reported router accuracy equals 
+
+score i(π) by the tower rule, so the reported router-to-oracle gap is exactly the quantity capped at Orepro  
+
+> i
+
+in Theorem 2(a). 
+
+(Verified on LLMRouterBench: routers train on the 0.8 split and select a model from learned features on a held-out test split, scored on that model’s recorded label; the choice does not use the scored draw, so (A5) holds and reported accuracy 
+
+= score i(π).) 
+
+Theorem 2 (Recoverability asymmetry of the single-draw ora-cle gap) . Fix a query i over the finite pool M = {1, . . . , K } at decoding temperature T > 0. Let (Bi1, . . . , B iK ) be the single recorded draws, Bim ∼ Bernoulli( pim ) (assumptions (A1) 
+
+marginal + (A3) one-recorded-label), under an arbitrary joint law with these marginals (A2) is dropped . Write Osingle  
+
+> i
+
+=max m Bim , Oexp  
+
+> i
+
+= E[Osingle  
+
+> i
+
+] (Prop. 1, general/no-(A2)), 
+
+Orepro  
+
+> i
+
+= max m pim , and ∆i = Oexp  
+
+> i
+
+−Orepro  
+
+> i
+
+, with aggregate 
+
+Gnoise = 1
+
+> N
+
+P 
+
+> i
+
+∆i (Thm. 1). Adopt the single-commit scoring convention (A4) extended by linearity (A4-linear) : a router draws Mi ∼ πi on M, commits to that one model, and is scored score i(π) = P 
+
+> m
+
+πi(m) pim ≤ max m pim = Orepro 
+
+> i
+
+(the simplex maximum, attained at the vertex δm⋆ ), under 
+
+(A5) that the router’s choice Mi is independent of the draw on which it is scored (fresh-draw / conditionally-unbiased scoring). Then Gnoise obeys an asymmetry along its two routing axes (selection vs. sampling) :
+
+(a) (SELECTION is capped — any coupling, no (A2).) 
+
+For every single-commit router π (deterministic or ran-domized, feature/history-dependent) and every joint law of the draws, 
+
+score i(π) ≤ Orepro  
+
+> i
+
+= Oexp  
+
+> i
+
+− ∆i, ∆i ≥ 0,PREPRINT, JULY 2026 6
+
+with ∆i ≥ 0 by multivariate Jensen / monotonicity of 
+
+max ((A1) only ) and equality score i(π) = Orepro  
+
+> i
+
+iff πi
+
+is supported on arg max m pim , while Oexp  
+
+> i
+
+= Orepro 
+
+> i
+
+iff every model’s success event lies a.s. within a maxi-mizer’s (which the comonotone / Fréchet-upper coupling realizes, but does not uniquely require). Consequently the per-query gap to the single-draw oracle is at least 
+
+∆i, and, aggregating, for every single-commit router and every coupling 
+
+> 1
+> N
+
+P
+
+> i
+
+ Oexp  
+
+> i
+
+− score i(π) ≥ Gnoise .
+
+No selection, mixing, or portfolio re-weighting of the K
+
+models recovers any part of ∆i.
+
+(b) (SAMPLE lifts, at matched budget — (A1) only.) 
+
+Committing to a maximizer m⋆ (with p⋆ := pim ⋆ =
+
+Orepro  
+
+> i
+
+) and drawing it n times i.i.d. attains the best-of-
+
+n ceiling Orepro ,(n) 
+
+> i
+
+= 1 − (1 − Orepro  
+
+> i
+
+)n ↑ 1 whenever 
+
+Orepro  
+
+> i
+
+> 0. At budget n = K matched to the oracle’s own K-draw cost , best-of-K on m⋆ weakly dominates the independent-pool single-draw oracle Oexp ,⊥ 
+
+> i
+
+, i.e. the value of Oexp  
+
+> i
+
+under cross-model independence (A2) :
+
+Orepro ,(K) 
+
+> i
+
+= 1 − (1 − p⋆)K ≥ 1 − Y
+
+> m
+
+(1 − pim )= Oexp ,⊥ 
+
+> i
+
+,
+
+because min m(1 −pim )K ≤ Q
+
+> m
+
+(1 −pim ), with equality iff the pool is homogeneous ( pim ≡ p⋆). The lift uses only (A1) through the upper bound Pr( all n fail ) ≤
+
+(1 − p)n, so positive within-cell dependence only slows it; under (A1)+(A2) single-pass pool ensembling attains 
+
+Oexp ,⊥ 
+
+> i
+
+= Oexp  
+
+> i
+
+exactly. 
+
+Operational reading (A6). The lift is deliverable “re-covery” of ∆i only on verifier-equipped cells , where a correct draw is selected post hoc. Without a verifier, draw-grounded aggregation (e.g. majority vote) delivers up to Oagg  
+
+> i
+
+(Lemma 4); only ∆know  
+
+> i
+
+= Oagg  
+
+> i
+
+− Orepro 
+
+> i
+
+is reclaimed and the residual ∆guess  
+
+> i
+
+= Oexp  
+
+> i
+
+− Oagg 
+
+> i
+
+remains (Cor. 3). 
+
+(c) (Orthogonality.) ∆i (hence Gnoise ) is a deterministic functional of {pim } on the SELECTION axis: invari-ant to which/how models are selected or mixed, and annihilated along the SAMPLE axis ( n → ∞ on the committed model, or ensembling). “Not recoverable” is correctly scoped to single-commit model selection ,modulo the (A6) guessing floor of part (b). (The appendix general form, Theorem 6 + Corollary 4, gives the arbitrary-coupling cap, the coupling-free Fréchet bracket 
+
+0 ≤ ∆i ≤ min {P 
+
+> m
+
+pim , 1}− max m pim , and the FKG upper-envelope scope floor.) 
+
+Deferred results. Four supporting results are deferred to App. A. Finite-sample consistency (Thm. 4): the plug-in oracles are O(1 /√k)-consistent, and k=1 is the degenerate, non-identifiable case ( \Orepro i = [Oexp i), which is why we re-generate k ≥ 30 draws rather than audit a released single-draw number. Robustness to dependence (Prop. 3): the sign and the selection cap need no independence, and positive cross-model correlation only lowers Oexp  
+
+> i
+
+, so the independent product is a conservative upper envelope. Verifier-free scope (Lem. 4, Cor. 3): without a deploy-time verifier, sampling reaches only the aggregation ceiling Orepro  
+
+> i
+
+≤ Oagg  
+
+> i
+
+≤ Oexp  
+
+> i
+
+, splitting ∆i
+
+into a verifier-free-recoverable part and a residual that needs a verifier. Sampling collapse (Thm. 5): letting the oracle’s own per-model budget r grow drives the noise share to 0, so the single-draw share is its r=1 maximum. IV. M ETHODS 
+
+This work introduces no new router; the procedure only resamples and recomputes (Fig. 6). Algorithm 1 states the full procedure; the two subsections below detail its estimation and decomposition steps. Every quantity it returns is the plug-in estimator of a population quantity analyzed in Section III: the decomposition on line 1 is the exact identity of Theorem 1 (so bGnoise ≥ 0), and the consistency of these estimators at rate O(1 /√k) is Theorem 4. 
+
+A. Multi-sample correctness estimation 
+
+From k independent samples ( T > 0) we estimate ˆpim =
+
+> 1
+> k
+
+Pkj=1 b(j)
+
+> im
+
+, using the raw frequency ˆpim as the point esti-mate, with a Beta–Bernoulli posterior Beta(1 + P b, 1 + k −P b) for confidence intervals (Bayes@ N near-converges at 
+
+k ≈ 10 [13]); we also record one greedy T =0 pass. 
+
+B. Gap decomposition 
+
+For a router r with per-query correctness qri , using the repro-ducible ceiling Orepro  
+
+> i
+
+= max m pim , the gap G decomposes as follows; in the display we write Gsingle for G to record that the oracle it is measured against is the single-draw one: 
+
+> 1
+> N
+
+X
+
+> i
+
+(Oexp  
+
+> i
+
+− qri )
+
+| {z }
+
+> Gsingle
+
+= 1
+
+> N
+
+X
+
+> i
+
+(Orepro  
+
+> i
+
+− qri )
+
+| {z }
+
+> (a) recoverable advantage
+
++ 1
+
+> N
+
+X
+
+> i
+
+(Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+)
+
+| {z } 
+
+> (b) single-draw noise ≥0
+
+. (3) Term (b) is non-negative by the inequality above. The de-composition splits the router-to-oracle gap into two parts with distinct meanings: term (a) is the recoverable specialist advantage —the genuine quality a perfect router could still capture by sending each query to the model with the highest reproducible success probability. This is the reproducible specialist advantage of the title: grounded in the reproducible probabilities pim rather than in lucky draws, and recoverable 
+
+because a better single-commit router can still capture it. Term (b) is the single-draw label noise —the portion of the gap that exists only because the single-draw oracle was credited for lucky samples no model can reproduce. Only term (a) is real headroom a router can recover; term (b) is unattainable by any single-commit router and can be subtracted before judging routing progress. We report (b) /G single , the noise share of the gap, with nested confidence intervals, and apply the same decomposition to the best-single baseline and to the “rare-correct” stratum that defines model-recall failure. PREPRINT, JULY 2026 7O repro 
+
+O agg 
+
+O exp 
+
+Selection 
+
+(pick one model, one draw) 
+
+Sampling 
+
+(re-draw the chosen model) 
+
+reachable 
+
+capped at O repro 
+
+(any single-commit router) 
+
+Δknow : recovered 
+
+verifier-free 
+
+Δguess : needs 
+
+a verifier 
+
+same gap, recovered by sampling 
+
+unreachable by any 
+
+single-commit selection                
+
+> Fig. 3. The recoverability asymmetry (Thm. 2), the paper’s main result. On the selection axis every single-commit router—deterministic, randomized, or any mixture—is capped at the reproducible ceiling Orepro ; the hatched mass above it is unreachable by choosing a model in advance, and this cap needs
+> no cross-model independence. On the sampling axis the same per-query draw budget, spent as best-of-Kon the committed model, provably lifts performance through the verifier-free aggregation ceiling Oagg (∆know , Lemma 4) toward Oexp (∆guess , attainable only with a deploy-time verifier). The single-draw gap is therefore not information that better routing can recover—only test-time sampling can.
+
+The “model-recall failure” diagnosis is precisely the thin-support regime in which the proven single-draw inflation is maximal. On LLMRouterBench’s 410 queries ( 11 .9% of the test set) where ≤ 3 experts are scored correct, top routers reach only ≈ 24 .6% /23 .2% , defining the diagnosed deficiency [8]. Yet by construction each of those few correct labels is a single stochastic draw at T =0 .2, so it is exactly here that the union oracle Oexp most overcounts solvability relative to its repro-ducible counterpart Orepro : the per-query gap Oexp  
+
+> i
+
+−Orepro  
+
+> i
+
+is largest under thin support, where lucky single draws dominate 
+
+max m pim . The decomposition therefore predicts that Gnoise 
+
+concentrates in this stratum: the apparent “failure” would then be substantially an empirical localization of label noise rather than recoverable routing headroom. V. E XPERIMENTAL SETUP 
+
+Pool & data. Our primary pool is LLMRouterBench [8] (33 models, 391 ,645 instances), whose oracle is a per-query union —“any model correct”—confirmed both in the construct (Sec. 3.4) and in the released aggregator code (aggregators.py ), and whose decoding is stochastic at temperature 0.2 (top-p 1.0). The released matrix stores exactly 
+
+one generation per (query, model) cell, with the raw output retained: each cell is a single Bernoulli draw bim , so the released oracle is precisely the single-draw oracle Osingle  
+
+> i
+
+of Sec. III. At this scale the reported ceiling is Oracle AvgAcc = 91 .64 against the best-performing routers at ≈ 71 .2–71 .9, i.e. 
+
+Gap@ O ≈ 19 .7 points. Because each cell holds a single 
+
+T =0 .2 draw, the released data fix Osingle but carry no infor-mation about the reproducible ceiling Orepro  
+
+> i
+
+= max m pim ;recovering Oexp and Orepro —and hence isolating Gnoise —requires new per-cell generation ( k ≥ 10 draws at T =0 .2). As a secondary, illustrative pool we use RouterBench [7] (11 models, 36 ,497 queries over MMLU, BBH, HellaSwag, Winogrande, ARC, MBPP, GSM8K, MT-Bench), whose oracle is the best-single-model construct (argmax over per-model scores) rather than a union, and whose decoding parameters are not disclosed in any primary source. On its binary evalu-ations the best-single argmax coincides numerically with the union, so the inflation argument transfers, but we attribute no decoding setting to it. Provenance for both pools—oracle con-struct, decoding, draws per cell—is summarized in Table III. Throughout, exact-match datasets are analyzed separately from LLM-judge / continuous-graded ones (MT-Bench, GSM8K, 
+
+. . . ), since the latter mix sampling noise with judge noise. 
+
+Reproduced baseline. On the secondary RouterBench pool we reproduce the single-draw (argmax) oracle at 0.964 versus the best single model ( 0.854 , GPT-4-1106), a gap of ≈ 11 
+
+points overall (up to ≈ 26 on mmlu-professional-law ); 
+
+20 .7% of queries are “rare-correct” ( ≤ 3 of 11 models cor-rect). This reproduction confirms the released matrix realizes 
+
+Osingle ; our re-estimation targets exactly the Oexp − Orepro 
+
+component of this gap. Estimand before estimator. The magnitude study is a prospective, conservative localization of Gnoise restricted to exact-match T > 0 cells; it is not an audit of the published k=1 number, which is non-identifiable ( \Orepro =[Oexp =Osingle at k=1 , Thm. 4(d)). We report an interval whose lower endpoint is tested against 0. Sampling (T -matched). We re-draw at the benchmark’s own temper-ature T =0 .2 (a T -sweep is secondary robustness only): re-drawing hotter would estimate a different solve-probability and introduce noise the audited oracle never had. Draw budgets, collected in one place: k ≥ 10 already near-converges the per-cell estimate [13], the protocol prescribes k ≥ 20 overall and 
+
+k ≥ 30 in the thin-support stratum, and the realized runs use 
+
+k=30 throughout. We stratify by number-of-correct-models PREPRINT, JULY 2026 8query x
+
+p1
+
+p2
+
+⋮
+
+pK
+
+K models (prob. pm)
+
+Single-draw O exp 
+
+any model's lucky draw counts 
+
+(needs a deploy-time verifier) 
+
+Aggregation O agg 
+
+self-consistency / majority vote 
+
+(verifier-free, deliverable) 
+
+Reproducible O repro = max  
+
+> m
+
+pm
+
+best a single-commit router can commit to 
+
+> single-commit
+> gap
+
+Three oracles on one query: O repro ≤ O agg ≤ O exp                           
+
+> Fig. 4. Three oracles on a single query, in the proven order Orepro ≤Oagg ≤Oexp (Lemma 4). The expected single-draw oracle Oexp credits any model’s lucky recorded draw; the reproducible oracle Orepro
+> i= max mpim is the ceiling a single-commit router can reach; the verifier-free aggregation oracle Oagg
+> i
+> (self-consistency / majority vote) is what test-time sampling can deliver without a deploy-time verifier. The lower gap Oagg −Orepro is sampling-recoverable (∆know ); the upper gap Oexp −Oagg needs a verifier ( ∆guess ).
+
+0 5 10 15 20 25 30 
+
+pool size K
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> oracle value
+
+dotted: O repro = max  
+
+> m
+
+pm (flat in K)
+
+Single-draw oracle inflates with pool size 
+
+O exp (p = 0.1) 
+
+O exp (p = 0.2) 
+
+O exp (p = 0.4)             
+
+> Fig. 5. With identical per-model success probability p, the expected single-draw oracle Oexp = 1 −(1 −p)K(under independence, A2) inflates toward 1
+> as the pool size Kgrows, while the reproducible oracle Orepro
+> i=p(dotted) stays flat. The widening gap is single-draw noise that no single-commit router can recover (though test-time sampling can), not routing headroom.
+
+and oversample the thin-support stratum ( N =500 per bench-mark, ≈40% rare), taking k=30 draws per cell, with raw-frequency point estimates ˆpim and Beta (1 , 1) –Bernoulli pos-teriors for confidence intervals, to avoid the ˆp=0 collapse. Two pre-checks gate the analysis: a known-p simulation matching the observed #-correct-models distribution, and a per-draw in-dependence test (runs / over-dispersion vs. p(1 −p)/k ) against provider caching ((A1)); a failed gate means the magnitude study reports nothing. Estimating Oexp (dependence-aware). 
+
+The product 1 − Q
+
+> m
+
+(1 − ˆpim ) estimates the independent -coupling oracle Oexp ,⊥ 
+
+> i
+
+, which Prop. 3 shows is the maximal-inflation case; we report it only as an upper envelope. To estimate the actual, dependence-preserving Oexp  
+
+> i
+
+we use the 
+
+seed-aligned estimator [Oexp i = 1
+
+> k
+
+Pkj=1 max m b(j) 
+
+> im
+
+— the empirical max over the same draw index j across models. Each summand is i.i.d. Bernoulli( Oexp  
+
+> i
+
+), so this estimator is exactly unbiased (no (A2), no O(1 /k ) bias) with a 2e−2kt 2
+
+tail. (A7, draw alignment): this requires seed-aligned K-tuples per query; absent (A7) — the typical released matrix — Oexp  
+
+> i
+
+is estimable only within the assumption-free Fréchet bracket [max m ˆpim , min {P 
+
+> m
+
+ˆpim , 1}], the product serving as the FKG upper envelope. An independent per-model resample estimates Oexp ,⊥ 
+
+> i
+
+, not Oexp  
+
+> i
+
+; a comonotone positive control (true ∆=0 ) guards against that artifact. 
+
+Prospective re-generation pool (open-weight, text-only). The re-generation protocol ( k ≥ 20 overall, k ≥ 30 
+
+in the rare stratum) draws from a pool restricted, by design, to open-weight text-only instruction models served identically under vLLM at T =0 .2, the audited benchmark’s own temperature. This restriction follows from what the audited oracles measure: Oexp , Orepro , and the single-draw 
+
+Osingle are all functionals of the scalar per-(query,model) correctness label bim ∈ { 0, 1} on text-answer tasks (GSM8K exact-match, MMLU multiple-choice), and the within-cell variance the decomposition isolates as Gnoise is decoding stochasticity alone—formalized as i.i.d. draws (A1) under seed-aligned K-tuples (A7). Open weights are required because recovering Oexp and Orepro demands new seed-PREPRINT, JULY 2026 9Ask each model 
+
+k ≥ 10 times 
+
+Estimate ̂
+
+pim 
+
+Two oracles 
+
+O exp vs O repro 
+
+Decompose gap 
+
+real vs noise       
+
+> Method: no new router, only resampling
+> Fig. 6. The method in four steps: sample each model k≥10 times, estimate ˆpim , recompute the expected vs. reproducible oracle, and decompose the gap into recoverable advantage vs. single-draw noise. No router is trained.
+
+pinned per-cell generation at a fixed temperature, which closed endpoints neither guarantee nor expose. Text-only is required because admitting vision-language models on the same text benchmarks would make input modality, chat templates, and answer extraction heterogeneous across the pool and would risk injecting vision/preprocessing variance outside the seed-aligned decoding model (A1, A7); measured cross-model disagreement would then conflate genuine solve-probability differences with modality artifacts rather than reflecting max m bim under matched stochastic decoding. We therefore exclude image-text-to-text candidates as a design decision: several candidate repositories were screened out on this basis. Restricting to text decoders keeps disagreement attributable to solve probability and preserves the seed-aligned K-tuples that make the unbiased 
+
+[Oexp i well-defined. The pool spans eight distinct pretraining lineages—Mistral, Qwen2.5, Phi, Gemma-2, Llama-3.1, OLMo-2, Yi-1.5, and Granite; we deliberately added the last three (allenai/OLMo-2-1124-7B-Instruct ,
+
+01-ai/Yi-1.5-9B-Chat ,
+
+ibm-granite/granite-3.3-8b-instruct ) so that no single lineage dominates. Only the Qwen lineage contributes more than one model—the three 
+
+Qwen2.5 sizes (7B/14B/32B) and the Qwen-distilled 
+
+DeepSeek-R1-Distill-Qwen-7B (a qwen2 
+
+architecture on a Qwen2.5 base)—so the nominal model count overstates independence; we control for this residual intra-lineage correlation in the next paragraph. Two lineages (Gemma-2, Llama-3.1) are gated: the analysis is pre-registered to hold on the open-only subpool, with the gated models as a robustness extension. The qualitative asymmetry isolated by the decomposition—selection is capped at Orepro (Thm. 2(a)); 
+
+Gnoise ≥ 0 for any coupling (Prop. 3(b)); the guessing residual needs a verifier (Cor. 3)—is proven and pool-independent; only the magnitude of Gnoise is pool-conditional. 
+
+Controlling for intra-lineage error correlation. Intra-lineage redundancy could enlarge Gnoise as a same-family artifact: four pool models share a Qwen pretraining lineage (the Qwen2.5 7B/14B/32B sizes and DeepSeek-R1-Distill-Qwen-7B), so the effective number of independent models is below the nominal count. We do not claim to remove this correlation—one cannot make served models independent— but we explicitly control for it and assess whether it drives the result. Prop. 3(c) fixes the bias direction : positive cross-model association pulls Oexp  
+
+> i
+
+below the independent envelope 
+
+Oexp ,⊥ 
+
+> i
+
+(it barely lifts Orepro  
+
+> i
+
+= max m pim when near-substitute models cluster) while leaving the within-cell draw variance untouched, so intra-lineage redundancy depresses the recoverable specialist component and inflates the noise share of the gap, Gnoise /G (cf. the oracle noise share S(K) of Cor. 1). Accordingly we report the noise share under both a lineage-deduplicated pool (the conservative, lower primary estimate) and the full pool (an upper bound). We report four controls. (i) We recompute the noise share under three pool definitions— full , one-per-lineage (grouped by pretraining lin-eage rather than vendor brand, so the Qwen-distilled DeepSeek model is counted as Qwen), and a within-lineage model-scale sweep over Qwen2.5 7B/14B/32B, reported separately 
+
+as a capability-axis control isolating scale from family. (ii) We report a lineage-clustered pairwise error-correlation matrix on the correctness tensor {bim } together with an effective-pool-size diagnostic [41], [42] (the participation ratio of the correlation eigenvalues), so the Cov ≥ 0 premise behind the upper envelope (Prop. 3(c)) is visible block-by-block. (iii) We run a leave-one-family-out jackknife on the noise share to test whether any single lineage drives the estimate. (iv) We report a pool-cardinality sweep K = 2 , 4, 8, tracing the monotone S(K) ↑ predicted by Cor. 1 against the dedupli-cation. Across these controls the qualitative asymmetry—the single-commit selection cap (Thm. 2(a)) and Gnoise ≥ 0 for any coupling (Prop. 3(b), Thm. 1(b))—is proven and pool-independent, whereas the magnitude of the noise share is pool-conditional and is reported across the deduplicated and full pools, with stability assessed by the jackknife and K-sweep above. These controls bound the effect of intra-lineage correlation on the magnitude of the noise share but do not characterize how cross-model error correlation shifts routing optimality in general, which remains future work (Sec. VIII). 
+
+Estimators & tests. Per query, we compute [Oexp by the seed-aligned estimator above and \Orepro = max m ˆpim . In low-
+
+p strata, to remain conservative where the claimed effect con-centrates, we use the one-sided b∆i = [Oexp lower − \Orepro upper 
+
+where \Orepro upper = max m ˆpim + Rk adds the winner’s-curse radius (since max m ˆpim is already upward -biased for 
+
+Orepro , Thm. 4(b)) and [Oexp lower = [Oexp − R′
+
+> k
+
+, with R′
+
+> k
+
+the one-sided radius of the seed-aligned Bernoulli mean’s 
+
+2e−2kt 2
+
+concentration tail (Sec. V) under a Bonferroni-2δ
+
+split; the same one-sided form is used in every stratum PREPRINT, JULY 2026 10 
+
+Algorithm 1: Reproducibility-corrected oracle and gap decomposition 
+
+Input: queries {xi}Ni=1 ; pool M = {1, . . . , K };samples/cell k; temperature T > 0; audited router r (chooses model r(i)). 
+
+Output: [Oexp , \Orepro ; gap bG; recoverable bGrec ; noise 
+
+bGnoise ; noise share bs.
+
+// Stage 1: re-estimate reproducible solve probabilities (replaces the single label) 
+
+foreach query i and model m ∈ M do 
+
+draw b(1)  
+
+> im
+
+, . . . , b (k) 
+
+> im
+
+from m on xi at temperature T ,and score each 
+
+ˆpim ← 1
+
+k
+
+P 
+
+> j
+
+b(j) 
+
+> im
+
+// raw frequency (matches Thm. 4); Beta (1 , 1) 
+
+posterior used only for CIs // Stage 2: the two oracles, per query 
+
+foreach query i do 
+
+\Orepro i ← max m ˆpim // committable ceiling 
+
+[Oexp i ← 1
+
+> k
+
+Pkj=1 max m b(j)
+
+> im
+
+// seed-aligned estimator (Sec. V); each summand i.i.d. Bernoulli (Oexp  
+
+> i
+
+), exactly unbiased under (A7) 
+
+qri ← ˆpi,r (i) // router scored on its chosen model (A4) // Stage 3: decompose the router-to-oracle gap (Thm. 1) 
+
+bG ← 1
+
+> N
+
+P
+
+> i
+
+([Oexp i − qri )
+
+bGrec ← 1
+
+> N
+
+P
+
+> i
+
+( \Orepro i − qri )
+
+bGnoise ← 1
+
+> N
+
+P
+
+> i
+
+([Oexp i − \Orepro i)
+
+// bG = bGrec + bGnoise , bGnoise ≥ 0
+
+bs ← bGnoise / bG // fraction of the gap that is single-draw noise 
+
+return [Oexp , \Orepro , bG, bGrec , bGnoise , bs
+
+so the aggregate lower bound is valid termwise. A per-stratum Cov ≥ 0 check gates the upper-envelope claim (under negative association the Fréchet sum is the only safe ceiling). We also report the verifier-free aggregation split : with 
+
+[Oagg i the empirical majority-vote (self-consistency) accuracy, 
+
+b∆know  
+
+> i
+
+= ([Oagg i − \Orepro i)+ (sampling-recoverable) and 
+
+b∆guess  
+
+> i
+
+= ( [Oexp i − [Oagg i)+, the union-minus-best-deliverable gap recoverable only with a deploy-time verifier (Cor. 3); the multiple-choice chance ceiling 1 − (1 − 1/A )K (with 
+
+A the number of answer choices) is reported separately as a construct-validity diagnostic (e.g. Winogrande). Confidence intervals are obtained by a nested bootstrap (queries) +
+
+Beta posterior (samples); a McNemar test compares rare-correct recall before/after correction; sensitivity is assessed over k ∈ { 1, 2, 5, 10 , 20 , 30 } and τ ∈ { 0.5, 0.9}.VI. R ESULTS 
+
+Sections III–IV establish, as theorems, that the single-draw oracle is upward-biased (Prop. 1), that the router-to-oracle gap splits exactly into a recoverable term and a non-negative single-draw-noise term (Thm. 1), and that this noise is analytically lower-bounded and grows in the hard regime — a noise share S(K) ↑ 1−p of the oracle (Cor. 1) and a Θ(1 − ¯p)
+
+fraction of every router’s gap where no model is reliable (Cor. 2). The experiments below therefore do not argue that the gap is partly noise—that is proven; they only localize 
+
+where existing benchmarks fall on this proven structure, i.e. how large the noise term is on real model pools. 
+
+A. Re-generation setup 
+
+To localize Gnoise under full decoding control we re-generate rather than audit: eleven open-weight text-only in-struction models (Mistral-7B, DeepSeek-R1-Distill-Qwen-7B, Qwen2.5-{7,14,32}B-AWQ, phi-4, OLMo-2-7B, Yi-1.5-9B, granite-3.3-8B, gemma-2-9B, Llama-3.1-8B — eight distinct pretraining lineages) served identically under vLLM at T =0 .2,top-p 1.0, with k=30 seed-aligned draws per (query, model) cell. Two exact-match benchmarks bracket the saturation axis: 
+
+GSM8K (grade-school arithmetic; strong for this pool) and 
+
+MATH-500 (competition mathematics; unsaturated), N =500 
+
+stratified queries each (thin-support oversampled). Both as-sumption gates pass on both benchmarks (known-p TV ≤
+
+0.01 < 0.06 ; per-draw over-dispersion 1.0, ≥94 .9% of cells within the independence band), so the magnitude study is licensed to report (Sec. V). 
+
+System configuration. All generation ran under vLLM with fixed per-draw seeds realizing the seed-aligned K-tuples of (A7); Table IV lists the full hardware/software stack, which a detection script captures automatically and releases with the code. 
+
+B. The recomputed oracle and its decomposition 
+
+Table V reports the decomposition of Thm. 1 on both bench-marks. On GSM8K the pool is near-saturated: the reproducible ceiling Orepro =0 .989 almost reaches the expected oracle 
+
+Oexp =0 .993 , the router-to-oracle gap is only 3.3 points, and single-draw noise is Gnoise /G =12% ([6 , 19]% ). On MATH-500 the same pool is unsaturated: no single model exceeds 
+
+0.78 accuracy. The gap widens to 10 .1 points and the noise share rises to 36% ([31 , 42]% ). The noise term is statistically real on both (bootstrap lower bound > 0), and its absolute 
+
+floor—the router-independent quantity Oexp −Orepro —grows from 0.4 to 3.6 points. This growth is reasonable because the unsaturated benchmark leaves more queries on which no model is reliable, the regime in which the noise term is predicted to be largest; this concentration is localized below. Two qualifications follow directly. First, in aggregate the gap is majority-recoverable (Fig. 7): 64% of the MATH-500 gap ( 88% on GSM8K) is recoverable specialist advantage 
+
+Grec that a better single-commit router can close—single-draw noise is a large minority , not the bulk. Second, the noise PREPRINT, JULY 2026 11 
+
+TABLE III DECODING PROVENANCE OF THE AUDITED ORACLES .Subset (metric type) Temp. Draws/ cell Oracle rule Role in our audit 
+
+LLMRouterBench [8] — primary audited benchmark binary (acc / pass@1) 0.2 1 union: any model correct ( Oexp ) Primary target : single-draw union at 
+
+T > 0
+
+LLM-judge (HLE, SimpleQA, ArenaHard) 
+
+0.2 1 union: any model correct ( Oexp ) Single-draw; judge-graded (reported separately) 
+
+RouterBench [7] — secondary corroboration (decoding undisclosed) MC / exact-match (MMLU, HellaSwag, ARC, Winogrande, MBPP) — — best single model ( = union on binary) Secondary: argmax = union on 0/1 labels generative (GSM8K) — — best single model Suggestive of multi-draw avg. (unproven) LLM-judge (MT-Bench) — — best single model Out of scope (graded) 
+
+How to read. Each row is one benchmark subset; the columns give its decoding temperature , the number of generations recorded per (query, model) cell (draws/cell ), the rule its per-instance oracle uses, and how we use it. Note that LLMRouterBench builds its oracle from a single T =0 .2 draw per cell and marks a query solved if any model is correct—so its reported ∼20 -point router-to-oracle gap is, by construction, a union of single random draws ( Oexp ), exactly the quantity our decomposition targets. RouterBench is corroboration only: its decoding is undisclosed (its generative subset is reported as quarter-step scores and its judge subset out of 10 —hinting at, but not proving, multi-draw averaging, so its draws/cell is unknown, “—”); its “best single model” rule coincides numerically with the union on binary ( 0/1) metrics, and its graded / LLM-judge subsets fall outside our exact-match scope. TABLE IV SYSTEM CONFIGURATION (AUTO -CAPTURED BY A DETECTION SCRIPT ;
+
+> RELEASED WITH THE CODE
+
+). Component Specification GPU 2× NVIDIA RTX 4090, 24 GB each (cc 8.9)NVIDIA driver 580 .159 .03 
+
+CUDA runtime / NCCL 13 .0 / 2.28 .9
+
+PyTorch 2.11 .0 (CUDA 13 .0)vLLM / Transformers 0.23 .0 / 5.12 .1
+
+Python 3.12 .3
+
+CPU / RAM AMD EPYC 7J13 ( 64 -core) / 64 GB OS Ubuntu 24 .04 
+
+Decoding T =0 .2, top-p 1.0, k=30 seed-aligned TABLE V RECOMPUTED ORACLE AND GAP DECOMPOSITION (T HM . 1); NOISE SHARE = Gnoise /G WITH A NESTED BOOTSTRAP 95% CI ( k=30 , T =0 .2,
+
+N =500 ). GSM8K (sat.) MATH-500 (unsat.) Expected oracle Oexp 0.993 0.873 
+
+Reproducible ceiling Orepro 0.989 0.837 
+
+Best-single router 0.960 0.773 
+
+Gap G (router →Oexp ) 0.033 0.100 
+
+recoverable Grec 0.029 0.064 
+
+noise Gnoise 0.004 0.036 
+
+Noise share Gnoise /G 12 % [6 , 19] 36 % [31 , 42] 
+
+Thin-support ( ≤ 3/11 ): fraction 3% 28% 
+
+its noise share 17% 43% 
+
+Effective pool size (of 11 ) 3.5 2.1
+
+share depends on the router baseline: we use the strongest single-commit baseline (best single model), which maximizes 
+
+the share; against a weaker realistic router the same Gnoise 
+
+floor would be a smaller fraction of a larger gap. What is invariant is the floor itself and that it is closed by no router (Thm. 2(a)). GSM8K 
+
+(saturated) 
+
+MATH-500 
+
+(unsaturated) 
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+14 
+
+> router → oracle gap (acc. points)
+
+12% noise 
+
+2.9 
+
+36% noise 
+
+6.4 
+
+3.6 
+
+recoverable Grec 
+
+single-draw noise Gnoise 
+
+Fig. 7. Gap decomposition (Thm. 1) on an identical 11 -model open pool. The router-to-oracle gap (accuracy points) splits into recoverable specialist advantage Grec (grey) and single-draw label noise Gnoise (blue). Noise is the minority slice on both benchmarks— 12% on saturated GSM8K, 36% on unsaturated MATH-500—larger in absolute terms ( 0.4 → 3.6 points) but still a minority of the gap. 
+
+C. Where the noise concentrates: thin support 
+
+Cor. 2 predicts the noise share is largest exactly where no model is reliable, and the data instantiate this prediction (Fig. 8). Partitioning queries by the number of models correct on a single draw, the thin-support stratum ( ≤ 3 of 11 correct) carries a noise share of 43% on MATH-500 versus 14% on the dense stratum; and MATH-500 places 28% of its queries in that stratum against only 3% for GSM8K. The harder bench-mark carries more noise not uniformly but through a ∼9×
+
+larger no-model-reliable population—the Θ(1 −¯p) mechanism of Cor. 2. Even here the share stays below one half, consistent PREPRINT, JULY 2026 12 GSM8K 
+
+(thin: 3% of Q) 
+
+MATH-500 
+
+(thin: 28% of Q) 
+
+0
+
+10 
+
+20 
+
+30 
+
+40 
+
+50 
+
+60 
+
+> single-draw noise share (%)
+
+majority 
+
+17% 
+
+43% 
+
+7% 
+
+14% 
+
+thin support ( ≤ 3/11) 
+
+dense ( > 3/11)          
+
+> Fig. 8. Single-draw noise share by support stratum (Cor. 2). Where no model is reliable (thin support, ≤3of 11 correct) the share is highest ( 43% on MATH-500), but MATH-500 is noise-heavier chiefly because it places far more queries there ( 28% vs 3% of queries). Even in the worst stratum the share stays below one half.
+
+Full 
+
+(11) 
+
+One-per-
+
+lineage (8) 
+
+Qwen-sweep 
+
+(3, homog.) 
+
+0
+
+10 
+
+20 
+
+30 
+
+40 
+
+50 
+
+60 
+
+> single-draw noise share (%)
+
+GSM8K MATH-500   
+
+> Fig. 9. Single-draw noise share by pool composition ( 95% CIs). The homogeneous Qwen size-sweep (three same-lineage models) has the highest share and the decorrelated one-per-lineage pool the lowest—the direction anticipated in Sec. V: a redundant pool of near-substitutes barely lifts the reproducible ceiling (Prop. 3(c)), so little of its gap is recoverable and the noise share is highest.
+
+with the theory’s bound rather than exceeding it. 
+
+D. Pool composition and cross-model correlation 
+
+Redundancy depresses the recoverable specialist compo-nent while leaving the within-cell draw variance untouched (Prop. 3(c); Sec. V), so the noise share of the gap is predicted to be highest for the most homogeneous pool and lowest for the most decorrelated one. Table VI and Fig. 9 confirm both directions on both benchmarks: the homogeneous three-model Qwen size-sweep has the highest noise share ( 24% GSM8K,                
+
+> TABLE VI SINGLE -DRAW NOISE SHARE Gnoise /G BY POOL COMPOSITION (95%
+> CI S). Pool KGSM8K MATH-500 Full 11 12% 36%
+> One-per-lineage (diverse) 89% 34%
+> Qwen size-sweep (homogeneous) 324% 44%
+
+44% MATH-500), the eight-model one-per-lineage pool— the most decorrelated, our conservative primary estimate— the lowest ( 9% , 34% ), with the full pool between. Cross-model error correlation is high and within-lineage exceeds cross-lineage ( 0.76 vs 0.61 on MATH-500; 0.54 vs 0.45 on GSM8K), so the effective (participation-ratio) pool size is only 
+
+2.1 of 11 on MATH-500 and 3.5 on GSM8K: eleven models behave like two to three independent ones. Lineage structure (a Qwen-distilled model counts as Qwen) is thus a material confounder that the one-per-lineage pool controls for —not eliminates—and the control moves the estimate in the theory-predicted direction. 
+
+E. Recoverability check and verifier-free scope 
+
+The single falsifiable prediction—that test-time sampling 
+
+recovers what selection cannot (Thm. 2(b))—passes on both benchmarks: best-of-K on the per-query committed best model reaches 0.946 on MATH-500, exceeding the matched-budget independent-pool oracle Oexp ,⊥=0 .874 (and analo-gously on GSM8K), as the bound requires. Recovery scope ,however, is verifier-gated (Cor. 3). A single-round verifier-free majority vote reaches only 0.824 on MATH-500— below 
+
+the reproducible ceiling 0.837 , i.e. self-consistency does not beat committing to the best model here—so the sampling-recoverable mass is dominated by the guessing residual 
+
+b∆guess , reclaimable only with a deploy-time ground-truth verifier, not by aggregation alone. On multiple-choice sets without a deploy verifier this residual is a hard floor, matching the scope caveat of Sec. III. VII. D ISCUSSION 
+
+The answer this work reaches is two-sided. Most of the router-to-oracle gap is real, recoverable specialist advantage: 
+
+64 –88% of it is Grec that a better single-commit router can close. But a substantial, previously unquantified minority is not: single-draw label noise is 12% of the gap on a saturated benchmark, 36% on an unsaturated one, and 43% on the hardest, no-model-reliable queries; none of it is recoverable by any router, only by resampling (with a verifier for the guessing residual). Oracle-gap headroom is therefore systematically overstated, and most so exactly where no model is reliable (thin support); the “model-recall failure” diagnosis [8] con-flates a genuine selection deficit with this irreducible single-draw inflation. Two design consequences follow. For benchmark design-ers : reporting a multi-sample oracle—the reproducible ceiling 
+
+Orepro and the expected oracle Oexp with its noise share 
+
+S(K)—would avoid the single-draw union, which our results PREPRINT, JULY 2026 13 
+
+show can attribute a third of the gap (nearly half on hard queries) to unreachable noise. For routing research : correlated pools inflate the apparent gap (eleven models here act like two to three independent ones), and the recoverable part is smaller than reported numbers imply, so progress is more likely to come from better ex-ante quality estimation and from decorrelating the pool than from pursuing an inflated ceiling. The inflation we quantify is orthogonal to the deterministic artifacts of [15]: theirs is greedy-decoding measurement error, ours is stochastic single-draw variance; a faithful oracle must control both. VIII. C ONCLUSION 
+
+This paper revisited the per-instance oracle that anchors LLM-routing benchmarks. It showed that, under stochastic decoding, the single-draw oracle is an upward-biased estimate of any reproducible ceiling, and decomposed the router-to-oracle gap into recoverable specialist advantage and single-draw label noise through cheap multi-sample re-estimation that needs no new router. On a controlled open-pool re-generation, single-draw label noise accounts for a substantial, previously unquantified minority of both the gap and the “model-recall failure” diagnosis—larger on unsaturated benchmarks and approaching half on the hardest, no-model-reliable queries— rather than recoverable routing headroom (Section VI); the majority remains genuine specialist advantage. For benchmark designers, the practical recommendation is to report a multi-sample oracle (expected and reproducible variants) rather than a single-draw one; for routing research, the recoverable head-room is smaller and harder than reported numbers imply, so progress is more likely to come from better quality estimation than from closing an inflated gap. The contributions of this work are the single-draw bias analysis, the gap decomposition, and a released corrected-oracle evaluation protocol. 
+
+Future work. Our estimates use k samples at a single temperature on an open-model pool; extending to larger k,multiple temperatures, and live frontier pools would sharpen the estimate and test whether the bias grows with pool strength. More fundamentally, the finding motivates a program: (i) building cheap, calibrated ex-ante quality estimators and map-ping calibration to realized routing gain; (ii) characterizing how cross-model estimator-error correlation affects routing optimality; and (iii) re-evaluating cost–quality claims once end-to-end latency is priced on live frontier pools—so that routing progress is measured against a calibrated oracle rather than an inflated one. APPENDIX 
+
+A. Single-draw inflation: expectation form and monotone growth 
+
+Proposition 2 (Expected single-draw oracle) . Fix a query 
+
+i and let bi1, . . . , b iK be the recorded single draws with 
+
+bim ∼ Bernoulli( pim ), pim ∈ [0 , 1] , so that E[bim ] = pim 
+
+(this is (A1)+(A3)). Define the single-draw oracle Osingle  
+
+> i
+
+=max m∈M bim and Oexp  
+
+> i
+
+:= E[Osingle  
+
+> i
+
+].
+
+(a) Exact form under independence across models. If, ad-ditionally, the draws bi1, . . . , b iK are mutually independent across models for the fixed i (A2), then 
+
+Oexp  
+
+> i
+
+= E
+
+h
+
+max  
+
+> m
+
+bim 
+
+i
+
+= 1 −
+
+> K
+
+Y
+
+> m=1
+
+(1 − pim ).
+
+(b) Assumption-free bounds when (A2) may fail. Without any assumption on the joint dependence of (bi1, . . . , b iK ) —only the marginals (A1)+(A3) — the following Fréchet/union bounds hold and are sharp: 
+
+max  
+
+> m
+
+pim ≤ Oexp  
+
+> i
+
+≤ min 
+
+
+
+1,
+
+> K
+
+X
+
+> m=1
+
+pim 
+
+
+
+.
+
+Theorem 3 (Monotone single-draw inflation) . Under (A1)+(A2), the reproducible oracle is non-decreasing in S
+
+and for each finite S equals the success probability of one fixed model, Orepro  
+
+> i
+
+(S) = max m∈S pm ≤ sup m∈M pm ≤ 1;it gains nothing from independence and cannot be inflated by adding weak models. Let p⋆ = max m∈S pm, attained at some (possibly non-unique) m⋆ ∈ S , and fix one such m⋆. Then 
+
+∆i(S) := Oexp  
+
+> i
+
+(S) − Orepro  
+
+> i
+
+(S)= (1 − p⋆)
+
+
+
+1 − Y
+
+> m∈S , m ̸=m⋆
+
+(1 − pm)
+
+
+
+≥ 0,
+
+where the product runs over all models other than the chosen 
+
+m⋆ (in particular any other model with pm = p⋆ remains in the product). Equivalently and symmetrically, with r := #{m ∈ S : pm = p⋆} the multiplicity of the maximum, 
+
+∆i(S) = (1 − p⋆)
+
+
+
+1 − (1 − p⋆) r−1 Y 
+
+> m∈S , p m̸=p⋆
+
+(1 − pm)
+
+
+
+.
+
+If S has K models with pm ∈ [ε, ¯p], 0 < ε ≤ ¯p < 1, then 
+
+∆i(S) ≥ (1 − ¯p) 1 − (1 − ε)K−1 −−−−→ 
+
+> K→∞
+
+1 − ¯p > 0,
+
+and if ¯p → 0 as the pool grows while P 
+
+> m
+
+pm = ∞ (e.g. all pm = ε fixed, K → ∞ , then ε ↓ 0), then Orepro  
+
+> i
+
+→ 0
+
+while Oexp  
+
+> i
+
+→ 1, so ∆i → 1. Writing the pool-growth decay constant Λi = P 
+
+> m∈S
+
+− ln(1 − pm) ∈ [0 , ∞], the all-fail probability is 1 − Oexp  
+
+> i
+
+(S) = Q 
+
+> m∈S
+
+(1 − pm) = e−Λi , so 
+
+Oexp  
+
+> i
+
+↑ 1 geometrically at rate Λi whenever some pm > 0.B. Finite-sample estimation 
+
+Theorem 4 (Finite-sample consistency) . Fix a query i and a model pool M = {1, . . . , K }. For each m, let b(1)  
+
+> im
+
+, . . . , b (k)
+
+> im
+
+be the k recorded draws and ˆpim = 1
+
+> k
+
+Pkj=1 b(j) 
+
+> im
+
+the empirical success frequency, with reproducible probability pim ∈ [0 , 1] .Recall the per-query oracles 
+
+Orepro  
+
+> i
+
+= max  
+
+> m
+
+pim , Oexp  
+
+> i
+
+= 1 − Y
+
+> m
+
+(1 − pim ),
+
+and their plug-in estimators 
+
+\Orepro i = max  
+
+> m
+
+ˆpim , [Oexp i = 1 − Y
+
+> m
+
+(1 − ˆpim ).
+
+Then: PREPRINT, JULY 2026 14 
+
+(a) Unbiasedness and concentration of ˆpim . Under (A1), 
+
+E[ˆ pim ] = pim , Var(ˆ pim ) = pim (1 −pim ) 
+
+> k
+
+≤ 14k , and for every 
+
+t > 0,
+
+Pr  |ˆpim − pim | ≥ t ≤ 2e−2kt 2
+
+.
+
+Equivalently, with probability ≥ 1−δ, |ˆpim −pim | ≤ 
+
+q ln(2 /δ )2k .
+
+(b) Upward bias of \Orepro i (winner’s curse). Under (A1) [11], [27], 
+
+E
+
+h
+
+max  
+
+> m
+
+ˆpim 
+
+i
+
+≥ max  
+
+> m
+
+pim = Orepro  
+
+> i
+
+,
+
+i.e. the plug-in is upward-biased, with the bias controlled by 
+
+0 ≤ E
+
+h
+
+max  
+
+> m
+
+ˆpim 
+
+i
+
+− max  
+
+> m
+
+pim ≤
+
+r ln K
+
+2k = O
+
+ 1
+
+√k
+
+
+
+.
+
+(c) Consistency of [Oexp i. Under (A1), [Oexp i → Oexp  
+
+> i
+
+in 
+
+L2 (hence in probability) as k → ∞ , with the deterministic Lipschitz bound 
+
+[Oexp i − Oexp  
+
+> i
+
+≤ X
+
+> m
+
+|ˆpim − pim |,
+
+E([Oexp i − Oexp  
+
+> i
+
+)2 ≤ K2
+
+4k ,
+
+Pr  |[Oexp i − Oexp  
+
+> i
+
+| ≥ t ≤ 2K e −2kt 2/K 2
+
+.
+
+The plug-in is exactly UNBIASED under (A2) ( E[[Oexp i] = 
+
+Oexp  
+
+> i
+
+); without (A2) its bias is O(1 /k ) (the pairwise-covariance leading term is ≤  K
+
+> 2
+
+ 14k ). 
+
+(d) Consistency of the decomposition / aggregate gap estimate. Let G = 1
+
+> N
+
+P
+
+> i
+
+(Oexp  
+
+> i
+
+− qri ) with qri = pi,r (i), and 
+
+bG = 1
+
+> N
+
+P
+
+> i
+
+([Oexp i − ˆpi,r (i)). Under (A1),(A4), bG is consistent for G as k → ∞ at rate O(1 /√k):
+
+E[ bG] − G = O(1 /k ) (= 0 under (A2) ),
+
+Pr  | bG − G| ≥ t ≤ 2N (K + 1) exp 
+
+
+
+− 2kt 2
+
+(K + 1) 2
+
+
+
+.
+
+If the reproducible oracle is targeted, \Orepro i injects an 
+
+O(1 /√k) upward bias by (b). The case k = 1 is the degenerate worst case: ˆpim = bim ∈ {0, 1}, all Hoeffd-ing radii and the winner’s-curse bound are maximal, and 
+
+\Orepro i = [Oexp i = max m bim = Osingle  
+
+> i
+
+, so no averaging-based variance reduction occurs. C. Robustness to cross-model dependence 
+
+Proposition 3 (Robustness to cross-model dependence) . Fix a query i and let (Bi1, . . . , B iK ) be a vector of Bernoulli indi-cators with arbitrary joint law μ on {0, 1}K having prescribed marginals Pr( Bim = 1) = pim , m ∈ M = {1, . . . , K }
+
+(assumptions (A1) and (A3) hold; (A2) is dropped ). Recall 
+
+Osingle  
+
+> i
+
+= max m Bim = ⊮{∃ m : Bim = 1}, Oexp  
+
+> i
+
+=
+
+Eμ[Osingle  
+
+> i
+
+] = Pr μ(∃m : Bim = 1) , and Orepro  
+
+> i
+
+= max m pim .
+
+(a) (Sharp Fréchet bounds.) For every joint law μ with the given marginals, 
+
+max  
+
+> m
+
+pim ≤ Oexp  
+
+> i
+
+≤ min 
+
+n
+
+1, PKm=1 pim 
+
+o
+
+,
+
+and both bounds are attainable, hence sharp: the lower bound is the Fréchet upper bound (maximal positive dependence / comonotone coupling) and the upper bound is the Fréchet lower bound (disjointness when P 
+
+> m
+
+pim ≤ 1). 
+
+(b) (Ordering holds without (A2).) For every joint law with the given marginals, 
+
+Oexp  
+
+> i
+
+≥ Orepro  
+
+> i
+
+= max  
+
+> m
+
+pim ,
+
+with equality iff μ attains the Fréchet upper bound, i.e. iff the event {Bim = 1 } for the (an) argmax model contains, up to a μ-null set, all the events {Bim ′ = 1 }.
+
+(c) (Independence is the maximal-inflation case under positive dependence.) Write Oexp ,⊥ 
+
+> i
+
+= 1 − QKm=1 (1 −
+
+pim ) for the value under the independent (product) coupling of (A2). If (Bi1, . . . , B iK ) are positively as-sociated (e.g. positively correlated in the strong sense of association: E[f g ] ≥ E[f ] E[g] for all coordinatewise-nondecreasing bounded f, g ; the FKG/association prop-erty), then 
+
+Oexp  
+
+> i
+
+≤ Oexp ,⊥ 
+
+> i
+
+.
+
+Thus positive cross-model correlation can only re-duce the expected single-draw oracle relative to inde-pendence; independence is the maximal-inflation case among positively associated couplings. Symmetrically, negative association gives Oexp  
+
+> i
+
+≥ Oexp ,⊥ 
+
+> i
+
+. Equality holds iff the survival events are uncorrelated in the rel-evant product sense (in particular under independence). D. Achievable routers: attainability and the single-commit cap 
+
+Lemma 1 (Attainability of the reproducible oracle; Grec as regret) . Define the oracle-weight committable router r⋆(i) := arg max m∈M pim (ties broken arbitrarily), scored under (A4) by qr⋆ 
+
+> i
+
+= pr⋆(i),i . Then, with no probabilistic assumption beyond the definition of the per-query maximum: 
+
+(a) (Attainment.) For every i, qr⋆ 
+
+> i
+
+= max m pim = Orepro  
+
+> i
+
+,since the maximum over the finite pool M is attained at r⋆(i); hence the recoverable gap of r⋆ vanishes, 
+
+Grec (r⋆) = 1
+
+> N
+
+P
+
+> i
+
+ Orepro  
+
+> i
+
+− qr⋆
+
+> i
+
+ = 0 .
+
+(b) (Pointwise optimality among committable routers.) For 
+
+any committable router r and every i, qri = pi,r (i) ≤
+
+max m pim = qr⋆ 
+
+> i
+
+; thus r⋆ maximizes the reproducible score query-by-query, and hence over the benchmark. 
+
+(c) (Regret reading and router-independent floor.) Sub-stituting qr⋆ 
+
+> i
+
+= Orepro  
+
+> i
+
+into Theorem 1(a), for any committable router rGrec (r) = 1
+
+> N
+
+X
+
+> i
+
+ qr⋆ 
+
+> i
+
+− qri
+
+ ≥ 0
+
+is the average regret of r against the realizable optimum 
+
+r⋆, while Gnoise = 1
+
+> N
+
+P
+
+> i
+
+ Oexp  
+
+> i
+
+− Orepro 
+
+> i
+
+ = G(r⋆) is the residual gap of the best committable router itself. Since Gnoise ≥ 0 (Theorem 1(b), needing only (A1)) and Grec (r) ≥ 0 by (b), every committable router obeys 
+
+G(r) = Grec (r) + Gnoise ≥ Gnoise .PREPRINT, JULY 2026 15 
+
+No committable router can close more than Grec of the gap, and Gnoise is a router-independent lower bound on the distance to Oexp .
+
+Remark (admissibility). r⋆ is the oracle-weight router: it uses the true pim , mirroring the paper’s treatment of Orepro as an attainable ceiling. A finite-sample router using the plug-in arg max m ˆpim is only nonnegative-regret in expectation up to the winner’s-curse bias ≤ pln K/ 2k of Theorem 4(b); the pointwise statements (a)–(b) are for the true-p argmax. Proposition 4 quantifies the shortfall of a realistic feature-based router to r⋆.
+
+Lemma 2 (Randomization does not relax the committable ceiling) . Extend (A4) by linearity: a (possibly randomized, possibly feature/history-dependent) single-commit router on query i selects a model Mi ∼ πi from a distribution πi on 
+
+M = {1, . . . , K } (where πi may depend on i and on any observed covariates/history Fi), commits to that one model, and is scored by the expected reproducible success probability of the committed model, 
+
+score i(π) := EMi∼πi
+
+pMi,i 
+
+ = X
+
+> m∈M
+
+πi(m) pim .
+
+Then for every such router and every joint law of the draws (no (A2) needed), 
+
+score i(π) = X
+
+> m
+
+πi(m) pim ≤ max  
+
+> m
+
+pim = Orepro  
+
+> i
+
+,
+
+with equality iff πi is supported on arg max m pim (πi-a.s. all mass on maximizers). Deterministic committable routers are the special case of point masses, so the supremum of the score over the entire class of single-commit routers equals 
+
+Orepro  
+
+> i
+
+exactly (attained by committing to any maximizer, i.e. by r⋆ of Lemma 1). Consequently the noise term Gnoise =
+
+> 1
+> N
+
+P
+
+> i
+
+ Oexp  
+
+> i
+
+−Orepro 
+
+> i
+
+ ≥ 0 of Theorem 1 is a hard floor for the full mixed-strategy class, not merely for deterministic routers. 
+
+Remark (source of the floor). The floor is not created by “reproducible vs. lucky-draw” scoring of a single model: a router committing to one model m and scored on a fresh single draw bim still has expected score pim ≤ Orepro  
+
+> i
+
+. The irreducible gap Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+arises specifically because the single-draw oracle takes the maximum over all K independent draws max m bim — harvesting whichever model is momen-tarily lucky — whereas a committable router (deterministic or randomized) is confined to a single committed model and cannot collect this pool-wide maximum. Routers that may query or ensemble several models leave the single-commit class and can reach up to Oexp  
+
+> i
+
+; the floor is asserted only within the single-commit class. 
+
+Lemma 3 (Two axes: selection is capped at Orepro , sampling lifts the per-model ceiling) . Fix a query i with reproducible per-model success probabilities pim ∈ [0 , 1] , m ∈ M =
+
+{1, . . . , K }, and let Orepro  
+
+> i
+
+= max m pim , attained at a fixed 
+
+m⋆.
+
+(SELECT) Model selection is capped. Under the lin-ear extension of (A4) of Lemma 2, every single-com-mit router—deterministic or randomized, feature/history-dependent—selecting one model Mi ∼ πi on M scores 
+
+score i(π) = P 
+
+> m
+
+πi(m) pim ≤ Orepro  
+
+> i
+
+, with equality iff πi
+
+is supported on arg max m pim . No amount of argmax-over-models (selecting, mixing, or portfolio-weighting among the 
+
+K reproducible probabilities) exceeds Orepro  
+
+> i
+
+.
+
+(SAMPLE) Test-time sampling lifts the per-model ceiling. 
+
+Under (A1) (within-(i, m ) i.i.d. draws), drawing a single fixed 
+
+model m n times and accepting the query as solved if any draw succeeds yields the best-of-n success probability 
+
+p(n) 
+
+> im
+
+= 1 − (1 − pim )n ≥ pim = p(1)  
+
+> im
+
+,
+
+nondecreasing in n and strictly increasing iff pim ∈ (0 , 1) ,with p(n) 
+
+> im
+
+↑ 1 iff pim > 0. In particular, sampling the single committed best model m⋆ gives Orepro ,(n) 
+
+> i
+
+:= 1 − (1 −
+
+Orepro  
+
+> i
+
+)n ↑ 1 whenever Orepro  
+
+> i
+
+> 0. The two operations are orthogonal: (SELECT) chooses which reproducible probabil-ity to commit to (and cannot exceed their maximum), whereas 
+
+(SAMPLE) raises the ceiling of whichever model is committed to. Combined, a router that commits to m⋆ and samples it n
+
+times attains Orepro ,(n) 
+
+> i
+
+, which exceeds Orepro  
+
+> i
+
+for n ≥ 2 (when 
+
+Orepro  
+
+> i
+
+∈ (0 , 1) ). E. Verifier-free aggregation ceiling 
+
+Lemma 4 (Verifier-free aggregation ceiling) . Fix a query i
+
+with finite answer set Y, gold label y⋆i , and per-model draw labels Yim ∈ Y (so Bim = ⊮{Yim = y⋆i }). Call g : YK → Y 
+
+a draw-grounded verifier-free aggregator if it uses only the draw labels and outputs one of them , g(Yi·) ∈ { Yi1, . . . , Y iK }
+
+(e.g. plurality / self-consistency vote; committing to one model is the degenerate case). With Oagg  
+
+> i
+
+:= sup g Pr( g(Yi·) = y⋆i )
+
+over this class, 
+
+Orepro  
+
+> i
+
+≤ Oagg  
+
+> i
+
+≤ Oexp  
+
+> i
+
+,
+
+each inequality strict in general (e.g. binary cells A=2 with every model correct with probability p > 12 and odd K ≥ 3:majority vote gives Orepro  
+
+> i
+
+= p < Oagg  
+
+> i
+
+< Oexp  
+
+> i
+
+, by Condorcet’s jury theorem). On a pure-chance cell pim ≡ 1/A ,by contrast, symmetry of the A candidates forces Oagg  
+
+> i
+
+=1/A = Orepro  
+
+> i
+
+: verifier-free aggregation cannot beat chance. 
+
+Corollary 3 (Scope of Gnoise : a single-shot selection floor; the guessing residual needs a verifier) . Under (A4-linear) +(A5), 
+
+Gnoise = 1
+
+> N
+
+P 
+
+> i
+
+∆i ≥ 0 is a hard lower bound on the Oexp -gap of the entire single-shot single-commit class (determinis-tic and randomized), k-/data-independent (Thm. 2(a)). Using Lemma 4, split 
+
+∆i = (Oagg  
+
+> i
+
+− Orepro  
+
+> i
+
+)
+
+| {z } 
+
+> ∆know
+> i≥0
+
++ ( Oexp  
+
+> i
+
+− Oagg  
+
+> i
+
+)
+
+| {z } 
+
+> ∆guess
+> i≥0
+
+.
+
+∆know  
+
+> i
+
+is recoverable without a verifier — by draw-grounded aggregation (majority vote up to Oagg  
+
+> i
+
+), or on verifier-equipped cells by best-of-n (Thm. 2(b)). ∆guess  
+
+> i
+
+= Oexp  
+
+> i
+
+−Oagg 
+
+> i
+
+— the gap between the union ceiling and the best deliverable 
+
+verifier-free answer — is recoverable by neither the selection axis (capped at Orepro  
+
+> i
+
+≤ Oagg  
+
+> i
+
+, part (a)) nor verifier-free aggregation (capped at Oagg  
+
+> i
+
+, Lemma 4); closing it requires a deploy-time ground-truth verifier to pick a correct draw post hoc. On pure-guessing cells this union-vs-deliverable PREPRINT, JULY 2026 16 
+
+gap is a zero-mutual-information (Fano-type) floor. Hence the 
+
+Θ(1 − ¯p) “not recoverable” fraction (Cor. 2) means “not recoverable by single-shot selection ”; sampling/aggregation recovers ∆know  
+
+> i
+
+, while ∆guess  
+
+> i
+
+needs a verifier. (At k=1 the split is not identifiable, Thm. 4(d).) F. Proof of the recoverability asymmetry Proof of Theorem 2. (a) By Lemma 3(SELECT) (equiva-lently Lemma 2), any single-shot single-commit router has 
+
+score i(π) ≤ Orepro  
+
+> i
+
+for every joint law of the draws. By definition ∆i = Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+, so Orepro  
+
+> i
+
+= Oexp  
+
+> i
+
+− ∆i and 
+
+Oexp  
+
+> i
+
+− score i(π) ≥ Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= ∆ i ≥ 0,
+
+the last inequality by Prop. 1 (Jensen on the convex map max ,needing only (A1)). Averaging over i = 1 , . . . , N by linearity gives 1
+
+> N
+
+P
+
+> i
+
+(Oexp  
+
+> i
+
+− score i(π)) ≥ 1
+
+> N
+
+P 
+
+> i
+
+∆i = Gnoise . Since this holds simultaneously for all π in the class, Gnoise is a uniform lower bound, and no router in the class recovers any part of ∆i: increasing or redistributing the mixing weights 
+
+πi only moves score i within [ min m pim , O repro  
+
+> i
+
+] and never above Orepro  
+
+> i
+
+.
+
+(b) Leave the single-shot class by sampling the committed best model. By Lemma 3(SAMPLE), committing to m⋆ and drawing it n times attains Orepro ,(n) 
+
+> i
+
+= 1 − (1 − Orepro  
+
+> i
+
+)n,which is nondecreasing in n and, when Orepro  
+
+> i
+
+> 0, tends to 
+
+1 ≥ Oexp  
+
+> i
+
+. For the finite budget: Orepro ,(n) 
+
+> i
+
+≥ Oexp  
+
+> i
+
+iff (1 −
+
+Orepro  
+
+> i
+
+)n ≤ 1 − Oexp  
+
+> i
+
+. Taking logs (both sides in (0 , 1] when 
+
+Orepro  
+
+> i
+
+∈ (0 , 1) and Oexp  
+
+> i
+
+< 1; the inequality ln(1 − Orepro  
+
+> i
+
+) <
+
+0 flips the direction) gives n ≥ ln(1 − Oexp  
+
+> i
+
+)/ ln(1 − Orepro  
+
+> i
+
+),hence the stated ceiling. (If Oexp  
+
+> i
+
+= 1 then Orepro  
+
+> i
+
+may be 
+
+< 1; the inequality Orepro ,(n) 
+
+> i
+
+≥ Oexp  
+
+> i
+
+then holds only in the limit n → ∞ , consistent with Orepro ,(n) 
+
+> i
+
+↑ 1.) For the ensemble route, under (A1)+(A2) drawing all K models once and accepting on any success attains 1 − Q
+
+> m
+
+(1 − pim ) = 
+
+Oexp ,⊥ 
+
+> i
+
+, which equals Oexp  
+
+> i
+
+by Prop. 2(a). Thus ∆i is fully recovered either by best-of-n on m⋆ (in the limit / at the stated budget) or by single-pass ensembling. 
+
+(c) Combine (a) and (b). The quantity ∆i = Oexp  
+
+> i
+
+− Orepro 
+
+> i
+
+depends only on {pim } and on the single-commit, single-draw restriction: by (a) it is invariant to every move along the SELECTION axis (deterministic or randomized choice/mixing over the K models), each of which is capped at Orepro  
+
+> i
+
+;by (b) it is annihilated by moving along the SAMPLE axis (n → ∞ on the committed model, or ensembling). The two axes act on disjoint degrees of freedom (the index m versus the draw budget n) by Lemma 3, so they are orthogonal. Hence the descriptor “not recoverable” is correctly scoped to single-shot model selection: the SAMPLE axis recovers ∆i
+
+in full. Matched budget n = K. Writing p⋆ = Orepro  
+
+> i
+
+and 
+
+1 − p⋆ = min m(1 − pim ) (since p⋆ = max m pim ), each factor obeys (1 − pim ) ≥ min m′ (1 − pim ′ ) = 1 − p⋆, so Q
+
+> m
+
+(1 −
+
+pim ) ≥ (1 − p⋆)K (a product of K reals each ≥ a common value c ≥ 0 is ≥ cK ). Hence Orepro ,(K) 
+
+> i
+
+= 1 − (1 − p⋆)K ≥
+
+1 − Q
+
+> m
+
+(1 − pim ) = Oexp ,⊥ 
+
+> i
+
+, with equality iff every factor equals 1 − p⋆, i.e. pim ≡ p⋆ (homogeneous pool). By (A1) within-cell i.i.d., Pr( all K draws of m⋆ fail ) = (1 − p⋆)K ;positive within-cell dependence only lowers this, preserving the bound. 
+
+G. Additional results 
+
+Proposition 4 (Routing regret of a feature-based router; conditional in-sample plug-in inequality) . A realistic router observes only features xi, not the reproducible probabilities 
+
+{pim }, and commits to r(i) = arg max m∈M sm(xi) for learned scores sm(·). Write bs ≡ (sm(xi)) m and define the per-query sup estimation error εi := max m∈M |sm(xi) − pim | =
+
+∥bs − p∥∞ (the sup taken over the pool, at query i). Then the per-query routing regret to the reproducible oracle satisfies, for any joint law of the draws and any distribution of x,
+
+Orepro  
+
+> i
+
+− qri = max  
+
+> m
+
+pim − pi,r (i) ≤ 2 εi,
+
+and the constant 2 is sharp (attained in the limit by K = 2 ,
+
+p = ( 12 + d, 12 − d) with bs perturbed by εi = d toward the inferior model). Averaging over the benchmark, 
+
+Grec (r) = 1
+
+> N
+
+X
+
+> i
+
+ Orepro  
+
+> i
+
+− qri
+
+ ≤ 2
+
+N
+
+X
+
+> i
+
+εi
+
+= 2 E∥bs − p∥∞
+
+.
+
+Combining with the decomposition (Theorem 1), the total gap of the feature-router to the single-draw oracle is 
+
+G(r) = Grec (r) + Gnoise ≤ 2 E∥bs − p∥∞
+
+ + Gnoise .
+
+Interpretation. The gap a feature-router faces splits into (i) an estimation/routing term ≤ 2 E∥bs − p∥∞ that vanishes only for estimates that are sup-norm consistent for p, re-covering r⋆ and Orepro (Lemma 1); and (ii) the router-independent, estimation-independent noise term Gnoise ≥ 0
+
+(Theorem 1(b), Corollary 1). This is a conditional, in-sample 
+
+plug-in inequality — the routing analogue of the classical argmax excess-risk decomposition [43] — not a generalization bound: it carries no capacity/Rademacher term. Moreover, since pim need not be σ(xi)-measurable, a deployable feature router faces an irreducible representation floor εBayes ≥ 0
+
+(E∥bs − p∥∞ ≥ εBayes for every feature map), so term (i) closes to 0 only for the clairvoyant oracle-weight router, not a feature router; the noise term (ii) survives even at εBayes =0 .
+
+Finite-k coupling. If the scores are the empirical frequencies 
+
+ˆpim from k i.i.d. draws, then union-bounding the Hoeffding inequality of Theorem 4(a) gives εi ≤
+
+q ln(2 K/δ )2k with probability ≥ 1 − δ, so Grec (br) = O p ln K/k , matching the estimation rate of Theorem 4, while Gnoise is k-independent. The winner’s-curse bias of Theorem 4(b) inflates the estimate 
+
+max m ˆpim of Orepro by O(1 /√k), but the bound here is on the realized regret Orepro  
+
+> i
+
+− pi,r (i) using the true probability of the chosen model, so it is unaffected. 
+
+Theorem 5 (Best-of-r oracle inflation and the monotone collapse of its noise share) . Fix a query i with reproducible per-model success probabilities pim ∈ [0 , 1] , m ∈ M =
+
+{1, . . . , K }, and let p⋆ = max m pim , attained at a fixed 
+
+m⋆. Grant a counterfactual oracle a draw budget r ≥ 1
+
+(real or integer): under (A1) each model is sampled r times i.i.d., and under (A2) draws are independent across models. PREPRINT, JULY 2026 17 
+
+Define the best-of-r per-model (pass@ r) probability p(r) 
+
+> im
+
+=1 − (1 − pim )r , the best-of-r committable ceiling 
+
+Orepro ,(r) 
+
+> i
+
+= max  
+
+> m
+
+p(r) 
+
+> im
+
+= 1 − (1 − p⋆)r
+
+(the maximizer is still m⋆ since x 7 → 1−(1 −x)r is increasing on [0 , 1] for r ≥ 1), the best-of-r expected oracle 
+
+O(r) 
+
+> i
+
+= 1 −
+
+> K
+
+Y
+
+> m=1
+
+(1 − pim )r ,
+
+the inflation ∆(r) 
+
+> i
+
+:= O(r) 
+
+> i
+
+− Orepro ,(r) 
+
+> i
+
+, and the noise share 
+
+S(r) 
+
+> i
+
+:= ∆ (r) 
+
+> i
+
+/O (r) 
+
+> i
+
+(with S(r) 
+
+> i
+
+:= 0 when O(r) 
+
+> i
+
+= 0 ). Then: 
+
+(i) (Exact identity; = Theorem 3 with base (1 − pm) →
+
+(1 − pm)r .) Under (A1)+(A2), 
+
+∆(r) 
+
+> i
+
+= (1 − p⋆)r 
+
+1 − Y
+
+> m̸=m⋆
+
+(1 − pim )r 
+
+= (1 − p⋆)r − Y
+
+> m
+
+(1 − pim )r ≥ 0,
+
+which at r = 1 is exactly the single-draw inflation ∆i
+
+of Theorem 3. The pool-growth decay constant of Theo-rem 3 is scaled by r: 1−O(r) 
+
+> i
+
+= Q
+
+> m
+
+(1 −pim )r = e−rΛi
+
+with Λi = P 
+
+> m
+
+− ln(1 − pim ) ∈ [0 , ∞], so O(r) 
+
+> i
+
+↑ 1
+
+geometrically in r at rate Λi whenever some pim > 0.
+
+(ii) (Monotone collapse of the noise share — the novel part.) If p⋆ > 0, then S(r) 
+
+> i
+
+is non-increasing in r on 
+
+[1 , ∞) and S(r) 
+
+> i
+
+→ 0 as r → ∞ . The decrease is strict 
+
+whenever at least two models have pim > 0; if at most one model has pim > 0 then ∆(r) 
+
+> i
+
+≡ 0 and S(r) 
+
+> i
+
+≡ 0.(If p⋆ = 0 all quantities are 0 and S(r) 
+
+> i
+
+:= 0 .) In the homogeneous case pim ≡ p ∈ (0 , 1) ,
+
+S(r) = (1 − p)r − (1 − p)rK 
+
+1 − (1 − p)rK 
+
+= x − xK
+
+1 − xK , x := (1 − p)r ∈ (0 , 1) ,
+
+which is strictly increasing in x on (0 , 1) and hence strictly decreasing in r.
+
+(iii) (Interpretation.) The benchmark protocol (A3) records one label, i.e. r = 1 , so the paper’s headline noise share is S(1)  
+
+> i
+
+(Corollary 1). Increasing r inside the oracle is a separate, strictly more expensive intervention (multi-draw committable inference, not single-recorded-label evaluation); under it both O(r) 
+
+> i
+
+↑ 1 and S(r) 
+
+> i
+
+↓ 0,i.e. a single best model sampled r times asymptotically matches the multi-model oracle. The large single-draw noise share is thus a property of the one-label protocol, 
+
+not recoverable routing headroom at r = 1 .H. Sharper finite-sample (winner’s-curse) bounds 
+
+Returning to estimation, we tighten the plug-in upward bias of Thm. 4(b) with variance-aware constants and an exact order-statistic form, identifying near-tied pools as the least-favorable configuration. 
+
+Proposition 5 (Variance-aware winner’s-curse bound; refine-ment of Theorem 4(b)) . Fix a query i and pool M =
+
+{1, . . . , K }. Under (A1), with ˆpim = 1
+
+> k
+
+Pkj=1 b(j) 
+
+> im
+
+and 
+
+Orepro  
+
+> i
+
+= max m pim , the plug-in selection (winner’s-curse; post-selection inference [27], [11]) bias of \Orepro i =max m ˆpim obeys the following sharpenings of the bound pln K/ (2 k) of Theorem 4(b). 
+
+(a) Optimal-proxy sub-Gaussian bound. Let ν2 
+
+> m
+
+denote the 
+
+optimal sub-Gaussian proxy of the centered Bernoulli (pim )
+
+variable bim − pim , i.e. the Kearns–Saul constant 
+
+ν2 
+
+> m
+
+= ν2(pim ) := 1 − 2pim 
+
+2 ln  (1 − pim )/p im 
+
+ (pim ̸ = 12 ),ν2( 12 ) := 14 ,
+
+with the order chain Var( bim ) = pim (1 − pim ) ≤ ν2 
+
+> m
+
+≤ 14
+
+(equality ν2 
+
+> m
+
+= 14 only at pim = 12 ). Writing ¯ν2 := max m ν2
+
+> m
+
+,
+
+0 ≤ E
+
+h
+
+max  
+
+> m
+
+ˆpim 
+
+i
+
+− max  
+
+> m
+
+pim ≤
+
+r 2 ¯ ν2 ln Kk ≤
+
+r ln K
+
+2k ,
+
+and the last inequality is strict whenever no model is tied exactly at pim = 12 (i.e. ¯ν2 < 14 ). 
+
+(b) Variance-dependent (Bernstein) bound. With σ2 := max m pim (1 − pim ) ( ≤ 14 ) the worst per-model Bernoulli variance, a Bennett/Bernstein maximal inequality gives the genuinely variance -controlled, data-estimable bound 
+
+0 ≤ E
+
+h
+
+max  
+
+> m
+
+ˆpim 
+
+i
+
+− max  
+
+> m
+
+pim ≤
+
+r 2σ2 ln Kk + ln K
+
+3k .
+
+At leading order in k−1/2 the constant is the (empirically estimable) score variance σ2 ≪ 14 whenever models are well away from chance, at the cost of an additive O(ln K/k ) term. 
+
+(c) Exact order-statistic form in the tied (homogeneous) case. 
+
+If pim = p for all m, then with Fk,p (s) = Pr S∼Bin( k,p )(S ≤
+
+s) and Fk,p (−1) := 0 ,
+
+E
+
+h
+
+max  
+
+> m
+
+ˆpim 
+
+i
+
+=
+
+> k
+
+X
+
+> s=0
+
+sk
+
+
+
+Fk,p (s)K − Fk,p (s − 1) K 
+
+,
+
+so the bias E[max m ˆpim ] − p is available in closed form; it is strictly below pln K/ (2 k) for all finite K ≥ 2, k ≥
+
+1, p ∈ (0 , 1) (the ratio is strictly below 1, with supremum 
+
+→ 2pp(1 − p) ≤ 1 in the large-(K, k ) limit). 
+
+(d) Near-ties are least favorable. Among all probability pro-files sharing a fixed top value p⋆ = max m pim , the selection bias E[max m ˆpim ] − p⋆ is maximized by the flat (tied) profile 
+
+pim ≡ p⋆; the unconstrained maximizer is itself a tied profile at a common value p ≈ 12 (shifted slightly by finite-k Bernoulli skew). Hence near-tied model pools are the worst case for re-estimating Orepro  
+
+> i
+
+: a benchmark should allocate more draws 
+
+k precisely to queries where the leading models tie. 
+
+Remark 1 (On the variance-only form) . The bare substitu-tion σ√2 ln K with σ2 = max m pim (1 − pim )/k is not avalid upper bound: for skewed (small-p) Bernoulli scores the optimal sub-Gaussian proxy ν2 
+
+> m
+
+strictly exceeds the variance, so the variance underestimates the true bias. A valid variance-controlled statement requires either the optimal proxy of part PREPRINT, JULY 2026 18 
+
+(a) or the additive Bernstein term of part (b); the pure sub-Gaussian form is honest only with ν2
+
+> m
+
+, not with the raw variance. Proof of Proposition 2. Throughout, fix the query i; we sup-press it where convenient and write Xm := bim , so Xm ∈{0, 1} with E[Xm] = Pr( Xm = 1) = pim =: pm by (A1)+(A3). Since Xm ∈ { 0, 1}, the maximum is the indicator of the union event: 
+
+Osingle  
+
+> i
+
+= max  
+
+> m
+
+Xm = ⊮
+
+n K[
+
+> m=1
+
+{Xm = 1 }
+
+o
+
+∈ { 0, 1}.
+
+Because max m Xm is itself a {0, 1} random variable, its expectation equals the probability that it is 1:
+
+Oexp  
+
+> i
+
+= E
+
+h
+
+max  
+
+> m
+
+Xm
+
+i
+
+= Pr 
+
+
+
+max  
+
+> m
+
+Xm = 1 
+
+
+
+= Pr 
+
+ K[
+
+> m=1
+
+{Xm = 1 }
+
+
+
+.
+
+(⋆)Equation (⋆) uses only (A1)+(A3) (the marginals) and is the common starting point for both parts. 
+
+Proof of (a). Pass to the complement. The complement of S
+
+> m
+
+{Xm = 1 } is T
+
+> m
+
+{Xm = 0 }, so by (⋆),
+
+Oexp  
+
+> i
+
+= 1 − Pr 
+
+ K\
+
+> m=1
+
+{Xm = 0 }
+
+
+
+.
+
+Under (A2) the events {X1 = 0 }, . . . , {XK = 0 } are mutually independent (independence of X1, . . . , X K is preserved under taking the measurable single-point preimages {Xm = 0 }). Hence the probability of the intersection factorizes: 
+
+Pr 
+
+ K\
+
+> m=1
+
+{Xm = 0 }
+
+
+
+=
+
+> K
+
+Y
+
+> m=1
+
+Pr( Xm = 0) = 
+
+> K
+
+Y
+
+> m=1
+
+(1 − pim ).
+
+Substituting, 
+
+Oexp  
+
+> i
+
+= 1 −
+
+> K
+
+Y
+
+> m=1
+
+(1 − pim ),
+
+which is the claimed product-complement form. 
+
+Proof of (b). We bound the union probability in (⋆) from both sides using only the marginals Pr( Xm = 1) = pim ; no joint structure is assumed, so the joint law may be any coupling of these Bernoulli marginals. 
+
+Lower bound (monotonicity of probability). For each fixed 
+
+m0, the single event is contained in the union: {Xm0 = 1 } ⊆ S
+
+> m
+
+{Xm = 1 }. Monotonicity of Pr gives 
+
+Oexp  
+
+> i
+
+= Pr 
+
+ [ 
+
+> m
+
+{Xm = 1 }
+
+
+
+≥ Pr( Xm0 = 1) = pim 0 .
+
+Since this holds for every m0, take the maximum over m0:
+
+Oexp  
+
+> i
+
+≥ max  
+
+> m
+
+pim .
+
+Upper bound (union bound and the trivial cap). By finite subadditivity of probability (Boole’s inequality), 
+
+Oexp  
+
+> i
+
+= Pr 
+
+ K[
+
+> m=1
+
+{Xm = 1 }
+
+
+
+≤
+
+> K
+
+X
+
+> m=1
+
+Pr( Xm = 1) =
+
+> K
+
+X
+
+> m=1
+
+pim .
+
+Also Oexp  
+
+> i
+
+= E[max m Xm] ≤ 1 because max m Xm ≤ 1
+
+pointwise (it is a {0, 1} variable). Combining the two upper bounds, 
+
+Oexp  
+
+> i
+
+≤ min 
+
+
+
+1,
+
+> K
+
+X
+
+> m=1
+
+pim 
+
+
+
+.
+
+Together, 
+
+max  
+
+> m
+
+pim ≤ Oexp  
+
+> i
+
+≤ min 
+
+
+
+1,
+
+> K
+
+X
+
+> m=1
+
+pim 
+
+
+
+.
+
+Sharpness of the bounds in (b). These are the Fréchet bounds for the union of events with prescribed marginals, and each is attained by an admissible coupling (so they cannot be improved using marginals alone). 
+
+Lower bound attained — maximal positive dependence (comonotone coupling). Let U ∼ Unif(0 , 1) and set Xm =
+
+⊮{U ≤ pim }. Then Pr( Xm = 1) = pim (marginals correct), and S
+
+> m
+
+{Xm = 1 } = {U ≤ max m pim }, whence 
+
+Oexp  
+
+> i
+
+= max m pim . Thus the lower bound is achieved. 
+
+Upper bound attained. If P 
+
+> m
+
+pim ≤ 1, choose a coupling in which the events {Xm = 1 } are pairwise disjoint (place each on a disjoint slice of [0 , 1] of length pim ); then Pr( S
+
+> m
+
+{Xm =1}) = P 
+
+> m
+
+pim . If P 
+
+> m
+
+pim ≥ 1, one can arrange the events to cover the whole space ( S
+
+> m
+
+{Xm = 1 } = Ω a.s.), giving 
+
+Oexp  
+
+> i
+
+= 1. In both regimes the value min(1 , P 
+
+> m
+
+pim ) is attained. 
+
+Proof of Proposition 1. Fix the query i; all randomness is over the single draws (Bi1, . . . , B iK ), each Bim ∈ { 0, 1}
+
+with E[Bim ] = Pr( Bim = 1) = pim by (A1), and Osingle  
+
+> i
+
+=max m Bim by (A3), so Oexp  
+
+> i
+
+= E[max m Bim ].
+
+Step 1 (General bound, without (A2)). For each fixed model m and each realisation ω, max m′∈M Bim ′ (ω) ≥
+
+Bim (ω) pointwise. By monotonicity of expectation, 
+
+E
+
+h
+
+max  
+
+> m′
+
+Bim ′
+
+i
+
+≥ E[Bim ] = pim .
+
+The right-hand side is deterministic, so taking the maximum over m,
+
+Oexp  
+
+> i
+
+= E
+
+h
+
+max  
+
+> m′
+
+Bim ′
+
+i
+
+≥ max  
+
+> m∈M
+
+pim = Orepro  
+
+> i
+
+.
+
+This uses only pointwise dominance of the maximum and monotonicity of expectation, valid for an arbitrary joint law; no independence (A2) is invoked. (This is the elementary bound E[max m Xm] ≥ max m E[Xm], which we obtain here directly from monotonicity of expectation; it equally follows from Jensen applied to the convex map Φ( x) = max m xm,since Φ( E[b]) = max m pm.) PREPRINT, JULY 2026 19 
+
+Step 2 (Equality, general case). Fix any maximiser m⋆ ∈
+
+arg max m pim ; since E[Bim ⋆ ] = pim ⋆ = Orepro  
+
+> i
+
+, equality 
+
+Oexp  
+
+> i
+
+= Orepro  
+
+> i
+
+holds iff 
+
+E
+
+h
+
+max  
+
+> m′
+
+Bim ′ − Bim ⋆
+
+i
+
+= 0 .
+
+The integrand takes values in {0, 1} and is nonnegative, so its expectation vanishes iff max m′ Bim ′ = Bim ⋆ a.s. As 
+
+{Bim ⋆ = 1 } ⊆ { max m′ Bim ′ = 1 } always, by subadditivity this is equivalent to 
+
+Pr  Bim = 1 , B im ⋆ = 0  = 0 for every m ∈ M ,
+
+i.e. every model’s success event is a.s. contained in that of 
+
+m⋆. (Because E[Bim ⋆ ] = max p for every maximiser, this characterisation is independent of which maximiser is chosen.) Sufficient cases: (a) pim ⋆ = 1 ; (b) perfectly nested draws with 
+
+m⋆ on top. 
+
+Step 3 (Closed form and equality under (A2)). Adding (A2) (mutual independence across m for fixed i), 
+
+Pr 
+
+
+
+max  
+
+> m
+
+Bim = 0 
+
+
+
+= Y
+
+> m
+
+(1 − pim ),Oexp  
+
+> i
+
+= 1 − Y
+
+> m
+
+(1 − pim ).
+
+Factoring out a maximiser m⋆ and using Q 
+
+> m̸=m⋆
+
+(1 − pim ) ≤
+
+1,
+
+1 − Y
+
+> m
+
+(1 − pim ) = 1 − (1 − pim ⋆ ) Y
+
+> m̸=m⋆
+
+(1 − pim )
+
+≥ 1 − (1 − pim ⋆ ) = pim ⋆ = Orepro  
+
+> i
+
+.
+
+The bias is therefore 
+
+Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+=  1 − max  
+
+> m
+
+pim 
+
+ − Y
+
+> m
+
+(1 − pim ) ≥ 0,
+
+which is nonnegative since Q
+
+> m
+
+(1 − pim ) ≤ 1 − pim ⋆ = 1 −
+
+max m pim .Equality under (A2) holds iff (1 − pim ⋆ ) Q 
+
+> m̸=m⋆
+
+(1 −
+
+pim ) = (1 − pim ⋆ ). If pim ⋆ < 1: divide by 1 − pim ⋆ > 0
+
+to get Q 
+
+> m̸=m⋆
+
+(1 − pim ) = 1; since each factor lies in 
+
+[0 , 1] , this forces pim = 0 for all m̸ = m⋆ (at most one model has nonzero success probability). If pim ⋆ = 1 :both sides equal 0, so equality holds automatically. Hence under (A2), Oexp  
+
+> i
+
+= Orepro  
+
+> i
+
+iff the best model is perfect (pim ⋆ = 1 ) or every non-maximiser has pim = 0 . These are precisely the (A2) specialisation of the Step 2 containment condition. Remark (strict bias). In the interior case ( ≥ 2
+
+models with pim ∈ (0 , 1) , independent), the inequality is strict and the upward bias of the single-draw oracle is exactly 
+
+(1 − max m pim ) − Q
+
+> m
+
+(1 − pim ) > 0.
+
+Proof of Theorem 3. Fix query i, write pm = pim , bm = bim ,and assume (A1)/(A3) for the marginal laws and (A2) for the product form (∗): Oexp  
+
+> i
+
+(S) = 1 − Q 
+
+> m∈S
+
+(1 − pm).
+
+Boundedness. Orepro  
+
+> i
+
+(S) = max m∈S pm is a maximum over an enlarging index set, hence non-decreasing in S; for each 
+
+S it equals pm⋆ for one fixed model, so Orepro  
+
+> i
+
+(S) ≤
+
+sup m∈M pm ≤ 1. No independence is used. 
+
+Exact gap. Let p⋆ = max m∈S pm and fix one maximizer m⋆ ∈S with pm⋆ = p⋆. Pull exactly the factor for m⋆ out of (∗):
+
+1 − Oexp  
+
+> i
+
+(S) = Y
+
+> m∈S
+
+(1 − pm) = (1 − p⋆) Y
+
+> m∈S , m ̸=m⋆
+
+(1 − pm).
+
+Therefore, using Orepro  
+
+> i
+
+(S) = p⋆,
+
+∆i(S) = Oexp  
+
+> i
+
+(S) − p⋆ = (1 − p⋆) −  1 − Oexp  
+
+> i
+
+(S)
+
+= (1 − p⋆) − (1 − p⋆) Y
+
+> m∈S , m ̸=m⋆
+
+(1 − pm),
+
+i.e. 
+
+∆i(S) = (1 − p⋆)
+
+
+
+1 − Y
+
+> m∈S , m ̸=m⋆
+
+(1 − pm)
+
+
+
+.
+
+Each factor (1 − pm) ∈ [0 , 1] , so the product lies in [0 , 1] and the bracket is in [0 , 1] ; hence ∆i(S) ≥ 0. The product must retain all models m̸ = m⋆, including any further model with 
+
+pm = p⋆: only one factor (1 − p⋆) was extracted. Writing 
+
+r = # {m : pm = p⋆}, the r − 1 remaining maximizers contribute (1 − p⋆)r−1, giving the equivalent multiplicity form 
+
+∆i(S) = (1 − p⋆)
+
+
+
+1 − (1 − p⋆) r−1 Y 
+
+> m∈S , p m̸=p⋆
+
+(1 − pm)
+
+
+
+.
+
+Equality. ∆i(S) = 0 iff the bracket vanishes, i.e. Q 
+
+> m̸=m⋆
+
+(1 −
+
+pm) = 1 , i.e. pm = 0 for every m̸ = m⋆. Thus the gap is zero exactly when at most one model has positive success probability (in particular for singletons, all-zero pools, or when some pm = 1 forces p⋆ = 1 and the prefactor 1 − p⋆ = 0 ). 
+
+Growth lower bound. Suppose S has K models with pm ∈
+
+[ε, ¯p], 0 < ε ≤ ¯p < 1. Then p⋆ ≤ ¯p so 1 − p⋆ ≥ 1 − ¯p.The product in the gap formula runs over the K − 1 models 
+
+m̸ = m⋆, each with pm ≥ ε, hence (1 − pm) ≤ 1 − ε and Q 
+
+> m̸=m⋆
+
+(1 − pm) ≤ (1 − ε)K−1. Therefore the bracket is 
+
+≥ 1 − (1 − ε)K−1 and 
+
+∆i(S) ≥ (1 − ¯p) 1 − (1 − ε)K−1 −−−−→ 
+
+> K→∞
+
+1 − ¯p > 0,
+
+since (1 − ε)K−1 → 0.
+
+Maximal inflation. Let all K models have pm = ε ∈ (0 , 1) .Then Orepro  
+
+> i
+
+= ε for all K, while by (∗), Oexp  
+
+> i
+
+= 1 − (1 −
+
+ε)K → 1 as K → ∞ (equivalently P 
+
+> m
+
+− ln(1 − ε) = ∞ in (iii)). Hence ∆i → 1 − ε; letting ε ↓ 0 along a growing pool with P 
+
+> m
+
+pm = ∞ (so saturation still holds by (iii)) gives 
+
+Orepro  
+
+> i
+
+→ 0 and Oexp  
+
+> i
+
+→ 1, whence ∆i → 1, the maximum permitted by 0 ≤ ∆i ≤ 1.
+
+Proof of Theorem 1. Proof of (a). For each i, Oexp  
+
+> i
+
+− qri =(Orepro  
+
+> i
+
+− qri ) + ( Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+) is an identity of reals. Averaging over i and using linearity of finite sums gives G =
+
+Grec + Gnoise .Proof of (b). Fix i. The map Φ( x) = max m xm
+
+on RK is convex (pointwise max of the linear coordinate functionals). The random vector (bi1, . . . , b iK ) takes values in {0, 1}K , so it is bounded and all expectations exist. By (A1), E[( bi1, . . . , b iK )] = ( pi1, . . . , p iK ). Multivariate Jensen (which constrains only the mean vector, not the joint law) gives 
+
+Oexp  
+
+> i
+
+= E[Φ( bi·)] ≥ Φ( E[bi·]) = max  
+
+> m
+
+pim = Orepro  
+
+> i
+
+.PREPRINT, JULY 2026 20 
+
+Hence Oexp  
+
+> i
+
+−Orepro  
+
+> i
+
+≥ 0 without (A2); summing and dividing by N yields Gnoise ≥ 0.
+
+Equality under (A2). With independence, Oexp  
+
+> i
+
+= 1 −Q
+
+> m
+
+(1 − pim ), and factoring out the maximizer P = pim ⋆
+
+gives the inflation identity of Theorem 3, 
+
+Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= (1 − P )
+
+
+
+1 − Y
+
+> m̸=m⋆
+
+(1 − pim )
+
+
+
+.
+
+Both factors lie in [0 , 1] , reconfirming ≥ 0. The product equals 
+
+0 iff 1 − P = 0 (i.e. P = 1 ) or Q 
+
+> m̸=m⋆
+
+(1 − pim ) = 1 (i.e. 
+
+pim = 0 for all m̸ = m⋆; vacuously true when K = 1 ). This equality set is strictly larger than {max m pim ∈ { 0, 1}} (wit-ness pi = (0 .5, 0, 0) : noise 0 but max = 0 .5). Without (A2), comonotone draws can also give equality at non-degenerate marginals, but ≥ 0 never reverses. Proof of (c). For any joint law, since max m bim ∈ { 0, 1} equals ⊮{∃ m : bim = 1 },
+
+max  
+
+> m
+
+bim ≤ min 
+
+nP 
+
+> m
+
+bim , 1
+
+o
+
+≤ P 
+
+> m
+
+bim pointwise. Taking expectations (monotone), then using concavity of x 7 →
+
+min {x, 1} (Jensen, upper) and additivity of expectation with (A1) marginals E[bim ] = pim ,
+
+Oexp  
+
+> i
+
+≤ Emin {P 
+
+> m
+
+bim , 1} ≤ min E[P 
+
+> m
+
+bim ], 1
+
+= min 
+
+nP 
+
+> m
+
+pim , 1
+
+o
+
+≤ P 
+
+> m
+
+pim .
+
+No (A2) is used. Subtracting Orepro  
+
+> i
+
+= pim ⋆ ,
+
+Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+≤ min 
+
+nP 
+
+> m
+
+pim , 1
+
+o
+
+− pim ⋆
+
+≤ X
+
+> m
+
+pim − pim ⋆ = X
+
+> m̸=m⋆
+
+pim ≤ (K − 1) ,
+
+the last step bounding each of the K − 1 remaining pim ≤ 1.With (b) this gives 0 ≤ Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+≤ K − 1 and, under (A2), the sharper (1 − P )(1 − Q 
+
+> m̸=m⋆
+
+(1 − pim )) ≤ 1 −
+
+P ≤ 1. Averaging over i yields the stated chain for Gnoise .Tightness: K = 2 , pi1 = pi2 = 12 with anti-comonotone draws (bi2 = 1 − bi1) gives Oexp  
+
+> i
+
+= 1 , Orepro  
+
+> i
+
+= 12 , noise = 12 =P 
+
+> m̸=m⋆
+
+pim = min {P p, 1} − max p, so all three middle bounds are simultaneously attained. 
+
+Proof of Theorem 4. Fix i and abbreviate pm := pim , ˆpm := ˆpim , b(j) 
+
+> m
+
+:= b(j)
+
+> im
+
+.
+
+(a). Under (A1) the b(1)  
+
+> m
+
+, . . . , b (k) 
+
+> m
+
+are i.i.d. Bernoulli (pm).Linearity gives E[ˆ pm] = 1
+
+> k
+
+P 
+
+> j
+
+pm = pm, so ˆpm is unbiased. By within-(i, m ) independence, 
+
+Var(ˆ pm) = 1
+
+k2
+
+> k
+
+X
+
+> j=1
+
+Var( b(j) 
+
+> m
+
+) = pm(1 − pm)
+
+k ≤ 14k ,
+
+with equality iff pm = 12 (since p(1 − p) ≤ 14 ). Each 
+
+b(j) 
+
+> m
+
+∈ [0 , 1] , so Hoeffding’s inequality for a mean of k
+
+independent [0 , 1] variables yields Pr(ˆ pm − pm ≥ t) ≤ e−2kt 2
+
+and Pr( pm − ˆpm ≥ t) ≤ e−2kt 2
+
+; a union bound gives 
+
+Pr( |ˆpm − pm| ≥ t) ≤ 2e−2kt 2
+
+. Solving 2e−2kt 2
+
+= δ gives the radius t = pln(2 /δ )/(2 k). Uses only (A1). (b). Upward bias. 
+
+(x1, . . . , x K ) 7 → max m xm is convex, so by Jensen applied to 
+
+(ˆ p1, . . . , ˆpK ) and using E[ˆ pm] = pm,
+
+E
+
+h
+
+max  
+
+> m
+
+ˆpm
+
+i
+
+≥ max  
+
+> m
+
+E[ˆ pm] = max  
+
+> m
+
+pm.
+
+Jensen needs no joint structure, so this holds WITHOUT (A2). This is the winner’s curse. 
+
+Bias bound. Write ∆m := ˆ pm − pm, E[∆ m] = 0 . Since ˆpm
+
+is a mean of [0 , 1] -bounded variables, by Hoeffding’s lemma it is σ2-sub-Gaussian with σ2 = 14k . From max m(am +cm) ≤
+
+max m am + max m cm,
+
+max  
+
+> m
+
+ˆpm ≤
+
+
+
+max  
+
+> m
+
+pm
+
+
+
++ max  
+
+> m
+
+∆m
+
+⇒ E
+
+h
+
+max  
+
+> m
+
+ˆpm
+
+i
+
+− max  
+
+> m
+
+pm ≤ E
+
+h
+
+max  
+
+> m
+
+∆m
+
+i
+
+.
+
+Maximal inequality (self-contained). For λ > 0, by Jensen on 
+
+exp then a union over the K marginal MGFs, 
+
+eλ E max m ∆m ≤ Eeλ max m ∆m ≤ X
+
+> m
+
+Eeλ∆m ≤ Ke λ2σ2/2,
+
+so E max m ∆m ≤ ln Kλ + λσ 2 
+
+> 2
+
+; minimizing at λ = √2 ln K/σ 
+
+gives σ√2 ln K. With σ2 = 14k ,
+
+0 ≤ E
+
+h
+
+max  
+
+> m
+
+ˆpm
+
+i
+
+− max  
+
+> m
+
+pm ≤
+
+r 14k
+
+√2 ln K
+
+=
+
+r ln K
+
+2k = O(k−1/2).
+
+This argument uses only marginal sub-Gaussianity, hence holds WITHOUT (A2). Edge cases: K = 1 gives bias 0; the bound is worst (tightest in spirit) under near-ties among the 
+
+pm.(c). Let f (x) = 1 − Q
+
+> m
+
+(1 − xm), so [Oexp i = f (ˆ p),
+
+Oexp  
+
+> i
+
+= f (p).
+
+Lipschitz / consistency (needs only (A1)). For x, y ∈ [0 , 1] K ,telescoping the product, 
+
+Y
+
+> m
+
+(1 − xm) − Y
+
+> m
+
+(1 − ym)=
+
+> K
+
+X
+
+> m=1
+
+ Y 
+
+> l<m
+
+(1 − xl)
+
+ (1 − xm) − (1 − ym) Y 
+
+> l>m
+
+(1 − yl)
+
+
+
+,
+
+and since every partial product lies in [0 , 1] ,
+
+f (x)−f (y) = Y
+
+> m
+
+(1 −xm)−Y
+
+> m
+
+(1 −ym) ≤
+
+> K
+
+X
+
+> m=1
+
+|xm −ym|.
+
+Hence the deterministic bound [Oexp i − Oexp  
+
+> i
+
+≤ P 
+
+> m
+
+|ˆpm −
+
+pm| (no (A2)). By Cauchy–Schwarz and (a), 
+
+E(f (ˆ p) − f (p)) 2 ≤ E
+
+h  P  
+
+> m
+
+|ˆpm − pm|2i
+
+≤ K X
+
+> m
+
+pm(1 − pm)
+
+k ≤ K2
+
+4k → 0,
+
+so [Oexp i → Oexp  
+
+> i
+
+in L2, hence in probability, at rate 
+
+O(k−1/2). Tail: |f (ˆ p) − f (p)| ≥ t forces some |ˆpm − pm| ≥ 
+
+t/K , so by (a) and a union bound Pr( |[Oexp i − Oexp  
+
+> i
+
+| ≥ t) ≤
+
+2Ke −2kt 2/K 2
+
+.
+
+Bias. Under (A2), the ˆpm are independent across m, so 
+
+E Q
+
+> m
+
+(1 − ˆpm) = Q 
+
+> m
+
+E(1 − ˆpm) = Q
+
+> m
+
+(1 − pm) EXACTLY, PREPRINT, JULY 2026 21 
+
+whence E[[Oexp i] = Oexp  
+
+> i
+
+: the plug-in is unbiased. Without (A2), expand Q
+
+> m
+
+(1 − ˆpm) = Q
+
+> m
+
+(1 − pm − ∆m); the bias equals E Q
+
+> m
+
+(1 − ˆpm) − Q
+
+> m
+
+(1 − pm), whose first-order terms vanish ( E∆m = 0 ) leaving only products of ≥ 2 centered factors. Each such cross term is a covariance/higher moment of order O(1 /k ) (since E[∆ m∆m′ ] = Cov(ˆ pm, ˆpm′ ) and 
+
+|Cov | ≤ 14k by Cauchy–Schwarz with Var ≤ 14k ); the  K
+
+> 2
+
+
+
+pairwise terms contribute at most  K
+
+> 2
+
+ 14k and every remaining term (a product of ≥ 3 centered factors) is O(k−2), so 
+
+|E[[Oexp i] − Oexp  
+
+> i
+
+| = O(1 /k ) → 0 as k → ∞.(d). Let 
+
+gi := Oexp  
+
+> i
+
+− pi,r (i), ˆgi := [Oexp i − ˆpi,r (i) (using (A4) for 
+
+qri = pi,r (i)). By the triangle inequality and (c), 
+
+|ˆgi − gi| ≤ [Oexp i − Oexp  
+
+> i
+
++ ˆpi,r (i) − pi,r (i)
+
+≤ X
+
+> m
+
+|ˆpim − pim | + |ˆpi,r (i) − pi,r (i)|,
+
+a sum of at most K + 1 Hoeffding-controlled deviations. Averaging, bG − G = 1
+
+> N
+
+P
+
+> i
+
+(ˆ gi − gi).
+
+Bias. The chosen-model term ˆpi,r (i) is unbiased by (a), so the only bias enters through [Oexp i: under (A2) it is 0, and in general |E[ bG] − G| = O(1 /k ) by (c). 
+
+Concentration. If every one of the N (K + 1) events 
+
+{| ˆpim − pim | ≥ t/ (K + 1) } (over i and the ≤ K + 1 relevant coordinates) fails, then each |ˆgi − gi| < t and the average deviates by < t . By (a) and a union bound, 
+
+Pr  | bG − G| ≥ t ≤ 2N (K + 1) exp 
+
+
+
+− 2kt 2
+
+(K + 1) 2
+
+
+
+−−−−→ 
+
+> k→∞
+
+0,
+
+equivalently with prob. ≥ 1 − δ, | bG − G| ≤ (K +1) 
+
+q ln(2 N (K+1) /δ )2k = O(k−1/2). Thus bG is consistent at rate 
+
+O(k−1/2), with bias at the faster O(k−1) (zero under (A2)). Uses (A1) for concentration, (A4) for the score; (A2) only sharpens bias. 
+
+Reproducible-oracle target. Estimating 1
+
+> N
+
+P
+
+> i
+
+(Orepro  
+
+> i
+
+− qri )
+
+via \Orepro i = max m ˆpim carries, by (b), a per-query nonnega-tive bias up to p(ln K)/(2 k), i.e. a systematic O(k−1/2) over-estimate of headroom; the same Hoeffding union bounds the fluctuation. Hence this decomposition is consistent but bias-dominated at O(k−1/2) — strictly worse in bias rate than the expected-oracle decomposition’s O(k−1).
+
+Degenerate k = 1 . Then ˆpim = bim ∈ { 0, 1}: (i) the Hoeffding radius and Var = pim (1 − pim ) are maximal (no 
+
+1/k shrinkage); (ii) the winner’s-curse bound p(ln K)/2 is maximal and \Orepro i = max m bim = Osingle  
+
+> i
+
+, whose mean is 
+
+Oexp  
+
+> i
+
+≥ Orepro  
+
+> i
+
+(under (A2)) — the plug-in reproducible oracle collapses onto the single-draw oracle and cannot distinguish 
+
+pim = 1 from pim < 1; (iii) [Oexp i = 1 − Q
+
+> m
+
+(1 − bim ) = max m bim , a {0, 1} variable with no averaging-based variance reduction. So k = 1 saturates every bound above; raising k
+
+restores the stated O(k−1/2) / O(k−1) rates. 
+
+Proof of Proposition 3. Throughout fix i and abbreviate 
+
+Bm := Bim , pm := pim , Am := {Bm = 1 } (so Pr( Am) = 
+
+pm), and S := Osingle  
+
+> i
+
+= max m Bm = ⊮{S 
+
+> m
+
+Am}. Since 
+
+S ∈ { 0, 1}, Oexp  
+
+> i
+
+= E[S] = Pr  S Km=1 Am
+
+.
+
+(a) Sharp Fréchet bounds. Since Oexp  
+
+> i
+
+= Pr μ(S 
+
+> m
+
+Am) is bounded above by Boole subadditivity and Pr ≤ 1, and below by monotonicity ( Am0 ⊆ S 
+
+> m
+
+Am), the sharp bounds 
+
+max  
+
+> m
+
+pm ≤ Oexp  
+
+> i
+
+≤ min 
+
+n
+
+1, P 
+
+> m
+
+pm
+
+o
+
+are exactly those of Prop. 2(b), which use only the marginals and so hold for any coupling. Both endpoints are attained by the couplings constructed there: the lower bound by the 
+
+comonotone coupling Bm = ⊮{U ≤ pm}, U ∼ Unif[0 , 1) 
+
+(every success event nested in the maximizer’s, so S 
+
+> m
+
+Am =
+
+Am⋆ and Oexp  
+
+> i
+
+= max m pm); the upper bound by the disjoint coupling when P 
+
+> m
+
+pm ≤ 1 and the space-covering arc coupling when P 
+
+> m
+
+pm ≥ 1. These are the classical Fréchet– Hoeffding bounds, hence sharp. 
+
+(b) The ordering Oexp  
+
+> i
+
+≥ Orepro  
+
+> i
+
+. This is exactly the lower bound of part (a): for any coupling with the given marginals and any m,
+
+Oexp  
+
+> i
+
+= Pr 
+
+[ 
+
+> m′
+
+Am′
+
+
+
+≥ Pr( Am) = pm,
+
+by monotonicity of probability ( Am ⊆ S 
+
+> m′
+
+Am′ ). Maximizing over m gives Oexp  
+
+> i
+
+≥ max m pm = Orepro  
+
+> i
+
+. No independence is used. 
+
+Equality. Equality holds iff Pr( S 
+
+> m′
+
+Am′ ) = pm⋆ =Pr( Am⋆ ) for m⋆ ∈ arg max m pm. Since Am⋆ ⊆ S 
+
+> m′
+
+Am′ ,this is equivalent to Pr  S  
+
+> m′
+
+Am′ \Am⋆
+
+ = 0 , i.e. S 
+
+> m′
+
+Am′ ⊆
+
+Am⋆ up to a null set, i.e. each Am′ ⊆ Am⋆ a.s. (every other model is correct only on a sub-event of the best model’s correctness). The comonotone coupling of part (a) realizes this; hence equality is attained exactly at the Fréchet upper bound of the dependence structure. 
+
+(c) Positive association reduces Oexp  
+
+> i
+
+below independence. 
+
+Work with the complementary (failure) events. Let Cm := 1 − Bm = ⊮{Acm}, so Pr( Cm = 1) = 1 − pm, and 
+
+1 − S =
+
+> K
+
+Y
+
+> m=1
+
+(1 − Bm) = 
+
+> K
+
+Y
+
+> m=1
+
+Cm = ⊮{all models fail },Oexp  
+
+> i
+
+= 1 − E
+
+h KY
+
+> m=1
+
+Cm
+
+i
+
+.
+
+Hence it suffices to compare E[Q 
+
+> m
+
+Cm] with its independent counterpart Q 
+
+> m
+
+E[Cm] = Q
+
+> m
+
+(1 − pm): indeed Oexp  
+
+> i
+
+≤
+
+Oexp ,⊥ 
+
+> i
+
+iff E[Q 
+
+> m
+
+Cm] ≥ Q
+
+> m
+
+(1 − pm).Assume (B1, . . . , B K ) is positively associated (FKG): 
+
+E[f g ] ≥ E[f ] E[g] for all bounded coordinatewise-nondecreasing f, g : {0, 1}K → R. We record two elementary consequences of the definition, both proved here rather than quoted. (i) Same-direction covariance. If f, g : {0, 1}K → R
+
+are bounded and coordinatewise nonincreasing , then −f, −g
+
+are bounded nondecreasing, so Cov( f, g ) = Cov( −f, −g) ≥
+
+0 by association; hence any two functions monotone in the 
+
+same direction have nonnegative covariance. (ii) (C1, . . . , C K )
+
+is associated. For bounded nondecreasing ϕ, ψ , the maps 
+
+b 7 → ϕ(1 − b) and b 7 → ψ(1 − b) are nonincreasing in b, so by (i) Cov  ϕ(C), ψ (C) = Cov B
+
+ ϕ(1 − B), ψ (1 − B) ≥ 0;i.e. flipping every coordinate preserves association, established PREPRINT, JULY 2026 22 
+
+directly from the definition. We now prove E[Q 
+
+> m
+
+Cm] ≥Q 
+
+> m
+
+E[Cm] by induction on K, using that each Cm ∈ [0 , 1] 
+
+and that the partial products Q 
+
+> m≤k
+
+Cm are nondecreasing functions of C.
+
+Base K = 1: equality. Inductive step: assume 
+
+E[Qkm=1 Cm] ≥ Qkm=1 E[Cm]. The function f (C) := 
+
+Qkm=1 Cm is bounded and coordinatewise nondecreasing (each Cm ≥ 0), and g(C) := Ck+1 is bounded and non-decreasing. By association, 
+
+E
+
+h k+1 Y
+
+> m=1
+
+Cm
+
+i
+
+= E[f g ] ≥ E[f ] E[g]= E
+
+h kY
+
+> m=1
+
+Cm
+
+i
+
+E[Ck+1 ]
+
+≥
+
+> k
+
+Y
+
+> m=1
+
+E[Cm] · E[Ck+1 ] = 
+
+> k+1
+
+Y
+
+> m=1
+
+E[Cm],
+
+where the last inequality uses the inductive hypothesis together with E[Ck+1 ] = 1 − pk+1 ≥ 0. By induction, 
+
+E
+
+h KY
+
+> m=1
+
+Cm
+
+i
+
+≥
+
+> K
+
+Y
+
+> m=1
+
+(1 − pm).
+
+Therefore 
+
+Oexp  
+
+> i
+
+= 1 − E
+
+h KY
+
+> m=1
+
+Cm
+
+i
+
+≤ 1 −
+
+> K
+
+Y
+
+> m=1
+
+(1 − pm) = Oexp ,⊥ 
+
+> i
+
+,
+
+which is the claim: positive association can only reduce the expected single-draw oracle relative to the independent case, so independence is the maximal-inflation configuration among positively associated couplings. 
+
+Negative association. If instead (B1, . . . , B K ) is negatively associated, the inequalities reverse at each inductive step (the covariance terms are ≤ 0, and one uses the standard negative-association closure under monotone functions of disjoint index sets, which applies here since Q 
+
+> m≤k
+
+Cm and Ck+1 depend on disjoint coordinates), giving E[Q 
+
+> m
+
+Cm] ≤ Q
+
+> m
+
+(1 − pm) and hence Oexp  
+
+> i
+
+≥ Oexp ,⊥ 
+
+> i
+
+.
+
+Equality. The chain of inequalities is tight iff ev-ery applied association inequality is an equality, i.e. 
+
+Cov  Q  
+
+> m≤k
+
+Cm, C k+1 
+
+ = 0 for each k = 1 , . . . , K − 1. In particular the independent (product) coupling gives equality, recovering Oexp ,⊥ 
+
+> i
+
+. More generally any coupling for which the survival events factor in this telescoping product sense achieves equality even without full independence. 
+
+Scope of the hypothesis (what we assume vs. what we verify). Positive association (FKG) is strictly stronger than pairwise positive correlation: for K ≥ 3 a Bernoulli vector can have every pairwise covariance ≥ 0 and yet fail asso-ciation, so the conclusion Oexp  
+
+> i
+
+≤ Oexp ,⊥ 
+
+> i
+
+does not follow from pairwise correlations alone. Accordingly, our reported magnitudes do not rely on assuming association. The seed-aligned estimator (A7) targets the true Oexp  
+
+> i
+
+directly and coupling-free— [Oexp i = 1
+
+> k
+
+P 
+
+> j
+
+max m b(j) 
+
+> im
+
+is unbiased for 
+
+Oexp  
+
+> i
+
+under (A1)+(A7) with no independence across models— each summand max m b(j) 
+
+> im
+
+is an i.i.d. Bernoulli( Oexp  
+
+> i
+
+) draw, so its mean is exactly unbiased for Oexp  
+
+> i
+
+—and the assumption-free Fréchet bound Oexp  
+
+> i
+
+≤ min {P 
+
+> m
+
+pim , 1} of part (a) is a valid upper envelope for every coupling. Part (c) is used only to explain why the strong positive cross-model error correlation measured in the pool makes the independent product Oexp ,⊥ 
+
+> i
+
+aconservative over-estimate of Oexp  
+
+> i
+
+—the direction observed in the data—never as a load-bearing step in a reported quantity. 
+
+Proof of Corollary 1. With pim = p for all m, (A2) gives 
+
+Oexp  
+
+> i
+
+= 1 − (1 − p)K and Orepro  
+
+> i
+
+= p, so ∆( K) = 1 − (1 −
+
+p)K − p = (1 − p) − (1 − p)K , and ∆(1) = 0 .
+
+Monotonicity and remainder. The first difference is ∆( K +1) − ∆( K) = (1 − p)K − (1 − p)K+1 = p (1 − p)K > 0
+
+for p ∈ (0 , 1) , so ∆ is strictly increasing; telescoping gives 
+
+∆( K) = PK−1 
+
+> j=1
+
+p(1 − p)j . From the closed form, (1 − p) −
+
+∆( K) = (1 − p)K ↓ 0, hence ∆( K) ↑ 1 − p.
+
+Noise share. Since Oexp  
+
+> i
+
+= 1 − (1 − p)K > 0 for K ≥ 1,write D(K) := 1 − (1 − p)K = p PK−1 
+
+> j=0
+
+(1 − p)j . Then 
+
+S(K) = 1 − Orepro 
+
+> i
+
+Oexp 
+
+> i
+
+= 1 − pD(K) ,
+
+1 − S(K) = pD(K) = 1
+
+PK−1 
+
+> j=0
+
+(1 − p)j .D is strictly increasing and positive (increment p(1 −p)K > 0), so p/D (K) is strictly decreasing and S strictly increasing; 
+
+D(1) = p gives S(1) = 0 . Upper bound: D(K) < 1 for finite K, so p/D (K) > p and S(K) < 1 − p. Lower bound: 
+
+1 − (1 − p)(1 − (1 − p)K−1) = p + (1 − p)K , so the claim 
+
+S(K) ≥ (1 −p)(1 −(1 −p)K−1) is equivalent (multiplying by 
+
+D(K) > 0) to p ≤ (p+(1 −p)K )(1 −(1 −p)K ), i.e. to 0 ≤ (1 −
+
+p)K+1 (1 − (1 − p)K−1), true for all K ≥ 1, p ∈ (0 , 1) . Limit and remainder: (1 − p) − S(K) = pD(K) − p = p(1 −p)K 
+
+> 1−(1 −p)K
+
+↓ 0,so S(K) ↑ 1 − p.
+
+Threshold. D(K) ≥ 12 ⇐⇒ (1 − p)K ≤ 12 ⇐⇒ K ≥
+
+ln 2 / ln 11−p =: K1/2; for integer K ≥ ⌈ K1/2⌉, 1 − S(K) = 
+
+p/D (K) ≤ 2p, i.e. S(K) ≥ 1 − 2p. Since ln 11−p = p +
+
+O(p2), ⌈K1/2⌉ = Θ(1 /p ). Taking K → ∞ then p → 0 gives 
+
+S(K) → 1.
+
+Proof of Corollary 2. By the inflation identity of Theorem 3, for the fixed maximizer m⋆,
+
+∆i = (1 − p⋆i )
+
+
+
+1 − Y
+
+> m̸=m⋆
+
+(1 − pim )
+
+
+
+, p⋆i = Orepro  
+
+> i
+
+.
+
+Lower bound on ∆i. By (H1), 1 − p⋆i ≥ 1 − ¯p. Let T be a set of L′ ≥ 1 models in M \ { m⋆} with pim ≥ p. Since each 
+
+1 − pim ∈ [0 , 1] , dropping the factors outside T only increases the product: Q 
+
+> m̸=m⋆
+
+(1 −pim ) ≤ Q 
+
+> m∈T
+
+(1 −pim ) ≤ (1 −p)L′
+
+.Hence 1 − Q 
+
+> m̸=m⋆
+
+(1 − pim ) ≥ 1 − (1 − p)L′
+
+, and 
+
+∆i ≥ (1 − ¯p) 1 − (1 − p)L′  = c > 0.
+
+Fractional share. By the exact decomposition gi = ( Orepro  
+
+> i
+
+−
+
+qri ) + ∆ i, set s := Orepro  
+
+> i
+
+− qri ≥ 0 and t := ∆ i ≥ c. The cited fact qri ≤ Orepro  
+
+> i
+
+≤ ¯p gives s ≤ ¯p. The map (s, t ) 7 → t/ (s + t)PREPRINT, JULY 2026 23 
+
+is nondecreasing in t (fixed s) and nonincreasing in s (fixed 
+
+t > 0), so over s ∈ [0 , ¯p], t ≥ c its minimum is at the attainable corner (s, t ) = (¯ p, c ) (e.g. qri = 0 , p ⋆i = ¯ p, ∆i = c): 
+
+∆i
+
+gi
+
+= ts + t ≥ c
+
+¯p + c .
+
+As L′ → ∞ , (1 − p)L′
+
+→ 0, so c → 1 − ¯p and the bound 
+
+→ 1− ¯p  
+
+> ¯p+(1 −¯p)
+
+= 1 − ¯p. Finally 1−x ≤ e−x gives 1−(1 −p)L′
+
+≥
+
+1 − e−pL ′
+
+, so pL ′ ≥ 3 ⇒ 1 − (1 − p)L′
+
+≥ 1 − e−3 > 0.95 ⇒
+
+∆i ≥ 0.95(1 − ¯p).
+
+Proof of Lemma 1. Fix the benchmark i = 1 , . . . , N over the finite pool M = {1, . . . , K }.
+
+(a) Attainment. For each i the set {pim : m ∈ M} is finite, so its maximum is attained: there exists m⋆ ∈ M with pim ⋆ =max m pim = Orepro  
+
+> i
+
+. By definition r⋆(i) ∈ arg max m pim ,hence pr⋆(i),i = max m pim regardless of the (arbitrary) tie-break, and under (A4) qr⋆ 
+
+> i
+
+= pr⋆(i),i = Orepro  
+
+> i
+
+. Therefore each summand of Grec (r⋆) = 1
+
+> N
+
+P
+
+> i
+
+(Orepro  
+
+> i
+
+− qr⋆ 
+
+> i
+
+) is 0, so 
+
+Grec (r⋆) = 0 . This uses only that a maximum over a finite set is attained. 
+
+(b) Pointwise optimality. Let r be any committable router, so r(i) ∈ M for each i. By the defining property of the maximum, pi,r (i) ≤ max m pim for every i. Under (A4), 
+
+qri = pi,r (i) ≤ max m pim = qr⋆ 
+
+> i
+
+. Summing over i gives 
+
+> 1
+> N
+
+P 
+
+> i
+
+qri ≤ 1
+
+> N
+
+P 
+
+> i
+
+qr⋆ 
+
+> i
+
+, i.e. r⋆ has the largest aggregate reproducible score among committable routers. 
+
+(c) Regret reading and floor. By Theorem 1(a), G(r) = 
+
+Grec (r) + Gnoise with Grec (r) = 1
+
+> N
+
+P
+
+> i
+
+(Orepro  
+
+> i
+
+− qri ). Substi-tuting Orepro  
+
+> i
+
+= qr⋆ 
+
+> i
+
+from (a), 
+
+Grec (r) = 1
+
+> N
+
+X
+
+> i
+
+ qr⋆ 
+
+> i
+
+− qri
+
+,
+
+which is nonnegative termwise by (b); this is exactly the aver-age regret of r against r⋆. Evaluating the decomposition at r =
+
+r⋆ gives G(r⋆) = Grec (r⋆) + Gnoise = 0 + Gnoise = Gnoise ,identifying Gnoise as the residual gap of the best committable router. Finally, Gnoise ≥ 0 by Theorem 1(b) (which needs only (A1)) and Grec (r) ≥ 0 by the termwise inequality of (b), so G(r) = Grec (r) + Gnoise ≥ Gnoise for every committable router r. The remark on plug-in routers follows from Theo-rem 4(b): the plug-in arg max m ˆpim chooses m⋆ only up to estimation error, and E[max m ˆpim ]−max m pim ≤ pln K/ 2k
+
+bounds the optimism of the estimated ceiling; the pointwise identities (a)–(b) are stated for the true-p argmax r⋆.
+
+Proof of Proposition 4. Fix the query i and abbreviate pm := 
+
+pim , sm := sm(xi). Let m⋆ ∈ arg max m pm (so pm⋆ =
+
+Orepro  
+
+> i
+
+) and let r := r(i) = arg max m sm be the model the router commits to (ties broken arbitrarily); under (A4), 
+
+qri = pr . Recall εi = max m |sm − pm|, so in particular 
+
+|sm⋆ − pm⋆ | ≤ εi and |sr − pr | ≤ εi.
+
+Three-term telescoping. Write the regret as a telescoping sum through the learned scores: 
+
+Orepro  
+
+> i
+
+− qri = pm⋆ − pr = ( pm⋆ − sm⋆ )
+
+| {z }
+
+> (I)
+
++ ( sm⋆ − sr )
+
+| {z }
+
+> (II)
+
++ ( sr − pr )
+
+| {z }
+
+> (III)
+
+.
+
+Term (II) ≤ 0: since r = arg max m sm, we have sr =max m sm ≥ sm⋆ , hence sm⋆ − sr ≤ 0. Term (I) ≤ | pm⋆ −
+
+sm⋆ | ≤ εi and term (III) ≤ | sr − pr | ≤ εi by the definition of εi as a sup over all models. Therefore 
+
+Orepro  
+
+> i
+
+− qri ≤ εi + 0 + εi = 2εi.
+
+The left side is also ≥ 0 by pm⋆ = max m pm ≥ pr . This pointwise bound used only the definitions of r, m⋆, and εi; no assumption on the joint law of the draws or on the distribution of x enters. 
+
+Sharpness of the constant 2. Take K = 2 , p = ( 12 +d, 12 −d)
+
+with d > 0, so m⋆ = 1 and Orepro  
+
+> i
+
+= 12 + d. Let the scores be s1 = 12 + d − d = 12 and s2 = 12 − d + d = 12 perturbed so that s2 > s 1 (push each estimate by εi = d toward the other model). Then εi = d, the router commits to r = 2 ,
+
+qri = p2 = 12 −d, and the regret is ( 12 +d)−( 12 −d) = 2 d = 2 εi.Letting the perturbation approach this boundary configuration shows sup( regret /2εi) = 1 , so the constant cannot be reduced. 
+
+Averaging. The pointwise bound holds for every i; averaging over the benchmark, 
+
+Grec (r) = 1
+
+> N
+
+X
+
+> i
+
+ Orepro  
+
+> i
+
+− qri
+
+ ≤ 1
+
+> N
+
+X
+
+> i
+
+2εi
+
+= 2 · 1
+
+> N
+
+X
+
+> i
+
+∥bs − p∥∞ = 2 E∥bs − p∥∞
+
+,
+
+the last equality reading the empirical benchmark average as the expectation over the query distribution. Adding Gnoise 
+
+via Theorem 1(a) gives G(r) ≤ 2 E∥bs − p∥∞ + Gnoise . If 
+
+E∥bs−p∥∞ → 0 (sup-norm consistency of the score estimates) then Grec (r) → 0 and r recovers r⋆ and Orepro in the limit (Lemma 1), while Gnoise , depending only on {pim }, is unaffected. 
+
+Finite-k coupling. Let sm = ˆ pim be the empirical frequency from k i.i.d. draws. By Theorem 4(a), Pr( |ˆpim − pim | ≥
+
+t) ≤ 2e−2kt 2
+
+for each m; a union bound over the K models gives Pr( εi ≥ t) ≤ 2Ke −2kt 2
+
+, so with probability ≥ 1 − δ,
+
+εi ≤ pln(2 K/δ )/(2 k). Hence Grec (br) = O(pln K/k ),matching the estimation rate of Theorem 4, whereas Gnoise 
+
+is k-independent. The winner’s-curse bias of Theorem 4(b) attaches to the estimate max m ˆpim of Orepro  
+
+> i
+
+; the regret bound above is on the realized score pi,r (i) of the chosen model (true probability), so the bias does not enter it. 
+
+Proof of Lemma 2. Fix the query i and let πi be any probabil-ity distribution on M = {1, . . . , K } (possibly depending on 
+
+i and on observed covariates/history Fi; conditioning on Fi
+
+only fixes a particular πi and does not affect the argument). Set P := max m pim = Orepro  
+
+> i
+
+, attained at some m⋆. Since 
+
+πi(m) ≥ 0 and P 
+
+> m
+
+πi(m) = 1, the score is a convex combination of the reals {pim }, hence bounded by their maximum: 
+
+score i(π) = X
+
+> m
+
+πi(m) pim ≤ X
+
+> m
+
+πi(m) P
+
+= P X
+
+> m
+
+πi(m) = P = Orepro  
+
+> i
+
+.
+
+Equivalently, P − score i(π) = P 
+
+> m
+
+πi(m)( P − pim ) is a sum of nonnegative terms. It vanishes iff πi(m)( P − pim ) = 0 for PREPRINT, JULY 2026 24 
+
+every m, i.e. iff πi places mass only on indices with pim = P ,that is on arg max m pim . No assumption on the joint law of the draws is used (only the linearity of the scoring rule and the marginals pim ), so (A2) is not needed. Deterministic committable routers are point masses πi =
+
+δr(i), recovering score i(δr(i)) = pi,r (i) = qri as a special case. Taking πi = δm⋆ (the router r⋆ of Lemma 1) attains the bound, so 
+
+sup 
+
+> π
+
+score i(π) = Orepro  
+
+> i
+
+,
+
+the supremum ranging over the entire single-commit class (randomized and feature/history-dependent included). Ag-gregating: for any such router the benchmark score 
+
+> 1
+> N
+
+P 
+
+> i
+
+score i(π) ≤ 1
+
+> N
+
+P 
+
+> i
+
+Orepro  
+
+> i
+
+, so its gap to Oexp is 
+
+> 1
+> N
+
+X
+
+> i
+
+ Oexp  
+
+> i
+
+− score i(π) ≥ 1
+
+> N
+
+X
+
+> i
+
+ Oexp  
+
+> i
+
+− Orepro 
+
+> i
+
+
+
+= Gnoise ≥ 0,
+
+the last inequality by Theorem 1(b). Thus Gnoise is a floor for the full mixed-strategy single-commit class, not merely for deterministic routers. 
+
+Source of the floor. For the remark: a router committing to a single model m and scored on a fresh single draw bim ∈ { 0, 1}
+
+has expected score E[bim ] = pim ≤ Orepro  
+
+> i
+
+, so single-draw scoring of one model does not by itself open the gap. The gap Oexp  
+
+> i
+
+− Orepro  
+
+> i
+
+= E[max m bim ] − max m pim ≥ 0 (Propo-sition 1) is created by the oracle’s max over all K draws ;a single-commit router selects one index and cannot realize the pool-wide maximum, which is precisely the quantity πi
+
+averages over rather than maximizes. Multi-query/ensemble routers fall outside this class and are not covered. 
+
+Proof of Lemma 3. (SELECT). This is exactly Lemma 2: by linearity of the (A4) scoring extension, score i(π) =P 
+
+> m
+
+πi(m)pim is a convex combination of the reals {pim },and a convex combination never exceeds the maximum el-ement, so score i(π) ≤ max m pim = Orepro  
+
+> i
+
+. Since πi are nonnegative weights summing to 1, equality requires πi(m) = 0 for every m with pim < max m′ pim ′ , i.e. πi supported on arg max m pim . No probabilistic assumption beyond the definition of the maximum is used; in particular (A2) is not invoked. 
+
+(SAMPLE). Fix the model m and let b(1)  
+
+> im
+
+, . . . , b (n) 
+
+> im
+
+be its n
+
+draws, i.i.d. Bernoulli( pim ) by (A1). The query is solved by m
+
+under best-of-n iff at least one draw succeeds, the complement being all n failures: 
+
+p(n) 
+
+> im
+
+= Pr 
+
+ n[
+
+> t=1
+
+{b(t) 
+
+> im
+
+= 1 }
+
+
+
+= 1 − Pr 
+
+ n\
+
+> t=1
+
+{b(t) 
+
+> im
+
+= 0 }
+
+
+
+= 1 −
+
+> n
+
+Y
+
+> t=1
+
+(1 − pim ) = 1 − (1 − pim )n,
+
+the factorization using within-(i, m ) independence (A1). Write 
+
+g(n) = (1 − pim )n. If pim ∈ (0 , 1) then 1 − pim ∈ (0 , 1) , so 
+
+g is strictly decreasing and g(n) ↓ 0, whence p(n) 
+
+> im
+
+= 1 − g(n)
+
+is strictly increasing with p(n) 
+
+> im
+
+↑ 1. If pim = 0 then g ≡ 1
+
+and p(n) 
+
+> im
+
+≡ 0; if pim = 1 then g ≡ 0 and p(n) 
+
+> im
+
+≡ 1. This gives nondecreasing, strict iff pim ∈ (0 , 1) , and the limit → 1
+
+iff pim > 0. Applying this to the committed best model m⋆
+
+(with pim ⋆ = Orepro  
+
+> i
+
+) gives Orepro ,(n) 
+
+> i
+
+= 1 − (1 − Orepro  
+
+> i
+
+)n ↑ 1
+
+when Orepro  
+
+> i
+
+> 0.
+
+Orthogonality and combination. (SELECT) is an operation on the index m (choice of which pim to commit to) and leaves the per-draw success probability of the committed model unchanged; (SAMPLE) is an operation on the draw budget n
+
+that maps the committed model’s probability p 7 → 1−(1 −p)n
+
+and is independent of which m was chosen. A router that first commits to m⋆ (the (SELECT)-optimum) and then samples it n times therefore attains 1 − (1 − Orepro  
+
+> i
+
+)n = Orepro ,(n) 
+
+> i
+
+,which by the strict monotonicity above exceeds Orepro  
+
+> i
+
+for every n ≥ 2 when Orepro  
+
+> i
+
+∈ (0 , 1) .
+
+Proof of Lemma 4. Lower bound. Committing to a maximizer 
+
+m⋆, i.e. g ≡ Yim ⋆ , is draw-grounded with success Pr( Yim ⋆ =
+
+y⋆i ) = pim ⋆ = Orepro  
+
+> i
+
+, so Oagg  
+
+> i
+
+≥ Orepro  
+
+> i
+
+. Upper bound. 
+
+Any draw-grounded g outputs one of the realized labels, so 
+
+{g(Yi·) = y⋆i } ⊆ {∃ m : Yim = y⋆i } = {max m Bim = 1 };taking probabilities, Oagg  
+
+> i
+
+≤ Pr(max m Bim = 1) = Oexp  
+
+> i
+
+.
+
+Strictness. Aggregation strictly helps only when the draws carry signal. For binary cells ( A=2 ) with each model correct i.i.d. with probability p > 12 and odd K ≥ 3, majority vote succeeds with probability P
+
+> j>K/ 2
+
+ Kj
+
+pj (1 − p)K−j >p = Orepro  
+
+> i
+
+(Condorcet’s jury theorem), while remaining 
+
+< O exp  
+
+> i
+
+= 1 − (1 − p)K (majority correct implies at least one correct, and the converse fails with positive probability); hence both inequalities can be strict. On a pure-chance cell 
+
+pim ≡ 1/A i.i.d., by contrast, the A candidates are ex-changeable under the draw, so every draw-grounded aggregator returns the gold symbol with probability exactly 1/A ; thus 
+
+Oagg  
+
+> i
+
+= 1 /A = Orepro  
+
+> i
+
+and aggregation cannot beat chance— consistent with the ∆know  
+
+> i
+
+=0 reading of Cor. 3 on guessing cells. 
+
+Proof of Corollary 3. The floor and its class-uniformity are Theorem 2(a) aggregated; k-/data-independence holds because 
+
+∆i = Oexp  
+
+> i
+
+−Orepro  
+
+> i
+
+is a deterministic functional of {pim }. The split is the telescoping of Lemma 4: ∆i = ( Oagg  
+
+> i
+
+− Orepro  
+
+> i
+
+) + (Oexp  
+
+> i
+
+− Oagg  
+
+> i
+
+) with both terms ≥ 0 by that lemma. ∆know 
+
+> i
+
+is reached without a verifier by a draw-grounded aggregator attaining Oagg  
+
+> i
+
+(Lemma 4), or on verifier-equipped cells by best-of-n (Theorem 2(b)). ∆guess  
+
+> i
+
+= Oexp  
+
+> i
+
+−Oagg  
+
+> i
+
+is annihilated by neither axis: SELECTION is capped at Orepro  
+
+> i
+
+≤ Oagg 
+
+> i
+
+(part (a)), and every draw-grounded verifier-free aggregator is capped at Oagg  
+
+> i
+
+(Lemma 4); only a deploy-time ground-truth verifier, selecting a correct draw from the union event 
+
+{max m Bim = 1 }, closes it. The re-scoping of Cor. 2 follows: its Θ(1 − ¯p) bound is on ∆i, here resolved into the verifier-free-recoverable ∆know  
+
+> i
+
+and the verifier-requiring ∆guess  
+
+> i
+
+.
+
+Theorem 6 (General coupling-free recoverability cap and Fréchet bracket) . Fix a query i over M = {1, . . . , K }
+
+and let μ be any joint law on {0, 1}K with marginals 
+
+Pr μ(Bim = 1) = pim (i.e. (A1)+(A3) only; (A2) dropped). Let 
+
+Oexp  
+
+> i
+
+(μ) = Pr μ(∃m : Bim = 1) , Orepro  
+
+> i
+
+= max m pim , and 
+
+∆i(μ) = Oexp  
+
+> i
+
+(μ) − Orepro  
+
+> i
+
+. Under the single-commit scoring convention (A4-linear) with choice ⊥ scored draw (A5): PREPRINT, JULY 2026 25 
+
+(a) (Selection cap, μ-blind.) sup 
+
+> π
+
+score i(π) = Orepro  
+
+> i
+
+for every μ, where the supremum ranges over the entire single-commit class; the value is independent of the coupling μ and is attained by committing to any m⋆ ∈
+
+arg max m pim .
+
+(b) (Sign and coupling-free Fréchet bracket.) For every admissible μ,
+
+0 ≤ ∆i(μ) ≤ min 
+
+nP 
+
+> m
+
+pim , 1
+
+o
+
+− max m pim ,
+
+and both endpoints are sharp over the Fréchet class: the lower endpoint ∆i = 0 is attained at the comono-tone (Fréchet-upper) coupling, and the upper endpoint at the disjoint/space-covering (Fréchet-lower) coupling. Hence sup μ ∆i(μ) = min {P 
+
+> m
+
+pim , 1} − max m pim 
+
+and inf μ ∆i(μ) = 0 .Proof. (a) Fix μ. By (A4-linear), score i(π) = P 
+
+> m
+
+πi(m)pim 
+
+is a convex combination of {pim }, so score i(π) ≤
+
+max m pim = Orepro  
+
+> i
+
+(Lemma 2); the point mass πi = δm⋆
+
+attains it. Neither the bound nor the maximizer references μ,and under (A5) the reported value equals score i(π) (tower rule); hence the selection value is the μ-blind constant Orepro  
+
+> i
+
+.
+
+(b) The sign is Prop. 1 (monotonicity of max , any 
+
+μ). For the upper bracket, Oexp  
+
+> i
+
+(μ) = Pr μ(S
+
+> m
+
+{Bim =1}) ≤ min {P 
+
+> m
+
+pim , 1} by Boole’s inequality and Pr ≤ 1
+
+(Prop. 2(b)); subtract Orepro  
+
+> i
+
+. Sharpness of both endpoints is the Fréchet construction of Prop. 2(b): the comonotone cou-pling Bim = ⊮{U ≤ pim }, U ∼ Unif(0 , 1) , nests all success events inside the maximizer’s, giving Oexp  
+
+> i
+
+= Orepro  
+
+> i
+
+hence 
+
+∆i = 0 ; the disjoint coupling (or, when P 
+
+> m
+
+pim ≥ 1, the space-covering arc coupling) gives Oexp  
+
+> i
+
+= min {P 
+
+> m
+
+pim , 1}
+
+hence the upper endpoint. Caution (do not conflate the two equality conditions): cap-equality score i(π) = Orepro  
+
+> i
+
+is a condition on π (mass on arg max ), whereas floor-equality 
+
+∆i(μ) = 0 is a condition on the coupling μ (Fréchet-upper / comonotone); these are independent. 
+
+Corollary 4 (FKG upper-envelope scope floor; coupling-free, no-(A2)) . Adopt the setting of Theorem 6 and suppose the draws are positively associated (FKG: E[f g ] ≥ E[f ]E[g] for all coordinatewise-nondecreasing bounded f, g ). Then 
+
+∆i(μ) ≤ ∆⊥ 
+
+> i
+
+:= Oexp ,⊥ 
+
+> i
+
+− Orepro 
+
+> i
+
+=  1 − max m pim 
+
+ − Q
+
+> m
+
+(1 − pim ),
+
+i.e. the independent-coupling value ∆⊥ 
+
+> i
+
+is an upper envelope 
+
+on every positively associated pool; in particular the closed-form homogeneous fraction S(K) ↑ 1 − ¯p = Θ(1 − ¯p) of Cor. 1/Cor. 2 is the (A1)+(A2) independent-coupling value and an upper envelope under FKG, not an unconditional floor. The label “coupling-free / no-(A2)” refers to the sign and the Fréchet bracket of Theorem 6(b) (which hold for every μ), and must not be read as “assumption-free”: the cap rests on 
+
+(A4-linear)+(A5) , and the closed-form magnitude additionally needs (A2) .Proof. By Prop. 3(c), positive association gives Oexp  
+
+> i
+
+(μ) ≤
+
+Oexp ,⊥ 
+
+> i
+
+; subtracting the μ-invariant Orepro  
+
+> i
+
+yields ∆i(μ) ≤
+
+∆⊥ 
+
+> i
+
+. The homogeneous closed form is Cor. 1. Counterexample to any unconditional reading (comonotone ̸ = independent). 
+
+Take K = 2, p = (0 .4, 0.4) . The independent value is 
+
+∆⊥ 
+
+> i
+
+= (1 − 0.4) − (0 .6) 2 = 0 .6 − 0.36 = 0 .24 , whereas the comonotone coupling B1 = B2 = ⊮{U ≤ 0.4} gives 
+
+Oexp  
+
+> i
+
+= 0 .4 = Orepro  
+
+> i
+
+, so the true ∆i = 0 < 0.24 . Thus ∆⊥ 
+
+> i
+
+is only an upper envelope under positive association and is not 
+
+attained in general. 
+
+Proof of Theorem 5. Fix i and write pm := pim , qm := 1 −
+
+pm, q⋆ := 1 − p⋆ = min m qm. Under (A1) each model emits 
+
+r i.i.d. draws, so the event “model m fails on all r of its draws” has probability q rm and “model m succeeds at least once in r draws” has probability p(r) 
+
+> m
+
+= 1 − q rm. The map 
+
+x 7 → 1 − (1 − x)r is strictly increasing on [0 , 1] for r ≥ 1, so 
+
+max m p(r) 
+
+> m
+
+= 1 − (min m qm)r = 1 − q⋆r , attained at the same 
+
+m⋆ that maximizes pm; this is Orepro ,(r) 
+
+> i
+
+.
+
+(i) Identity and rate. Under (A2) the K all-fail events are independent, so by the union/complement computation of Proposition 2(a) applied to the success probabilities p(r) 
+
+> m
+
+,
+
+O(r) 
+
+> i
+
+= 1 − Y
+
+> m
+
+ 1 − p(r)
+
+> m
+
+ = 1 − Y
+
+> m
+
+q rm.
+
+Pulling out the m⋆ factor exactly as in the proof of Theorem 3 (with each base qm replaced by q rm), 
+
+1 − O(r) 
+
+> i
+
+= Y
+
+> m
+
+q rm = q⋆r Y
+
+> m̸=m⋆
+
+q rm,
+
+whence, since Orepro ,(r) 
+
+> i
+
+= 1 − q⋆r ,
+
+∆(r) 
+
+> i
+
+= O(r) 
+
+> i
+
+− Orepro ,(r) 
+
+> i
+
+=  1 − Q 
+
+> m
+
+q rm
+
+ −  1 − q⋆r 
+
+= q⋆r − Y
+
+> m
+
+q rm = q⋆r 
+
+1 − Y
+
+> m̸=m⋆
+
+q rm
+
+
+
+.
+
+Each factor q rm ∈ [0 , 1] , so the bracket lies in [0 , 1] and 
+
+∆(r) 
+
+> i
+
+≥ 0. At r = 1 this is verbatim the inflation identity of Theorem 3, so the present statement is that theorem specialized to best-of-r via qm → q rm. Finally 1 − O(r) 
+
+> i
+
+= Q 
+
+> m
+
+q rm =exp  r P 
+
+> m
+
+ln qm
+
+ = e−rΛi with Λi = P 
+
+> m
+
+− ln qm ∈ [0 , ∞];this is → 0 (so O(r) 
+
+> i
+
+↑ 1) iff Λi > 0, i.e. iff some pm > 0, and the convergence is geometric in r at rate Λi, the Theorem 3 decay constant scaled by r.
+
+(ii) Monotone collapse of S(r) 
+
+> i
+
+. Assume p⋆ > 0, i.e. q⋆ ∈
+
+[0 , 1) . Degenerate case first: if at most one model has pm > 0,then Q 
+
+> m̸=m⋆
+
+q rm = 1 for all r (every non-maximizer factor is 1), so ∆(r) 
+
+> i
+
+≡ 0 and S(r) 
+
+> i
+
+≡ 0 (constant, the weak case). Henceforth assume at least two models have pm > 0, so 0 <q⋆ < 1 and Q 
+
+> m̸=m⋆
+
+q rm < 1 for every r.Write the share, for O(r) 
+
+> i
+
+> 0, as 
+
+S(r) 
+
+> i
+
+= ∆(r)
+
+> i
+
+O(r)
+
+> i
+
+= q⋆r − Q 
+
+> m
+
+q rm
+
+1 − Q 
+
+> m
+
+q rm
+
+= 1 − 1 − q⋆r 
+
+1 − Q 
+
+> m
+
+q rm
+
+= 1 − Orepro ,(r)
+
+> i
+
+O(r)
+
+> i
+
+.PREPRINT, JULY 2026 26 
+
+Hence S(r) 
+
+> i
+
+is non-increasing (resp. strictly decreasing) in r
+
+iff the ratio 
+
+R(r) := 1 − q⋆r 
+
+1 − Q 
+
+> m
+
+q rm
+
+= Orepro ,(r)
+
+> i
+
+O(r)
+
+> i
+
+is non-decreasing (resp. strictly increasing) in r. Put a := 
+
+− ln q⋆ ∈ (0 , ∞) and b := − P 
+
+> m
+
+ln qm = Λ i. Because the two surviving positive-p models alone contribute − ln q⋆ > 0
+
+and a second strictly-positive term, we have b > a > 0 (the sum has the m⋆ term a plus at least one further strictly positive term). With u := r > 0,
+
+R(r) = 1 − e−au 
+
+1 − e−bu , 0 < a < b. 
+
+We show R is strictly increasing on (0 , ∞). Equivalently 
+
+h(u) := ln(1 − e−au ) − ln(1 − e−bu ) has h′(u) > 0.Differentiating, 
+
+h′(u) = a e −au 
+
+1 − e−au − b e −bu 
+
+1 − e−bu = aeau − 1 − bebu − 1 .
+
+So it suffices to prove that the function ψ(c) := cecu − 1 is strictly decreasing in c > 0 for each fixed u > 0 (then a < b ⇒ ψ(a) > ψ (b) ⇒ h′(u) > 0). Write ψ(c) = 1
+
+u · tet − 1
+
+with t := cu > 0; since u is fixed and t 7 → t/ (et − 1) is strictly decreasing on (0 , ∞), ψ is strictly decreasing in c. To see the monotonicity of ϕ(t) := t/ (et − 1) , compute 
+
+ϕ′(t) = (et − 1) − t e t
+
+(et − 1) 2 = et 1 − t − e−t
+
+(et − 1) 2 .
+
+The numerator sign is that of η(t) := 1 −t−e−t; η(0) = 0 and 
+
+η′(t) = −1 + e−t < 0 for t > 0, so η(t) < 0 on (0 , ∞) and 
+
+ϕ′(t) < 0. Hence ϕ, and therefore ψ, is strictly decreasing, giving h′(u) > 0 and R strictly increasing. Therefore S(r) 
+
+> i
+
+=1 − R(r) is strictly decreasing in r.
+
+Limit. As r → ∞ , 1 − q⋆r → 1 and 1 − Q 
+
+> m
+
+q rm → 1 (both since the bases are in [0 , 1) here), so R(r) → 1 and S(r) 
+
+> i
+
+→ 0.More directly, from (i), 
+
+S(r) 
+
+> i
+
+= q⋆r  1 − Q 
+
+> m̸=m⋆
+
+q rm
+
+
+
+1 − Q 
+
+> m
+
+q rm
+
+≤ q⋆r 
+
+1 − Q 
+
+> m
+
+q rm
+
+−−−→ 
+
+> r→∞
+
+0
+
+since the numerator q⋆r → 0 and the denominator → 1. This proves the collapse and its rate. 
+
+Homogeneous check. With pm ≡ p ∈ (0 , 1) set x := (1 −
+
+p)r = q⋆r = q rm ∈ (0 , 1) , strictly decreasing in r. Then O(r) 
+
+> i
+
+=1 − xK , Orepro ,(r) 
+
+> i
+
+= 1 − x, ∆(r) 
+
+> i
+
+= x − xK , and 
+
+S(r) = x − xK
+
+1 − xK .
+
+Differentiating in x ∈ (0 , 1) , ddx S =    
+
+> (1 −Kx K−1)(1 −xK)−(x−xK)( −Kx K−1)(1 −xK)2
+
+, whose numerator simplifies to 1 − Kx K−1 + ( K − 1) xK =: N (x) with 
+
+N (1) = 0 and N ′(x) = −K(K − 1) xK−2(1 − x) < 0
+
+on (0 , 1) , so N (x) > N (1) = 0 there; hence S is strictly increasing in x on (0 , 1) . As x strictly decreases in r, S(r)
+
+strictly decreases in r, matching the general result. 
+
+(iii) Interpretation. No further mathematics is required: set-ting r = 1 recovers ∆(1)  
+
+> i
+
+= ∆ i, O(1)  
+
+> i
+
+= Oexp  
+
+> i
+
+, Orepro ,(1)  
+
+> i
+
+=
+
+Orepro  
+
+> i
+
+, and S(1)  
+
+> i
+
+equals the single-draw noise share of Corol-lary 1, which under (A3) is the benchmark-measured quantity. Parts (i)–(ii) show that enlarging r (a multi-draw committable protocol, distinct from the one-recorded-label protocol of (A3)) drives O(r) 
+
+> i
+
+↑ 1 and S(r) 
+
+> i
+
+↓ 0; thus the r = 1 noise share is maximal over r ≥ 1 and reflects the single-label convention, not headroom a committable router can realize at r = 1 .
+
+Proof of Proposition 5. Fix i and write pm := pim , ˆpm := ˆpim , ∆m := ˆ pm − pm (so E[∆ m] = 0 ). As in Theorem 4(b), the map x 7 → max m xm is 1-Lipschitz in the supremum sense 
+
+max m(am + cm) ≤ max m am + max m cm, whence 
+
+0 ≤ E
+
+h
+
+max  
+
+> m
+
+ˆpm
+
+i
+
+− max  
+
+> m
+
+pm ≤ E
+
+h
+
+max  
+
+> m
+
+∆m
+
+i
+
+, (†)the lower bound being Jensen (Theorem 4(b)). All four parts bound or evaluate the right-hand side of (†); only (A1) (within-
+
+(i, m ) i.i.d. marginals) is used, never (A2). 
+
+(a) Optimal-proxy sub-Gaussian bound. Recall the Kearns– Saul lemma: a centered Bernoulli variable b − p (with b ∼
+
+Bernoulli( p)) is sub-Gaussian with optimal proxy 
+
+ν2(p) = 1 − 2p
+
+2 ln((1 − p)/p ) (p̸ = 12 ), ν2( 12 ) = 14 ,
+
+i.e. Eeλ(b−p) ≤ eλ2ν2(p)/2 for all λ ∈ R, and this is the smallest constant for which the MGF bound holds. The order chain p(1 − p) ≤ ν2(p) ≤ 14 is classical: the left inequality is Var ≤ optimal proxy (a general property of the optimal sub-Gaussian proxy of any bounded variable), and the right is Hoeffding’s lemma for a variable supported in [0 , 1] (range 1,proxy ≤ 14 ), with ν2(p) → 14 as p → 12 and ν2(p) < 14 for 
+
+p̸ = 12 .Each ˆpm = 1
+
+> k
+
+Pkj=1 b(j) 
+
+> m
+
+is an average of k i.i.d. Bernoulli (pm) draws (A1), so ∆m is the average of k i.i.d. centered Bernoulli (pm) variables; by tensorization of the MGF bound, ∆m is sub-Gaussian with proxy ν2
+
+> m
+
+/k , ν2 
+
+> m
+
+:= ν2(pm):
+
+Eeλ∆m  =
+
+
+
+Ee(λ/k )( bm−pm)k
+
+≤
+
+
+
+e(λ/k )2ν2
+
+> m/2
+
+k
+
+= eλ2(ν2
+
+> m/k )/2
+
+.
+
+Put s2 := ¯ ν2/k with ¯ν2 = max m ν2
+
+> m
+
+, so every ∆m is s2-sub-Gaussian. The standard maximal inequality (the argument of Theorem 4(b), reproduced for completeness): for λ > 0, by Jensen on exp then a union over the K MGFs, 
+
+eλ E[max m ∆m] ≤ Eeλ max m ∆m  ≤ X
+
+> m
+
+Eeλ∆m 
+
+≤ K e λ2s2/2,
+
+hence E[max m ∆m] ≤ ln Kλ + λs 2 
+
+> 2
+
+; minimizing at λ =√2 ln K/s gives E[max m ∆m] ≤ s√2 ln K = p2¯ ν2 ln K/k .With (†),
+
+0 ≤ E
+
+h
+
+max  
+
+> m
+
+ˆpm
+
+i
+
+− max  
+
+> m
+
+pm ≤
+
+r 2¯ ν2 ln Kk
+
+≤
+
+s
+
+2 · 14 · ln Kk =
+
+r ln K
+
+2k ,PREPRINT, JULY 2026 27 
+
+the last step by ¯ν2 ≤ 14 , recovering Theorem 4(b). If no model has pm = 12 then ¯ν2 < 14 strictly, so the final inequality is strict. 
+
+(b) Variance-dependent (Bernstein) bound. Each ∆m is the mean of k i.i.d. centered variables bounded in [−1, 1] with per-summand variance pm(1 − pm), so Var(∆ m) = pm(1 −
+
+pm)/k ≤ σ2/k , σ2 := max m pm(1 −pm). Bennett’s inequality gives, for each m and t > 0,
+
+Pr(∆ m ≥ t) ≤ exp 
+
+
+
+− σ2  
+
+> k(1 /k )2
+
+h  t/k σ2/k 
+
+
+
+,h(u) = (1 + u) ln(1 + u) − u, 
+
+which, via the standard Bernstein relaxation h(u) ≥ u2/21+ u/ 3 ,yields the sub-gamma tail Pr(∆ m ≥ t) ≤ exp   − kt 2
+
+> 2( σ2+t/ 3)
+
+.A sub-gamma variable with variance factor σ2/k and scale factor c = 1 /(3 k) satisfies the maximal inequality 
+
+E
+
+h
+
+max  
+
+> m
+
+∆m
+
+i
+
+≤
+
+r 2σ2 ln Kk + ln K
+
+3k
+
+(the standard sub-gamma maximal bound E max ≤√2v ln K + c ln K with v = σ2/k , c = 1 /(3 k); obtained by optimizing ln Kλ + λv  
+
+> 2(1 −cλ )
+
+over λ ∈ (0 , 1/c ) and bounding). Combined with (†) this is the claim. Both factors σ2 and the additive term are computable from data; for fixed σ2 the bound is p2σ2 ln K/k (1 + o(1)) as k → ∞ .
+
+(c) Exact order-statistic form in the tied case. Let pm = p
+
+for all m. Then k ˆpm = Sm ∼ Bin( k, p ) are i.i.d. across 
+
+m (A1) and take values in {0, 1, . . . , k }, so max m ˆpm = 
+
+> 1
+> k
+
+max m Sm and M := max m Sm is the maximum of K
+
+i.i.d. integer variables with common CDF Fk,p . The CDF of the maximum is F Kk,p , hence its pmf at the integer s is 
+
+Fk,p (s)K − Fk,p (s − 1) K (with Fk,p (−1) = 0 ). Therefore 
+
+E
+
+h
+
+max  
+
+> m
+
+ˆpm
+
+i
+
+= 1
+
+k E[M ]= 1
+
+k
+
+> k
+
+X
+
+> s=0
+
+s
+
+
+
+Fk,p (s)K − Fk,p (s − 1) K 
+
+=
+
+> k
+
+X
+
+> s=0
+
+sk
+
+
+
+Fk,p (s)K − Fk,p (s − 1) K 
+
+.
+
+This is the elementary identity for the mean of the maximum of i.i.d. integer-valued variables (CDF raised to the Kth power, then a first-moment/Abel summation), specialized to Fk,p =Bin( k, p )/k ; subtracting max m pm = p gives the exact bias. Numerically it agrees with Monte Carlo to 3–4 digits and the resulting bias is strictly below pln K/ (2 k) for all finite K ≥
+
+2, k ≥ 1, p ∈ (0 , 1) , with the ratio strictly below 1 (supremum 
+
+→ 2pp(1 − p) ≤ 1 in the large-(K, k ) limit), consistent with the general bound of part (a), whose constant is loose by an 
+
+O(1) factor for a finite maximum. 
+
+(d) Near-ties are least favorable. We show that raising any non-leading pm up to the top value can only increase the bias, so among profiles with fixed top value p⋆ the flat profile dominates. Fix the top value p⋆ = max m pm attained (say) at m = 1 , and view the bias β(p) := E[max m ˆpm] − p⋆
+
+as a function of the remaining coordinates (p2, . . . , p K ) on 
+
+[0 , p ⋆]K−1. Couple by inverse-CDF: for each m let Sm =
+
+F −1 
+
+> k,p m
+
+(Um) with Um ∼ Unif(0 , 1) i.i.d., so Sm/k = ˆpm
+
+has the correct law and, for fixed Um, ˆpm is coordinatewise 
+
+nondecreasing in pm (the Binomial family is stochastically increasing in p, so F −1 
+
+> k,p
+
+(u) is nondecreasing in p). Since 
+
+x 7 → max m xm is coordinatewise nondecreasing, increasing any pm (m̸ = 1) toward p⋆ can only increase max m ˆpm
+
+pathwise, hence increase E[max m ˆpm] while p⋆ is unchanged; thus β is nondecreasing in each pm and is maximized over 
+
+[0 , p ⋆]K−1 at the corner pm = p⋆ for all m, the flat profile. (This monotone-coupling argument needs only (A1).) The unconstrained maximizer over all profiles is therefore also flat; optimizing the common value of the tied profile gives 
+
+p ≈ 12 , displaced from exactly 12 by the finite-k skew of the Binomial maximum. The benchmark-design reading is immediate: selection optimism in re-estimating Orepro  
+
+> i
+
+is largest exactly on near-tied query pools, so draws should be concentrated there. This proves all four parts. Remark 1 follows because p(1 −
+
+p) ≤ ν2(p) with strict inequality for p̸ = 12 , so replacing ν2
+
+> m
+
+by the variance pm(1 − pm) in part (a) produces a quantity strictly smaller than a valid upper bound and is therefore not itself an upper bound on the bias. REFERENCES [1] J.-Y. Audibert, S. Bubeck, and R. Munos, “Best arm identification in multi-armed bandits,” in Proc. Conf. on Learning Theory (COLT) , 2010, pp. 41–53. [2] E. Kaufmann, O. Cappé, and A. Garivier, “On the complexity of best-arm identification in multi-armed bandit models,” Journal of Machine Learning Research , vol. 17, no. 1, pp. 1–42, 2016. [3] J. Wang, J. Wang, B. Athiwaratkun, C. Zhang, and J. Zou, “Mixture-of-agents enhances large language model capabilities,” arXiv preprint arXiv:2406.04692 , 2024. [4] I. Ong et al. , “RouteLLM: Learning to route LLMs with preference data,” arXiv preprint arXiv:2406.18665 , 2024. [5] J. Dekoninck, M. Baader, and M. Vechev, “A unified approach to routing and cascading for LLMs,” in Proc. ICML , 2025, arXiv:2410.10347, 2024. [6] Y. Moslem and J. D. Kelleher, “Dynamic model routing and cas-cading for efficient LLM inference: A survey,” arXiv preprint arXiv:2603.04445 , 2026. [7] Q. J. Hu et al. , “RouterBench: A benchmark for multi-LLM routing system,” arXiv preprint arXiv:2403.12031 , 2024. [8] H. Li, Y. Zhang, Z. Guo, C. Wang, S. Tang, Q. Zhang, Y. Chen, B. Qi, P. Ye, L. Bai, Z. Wang, and S. Hu, “LLMRouterBench: A massive benchmark and unified framework for LLM routing,” arXiv preprint arXiv:2601.07206 , 2026. [9] C. Shao et al. , “Route-and-reason: Scaling LLM reasoning with a reinforced model router,” arXiv preprint arXiv:2506.05901 , 2025. [10] J. Komiyama, D. Oba, and M. Oyamada, “Best-of-∞: Asymp-totic performance of test-time LLM ensembling,” arXiv preprint arXiv:2509.21091 , 2025. [11] T. Zrnic and W. Fithian, “A flexible defense against the winner’s curse,”                
+
+> arXiv preprint arXiv:2411.18569 , 2024. [12] C. E. Clark, “The greatest of a finite set of random variables,” Operations Research , vol. 9, no. 2, pp. 145–162, 1961. [13] M. Hariri, A. Samandar, M. Hinczewski, and V. Chaudhary, “Don’t pass@k: A bayesian framework for large language model evaluation,”
+> arXiv preprint arXiv:2510.04265 , 2025. [14] B. Fowler, R. Smith, D. T. Graviet, W. Myers, J. Greaves, N. F. Oozeer, A. García, P. Quirke, A. Abdullah, F. Barez, and S. K. Upadhyay, “The capability frontier: Benchmarks miss 82% of model performance,” arXiv preprint arXiv:2606.26836 , 2026. [15] S. Garg and A. Sagtani, “Unsolvability ceiling in multi-LLM rout-ing: An empirical study of evaluation artifacts,” arXiv preprint arXiv:2605.07395 , 2026. PREPRINT, JULY 2026 28
+
+[16] L. Chen, M. Zaharia, and J. Zou, “FrugalGPT: How to use large language models while reducing cost and improving performance,” Transactions on Machine Learning Research (TMLR) , 2024. [17] D. Ding, A. Mallick, C. Wang, R. Sim, S. Mukherjee, V. Rühle, L. V. S. Lakshmanan, and A. H. Awadallah, “Hybrid LLM: Cost-efficient and quality-aware query routing,” in Proc. ICLR , 2024. [18] L. Chen, J. Q. Davis, B. Hanin, P. Bailis, I. Stoica, M. Zaharia, and J. Zou, “Are more LLM calls all you need? towards the scaling properties of compound AI systems,” in Advances in Neural Information Processing Systems (NeurIPS) , 2024. [19] W. Li, Y. Lin, M. Xia, and C. Jin, “Rethinking mixture-of-agents: Is mixing different large language models beneficial?” in Proc. ICML ,2025, arXiv:2502.00674. [20] Z. Huang, G. Ling, Y. Lin, Y. Chen, S. Zhong, H. Wu, and L. Lin, “RouterEval: A comprehensive benchmark for routing LLMs to explore model-level scaling up in LLMs,” arXiv preprint arXiv:2503.10657 ,2025. [21] J. Haase, J. Gonnermann-Müller, P. H. P. Hanel, N. Leins, T. Kosch, J. Mendling, and S. Pokutta, “Within-model vs. between-prompt vari-ability in large language models for creative tasks,” arXiv preprint arXiv:2601.21339 , 2026. [22] S. Wang, “Measuring all the noises of LLM evals,” arXiv preprint arXiv:2512.21326 , 2025. [23] B. H. Bjarnason, A. Silva, and M. Monperrus, “On randomness in agentic evals,” arXiv preprint arXiv:2602.07150 , 2026. [24] Y. Song, G. Wang, S. Li, and B. Y. Lin, “The good, the bad, and the greedy: Evaluation of LLMs should not ignore non-determinism,” arXiv preprint arXiv:2407.10457 , 2024. [25] L. Madaan, A. K. Singh, R. Schaeffer, A. Poulton, S. Koyejo, P. Stene-torp, S. Narang, and D. Hupkes, “Quantifying variance in evaluation benchmarks,” arXiv preprint arXiv:2406.10229 , 2024. [26] N. Reimers and I. Gurevych, “Reporting score distributions makes a difference: Performance study of LSTM-networks for sequence tagging,” in Proc. EMNLP . Association for Computational Linguistics, 2017, pp. 338–348. [27] I. Andrews, T. Kitagawa, and A. McCloskey, “Inference on winners,” 
+
+The Quarterly Journal of Economics , vol. 139, no. 1, pp. 305–358, 2024, first circulated as NBER Working Paper 25456, 2019. [28] J. E. Smith and R. L. Winkler, “The optimizer’s curse: Skepticism and postdecision surprise in decision analysis,” Management Science ,vol. 52, no. 3, pp. 311–322, 2006. [29] B. Efron, “Tweedie’s formula and selection bias,” Journal of the Amer-ican Statistical Association , vol. 106, no. 496, pp. 1602–1614, 2011. [30] R. Berk, L. Brown, A. Buja, K. Zhang, and L. Zhao, “Valid post-selection inference,” The Annals of Statistics , vol. 41, no. 2, pp. 802–837, 2013. [31] H. van Hasselt, “Double Q-learning,” in Advances in Neural Information Processing Systems (NeurIPS) , vol. 23, 2010, pp. 2613–2621, analyzes the upward bias of the maximum over noisy value estimates. [32] G. Lai and H.-J. Ye, “When routing collapses: On the degenerate convergence of LLM routers,” arXiv preprint arXiv:2602.03478 , 2026. [33] Z. Yang, Y. Zhang, T. Liu, J. Yang, J. Lin, C. Zhou, and Z. Sui, “Can large language models always solve easy problems if they can solve harder ones?” arXiv preprint arXiv:2406.12809 , 2024. [34] K. Hasanaliyev, S. Alberti, J. Hamer, D. Rajagopal, K. Robinson, J. Snoek, V. Veitch, and A. N. D’Amour, “Expected reward prediction, with applications to model routing,” arXiv preprint arXiv:2603.20217 ,2026. [35] W. Lugoloobi, T. Foster, W. Bankes, and C. Russell, “LLMs encode their failures: Predicting success from pre-generation activations,” arXiv preprint arXiv:2602.09924 , 2026. [36] B. Brown, J. Juravsky, R. Ehrlich, R. Clark, Q. V. Le, C. Ré, and A. Mirhoseini, “Large language monkeys: Scaling inference compute with repeated sampling,” arXiv preprint arXiv:2407.21787 , 2024. [37] X. Wang, J. Wei, D. Schuurmans, Q. Le, E. Chi, S. Narang, A. Chowdh-ery, and D. Zhou, “Self-consistency improves chain of thought reasoning in language models,” in Proc. ICLR , 2023, arXiv:2203.11171. [38] B. Stroebl, S. Kapoor, and A. Narayanan, “The limits of inference scaling through resampling,” arXiv preprint arXiv:2411.17501 , 2024. [39] H. Lightman, V. Kosaraju, Y. Burda, H. Edwards, B. Baker, T. Lee, J. Leike, J. Schulman, I. Sutskever, and K. Cobbe, “Let’s verify step by step,” in Proc. ICLR , 2024. [40] J. Chen, “When does combining language models help? a co-failure ceiling on routing, voting, and mixture-of-agents across 67 frontier models,” arXiv preprint arXiv:2606.27288 , 2026. [41] L. I. Kuncheva and C. J. Whitaker, “Measures of diversity in classifier ensembles and their relationship with the ensemble accuracy,” Machine Learning , vol. 51, no. 2, pp. 181–207, 2003. [42] A. Krogh and J. Vedelsby, “Neural network ensembles, cross validation, and active learning,” in Advances in Neural Information Processing Systems (NIPS) . MIT Press, 1994, pp. 231–238. [43] L. Devroye, L. Györfi, and G. Lugosi, A Probabilistic Theory of Pattern Recognition , ser. Stochastic Modelling and Applied Probability. New York: Springer, 1996, vol. 31, see Thm. 2.2: the plug-in (argmax) rule has excess risk at most twice the L1 estimation error of the conditional probabilities.

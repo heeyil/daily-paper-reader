@@ -1,0 +1,2505 @@
+Title: Before Thinking, Learn to Decide: Proactive Routing for Efficient Visual Reasoning
+
+URL Source: https://arxiv.org/pdf/2606.30217v1
+
+Published Time: Tue, 30 Jun 2026 02:12:36 GMT
+
+Number of Pages: 36
+
+Markdown Content:
+## Before Thinking, Learn to Decide: Proactive Routing for Efficient Visual Reasoning 
+
+Yinan Zhou 1,2,3 , Haokun Lin 2,3,4 , Yichen Wu 5 ,Caifeng Shan 4 , Zhenan Sun 6 , Yuxin Chen 2 , Teng Wang 2 ,Chen Ma 3,‡ , Li Zhu 1,‡ , and Ying Shan 2 
+
+> 1
+
+Xi’an Jiaotong University  
+
+> 2
+
+ARC Lab, Tencent IEG  
+
+> 3
+
+City University of Hong Kong  
+
+> 4
+
+Institute of Automation, CAS  
+
+> 5
+
+Harvard University  
+
+> 6
+
+Nanjing University 
+
+Abstract. Large multimodal models have achieved strong reasoning on complex visual tasks, but their inference efficiency is often restricted by long chains of thought. A promising solution is to pair a small draft model with a large target model, enabling cooperative inference employ-ing a routing signal that adaptively routes queries to either the draft or target model based on their difficulties for optimal efficiency and accu-racy. Yet, the remaining bottleneck is to establish a reliable query dif-ficulty signal under multimodal settings. Existing approaches designed for language models either rely on post-hoc token probabilities, which fall short in multimodal scenarios, or depend on supervised fine-tuning, which is a data-sensitive strategy. Both paradigms perform routing only after a complete output, and ignore whether the target model can ac-tually solve the routed instances. To address this, we propose PRP ,a Proactive Routing Paradigm that enables early decision-making by jointly evaluating the competence of both the draft and target models. Our Draft Rating Learning (DRL) equips the draft model with an inter-nal confidence estimator, while Joint Rating Learning (JRL) predicts how well the target model can handle a given query, thereby prioritiz-ing the allocation of samples it excels at rather than the hardest ones. These ratings enable fine-grained, instance-level Proactive Routing 
+
+and substantially accelerate inference without compromising overall per-formance. Extensive experiments across multiple multimodal reasoning benchmarks validate our effectiveness and efficiency. 
+
+Keywords: Efficient MLLM Routing · Confidence Learning · GRPO 
+
+1 Introduction 
+
+Multimodal large language models (MLLMs) [1, 9, 12, 20, 24, 46–48, 52–54] have achieved remarkable performance on visual reasoning tasks. With the emergence 
+
+Work done during internship at Tencent. ‡Corresponding authors. 
+
+> arXiv:2606.30217v1 [cs.CL] 29 Jun 2026
+
+2 Y. Zhou et al. Target                                                                            
+
+> MLLM
+> Draft
+> MLLM
+> :<confidence> 0.10 </confidence>
+> Draft
+> MLLM
+> Target
+> MLLM
+> :To solve the problem,
+> firstly, the figure shows ….
+> Then, I need to …, Wait, there
+> is a mistake. Answer: 10
+> Draft
+> MLLM
+> Target
+> MLLM
+> :To solve the problem,
+> firstly, I need to …Secondly, ...
+> Therefore, ans =7.Answer: 7
+> [UN]
+> Target
+> MLLM
+> Draft
+> MLLM
+> 𝑺𝒊𝒈𝒏𝒂𝒍 𝒔 𝟏 =𝟏
+> 𝑳 ෍
+> 𝑳
+> 𝒑 𝒊 𝑺𝒊𝒈𝒏𝒂𝒍 𝒔 𝟐 =𝒑 𝑪𝑵
+> (𝒑 𝑪𝑵 ,𝒑 𝑼 𝑵 )𝑺𝒊𝒈𝒏𝒂𝒍 𝒔 𝟑 𝒅 =𝓕 (𝒅 ,𝒑 𝒅 )𝑺𝒊𝒈𝒏𝒂𝒍 𝒔 𝟑 𝒋 =𝓕 (𝒅 ,𝒑 𝒅 ,𝒕 ,𝒑 𝒕 )
+> 𝒅
+> <target> 0. 90</target >< confidence> 0.10 </confidence>
+> 𝒕 𝒅
+> (b) S pecial -token –based Paradigm (a) Token -probability -based Paradigm (c) Ours: PRP with DRL
+> SFT RL RL
+> Not Trainable SFT -based GRPO -based
+> Post -generation Routing Post -generation Routing Proactive Routing
+> ×××
+> [UN]/[CN] Indistinctive Prob. Distinctive Rating
+> √
+> GRPO -based
+> Proactive Routing
+> Distinctive Rating
+> Challenging
+> Optimization
+> Routing Timing
+> Target -Aware
+> Routing Criteria Challenging Challenging Challenging but Solvable
+> <target> 0.00 </target >< confidence> 0.0 </confidence>
+> Format prompt 𝑷
+> Question 𝑸
+> Image 𝑰
+> Routing Signal
+> (d)Ours: PRP with JRL
+
+Fig. 1: Overview comparing two prior paradigms with ours. We enable proactive rout-ing at the onset of inference. Our RL-trained rater provides finer-grained and distinctive signals, and explicitly accounts for the capability of the target model. 
+
+of reinforcement learning–based post-training methods [6,37,50], their reasoning capabilities are further strengthened, exhibiting emergent behaviors such as “aha moments” and self-reflection. However, these powerful reasoning abilities often come with lengthy and repetitive chains of thought. Such long reasoning are unnecessary for simple problems and introduce substantial inference overhead. A natural way to reduce inference cost while preserving strong reasoning performance is to use two models of different capacities, a compact draft model that routes difficult queries to a larger target model. Several studies explore the draft-routing paradigms for LLMs, which fall into two categories. As illustrated in Fig. 1: (i) token-probability-based routing [31], which averages token probabil-ities as the routing signal; (ii) special-token-based routing [10] fine-tunes tokens such as [CN] and [UN] using correct/incorrect trajectories and routes queries based on their probabilities. However, directly applying these routing methods to MLLMs remains under-explored. Our preliminary experiments reveal several issues. First, token-probability-based routing provides coarse and indistinct signals, relying on an assumed pos-itive correlation between token probability and accuracy. Second, special-token-based routing is highly sensitive to the sampling distribution of correct and incorrect trajectories, and SFT-based methods are limited by the model’s search space. Moreover, both paradigms defer routing decisions until the draft model finishes generation, preventing early invocation of the target model and adding latency. Importantly, they only assess difficulty from the draft model’s perspec-tive, ignoring whether the target model is actually suitable for the instance. To overcome these limitations, we propose a reinforcement learning-based 
+
+Proactive Routing Paradigm ( PRP ) for efficient visual reasoning. PRP initi-ates routing at the very beginning of generation and is aware of both the draft and target models’ capabilities. We first introduce a fine-grained proactive rat-ing training framework consisting of Draft Rating Learning ( DRL ) and Joint 
+
+Rating Learning ( JRL ). DRL enables the draft model to directly assess its solvability on an input before generating any reasoning steps, making proactive routing feasible. To further evaluate the capacity of the target model, JRL ad-Proactive Routing for Efficient Visual Reasoning 3Sorted by 𝐬 𝟐  Sorted by 𝒔 𝟑 𝒅 [CN]       
+
+> [UN]
+> Range Accuracy
+> Sorted by 𝐬 𝟏
+> Percentile Ranges Percentile Ranges Percentile Ranges Percentile Ranges
+> Random sorted
+> (a) Random (b) Token -probability -based (c) Special -token –based (d) Ours: PRP
+
+Fig. 2: Draft model’s percentile-range accuracy comparison of signal ranking across 3 paradigms versus random on MathVerse. Our PRP exhibits the performance retention and distinctive rating distribution, laying a solid foundation for fine-grained routing. 
+
+ditionally predicts the target model’s suitability for each instance, allowing the system to route not only difficult problems but also those that the target model handles particularly well. We then develop a three-stage score-based Proactive Routing scheme for efficient MLLM inference. The system first uses DRL or JRL trained models to produce draft and target ratings. These ratings are then used to rank instances using different score-based strategies. DRL model relies on fine-grained confidence distributions, while JRL model jointly evaluates the capacities of both the draft and target models to perform routing. Our contri-butions are summarized as follows: 
+
+• We are the first to explore proactive rating for reasoning MLLMs. We propose two GRPO-based rating learning methods that enable models to assess both their own solvability and the target model’s capacity for given inputs. 
+
+• We design several score-based inference strategies for efficient visual reason-ing, jointly considering the abilities of both draft and target models. 
+
+• Our methods perform quick routing in the initial stage and deliver compet-itive reasoning performance with query-difficulty perception, while signifi-cantly reducing computation. Notably, JRL could achieve 2.41 × acceleration on MathVista while even slightly outperforming the stronger target model. 
+
+2 Analysis of Previous Routing Paradigm 
+
+Since previous routing methods are primarily designed for LLMs, we first conduct preliminary experiments by directly applying representative approaches to the multimodal reasoning LLMs. Discussed in Sec. 2.1, this leads to several notable insights, further highlighting limitations in Sec. 2.2. 
+
+2.1 Observations Token-probability-based Routing Fails in Multimodal . Token-probability-based Routing Paradigm [31] relies on the output token-level probability distri-bution without training: it computes the mean probability of s1 = 1
+
+> L
+
+PLi=1 pi
+
+over the generated sequence of length L as a routing signal. A low s1 is inter-preted as low confidence, triggering delegation to the target model. This strategy 4 Y. Zhou et al. 
+
+is coarse-grained with indistinctive signal and hinges on a presumed positive cor-relation between s1 and accuracy. However, we find that this correlation breaks down in multimodal settings with long visual reasoning: as shown in Fig. 2(a)(b), when sampling responses on MathVerse [51] and sorting them by descending s1,we observe no clear monotonic relationship between s1 and accuracy. 
+
+Special-token-based Routing Paradigm Exhibits Sensitivity to SFT Data . Special-token-based Routing [10] starts with a pre-sampling stage before training for supervised fine-tuning data preparation. During pre-sampling, cor-rect completions are attached by a [CN] token and incorrect ones by a [UN] to-ken, enabling the representation of the correctness of its own reasoning. During training, for the correct sequence, the entire output sequence is directly fine-tuned, including the response and the [CN] token. For the incorrect sequence, only the [UN] token is fine-tuned to prevent performance decline. At inference time, the special token probabilities at the sequence tail provide the routing signal s2 = p[CN ]   
+
+> p[CN ]+p[U N ]
+
+.This approach requires supervised fine-tuning on both positive and negative trajectories with special tokens, which in turn restricts the model’s search space. Moreover, its performance is highly sensitive to the sam-pling distribution of positive versus negative examples in the dataset. As shown in Fig. 2(c), after trained on diverse math data MMK12 [34], the draft model still struggles to reliably predict [CN] token for the complex thinking. 
+
+2.2 Common Limitations 
+
+Beyond the observations discussed above, these case-level routing paradigms share several common shortcomings. First, both paradigms defer routing de-cisions until the draft model has generated the entire response. As a result, the target model cannot be invoked earlier, which restricts potential efficiency gains and introduces unnecessary latency. Second, they fail to evaluate whether the selected target model is actually suitable for the given query. For instances that exceed the target model’s capability, routing them to the target model leads only to repetitive or low-value reasoning, offering limited performance im-provement while constraining inference speed. These limitations motivate our proactive routing paradigm for efficient visual reasoning. 
+
+3 Training Method 
+
+3.1 Preliminary Group Relative Policy Optimization (GRPO). As a post-training method, GRPO improves reasoning by comparing multiple completions per sample, scor-ing format compliance and answer accuracy, and using the reward differences to compute advantages. In the multimodal setting, the policy model πθ and reference model πθold are initialized with pretrained weights. Given an input 
+
+x = ( P, I, Q ), where P is a predefined formatting prompt and (I, Q ) is an Proactive Routing for Efficient Visual Reasoning 5Format prompt 𝑷 𝒋𝒐𝒊𝒏𝒕 Format prompt 𝑷 𝒅𝒇𝒕   
+
+> …
+> 𝑟 𝑖
+> 𝑑 𝑖
+> 𝑟 𝑖 𝑑 𝑖
+> 𝑟 𝑖 𝑡 𝑖
+> 𝑑 𝑖 𝑡 𝑖
+> 𝑟 1
+> 𝑟 2
+> 𝑟 𝑁 −1
+> 𝑟 𝑁
+> Question 𝑸
+> Draft
+> MLLM
+> 𝑑 1
+> 𝑹 𝒇𝒎𝒕 𝑹 𝒂𝒄𝒄
+> 𝑹 𝒅𝒇𝒕
+
+Reward 
+
+Functions 𝑑 2           
+
+> 𝑑 𝑁
+> 𝑑 𝑁 −1
+> …………
+> 𝑨𝒄𝒄 𝒅𝒇𝒕 =𝟎 .𝟕𝟓
+> 𝑅 𝑑𝑓𝑡 𝑖 =1−|𝑑 𝑖 −𝑨𝒄𝒄 𝒅𝒇𝒕 |
+
+መ𝐴 𝑏𝑎𝑠𝑒 𝑖 
+
+መ𝐴 𝑑 𝑖  
+
+> Advantage Vanishing
+
+0 1    
+
+> 𝑑 𝑁 𝑑 1…𝑨𝒄𝒄 𝒅𝒇𝒕
+> 𝒅 𝑵
+> …
+> 𝒅 𝟏 ′
+> 𝒅 𝟐 ′
+> 𝒅 𝑵 −𝟏 ′
+> 𝐒𝐚𝐦𝐩𝐥𝐢𝐧𝐠 Interval 𝑺
+> Random
+> Samplin g
+> 𝒅 𝟏
+> 𝒅 𝟐
+> 𝒅 𝑵
+> 𝒅 𝑵 −𝟏
+
+Confidence 
+
+Token 
+
+Substitution    
+
+> Dynamic Score Substitution
+> 𝑟 1
+> 𝑟 2
+> 𝑟 𝑁 −1
+> 𝑟 𝑁
+> Question 𝑸 𝑑 1
+> 𝑹 𝒇𝒎𝒕 𝑹 𝒂𝒄𝒄
+> 𝑹 𝒅𝒇𝒕
+
+Reward 
+
+Functions 𝑑 2  
+
+> 𝑑 𝑁
+> 𝑑 𝑁 −1
+> …………
+
+መ𝐴 𝑏𝑎𝑠𝑒 𝑖 
+
+መ𝐴 d𝑖        
+
+> 𝑡 1
+> 𝑡 2
+> 𝑡 𝑁
+> 𝑡 𝑁 −1
+> 𝑅 𝑡𝑔𝑡 𝑖 =1−|𝑡 𝑖 −𝑨𝒄𝒄 𝒕𝒈𝒕 |
+> Question 𝑸
+> 𝑨𝒄𝒄 𝒕𝒈𝒕
+> 𝑹 𝒕𝒈𝒕
+> …
+
+መ𝐴 𝑡 𝑖 
+
+> 𝑫𝒊𝒄𝒕 𝑨𝒄𝒄 𝒕𝒈𝒕
+> 𝑨𝒄𝒄 𝒕𝒈𝒕
+> Target Response Sampling
+> Target
+> MLLM
+> Dynamic Score Substitution
+
+ℒ𝑑 𝑖  ℒ𝑏𝑎𝑠𝑒 𝑖  ℒ𝑑 𝑖  ℒ𝑏𝑎𝑠𝑒 𝑖 
+
+ℒ𝑡 𝑖    
+
+> Draft
+> MLLM
+> 𝑑 𝑖
+> 𝑟 𝑖
+> 𝑡 𝑖
+> 𝑑 𝑖
+> 𝑟 𝑖
+> Sampling*M
+> Retrieval Image 𝑰
+> 𝑰
+> 𝐼
+> 𝓜 𝒅 𝒅𝒇𝒕 𝓜 𝒅 𝒋𝒐𝒊𝒏𝒕
+> 𝓜 𝒕 Task -specific Optimization Task -specific Optimization
+
+Fig. 3: Left: Illustration of Draft Rating Learning. We design reward Rdf t and adopt Dynamic Score Substitution to avoid advantage vanishing, while Task-specific Opti-mization independently optimizes the Rdf t -related tokens during training. Right: Illus-tration of Joint Rating Learning with the target model. We extend the Draft Rating Learning pipeline by introducing Rtgt , which is trained with pre-sampled Acc tgt as supervision, thereby accounting for the capability of the target model. 
+
+image-question pair from dataset D, the reference model πθold samples N can-didate outputs O = {o1, o 2, . . . , o N }. For each candidate oi, we compute a for-mat reward Rf mt i and an accuracy reward Racc i , and define the total reward: 
+
+Rbase i = Rf mt i + Racc i . Within each group of N candidates, we estimate the advantage of oi relative to the group average, 
+
+ˆAbase i = Rbase i − mean  {Rbase j }Nj=1 
+
+
+
+std  {Rbase j }Nj=1 
+
+ , (1) Here, the mean and standard deviation are computed over the N candidates in the same group. Given these advantages, we apply a single-update loss similar to standard GRPO without KL penalty or clipping: 
+
+Lbase i (θ) = −Em
+
+ πθ (oi,m |x, o i,<m )
+
+πθold (oi,m |x, o i,<m )
+
+
+
+ˆAbase i , (2) where oi,<m is the prefix up to token m. Building on this objective, we extend GRPO to endow the model with confidence estimation for multimodal inputs before producing long responses, which supports both self-evaluation and cross-model evaluation. 
+
+3.2 Draft Rating Learning (DRL) 
+
+As shown in Fig. 3(left), we introduce a formatted prompt Pdf t that instructs the draft model Mddf t to produce a draft score before the think phase begins. This score reflects the model’s self-assessed confidence for the input x. The output of 
+
+Mddf t , denoted oi, contains two parts: di, the draft score, and ri, the remaining segment that includes the format markers, the reasoning, and the final answer. 6 Y. Zhou et al. 
+
+To train this capability effectively, we define a reward for draft rating learning, adopt a dynamic score substitution strategy to prevent advantage vanishing, and apply task-specific optimization to preserve overall performance. 
+
+Draft Rating Reward. To train the draft model to rate both the input x and its own capability, we define the Draft Rating Reward. Given N sampled outputs 
+
+O = {oi}Ni=1 , we first estimate the accuracy on this set. Specifically, we compute the mean draft accuracy as, 
+
+Acc dft = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+1{correct (oi, A)}, (3) where correct (oi, A) denotes that the answer extracted from oi is consistent with the answer A of (I, Q ).We then utilize Acc df t as the ground-truth label for the draft rating di.In this way, for inputs that are simple and within the model’s competence, di
+
+should approach 1; conversely, for inputs that are difficult or consistently produce incorrect solutions, di should approach 0. Accordingly, we define a simple yet effective draft rating reward: 
+
+Rdft i =
+
+(
+
+1 − | di − Acc dft | , if 0 ⩽ di ⩽ 1
+
+−1, otherwise  (4) To keep rewards comparable across samples and to prioritize cases with larger score discrepancies, we compute the advantage ˆAdi by mean-centering without standard-deviation scaling, 
+
+ˆAdi = Rdft i − 1
+
+N
+
+> N
+
+X
+
+> j=1
+
+Rdft j (5) 
+
+Dynamic Score Substitution. During training, we observe that the draft scores {d1, . . . , d N } produced by the model often collapse to nearly identical val-ues. As a result, both the reward and advantage diminish, and the model stops learning a meaningful rating. We define Advantage Vanishing to occur when 
+
+|mean ({di}Ni=1 ) − Acc df t | > μ and std ({di}Ni=1 ) < σ , where μ and σ are hyper-parameters. In this regime, the model tends to overuse locally high-probability tokens when predicting scores. To counteract this, we propose Dynamic Score Substitution. Specifically, we construct a sampling interval S as, 
+
+S ∈ [ max(0 , min( dN , Acc dft ) − Acc dft − dN ),
+
+min(max( dN , Acc dft ) + Acc dft − dN , 1)] .
+
+Within S, we randomly sample {d′
+
+> 1
+
+, . . . , d ′
+
+> N−1
+
+} to substitute {d1, . . . , d N−1} in O.By construction, each d′ 
+
+> i
+
+lies closer to Acc df t than di, thereby yielding a higher reward R′ 
+
+> df t i
+
+. To amplify the advantage of the substituted scores while reducing the advantage of dN , we replace ˆAdi with ˆA′ 
+
+> di
+
+as Proactive Routing for Efficient Visual Reasoning 7
+
+ˆA′ 
+
+> di
+
+=
+
+(
+
+R′ 
+
+> dft i
+
+− Rdft N , i ∈ { 1, . . . , N − 1}− PN −1 
+
+> j=1
+
+ˆA′ 
+
+> dj
+
+, i = N (6) 
+
+Task-specific Optimization. Since ˆAbase i is to optimize format and correct-ness, and ˆAdi is to accurately assess the existing model’s capabilities, directly mixing ˆAbase i and ˆAdi to optimize all output tokens oi can lead to damage to the original performance and inefficiency in rating learning. Therefore, we propose Task-specific Optimization. Specifically, we optimize the corresponding token parts, di and ri, using ˆAdi and ˆAbase i , respectively, with weight α:
+
+Ldft i (θ) = Lbase i (θ) + αLdi (θ)= − Em
+
+πθ (ri,m |x, d i,<m , r i,<m )
+
+πθold (ri,m |x, d i,<m , r i,<m ) ˆAbase i
+
+− αEm
+
+πθ (di,m |x, d i,<m , r i,<m )
+
+πθold (di,m |x, d i,<m , r i,<m ) ˆAdi . (7) 
+
+3.3 Joint Rating Learning with Target model (JRL) 
+
+As shown in Fig. 3(right), Pjoint requires the model to output a target score 
+
+ti prior to draft score di and think phase, which denotes the target model’s assessment of the input x. Different from Eq. (3), which calculates Acc df t during training, we perform M sampling iterations on each sample in D using the target model before training the draft model, and record the average accuracy of M
+
+outputs in Dict Acc tgt . During training, we retrieve the corresponding Acc tgt as the ground-truth label of ti. We apply formulas similar to Eq. (4) and Eq. (5) to obtain Rtgt i and ˆAti , and employ Dynamic Score Substitution to avoid advantage vanishing, along with task-specific optimization with weight β for target rating training: 
+
+Ljoint i (θ) = Lbase i (θ) + αLdi (θ) + βLti (θ)= − Em
+
+πθ (ri,m |x, t i,<m , d i,<m , r i,<m )
+
+πθold (ri,m |x, t i,<m , d i,<m , r i,<m ) ˆAbase i
+
+− αEm
+
+πθ (di,m |x, t i,<m , d i,<m , r i,<m )
+
+πθold (di,m |x, t i,<m , d i,<m , r i,<m ) ˆAdi
+
+− βEm
+
+πθ (ti,m |x, t i,<m , d i,<m , r i,<m )
+
+πθold (ti,m |x, t i,<m , d i,<m , r i,<m ) ˆAti . (8) 
+
+4 Proactive Routing Method 
+
+In this section, we first establish the correlation between the predicted ratings and accuracy. Building on this, we then design a three-stage proactive routing 8 Y. Zhou et al. 
+
+Fig. 4: Left: The per-score instance count and accuracy of Mddf t on MathVerse. Right-1: Mdjoint ’s draft score distribution on MathVerse and the draft’s corresponding ac-curacy. Right-2: The target score distribution and Mt’s corresponding accuracy. In all plots, bars denote the number of samples in each score bin, and lines indicate the accuracy within each bin. 𝑑 1= 0.99                                   
+
+> 𝑑 2=0.00
+> 𝑡 1=0.08 𝑑 1=0.99
+> 𝑡 2=0.86 𝑑 2=0.20
+> :<confidence> 0.99 </confidence>
+> :<confidence> 0.00 </confidence>
+> 𝑑 1>𝑻 𝒅𝒇𝒕
+> 𝑑 2<𝑻 𝒅𝒇𝒕
+> Continue
+> Generating
+> Switch and
+> Regenerate
+> :<target> 0.08 </target>
+> <confidence> 0.99 </confidence>
+> :<target> 0.86 </target>
+> <confidence> 0.20 </confidence>
+> 𝑑 1+𝑑 1−𝑡 1
+> S𝑐𝑎𝑙𝑒 >𝑻 𝒋𝒐𝒊𝒏𝒕
+> 𝑑 2+𝑑 2−𝑡 2
+> S𝑐𝑎𝑙𝑒 <𝑻 𝒋𝒐𝒊𝒏𝒕
+> Continue
+> Generating
+> Switch and
+> Regenerate
+> 3. Decision -making 2. Evaluation 1. Pre -generating
+> Format prompt 𝑷 𝒅𝒇𝒕
+> Question 𝑸 𝟏
+> 𝑰 𝟏
+> Format prompt 𝑷 𝒅𝒇𝒕
+> Question 𝑸 𝟐
+> 𝑰 𝟐
+> Format prompt 𝑷 𝒋𝒐𝒊𝒏𝒕
+> Question 𝑸 𝟏
+> 𝑰 𝟏
+> Format prompt 𝑷 𝒋𝒐𝒊𝒏𝒕
+> Question 𝑸 𝟐
+> 𝑰 𝟐
+> Rating
+> 𝓜 𝒅 𝒅𝒇𝒕 +𝓜 𝒕
+> 𝓜 𝒅 𝒋𝒐𝒊𝒏𝒕 +𝓜 𝒕
+> Percentile Ranges
+> Percentile Ranges
+> Range  Accuracy  Range  Accuracy
+> Internal Probability Ranking
+> Rating
+
+Fig. 5: Left: Three-stage Score-based Proactive Routing. Right: Internal Probability Ranking exhibits a strong correlation with accuracy. 
+
+scheme that delivers efficient acceleration while preserving performance. More-over, we introduce a fine-grained partitioning method based on the token-level probabilities of predicted ratings, thereby enabling a more precise evaluation stage. We further analyze the superiority and practicality of our routing method. 
+
+4.1 Correlation between Ratings and Accuracy 
+
+As shown in Fig. 4, we analyze the ratings produced by Mddf t (trained in Sec. 3.2) and Mdjoint (trained in Sec. 3.3) on MathVerse [51]. The left panel reports the relationship between the ratings from Mddf t during inference and accuracy. The two right panels, under Mdjoint , respectively show (i) the draft model’s score bins and its corresponding accuracies, and (ii) Mt’s score bins and the target model’s accuracies. Across all settings, we observe a clear trend: higher score bins correspond to higher correctness. Minor deviations in a few bins arise primarily from limited sample counts within those intervals. Over-all, the yellow bins exhibit substantially higher accuracy than the purple bins, demonstrating that our approach learns meaningful, discriminative ratings that correlate strongly with accuracy. We further demonstrate the advantages of our ratings by the correlation of interval accuracy and ratings in Tab. 1. Proactive Routing for Efficient Visual Reasoning 9
+
+4.2 Three-stage Score-based Proactive Routing 
+
+Our Proactive Routing strategy involves Mddf t and Mdjoint as routing models and follows the rating ranking in Sec. 4.1. It proceeds in three stages: 
+
+– Pre-generating: Before the model starts thinking and answering, we prompt 
+
+Mddf t or Mdjoint to generate a short prefix until a complete rating snippet is obtained. From this snippet, we extract: (i) the self-assessed confidence d
+
+of Mddf t ; (ii) both the confidence d of Mdjoint and the predicted confidence 
+
+t of Mt.
+
+– Evaluation: When Mddf t serves as the routing model, we directly employ 
+
+d as the score. When Mdjoint serves as the routing model, we combine d
+
+and t to reflect two priorities: (i) routing instances that the draft model can solve correctly to the draft model; (ii) preferring the draft model when Mt
+
+is likely to fail due to capability mismatch. Concretely, for datasets where easy instances can be solved with high confidence, we adopt a draft-rating-first scoring strategy rule and set s = d + d−tτ ; whereas for more challenging datasets-where the system has generally low confidence, we adopt target-rating-first scoring rule and set s = t + t−dτ , where τ controls the priority given to capability gap between Mdjoint and Mt.
+
+– Decision-making: With Mddf t as the router, if d > T df t , we route the instance to Mddf t to continue generating a full response; otherwise, we route it to Mt. With Mdjoint for routing, challenging but solvable samples have lower scores compared to overly difficult ones, which means we prioritize assigning more suitable hard samples to the target model.If s>T joint , Mdjoint 
+
+is confident, and we route to Mdjoint and continue generating. If s<T joint ,
+
+Mdjoint is uncertain with lower expected accuracy, and we route to Mt.
+
+4.3 Internal Probability Ranking 
+
+Relying solely on the rating score to partition samples is too coarse; many exam-ples cluster within the same score band, leaving no principled way to prioritize them. As shown in the upper-right of Fig. 5, we first sort MathVerse samples by score and measure range accuracy across percentiles. Although the high-score (yellow) region covers a large proportion, its internal accuracy is highly hetero-geneous. To resolve this, we propose Internal Probability Ranking, which refines prioritization within the same score band by using the logits of the rating tokens. Concretely, considering a score such as “0.98”, we examine the token position corresponding to “9” in the rating string and extract its logits vector z over the full vocabulary. Let D = {0, 1, . . . , 9} denote the digit-token set, and let pi be the probability assigned to digit i under the full-vocabulary softmax at that position, i.e., pi = softmax( z)i for i ∈ D. Let pmax = max i∈D pi. We then define the within-band priority score as: 
+
+p =
+
+( 1 
+
+> |D|
+
+pmax 
+
+P 
+
+> i∈D
+
+(pi − 1
+
+> |D|
+
+P 
+
+> j∈D
+
+pj )2, if d > 5
+
+− 1 
+
+> |D|
+
+pmax 
+
+P 
+
+> i∈D
+
+(pi − 1
+
+> |D|
+
+P 
+
+> j∈D
+
+pj )2, else  (9) 10 Y. Zhou et al. 𝑡𝑖𝑚𝑒 𝑝𝑟𝑒𝑓𝑖𝑥 𝑑𝑟𝑎𝑓𝑡                                                                             
+
+> 𝑡𝑖𝑚𝑒 𝑑𝑟𝑎𝑓𝑡
+> 𝑡𝑖𝑚𝑒 𝑡𝑎𝑟𝑔𝑒𝑡
+> 𝑡𝑖𝑚𝑒 𝑝𝑟𝑒𝑓𝑖𝑥 𝑗𝑜𝑖𝑛𝑡
+> 𝑡𝑖𝑚𝑒 𝑡𝑎𝑟𝑔𝑒𝑡
+> 𝑡𝑖𝑚𝑒 𝑡𝑎𝑟𝑔𝑒𝑡
+> 𝑡𝑖𝑚𝑒 𝑑𝑟𝑎𝑓𝑡 𝑡𝑖𝑚𝑒 𝑑𝑟𝑎𝑓𝑡
+> (a) Previous Routing after completion (b) Proactive Routing with 𝓜 𝒅 𝒅𝒇𝒕 (c) Proactive Routing with 𝓜 𝒅 𝒋𝒐𝒊𝒏𝒕
+> Average target model inference time 𝑡𝑖𝑚𝑒 𝑡𝑎𝑟𝑔𝑒𝑡 = 101 s
+> Average draft model inference time 𝑡𝑖𝑚𝑒 𝑑𝑟𝑎𝑓𝑡 = 11.02s 𝑴𝒂𝒕𝒉𝑽 𝒆𝒓𝒔𝒆
+> 𝑴𝒂𝒕𝒉𝑽 𝒊𝒔𝒕𝒂 Average target model inference time 𝑡𝑖𝑚𝑒 𝑡𝑎𝑟𝑔𝑒𝑡 = 64.81s
+> Average draft model inference time 𝑡𝑖𝑚𝑒 𝑑𝑟𝑎𝑓𝑡 = 4.51s
+> 𝑡𝑖𝑚𝑒 𝑝𝑟𝑒𝑓𝑖𝑥 𝑑𝑟𝑎𝑓𝑡 = 0.14 s
+> 𝑡𝑖𝑚𝑒 𝑝𝑟𝑒𝑓𝑖𝑥 𝑑𝑟𝑎𝑓𝑡 = 0.12s
+> 𝑡𝑖𝑚𝑒 𝑝𝑟𝑒𝑓𝑖𝑥 𝑗𝑜𝑖𝑛𝑡 = 0.16 s
+> 𝑡𝑖𝑚𝑒 𝑝𝑟𝑒𝑓𝑖𝑥 𝑗𝑜𝑖𝑛𝑡 =0.13 s
+> 𝑆 𝑝𝑒𝑒𝑑𝑢𝑝 of making decision =73.47 x
+> 𝑆𝑝𝑒𝑒𝑑𝑢𝑝 of making decision =37.58x
+> 𝑆𝑝𝑒𝑒𝑑𝑢𝑝 of making decision =68.88 x
+> 𝑆𝑝𝑒𝑒𝑑𝑢𝑝 of making decision =34.69x
+> 𝑇 𝑖𝑚𝑒 𝑠𝑎𝑣𝑖𝑛𝑔 𝑓 𝑜𝑟 𝑡𝑎𝑟𝑔𝑒𝑡 −𝑟𝑜𝑢𝑡𝑒𝑑 𝑠𝑎𝑚𝑝𝑙𝑒 :10 .88s 𝑇 𝑖𝑚𝑒 𝑠𝑎𝑣𝑖𝑛𝑔 𝑓𝑜𝑟 𝑡𝑎𝑟𝑔𝑒𝑡 −𝑟𝑜𝑢𝑡𝑒𝑑 𝑠𝑎𝑚𝑝𝑙𝑒 :10 .86s
+> 𝑇 𝑖𝑚𝑒 𝑠𝑎𝑣𝑖𝑛𝑔 𝑓𝑜𝑟 𝑡𝑎𝑟𝑔𝑒𝑡 −𝑟𝑜𝑢𝑡𝑒𝑑 𝑠𝑎𝑚𝑝𝑙𝑒 :4.39s 𝑇 𝑖𝑚𝑒 𝑠𝑎𝑣𝑖𝑛𝑔 𝑓𝑜𝑟 𝑡𝑎𝑟𝑔𝑒𝑡 −𝑟𝑜𝑢𝑡𝑒𝑑 𝑠𝑎𝑚𝑝𝑙𝑒 :4.38s
+> 𝑆 𝑝𝑒𝑒𝑑𝑢𝑝 of the routed sample =1.11 x𝑆 𝑝𝑒𝑒𝑑𝑢𝑝 of the routed sample =1.11 x
+> 𝑆 𝑝𝑒𝑒𝑑𝑢𝑝 of the routed sample =1.07 x𝑆 𝑝𝑒𝑒𝑑𝑢𝑝 of the routed sample =1.07 x
+
+Fig. 6: Comparison of decision latency between traditional routing-after-completion and our proactive routing schemes ( Mddf t and Mdjoint ). 
+
+Intuitively, when scores are high, a more concentrated digit distribution together with a larger pmax indicates greater certainty, which yields a larger p and cor-relates with higher accuracy; for low scores, the trend reverses. Finally, we sort samples within each score band by p. As shown in the lower-right of Fig. 5, the interal accuracy then exhibits a clear stepwise pattern, which enables precise and flexible routing. We implement this by augmenting the ratings with their within-band priorities, setting d′ = d + pd and t′ = t + pt. Replacing the second-stage evaluation rating d and t with d′ and t′ yields finer-grained assessments and more reliable routing within score ranges. 
+
+4.4 Superiority and Practicality of PRP 
+
+Fig. 6 compares the end-to-end latency of routing schemes on routed-to-target cases. In the conventional “route-after-completion” setting, the total time is 
+
+time draf t + time target . With proactive routing, the draft model only gener-ates a short prefix before making a routing decision, so the total time becomes 
+
+time pref ix draf t + time target . This saves time draf t − time pref ix draf t per routed ex-ample. On both MathVista and MathVerse, both DRL and JRL save nearly the entire inference time of the draft model, thereby advancing the routing decision to the initial stage of inference. This enables the swift redirection of challenging inputs to a more powerful target model, meaning our decision lead time is dozens of times earlier compared to post-inference routing. We provide two easy strate-gies for threshold setting as examples to illustrate the practicality of the routing method: (a) Task-Specific Calibration with Validation Set: For specific domains with a validation set, such as mathematical reasoning in MathVista, we use the validation set routing curve to find the point that achieves the best trade-off be-tween performance and efficiency. Then, we can obtain the rating of the sample at that point. We route samples based on this rating as a threshold to achieve similar performance and speedup on test data. In Fig. 8(f), we use 30% of Math-Vista for validation and 70% for testing. Similar trends in the curves indicate the effectiveness of this strategy. (b) Dynamic Pre-scoring without Validation Set: 
+
+In the absence of a validation set, we process concurrent requests as a batch at the same time. For query batches, we perform a rapid proactive rating (taking approximately 1% of the total draft latency shown in Fig. 6). By sorting the ratings within a batch, we determine the switching threshold based on limited Proactive Routing for Efficient Visual Reasoning 11 
+
+computational resources, allowing us to dynamically allocate these examples to maximize performance within the constraints of available resources. 
+
+5 Experiments 
+
+5.1 Setup Evaluation Tasks. We evaluate the effectiveness of PRP across two repre-sentative domains. We first validate it in a simple question-answering setting, using 15K ChartQA [32] training subset for training and 2.5K test data for in-domain evaluation. The second domain targets mathematical reasoning: we simply employ 15K MMK12 [34] for confidence learning. We adopt two widely used benchmarks that span a broad range of problem types and difficulty levels, MathVista [29] and MathVerse [51]. We also provide the results on M3CoT [7] in Sec. A.4 to further illustrate our effectiveness and generalization. 
+
+Reasoning MLLMs. For QA domain, we directly train Qwen2.5-VL-3B [1] with DRL to obtain Mddf t . We use Ovis-2.5-9B [30] as the target model. For math domain, we first perform GRPO to empower Qwen2.5-VL-7B [1] with strong reasoning ability, then perform DRL and JRL on the GRPO-trained model for better efficiency, while Skywork-R1V-38B [43] is adopted as Mt.
+
+Implementation Details. α and β are set to 1.5. Rollout N is set to 4 and sample number M for JRL is 16 . Mddf t and Mdjoint are trained for 3 epochs with batch-size of 140 and a learning rate of 5e − 7. For evaluation, the thresholds 
+
+Tdf t and Tjoint are controlled by the fraction of samples routed to Mt (pt%). 
+
+Baselines. To the best of our knowledge, we are the first to introduce instance-level routing for multimodal reasoning. Accordingly, we compare against a ran-dom routing baseline and two paradigms described in Sec. 2: 
+
+• Random . We use our trained Mddf t or Mdjoint to inference and assign instances randomly to draft and target according to pt%.
+
+• Token-probability-based ( P aradigm 1). On ChartQA, we adopt Qwen2.5-VL-3B as the baseline; on MathVerse and MathVista, we use the GRPO-trained model as the baseline. For each example, we compute s1, sort in-stances by s1, and perform routing based on this ranking. 
+
+• Special-token-based ( P aradigm 2). On ChartQA, we initialize training from Qwen2.5-VL-3B; on MathVerse and MathVista, we initialize from the GRPO-trained model. For training, each question follows the same sampling budget as our main training setup: we sample N times per question and append [CN] for correct and [UN] for incorrect, to perform SFT for 3 epochs. At inference, we rank instances by s2, and route accordingly. 
+
+5.2 Overall Rating and Routing Performance Analysis 
+
+As shown in Tab. 1, we evaluate the overall rating and routing performance of various paradigms across 3 benchmarks. Overall Rating Performance: We calculates the Spearman correlation coefficient between the ratings assigned by 12 Y. Zhou et al. 
+
+Table 1: Spearman Correlations between rating rank and accuracy show the superi-ority of our ratings. Area Under the Curve(AUC) for routing demonstrates the overall routing effectiveness.                                          
+
+> Dataset ChartQA MathVerse MathVista Paradigm Random P1P2DRL JRL Random P1P2DRL JRL Random P1P2DRL JRL Spearman of Rank&Acc ↓0.00 -0.34 -0.25 -0.49 -0.50 -0.01 -0.01 -0.11 -0.32 -0.30 0.00 0.12 -0.19 -0.34 -0.35 Area Under Curve(%) 78.87 80.74 73.30 81.97 83.61 56.13 56.72 56.03 55.44 56.97 72.09 72.69 72.19 73.29 73.36 (a) ChartQA (b) MathVista (c) MathVerse
+> Performance
+> Improvement
+> By GRPO
+> Performance
+> Deterioration
+> using P2
+> 84.72
+> 84.39
+> Performance
+> Retention
+
+Fig. 7: Detailed comparison of our proposed routing with random and 2 previous paradigm on ChartQA, MathVista, and MathVerse. 
+
+the draft model and the actual accuracy (ranked from correct to incorrect). A stronger negative correlation indicates that the ratings more accurately reflects its actual performance. Our DRL and JRL consistently achieve higher correla-tions, proving that our ratings are more closely aligned with true model correct-ness. Overall Routing Performance: Area Under the Curve (AUC) is derived from the routing performance curve across various allocation ratios between the draft and target models (See Fig. 7). This reflects the overall effectiveness of the routing process across all possible target allocation pt levels. We outperform alternative methods in nearly all scenarios, with the notable exception of DRL on MathVista. In this specific case, the DRL performance even falls below the random setting. This occurs because there are instances where the draft model is incapable of solving the task, but the target model also fails; conversely, in tasks where the draft model performs well, the target model exhibits even greater su-periority. Because DRL focuses solely on assessing the draft model’s capabilities while ignoring the target model’s potential, it may incorrectly prioritize samples that would have provided a higher marginal contribution to overall accuracy if assigned differently. We provide a more granular analysis in Sec. A.2. 
+
+5.3 Detailed Evaluation Results on ChartQA 
+
+As shown in Fig. 7(a), we evaluate in-domain DRL-trained Mddf t ’s and JRL-trained Mdjoint ’s routing capability using scores with Internal Probability Rank-ing. Compared to P aradigm 1 directly applied to the Qwen2.5-VL-3B model, our DRL-trained Mddf t not only improves model performance but also produces re-liable scores, enabling efficient routing. By contrast, P aradigm 2 exhibits a much more severe performance degradation. Notably, DRL can stably maintain, and Proactive Routing for Efficient Visual Reasoning 13 
+
+Table 2: Latency and Accuracy evaluations of our DRL and JRL along with baseline methods on MathVista and MathVerse benchmarks.                                                                                                                    
+
+> Model MathVista MathVerse Draft (1 −pt)% Accuracy Avg. Latency(s) Speedup Draft (1 −pt)% Accuracy Avg. Latency(s) Speedup
+> Mt(Skywork-R1V-38B) -74.1% 64.8 --62.4% 101.4 -
+> DRL-trained
+> Mddf t (7B)
+> 100% 69.9% 10.2 -100% 50.0% 11.8 -20% 75.4% 55.5 1.17x 20% 59.8% 86.4 1.17x 30% 75.3% 53.5 1.21x 30% 58.7% 78.1 1.30x 50% 74.3% 43.6 1.49x 40% 57.2% 69.1 1.47x
+> JRL-trained
+> Mdjoint (7B)
+> 100% 70.0% 4.9 -100% 49.9% 10.9 -30% 74.4% 47.6 1.36x 20% 61.2% 82.1 1.24x 40% 74.1% 40.1 1.62x 25% 60.77% 76.6 1.32x 50% 74.0% 32.6 1.99x 30% 60.4% 71.5 1.42x 60% 74.2% 26.9 2.41x 50% 58.5% 55.4 1.83x
+> Random 60% 71.6% 27.5 2.36x 50% 56.4% 56.0 1.81x
+> Token-probability-based ( P aradigm 1)60% 72.2% 29.5 2.19x 50% 56.9% 56.3 1.80x
+> Special-token-based ( P aradigm 2)60% 72.1% 26.9 2.41x 50% 56.3% 55.6 1.82x
+> Ours 60% 74.2% 26.9 2.41x 50% 58.5% 55.4 1.83x
+
+even enhance, the target model performance from 84 .39 to 84 .72 when pt > 40 ,which demonstrate the feasibility and reliability of our PRP on simple in-domain tasks. JRL can also stably maintain the target model performance when pt > 15 .
+
+5.4 Detailed Evaluation Results on Math Domain 
+
+We present the detailed results of our Joint Rating Learning with Target Model (JRL) strategy compared with Random, P aradigm 1, and P aradigm 2 in Fig. 7. Our JRL consistently outperforms all other strategies across different target allocation ratios, with even larger gains when more queries are routed to the target model. This demonstrates that JRL is a more effective routing mechanism for MLLMs and directly addresses the limitations discussed in Sec. 2.2. 
+
+Efficiency Measurements. Table 2 summarizes the performance and speedup of our DRL and JRL strategies on the MathVista and MathVerse benchmarks. For Draft Rating Learning (DRL), we observe that the overall performance with DRL-based routing achieves lossless performance on MathVista with approxi-mately 1.5 × acceleration, demonstrating the effectiveness of confidence learn-ing. With JRL, the routing performance improves substantially once the target model’s capability is incorporated. For example, on MathVerse, Mdjoint main-tains a competitive 60.4% accuracy with a 1.42 × speedup. On MathVista, JRL performs even better: at a 60% routing ratio, Mdjoint surpasses Mt while achiev-ing a 2.41 × speedup. 
+
+5.5 Ablation Studies Internal Probability Ranking (IPR) . We validate the effectiveness of IPR on ChartQA and MathVista. Specifically, we compare (i) routing based solely on raw confidence ratings, and (ii) routing with additional Internal Probability Ranking within each score range. As shown in Fig. 8(a)(b), the latter consistently achieves better routing quality due to the more orderly score distribution within each bin. This demonstrates that incorporating internal probability provides finer-grained confidence calibration for the draft model, leading to improved performance. 14 Y. Zhou et al. Please directly answer the 
+
+question and provide the 
+
+correct option letter, e.g., A, B, C, 
+
+D. Question: R, S, T are midpoints of 
+
+A C, A B, and C B. Find M B. Choices: 
+
+A:6 B:8 C:10 D:12 
+
+<t arge t> 0.99 </ target><confidence >0.24 </confidence> 
+
+<think> The problem involves a triangle \\(ABC \\) with 
+
+points \\(R \\), \\(S \\), and \\(T \\) being the midpoints of 
+
+\\(AC \\), \\(AB \\), and \\(CB \\) respectively. By the 
+
+Midsegment Theorem, \\(RS \\) is parallel to …n the 
+
+lengths \\(AR = 4 \\) and \\(AS = 16 \\), and using the 
+
+properties of the cevians and the midpoints, we can find 
+
+that \\(MB = 10 \\). \n\nTherefore , the answer is 
+
+\\(\\boxed{C} \\).</think> \n<answer>$10$</answer> 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 < 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+Okay, so I need to find the length of MB in this figure. Let me see. The problem mentions that R, S, and T are 
+
+midpoints of AC, AB, and CB respectively. Hmm, maybe using properties related to midsegments or triangles? \n\nFirst , let me try to visualize the figure based on the description. There's a triangle with points A, B, C. Points R, S, T are mid poi nts, so 
+
+connecting them might form midlines. The figure has some numbers labeled: 4, 7, 16. Maybe those are lengths of certain segmen ts? \n\nWait , looking at the image description (even though I can't see the image), the labels include numbers like 4, 7, 16 
+
+near points R, M, etc. Maybe the key is to apply the Midline Theorem or use coordinate geometry. \n\nLet me think step by step. Since R, S, T are midpoints, perhaps quadrilaterals formed by them have some parallelogram properties? Or maybe using 
+
+vectors? \n\nAlternatively , since midpoints are involved, maybe the problem involves breaking down the figure into smaller triangles where lengths can be related through ratios. \n\nLooking at the given numbers: there's a 4 between R and somewhere, 
+
+a 7 near point T, and a 16 marked near point S. The question is asking for MB. \n\nMaybe setting coordinates would help. Let me assign coordinates to the points to calculate distances. \n\nLet's assume coordinates for simplicity. Let me place point A 
+
+at (0, 0), point B at (2b, 0), and point C somewhere. Since R is the midpoint of AC, S is the midpoint of AB, and T is the mi dpo int of CB. \n\nWait , maybe it's better to use vectors here. Alternatively, since midpoints are involved, the midline theorem 
+
+states that the line segment connecting midpoints of two sides is parallel to the third side and half its length. \n\nPerhaps triangle AMB or something similar can be considered. Alternatively, maybe considering the centroid? But centroids divide 
+
+medians in 2:1 ratio. However, the points R, S, T are midpoints, so maybe M is the intersection point of the medians? \n\nWait , in the figure description, there are several lines intersecting at M. Maybe M is the centroid? If so, then the medians 
+
+intersect there, and the lengths could be related via the centroid's properties. \n\nBut the given numbers are 4,7,16. Let me see if I can find relations. \n\nAlternatively , maybe using coordinate geometry. Let me try that approach. \n\nLet me set 
+
+coordinates: \n\nLet’s suppose triangle ABC, with coordinates: \n\nLet me denote coordinates: \n\nLet’s assume point A is at (0,0). \n\nLet me let point C be at (2c, 0), but maybe this is getting too complicated. Perhaps another approach. \n\nWait , maybe 
+
+the varignon theorem? The Varignon theorem states that the midpoints of the sides of a quadrilateral form a parallelogram, but here we have a triangle. \n\nAlternatively , since R, S, T are midpoints, connecting them might form the medial triangle, 
+
+which is similar to the original triangle with half the side lengths. \n\nBut how does point M come into play here? \n\nLooking back at the image description: the figure has points labeled with numbers: 4,7,16. The number 16 is near point S, which is th e
+
+midpoint of AB. The 4 is near point R, and 7 near point T. \n\nPerhaps the key is to consider the lines connecting these midpoints and set up equations based on the given lengths. \n\nAlternatively , mass point geometry might be useful here. Since M is 
+
+the intersection point of cevians in the triangle. \n\nWait , maybe I should look for similar triangles or apply Menelaus' theorem. \n\nThis is getting a bit confusing without seeing the exact figure. Maybe I need to make some assumptions based on 
+
+standard configurations. \n\nAssuming that AR = RC because R is the midpoint of AC. Similarly, S is the midpoint of AB, so AS = SB. T is the midpoint of CB, so CT = TB. \n\nIf I consider triangle ABC with midpoints R, S, T, then the lines connecting 
+
+these midpoints would form the medial triangle. The point M might be the centroid, but given the numbers provided, perhaps th ere are specific segments given. \n\nWait , the number 16 is marked near point S, which might indicate a length related to 
+
+S. Maybe SM is 16? Or perhaps AS is 16? The description says \"16 \" is written next to the pink mark near S. \n\nHmm , this is tricky. Maybe I need to try coordinate geometry with variables. \n\nLet me try assigning coordinates: \n\nLet’s place point A at 
+
+(0,0). \n\nLet’s let point B be at (2b, 0), so that the midpoint S of AB is at (b, 0). \n\nPoint C can be placed somewhere, say ( c_x , c_y ). Then the midpoint R of AC would be at (( c_x )/2, ( c_y )/2). \n\nThe midpoint T of CB would be at ((2b + c_x )/2, (0 + 
+
+c_y )/2) = (b + c_x /2, c_y /2). \n\nNow , the point M is likely the intersection point of the medians or some other lines. \n\nBut without knowing exactly how the points are connected, it's hard to proceed. Maybe the figure has lines from A to T, from C to 
+
+S, intersecting at M? \n\nAlternatively , maybe lines from R, S, T intersect at M, and the given numbers are lengths along those lines. \n\nThis is getting too convoluted. Maybe there's a property or theorem that directly applies here. \n\nWait , another 
+
+thought: in a triangle, the length from the midpoint to a vertex can be related via the formula involving the sides. \n\nAlternatively , since R, S, T are midpoints, perhaps quadrilateral RST is part of the figure, and M is their intersection point? \n\nI'm 
+
+stuck here. Maybe I should look for an answer choice that fits common triangle proportion problems. \n\nThe options are 6,8,10,12. Maybe 8? \n\nWait , let me think differently. Suppose in triangle ABC, with midpoints R, S, T. \n\nThen , the midlines 
+
+would be: \n\nRS connects midpoints of AC and AB, so RS is parallel to BC and half its length. \n\nSimilarly , RT connects midpoints of AC and CB, so RT is parallel to AB and half its length. \n\nST connects midpoints of AB and CB, so ST is parallel to AC 
+
+and half its length. \n\nTherefore , the medial triangle RST is formed, and its sides are half the length of the original triangle's sides. \n\nNow , point M is somewhere inside; perhaps the problem involves some cevians intersecting at M, with given 
+
+lengths leading to computing MB. \n\nSince the problem gives specific numbers (4,7,16), maybe we can set up equations based on section formulas. \n\nAlternatively , maybe using vectors: \n\nLet’s assign coordinates: \n\nLet’s set point A as (0,0). \n\nLet’s 
+
+let point B be (2b, 0), so midpoint S is (b, 0). \n\nPoint C can be (0, 2c), making midpoint R of AC: (0, c). \n\nMidpoint T of CB: coordinates of C (0,2c), B (2b,0). So midpoint T is ((0+2b)/2, (2c + 0)/2 ) = (b, c). \n\nNow , suppose there are lines intersecting 
+
+at M. For example, maybe lines from R to B, from S to some point, etc. But without the exact figure, it's hard to know. \n\nAlternatively , maybe the lengths given are along AM, BM, CM? \n\nThis is really challenging without the figure. Maybe I should 
+
+consider that in such midpoint configurations, the length MB can be found via the formula: \n\nIn a triangle, if you have midpoints and certain lengths, perhaps using the properties of the centroid. \n\nWait , centroid divides each median into a ratio 
+
+2:1. If M were the centroid, then MB would be twice the length of the segment from the centroid to the midpoint. But I don't kno w the given lengths' relation to this. \n\nAlternatively , maybe the problem is about the British flag theorem? Though 
+
+that applies to rectangles. \n\nAnother idea: the three midpoints form the medial triangle, and perhaps M is the orthocenter or something, but with the given numbers , maybe it's a system of equations. \n\nGiven that this is an SAT or competition 
+
+problem, perhaps there's a straightforward path. \n\nWait , maybe the key is that in the figure, there are several marked segments with lengths 4,7,16, and through applying triangle m idp oint theorems, the value of MB can be derived. \n\nSuppose that 
+
+along the path from M to B, there's a segment marked 7 near T, which is the midpoint of CB. Maybe MT is 7, and we need to fin d M B = MT + something? \n\nAlternatively , if we consider that the sum of certain segments equals MB. \n\nThis is taking 
+
+too long. Maybe I should consider that the answer is 8, which is option B, as a common value in such problems. \n\nWait , perhaps using coordinate geometry with 假设  specific values. \n\nLet me try assuming coordinates again more carefully. \n\nLet me 
+
+suppose triangle ABC, with points: \n\nLet’s set coordinates: \n\nLet’s place point A at (0,0). \n\nLet’s let point B be at (2, 0), so midpoint S is at (1, 0). \n\nLet’s let point C be at (0, 2d), so midpoint R of AC is (0, d). \n\nMidpoint T of CB: coordinates of 
+
+C (0,2d), B (2,0). So T is ((0+2)/2, (2d + 0)/2 ) = (1, d). \n\nNow , suppose there are lines connecting these midpoints and intersecting at M. \n\nFor instance, maybe the lines are AR, BS, CT, intersecting at M? \n\nWait , if R is midpoint of AC: from A(0,0) 
+
+to R(0,d), that's a vertical line. Then, maybe another line, say from T(1,d) to somewhere? \n\nThis is getting too involved. Maybe another approach: since the problem includes numbers 4,7,16, perhaps they correspond to parts of the figure that can be 
+
+connected via ratios. \n\nIf we consider that in the medial triangle, certain lengths can be related. \n\nAlternatively , maybe the length from M to S is 16, and other lengths lead to an equation. \n\nThis is really tough without the figure. Given the time 
+
+I've spent and not getting anywhere, I'll hazard a guess that the answer is 8, which is option B. Maybe through some ratio th e n umbers 4,7, and 16 lead to 8. \n\n**Final Answer** \n\\boxed{B} \n</think> \n\nTo solve for the length of \\( MB \\) given 
+
+that \\( R \\), \\( S \\), and \\( T \\) are midpoints of \\( AC \\), \\( AB \\), and \\( CB \\) respectively, we consider the p roperties of midpoints and possible applications of geometric theorems such as the Midline Theorem or properties of 
+
+centroids. \n\nAfter careful consideration and analysis of potential geometric configurations and relationships, the problem likely involves the a pp lication of midpoint properties and ratio calculations. Through logical 
+
+deduction and evaluating the given choices, the most plausible solution is determined. \n\nThe final 
+
+answer is \\(\\boxed{B}. 
+
+Thinking time:142 s 
+
+𝒕  𝒅 
+
+As shown in the figure, If angle 
+
+ABC = 70.0, then the degree of angle 
+
+AOC is equal to () 
+
+Choices: A:140 ° B:130 ° C:120 ° D:110 °
+
+<target>0.99</target><confidence>0.99</confidence> 
+
+<think> Since angle ABC = 70.0, then angle AOC = 2 * 
+
+angle ABC = 2 * 70.0 = 140.0. Therefore, the answer is 
+
+A:140 °.</think> \n<answer>$140^ \\circ$</answer> 
+
+Thinking time:2.28 s 
+
+Okay, so I need to find the measure of angle AOC in this circle diagram where angle ABC is 70 degrees. Hmm, let me recall som e
+
+geometry concepts related to circles. \n\nFirst , maybe I should draw or visualize the figure again. There's a circle with center O. Points A, 
+
+B, C are on the circumference, and there's a triangle ABC with point O somewhere inside? Wait , actually, since it's mentioned as angle 
+
+ABC being 70 degrees, perhaps points A, B, C form a triangle inscribed in the circle, with O being the center. \n\nWait , maybe angle at the 
+
+center theorem can be applied here. The theorem states that an angle subtended at the center by an arc is twice the angle sub ten ded at 
+
+the circumference by the same arc. But how does that apply here? \n\nLet me see. If angle ABC is given, maybe I can relate it to the 
+
+central angle. Let me think: angle ABC is an inscribed angle. Which arc does it subtend? In triangle ABC, angle at B (angle ABC) would 
+
+subtend arc AC. Therefore, the central angle for arc AC would be twice angle ABC. So angle AOC would be 2 times 70 degrees, which 
+
+would be 140 degrees. Is that correct? \n\nWait , but angle ABC might not directly subtend arc AC. Let me confirm. In a circle, the 
+
+inscribed angle over arc AC would indeed be angle ABC if points A, B, C are positioned such that B is on the circumference op pos ite to 
+
+the arc. Hmm, maybe I need to consider the positions more carefully. \n\nAlternatively , maybe quadrilateral AB OC is involved? Or 
+
+perhaps triangle OBC or something else. \n\nWait , maybe another approach. Since O is the center, OA and OC are radii. If we can find 
+
+some relationship between the triangles. \n\nAlternatively , maybe the key is to realize that angle AOC is the central angle corresponding 
+
+to arc AC, and angle ABC is an inscribed angle over the same arc. Therefore, angle AOC = 2 * angle ABC. Since angle ABC is 70 de grees, 
+
+then angle AOC would be 140 degrees. That would make option A the answer. But let me check again. \n\nWait , maybe angle ABC is not 
+
+over arc AC. Let me think of the exact positions. Suppose points A, B, C are placed such that when you connect them, angle at B is 70 
+
+degrees. The center O is connected to A and C. Maybe there's a different arc involved. \n\nAlternatively , perhaps angle ABC is part of a 
+
+cyclic quadrilateral? Not sure. Maybe I should look up the exact theorem. \n\nWait , another thought: In a circle, the central angle is twice 
+
+any inscribed angle subtended by the same arc. So if angle ABC is an inscribed angle subtended by arc AC, then the central angle AOC 
+
+would be 2*70 = 140 degrees. Therefore, the answer should be 140 degrees, which is option A. \n\nBut let me verify with an example. 
+
+Suppose the circle has center O, and points A, B, C are on the circumference. Angle at B (ABC) subtends arc AC. Then the cent ral angle 
+
+for arc AC is angle AOC, so yes, it should be twice the inscribed angle. Therefore, 70*2=140. So the answer is A:140 °.\n\nHmm, seems 
+
+straightforward. Maybe I was overcomplicating. I think that's the solution. \n</think> \n\nThe problem involves finding the measure of 
+
+angle \\( AOC \\) given that angle \\( ABC = 70^ \\circ \\). Using the **Inscribed Angle Theorem**, which states that an angle su btended at 
+
+the center of a circle is twice the angle subtended at the circumference by the same arc: \n\n1. Angle \\( ABC \\) is an inscribe d angle 
+
+subtended by arc \\( AC \\). \n2. The central angle subtended by the same arc \\( AC \\) (which is angle \\( AOC \\)) is twice th e inscribed 
+
+angle. \n\nTherefore , angle \\( AOC = 2 \\times \\text{angle } ABC = 2 \\times 70^ \\circ = 140^ \\circ \\). \n\n**Answer:** \\boxed{A} 
+
+Thinking time:47.87 s 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 > 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+Sample Rating 
+
+as Threshold 
+
+(f) Similar trend allows threshold estimation. (e) Ablation of 𝜏 on MathVista 
+
+(a) Ablation of IPR on ChartQA  (b) Ablation of IPR on MathVista 
+
+(c) Score Distribution of SFT Learning  (d ) Routing Comparison of SFT and DRL 
+
+(g) Qualitative Result of samples routed using PRP. 
+
+𝒕  𝒅 
+
+Percentile Ranges 
+
+> Range  Accuracy(%)
+
+Fig. 8: Ablation Study: (a)(b) Ablation study of Internal Probability Ranking (IPR) on ChartQA and MathVista.(c) Score Distribution of SFT Rating Learning. (d) Routing Comparison of SFT and DRL. (e). Mdjoint ’s ablation of different τ for the scaling in signal s = d + d−tτ on MathVista. (f) Similar accuracy trends across evaluation and test sets allows threshold estimation. (g) Qualitative Result of samples routed using PRP. 
+
+RL-based rating training vs SFT-based rating training . As a comparison, we use the accuracy within the group as the label and employ Supervised Fine-tuning for rating training. Compared to our rich scoring scenarios, the SFT model produces polarized scores (only 0/1) during inference (see Fig. 8(c)), resulting in a weaker correlation with actual performance than our RL-based method. Meanwhile, the draft accuracy on MathVista drops by 4.2%(see Fig. 8(d)). 
+
+Different scale τ for Mdjoint . As discussed in Sec. 4.2, when employing Mdjoint 
+
+for routing, the scaling coefficient τ controls the importance of the gap between 
+
+Mdjoint and Mt during ranking. As shwon in Fig. 8(e),When τ is large (blue curve), routing focuses more on Mdjoint ’s intrinsic capability, thus preferentially assigning instances where Mdjoint excels to the Mdjoint ; under this setting, pt ∈
+
+[80 , 100] exhibits strong performance preservation. Conversely, when τ is small (yellow curve), routing emphasizes the discrepancy between Mdjoint and Mt,preferentially preserving instances where Mt excels to Mt; as a result, we achieve faster performance gains in pt ∈ [0 , 50] .
+
+Qualitative Result . In Fig. 8(g), PRP routing proceeds once module Mddf t 
+
+produces a self-score d and an assessment t of Mt. More results are in Sec. A.6. 
+
+6 Related Work 
+
+6.1 Reinforcement Learning for Reasoning Models 
+
+Reinforcement learning has been widely adopted to enhance the reasoning capa-bilities of LLMs. Methods such as PPO [40] and DPO [39] are commonly used Proactive Routing for Efficient Visual Reasoning 15 
+
+in post-training by maximizing reward functions. GRPO [18, 41] was proposed to improve reasoning by optimizing group advantages using reward differences across multiple completions, while subsequent works [25, 28, 34, 49] explore gen-eralized optimization strategies. GRPO-like approaches have been extended to multimodal domains, where customized reward functions are designed for various vision-language tasks [5,8,13,26,27,42,50]. We leverage GRPO to preserve draft model’s performance while equipping the model with proactive rating ability, thereby laying the foundation for flexible routing. 
+
+6.2 Efficient Reasoning 
+
+LLM reasoning often requires long chains of thought, leading to increased la-tency [38]. A common solution is to pair a small draft model with a larger target model. Speculative decoding [3,4,14,21,22,35] is one representative approach, but applying it to reasoning models introduces token-distribution mismatch across intermediate steps. Progress reward models (PRMs) [23, 45] attempt to assign reasoning steps to draft or target models, but they are difficult to train for MLLMs and incur additional cost. Router-based methods [2, 10, 15, 16, 36] rely on evaluating the model’s confidence [17], and offer another direction by select-ing models according to query difficulty or budget. For example, Self-REF [10] uses SFT to train a confidence token, while others [11] benchmark uncertainty estimation for reasoning LLMs. However, their effectiveness for MLLMs remains unclear; they typically rely on full responses, preventing early routing, and ignore the target model’s solvability. In this work, we propose to estimate confidence 
+
+before reasoning, enabling MLLMs to decide when and whom to ask. 
+
+7 Conclusion 
+
+We present a RL-based Proactive Routing Paradigm for efficient MLLM rea-soning. By introducing Draft Rating Learning and Joint Rating Learning, we enables models to estimate both their own and the target model’s solvability of the input before generation, making proactive and capability-aware routing pos-sible. Building on robust rating model, our three-stage PRP enables fine-grained routing that prioritizes samples for which the target model is expected to ex-cel, rather than simply forwarding the most difficult cases, yielding a favorable balance between performance and efficiency across the draft and target models. 
+
+Acknowledgements 
+
+This work is supported by National Key Research and Development Program of China (2023YFC3321600), the Early Career Scheme (No.CityU 21219323) and the General Research Fund (No.CityU 11220324) of the University Grants Committee (UGC), the NSFC Young Scientists Fund (No.9240127), and the Donation for Research Projects (No.9229164 and No.9229216). 16 Y. Zhou et al. 
+
+References 
+
+1. Bai, S., Chen, K., Liu, X., Wang, J., Ge, W., Song, S., Dang, K., Wang, P., Wang, S., Tang, J., et al.: Qwen2. 5-vl technical report. arXiv preprint arXiv:2502.13923 (2025) 2. Barrak, A., Fourati, Y., Olchawa, M., Ksontini, E., Zoghlami, K.: Cargo: A framework for confidence-aware routing of large language models (2025), https: //arxiv.org/abs/2509.14899 
+
+3. Cai, T., Li, Y., Geng, Z., Peng, H., Lee, J.D., Chen, D., Dao, T.: Medusa: Simple llm inference acceleration framework with multiple decoding heads. arXiv preprint arXiv:2401.10774 (2024) 4. Chen, C., Borgeaud, S., Irving, G., Lespiau, J.B., Sifre, L., Jumper, J.: Acceler-ating large language model decoding with speculative sampling. arXiv preprint arXiv:2302.01318 (2023) 5. Chen, L., Gao, H., Liu, T., Huang, Z., Sung, F., Zhou, X., Wu, Y., Chang, B.: G1: Bootstrapping perception and reasoning abilities of vision-language model via reinforcement learning (2025), https://arxiv.org/abs/2505.13426 
+
+6. Chen, L., Li, L., Zhao, H., Song, Y., Vinci: R1-v: Reinforcing super generalization ability in vision-language models with less than $3. https://github.com/Deep-Agent/R1-V (2025), accessed: 2025-02-02 7. Chen, Q., Qin, L., Zhang, J., Chen, Z., Xu, X., Che, W.: M 3cot: A novel benchmark for multi-domain multi-step multi-modal chain-of-thought. In: Proc. of ACL (2024) 8. Chen, Y., Ge, Y., Wang, R., Ge, Y., Cheng, J., Shan, Y., Liu, X.: Grpo-care: Consistency-aware reinforcement learning for multimodal reasoning. arXiv preprint arXiv:2506.16141 (2025) 9. Chen, Z., Wang, W., Cao, Y., Liu, Y., Gao, Z., Cui, E., Zhu, J., Ye, S., Tian, H., Liu, Z., et al.: Expanding performance boundaries of open-source multimodal models with model, data, and test-time scaling. arXiv preprint arXiv:2412.05271 (2024) 10. Chuang, Y.N., Sarma, P.K., Gopalan, P., Boccio, J., Bolouki, S., Hu, X., Zhou, H.: Learning to route llms with confidence tokens. arXiv preprint arXiv:2410.13284 (2024) 11. Chuang, Y.N., Yu, L., Wang, G., Zhang, L., Liu, Z., Cai, X., Sui, Y., Braver-man, V., Hu, X.: Confident or seek stronger: Exploring uncertainty-based on-device llm routing from benchmarking to generalization. arXiv preprint arXiv:2502.04428 (2025) 12. Comanici, G., Bieber, E., Schaekermann, M., Pasupat, I., Sachdeva, N., Dhillon, I., Blistein, M., Ram, O., Zhang, D., Rosen, E., et al.: Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 (2025) 13. Du, L., Meng, F., Liu, Z., Zhou, Z., Luo, P., Zhang, Q., Shao, W.: Mm-prm: En-hancing multimodal mathematical reasoning with scalable step-level supervision. arXiv preprint arXiv:2505.13427 (2025) 14. Elhoushi, M., Shrivastava, A., Liskovich, D., Hosmer, B., Wasti, B., Lai, L., Mah-moud, A., Acun, B., Agarwal, S., Roman, A., et al.: Layerskip: Enabling early exit inference and self-speculative decoding. arXiv preprint arXiv:2404.16710 (2024) 15. Feng, T., Shen, Y., You, J.: Graphrouter: A graph-based router for llm selections. arXiv preprint arXiv:2410.03834 (2024) 16. Fu, T., Ge, Y., You, Y., Liu, E., Yuan, Z., Dai, G., Yan, S., Yang, H., Wang, Y.: R2r: Efficiently navigating divergent reasoning paths with small-large model token routing. arXiv preprint arXiv:2505.21600 (2025) Proactive Routing for Efficient Visual Reasoning 17 17. Geng, J., Cai, F., Wang, Y., Koeppl, H., Nakov, P., Gurevych, I.: A survey of con-fidence estimation and calibration in large language models. In: Duh, K., Gomez, H., Bethard, S. (eds.) Proceedings of the 2024 Conference of the North Ameri-can Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers). pp. 6577–6595. Association for Computa-tional Linguistics, Mexico City, Mexico (Jun 2024). https://doi.org/10.18653/ v1/2024.naacl-long.366 , https://aclanthology.org/2024.naacl-long.366/ 
+
+18. Guo, D., Yang, D., Zhang, H., Song, J., Zhang, R., Xu, R., Zhu, Q., Ma, S., Wang, P., Bi, X., et al.: Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 (2025) 19. Hugging Face: Open r1: A fully open reproduction of deepseek-r1 (January 2025), 
+
+https://github.com/huggingface/open-r1 
+
+20. Hurst, A., Lerer, A., Goucher, A.P., Perelman, A., Ramesh, A., Clark, A., Os-trow, A., Welihinda, A., Hayes, A., Radford, A., et al.: Gpt-4o system card. arXiv preprint arXiv:2410.21276 (2024) 21. Leviathan, Y., Kalman, M., Matias, Y.: Fast inference from transformers via spec-ulative decoding. In: International Conference on Machine Learning. pp. 19274– 19286. PMLR (2023) 22. Li, Y., Wei, F., Zhang, C., Zhang, H.: Eagle: Speculative sampling requires re-thinking feature uncertainty. arXiv preprint arXiv:2401.15077 (2024) 23. Liao, B., Xu, Y., Dong, H., Li, J., Monz, C., Savarese, S., Sahoo, D., Xiong, C.: Reward-guided speculative decoding for efficient llm reasoning. arXiv preprint arXiv:2501.19324 (2025) 24. Liu, H., Li, C., Wu, Q., Lee, Y.J.: Visual instruction tuning. Advances in neural information processing systems 36 , 34892–34916 (2023) 25. Liu, Z., Chen, C., Li, W., Qi, P., Pang, T., Du, C., Lee, W.S., Lin, M.: Understand-ing r1-zero-like training: A critical perspective. arXiv preprint arXiv:2503.20783 (2025) 26. Liu, Z., Sun, Z., Zang, Y., Dong, X., Cao, Y., Duan, H., Lin, D., Wang, J.: Visual-rft: Visual reinforcement fine-tuning. arXiv preprint arXiv:2503.01785 (2025) 27. Liu, Z., Zang, Y., Zou, Y., Liang, Z., Dong, X., Cao, Y., Duan, H., Lin, D., Wang, J.: Visual agentic reinforcement fine-tuning (2025), https://arxiv.org/abs/2505. 14246 
+
+28. Liu, Z., Meng, F., Du, L., Zhou, Z., Yu, C., Shao, W., Zhang, Q.: Cpgd: To-ward stable rule-based reinforcement learning for language models. arXiv preprint arXiv:2505.12504 (2025) 29. Lu, P., Bansal, H., Xia, T., Liu, J., Li, C., Hajishirzi, H., Cheng, H., Chang, K.W., Galley, M., Gao, J.: Mathvista: Evaluating mathematical reasoning of foundation models in visual contexts. In: International Conference on Learning Representa-tions (ICLR) (2024) 30. Lu, S., Li, Y., Xia, Y., Hu, Y., Zhao, S., Ma, Y., Wei, Z., Li, Y., Duan, L., Zhao, J., et al.: Ovis2. 5 technical report. arXiv preprint arXiv:2508.11737 (2025) 31. Mahaut, M., Aina, L., Czarnowska, P., Hardalov, M., Müller, T., Màrquez, L.: Factual confidence of llms: on reliability and robustness of current estimators. arXiv preprint arXiv:2406.13415 (2024) 32. Masry, A., Do, X.L., Tan, J.Q., Joty, S., Hoque, E.: Chartqa: A benchmark for question answering about charts with visual and logical reasoning. In: Findings of the association for computational linguistics: ACL 2022. pp. 2263–2279 (2022) 33. Mathew, M., Karatzas, D., Jawahar, C.: Docvqa: A dataset for vqa on document images. In: Proceedings of the IEEE/CVF winter conference on applications of computer vision. pp. 2200–2209 (2021) 18 Y. Zhou et al. 34. Meng, F., Du, L., Liu, Z., Zhou, Z., Lu, Q., Fu, D., Han, T., Shi, B., Wang, W., He, J., Zhang, K., Luo, P., Qiao, Y., Zhang, Q., Shao, W.: Mm-eureka: Exploring the frontiers of multimodal reasoning with rule-based reinforcement learning. arXiv preprint arXiv:2503.07365 (2025) 35. Miao, X., Oliaro, G., Zhang, Z., Cheng, X., Wang, Z., Zhang, Z., Wong, R.Y.Y., Zhu, A., Yang, L., Shi, X., et al.: Specinfer: Accelerating large language model serving with tree-based speculative inference and verification. In: Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 3. pp. 932–949 (2024) 36. Ong, I., Almahairi, A., Wu, V., Chiang, W.L., Wu, T., Gonzalez, J.E., Kadous, M.W., Stoica, I.: Routellm: Learning to route llms with preference data. arXiv preprint arXiv:2406.18665 (2024) 37. Peng, Y., Zhang, G., Zhang, M., You, Z., Liu, J., Zhu, Q., Yang, K., Xu, X., Geng, X., Yang, X.: Lmm-r1: Empowering 3b lmms with strong reasoning abilities through two-stage rule-based rl. arXiv preprint arXiv:2503.07536 (2025) 38. Qu, X., Li, Y., Su, Z., Sun, W., Yan, J., Liu, D., Cui, G., Liu, D., Liang, S., He, J., et al.: A survey of efficient reasoning for large reasoning models: Language, multimodality, and beyond. arXiv preprint arXiv:2503.21614 (2025) 39. Rafailov, R., Sharma, A., Mitchell, E., Manning, C.D., Ermon, S., Finn, C.: Direct preference optimization: Your language model is secretly a reward model. Advances in Neural Information Processing Systems 36 , 53728–53741 (2023) 40. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., Klimov, O.: Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347 (2017) 41. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y., Wu, Y., et al.: Deepseekmath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 (2024) 42. Shen, H., Liu, P., Li, J., Fang, C., Ma, Y., Liao, J., Shen, Q., Zhang, Z., Zhao, K., Zhang, Q., et al.: Vlm-r1: A stable and generalizable r1-style large vision-language model. arXiv preprint arXiv:2504.07615 (2025) 43. Shen, W., Pei, J., Peng, Y., Song, X., Liu, Y., Peng, J., Sun, H., Hao, Y., Wang, P., Zhang, J., Zhou, Y.: Skywork-r1v3 technical report (2025), https://arxiv. org/abs/2507.06167 
+
+44. Wang, H., Qu, C., Huang, Z., Chu, W., Lin, F., Chen, W.: Vl-rethinker: Incentiviz-ing self-reflection of vision-language models with reinforcement learning (2025), 
+
+https://arxiv.org/abs/2504.08837 
+
+45. Wang, Z., Wang, J., Pan, J., Xia, X., Zhen, H., Yuan, M., Hao, J., Wu, F.: Ac-celerating large language model reasoning via speculative search. arXiv preprint arXiv:2505.02865 (2025) 46. Yang, S., Zhou, Y., Zheng, Z., Wang, Y., Zhu, L., Wu, Y.: Towards unified text-based person retrieval: A large-scale multi-attribute and language search bench-mark. In: Proceedings of the 31st ACM International Conference on Multimedia. p. 4492–4501. MM ’23, Association for Computing Machinery, New York, NY, USA (2023). https://doi.org/10.1145/3581783.3611709 , https://doi.org/ 10.1145/3581783.3611709 
+
+47. Yang, Y., Zhou, Y., Chen, Y., Zhang, Z., Ma, Z., Yuan, C., Li, B., Gao, J., Hu, W.: Beyond semantic search: Towards referential anchoring in composed image retrieval. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR). pp. 31155–31165 (June 2026) 48. Yang, Y., Zhou, Y., Chen, Y., Zhang, Z., Ma, Z., Yuan, C., Li, B., Song, L., Gao, J., Li, P., Hu, W.: Detailfusion: A dual-branch framework with detail enhancement for composed image retrieval (2025), https://arxiv.org/abs/2505.17796 Proactive Routing for Efficient Visual Reasoning 19 49. Yu, Q., Zhang, Z., Zhu, R., Yuan, Y., Zuo, X., Yue, Y., Dai, W., Fan, T., Liu, G., Liu, L., et al.: Dapo: An open-source llm reinforcement learning system at scale. arXiv preprint arXiv:2503.14476 (2025) 50. Zhang, J., Huang, J., Yao, H., Liu, S., Zhang, X., Lu, S., Tao, D.: R1-vl: Learning to reason with multimodal large language models via step-wise group relative policy optimization. arXiv preprint arXiv:2503.12937 (2025) 51. Zhang, R., Jiang, D., Zhang, Y., Lin, H., Guo, Z., Qiu, P., Zhou, A., Lu, P., Chang, K.W., Gao, P., et al.: Mathverse: Does your multi-modal llm truly see the diagrams in visual math problems? arXiv preprint arXiv:2403.14624 (2024) 52. Zhou, Y., Chen, Y., Lin, H., Wu, Y., Yang, S., Qi, Z., Ma, C., Zhu, L.: Dogr: Towards versatile visual document grounding and referring. In: 2025 IEEE/CVF International Conference on Computer Vision (ICCV). pp. 3596–3606 (2025). 
+
+https://doi.org/10.1109/ICCV51701.2025.00343 
+
+53. Zhou, Y., Wang, Y., Lin, H., Ma, C., Zhu, L., Zheng, Z.: Scale up composed image retrieval learning via modification text generation. IEEE Transactions on Multimedia 27 , 7510–7521 (2025). https://doi.org/10.1109/TMM.2025.3599088 
+
+54. Zhu, J., Wang, W., Chen, Z., Liu, Z., Ye, S., Gu, L., Tian, H., Duan, Y., Su, W., Shao, J., et al.: Internvl3: Exploring advanced training and test-time recipes for open-source multimodal models. arXiv preprint arXiv:2504.10479 (2025) Proactive Routing for Efficient Visual Reasoning 1 
+
+> Fig. 9: Score distribution comparison on ChartQA and ours out-domain disribution on DocVQA.
+
+A More Experiments 
+
+A.1 Detail Rating distributions ChartQA. As shown in Fig. 9, on ChartQA both P aradigm 1 (a) and P aradigm 2
+
+(b) exhibit discernible score-distribution trends. However, the distribution of 
+
+P aradigm 2 in (b) comes at the cost of the draft model’s overall performance. In contrast, our paradigm (c) produces a more pronounced separation in score distributions than either baseline on ChartQA. Furthermore, we evaluate out-of-domain score distributions on DocVQA [33] in (d): despite being trained exclu-sively on chart data, the scoring model maintains a clear separation on document QA task, demonstrating strong generalization of the draft model’s scoring capa-bility. 
+
+MathVerse. As shown in Fig. 10 on MathVerse, the score distribution under 
+
+P aradigm 1 (a) is notably diffuse. Under P aradigm 2 (b), the portion predicted as [UN] exhibits substantially lower accuracy than the portion predicted as [CN] ,yet the overall separability remains limited. In contrast, ours (c) yields a much clearer separation: the scores exhibit a pronounced stepwise trend, forming a clean gradient from 90% accuracy down to 0.03% accuracy. This pattern high-lights the superior scoring effectiveness of our draft model. 
+
+MathVista. As shown in Fig. 11 on MathVista, P aradigm 1 score distribution exhibits the opposite trend: overly long outputs tend to weaken visual grounding and push the model to rely primarily on text tokens, such that examples with larger signal paradoxically achieve lower accuracy. In contrast, P aradigm 2 dis-tribution in (b) resembles that on MathVerse, retaining only limited separability. Compared to these two paradigms, our distribution in (c) remains more discrim-inative, displaying a clear monotonic decline in accuracy from 100% down to 15%. 
+
+A.2 Analysis of DRL Failures on MathVerse and Our JRL Strategy Selection 
+
+Although our method achieves clear score stratification while maintaining over-all performance on MathVerse as shown in Fig. 10, we surprisingly find that, as shown in Fig. 12, when using the DRL-based draft model for routing, its performance is inferior to the other two paradigms with more stochastic score distributions(Fig. 10(a)(b))—and even worse than random assignment(red line). 2 Y. Zhou et al.   
+
+> Fig. 10: Score distribution comparison on MathVerse.
+> Fig. 11: Score distribution comparison on MathVista.
+
+Motivated by this observation, we conduct an in-depth analysis of the failure modes of DRL. The three panels on the right visualize how accuracy changes under Paradigm1, Paradigm2, and our routing with explicit per-split accuracies. The yellow curve denotes the overall accuracy of the draft–target mixture, the green curve is the accuracy of the (1 − pt%) portion routed to the draft model, the blue curve is the accuracy of the pt% portion routed to the target model, the purple curve is the accuracy achieved by the target model on the examples that were routed to the draft model (i.e., the (1 − pt%) split), and the brown curve is the accu-racy achieved by the draft model on the examples routed to the target model (i.e., the pt% split). In P aradigm 1 and P aradigm 2, each stage exhibits near-flat accuracy curves, indicating that the allocation is effectively random and hence suboptimal. In contrast, panel (d) for our DRL routing shows a clear slope: as fewer examples are assigned to the draft model, the retained examples become easier on average, and the accuracy of those routed subsets increases markedly. However, a key issue emerges: the target and draft models are highly cor-related in ability—they tend to succeed and fail on the same instances. This manifests as two pairs of almost parallel lines: green vs. purple and blue vs. brown. Consequently, when we allocate the easiest examples to the draft model, we simultaneously remove the very items at which the target model excels, sub-stantially harming target performance. Under this correlation, even a random allocation that assigns some difficult items to the draft model can outperform score-based DRL routing, because it allows the target model to keep a portion of its “easy wins,” thereby preserving overall accuracy. Proactive Routing for Efficient Visual Reasoning 3 
+
+> Fig. 12: Discussion of DRL-based Routing Failure on MathVerse.
+
+The fundamental reason for this DRL routing failure is that it ignores the target model’s capability during allocation. Instead of naively sending “easy” examples to the draft and “hard” examples to the target, routing should account for the capability gap between the two models and assign each example to the model for which it is most suitable. This observation further motivates our JRL design, which explicitly incorporates the target model’s ability into the routing policy. During routing using JRL-based draft model on MathVerse, we change the strategy to use target-first strategy by using t + t−dτ as routing signal, let the target model refine the samples from easy to hard to improve the overall performance. Consequently, if the target model is capacity-limited and its assessments are similar to the draft model across problem types in a test set, DRL tends to shunt the instances most valuable to overall accuracy away from the target, substan-tially degrading routing performance, even falling below random assignment. 
+
+A.3 The effect of Different Target Models with DRL and JRL routing 
+
+As shown in Fig. 14(a)(b), we replace the target model with a slightly stronger variant than our VL-Rethinker7B [44] and directly reuse the DRL-trained Mddf t 
+
+as the draft model for routing. We observe consistent routing gains on MathVista, outperforming random routing; however, the approach still fails on MathVerse, as analyzed in detail in the previous Sec. A.2. As shown in Fig. 14(c)(d), we again adopt a slightly stronger target model than VL-Rethinker7B, but retrain Mdjoint via JRL as the draft model for rout-ing. Despite the relatively small performance gap between the draft and target, JRL effectively balances the allocation strategy between the two, yielding robust routing improvements on both MathVista and MathVerse. 
+
+A.4 Results on M3CoT [7]. 
+
+The M3CoT benchmark is designed to address multi-domain, multi-step, and multi-modal reasoning challenges within the Multimodal Chain-of-Thought frame-work. The dataset comprises 7,863 training samples and 2,358 test samples. We evaluated our PRP’s performance under both a zero-shot setting (using mod-els trained with DRL on general math data) and a fine-tuned setting using the domain-specific M3CoT training data. 4 Y. Zhou et al. Score Interval(%)    
+
+> Interval Accuracy(%)
+> (a) (b) (c)(d)
+
+Fig. 13: Generalization of Learned Rating Capability on M3CoT:(a)(b) are the rat-ing distribution and the routing comparison of the rating model trained using DRL with math data. We generalize well on M3CoT. (c)(d) are the rating distribution and accuracy statistic of each rating of the rating model trained using DRL with M3CoT training data. 
+
+Generalization of Rating Capability on M3CoT. Based on the data pre-sented in Fig. 13(a)(b), to evaluate the zero-shot generalization of our rating mechanism, we first apply the DRL-trained rating model trained exclusively on mathematical data directly to the M3CoT dataset for inference and routing. The model demonstrates effective generalization; the rating distribution maintains a clear correlation with interval accuracy, and the routing performance of the DRL paradigm remains superior to the P1 and P2 baselines. 
+
+Training Effectiveness on M3CoT. We conduct DRL training specifically using the M3CoT training data to explore the potential for domain-specific op-timization. The results in Fig. 13(c)(d) show that this targeted training signif-icantly refines the rating capability. Specifically, the predicted scores become more concentrated, indicating higher model confidence. Moreover, the accuracy statistics across different rating intervals exhibit a more pronounced differenti-ation, with higher-score intervals achieving higher accuracy, thereby facilitating more precise routing decisions. 
+
+A.5 Impact of α and β Selection on PerFormance. 
+
+In Fig. 15, we show the effect of different values of α in DRL and α&β in JRL during training for the performance on MathVerse. The two exhibit the same trend: when the weight increases to 1 or 1.5, the model’s baseline performance are kept. However, when the weight increases to 5 or 10, the model’s baseline performance declines. Excessive weight on the score loss can affect the model’s ability to maintain inference performance. Therefore, we choose a conservative weight ( α = 1 .5 in DRL and α = β = 1 .5 in JRL) during the training process. 
+
+A.6 More Qualitative Routing Results ChartQA. Fig. 16 illustrates DRL-based PRP routing on ChartQA. For the simple example on the left, the draft model assigns a high pre-answer confidence score, 0.99, indicating strong reliability on this input; it therefore proceeds to answer directly, avoiding the 5.18 s long response latency of the target model. In contrast, for the two questions on the right, the draft model outputs low Proactive Routing for Efficient Visual Reasoning 5
+
+confidence before answering. Although the first is structurally simple, the draft model correctly perceives its own uncertainty and routes to the target model, which produces the correct answer with minimal additional inference time. For the second, more complex query, the draft model again routes to the target model, enabling precise numerical reasoning and yielding the correct answer; if restricted to the draft model alone, no substantive computation would have been performed during reasoning. These cases demonstrate the effectiveness of DRL-based routing for chart-based simple visual question answering, efficiently allocating computation across easy and hard instances to maintain accuracy while reducing latency. 
+
+MathVista. As illustrated in Fig. 17, JRL-based PRP routes certain MathVista queries to be completed by the draft model rather than delegated to the target model. The examples span three representative regimes:( i) Both draft and target models deem the query easy. Routing such cases to the draft model preserves accuracy while substantially reducing latency. ( ii ) The draft model judges the query easy but the target model deems it hard. Owing to intrinsic disparities between the two models, some instances are solved faster and more accurately by the draft model while the target model is slower and less reliable. Assigning these cases to the draft model improves efficiency and can even boost overall performance. ( iii ) Both draft and target models consider the query hard. For these inputs, delegating to the target model risks incurring high computational cost (91.30s) with low success rates. Retaining them with the draft model yields better efficiency (4.43s) without noticeable performance degradation. As illustrated in Fig. 18, we route challenging MathVista samples that lie beyond the draft model’s competence but align well with the target model’s expertise to the target model. This routing enables the target model to exploit its strengths and produce correct responses to these inputs, thereby improving overall performance. 
+
+MathVerse. As illustrated in Fig. 19, on MathVerse, the draft model selectively retains instances it is proficient at, as well as cases that neither the draft nor the target model can reliably handle. By keeping these examples on the draft side, we prevent the target model from generating over-length responses that hit the maximum-length constraint and from engaging in unproductive deliberation on problems beyond its competence. 
+
+A.7 High Rating but Failure cases 
+
+We focus on failure cases where both the draft and target ratings assign high confidence yet produce incorrect answers. The left panel of Fig. 20 reveals a training-time deficiency using a simple vertical-angles problem: our draft model assigns high scores to both itself and the target model, indicating strong confi-dence, but both still fail. Surprisingly, even the target model answers this elemen-tary question incorrectly. We argue that this reflects an inherent and widespread limitation of current training pipelines: insufficient targeted supervision leads to overfitting that manifests even in simple instances. Meanwhile, GRPO-based methods reward process format and final correctness only. For many geometry 6 Y. Zhou et al. 73.6        
+
+> 73.8
+> 68. 9
+> 73.3 52.79
+> 49.2
+> 52.82
+> 52.23
+> 50.78
+> (c) JRL -based Routing on Mathvista (d) JRL -based Routing on Mathverse
+> (a) DRL -based Routing on Mathvista (b) DRL -based Routing on Mathverse
+> 73.9
+> 73.6
+> 69.2
+> 52.79
+> 49.74
+
+Fig. 14: We apply a weaker and smaller MLLM VL-Rethinker-7B [44] as new target model and obtain a similar effect. 
+
+Fig. 15: The performance on MathVerse with different α in DRL and α&β in JRL. 
+
+questions, the final answer can often be guessed without attending to the figure. As a result, models may produce the correct final answer while exhibiting incor-rect or severely hallucinatory reasoning, introducing bias. We find such severe hallucinations on geometry tasks to be prevalent among GRPO-based models. The right panel of Fig. 20 shows another example selected by our high-score-but-wrong filter. In this case, we identify an issue in the ground-truth annotation. Our rating mechanism surfaces mislabeled samples for which the model already demonstrates the ability to solve the task, enabling the detection of annotation errors. Proactive Routing for Efficient Visual Reasoning 7What's  the largest bar  represents  What does the green bar represent? 
+
+<confidence >0.99  </confidence >
+
+<think>As we can see from the chart, the largest bar 
+
+represents obesity, which has a value of 1,001 DALYs. </think >
+
+<answer>Obesity</answer> 
+
+𝒅 
+
+𝑑 > 𝑻 𝒅𝒇𝒕 
+
+Thinking time:1.70 s 
+
+Thinking: 用户现在需要找到图中最大的条形对应的标 
+
+签。看图表的标题和条形图，最上面的条形是“ Obesity ”（肥胖），对应 
+
+的数值是 1001 ，是最长的。所以最大的 bar 代表的是肥胖（ Obesity ）
+
+Response :
+
+To determine what the largest bar represents, we look at the bar chart in 
+
+the image. 
+
+The tallest bar corresponds to the label "Obesity" with a value of 1,001. 
+
+Thus, the largest bar represents  obesity .
+
+。
+
+Thinking time:5.18 s 
+
+Thinking :用户现在需要看图表里的绿色条 
+
+对应的标签。看右下角图例，绿色对应的 
+
+是Cameroon 。所以要确认绿色条 代表 
+
+Cameroon 。
+
+Response : Cameroon 
+
+Thinking time :1.35 s
+
+<confidence > 0.01  </ confidence >
+
+<think>As can be seen in the figure, the 
+
+green bar represents Solomon 
+
+Islands.</think >
+
+<answer>Solomon Islands</answer> 
+
+𝑑 < 𝑻 𝒅𝒇𝒕 
+
+Thinking time:0.13s  1.05s 
+
+𝒅 
+
+Add  the three largest government procurement in GDP and multiply it by 
+
+the smallest government procurement in GDP across all the  countries 
+
+Thinking:  nOkay , let's solve this step by step. First, we need to identify the three largest 
+
+government procurement percentages and the smallest one.  \n\nLooking  at the data: \n- Slovakia: 17.28% (largest) \n-
+
+Germany: 15.05% (second largest) \n- Poland: 12.17% (third largest) \n- Switzerland: 8.76% (smallest) \n\nNow , add the 
+
+three largest: 17.28 + 15.05 + 12.17. Let's calculate that. 17.28 + 15.05 is 32.33, then +12.17 is 44.5.  \n\nThen  multiply that 
+
+sum by the smallest, which is 8.76.  So  44.5 * 8.76. Let's compute that. 44.5 * 8 = 356, 44.5 * 0.76 = 33.82.  So  356 + 33.82 
+
+= 389.82. Wait, let me check that multiplication again. 44.5 * 8.76. Let's do 44.5 * 8.76: \n\n44.5 * 8 = 356  \n44.5 * 0.7 
+
+= 31.15  \n44.5 * 0.06 = 2.67  \nAdding  those: 356 + 31.15 = 387.15 + 2.67 = 389.82. Yes, that's correct. 
+
+Response:  To  solve the problem, follow these steps:  \n\n1. **Identify the three largest government procurement 
+
+percentages**:  \n - Slovakia: 17.28%  \n - Germany: 15.05%  \n - Poland: 12.17%  \n\n2. **Add these three 
+
+values**:  \n \\( 17.28 + 15.05 + 12.17 = 44.5  \\) \n\n3. **Identify the smallest government procurement 
+
+percentage**:  \n - Switzerland: 8.76%  \n\n4. **Multiply the sum from step 2 by the smallest value**:  \n \\( 44.5 
+
+\\times 8.76 =  389.82  \\)
+
+<confidence> 0.01 </confidence >
+
+<think>As can be seen in the bar plot, the three largest government 
+
+procurement in GDP are Slovakia, Germany and Poland.  The smallest 
+
+government procurement in GDP across all the countries is 
+
+Switzerland.</think> <answer>17.28%</answer> 
+
+𝑑 < 𝑻 𝒅𝒇𝒕 
+
+Thinking time:0.15s  4.23s 
+
+𝒅 
+
+Thinking time :13.34 s
+
+Fig. 16: The DRL-based routing samples on ChartQA. 8 Y. Zhou et al. Subtract all large rubber spheres. Subtract all big shiny 
+
+cylinders. How many objects are left? 
+
+<target> 0.9 </target> \n<confidence> 0.9 </confidence> 
+
+<think> The image contains the following objects: \n- 1 large 
+
+green rubber sphere \n- 1 large purple rubber cylinder \n- 1
+
+large yellow rubber cube \n- 1 large yellow shiny cylinder \n- 1
+
+small purple rubber sphere \n- 1 large gray metallic 
+
+cube \n\nIf we subtract all large rubber spheres, we are left 
+
+with the purple cylinder, the yellow cube, the yellow shiny 
+
+cylinder, the small purple sphere, and the gray metallic cube. 
+
+This is 5 objects. \n\nIf we then subtract all big shiny 
+
+cylinders, we are left with the purple cylinder, the yellow 
+
+cube, the small purple sphere, and the gray metallic cube. 
+
+This is 4 objects. \n\nTherefore , the final answer is 
+
+4.</think> \n<answer>4</answer> 
+
+𝒕 
+
+Thinking time:1.70 s 
+
+Okay, let's see. The question is asking me to subtract all large rubber spheres and all big shiny 
+
+cylinders from the objects present, then find out how many objects are left. Hmm, first I need to figure out what 
+
+objects are in the image based on the description provided. \n\nThe image description mentions several objects: a 
+
+green sphere, a purple cylinder, a gray cube, a yellow cube, a yellow shiny cylinder, and a small purple sphere. Let me 
+
+list them out: \n\n1. Green sphere (large rubber) \n2. Purple cylinder (probably large since it's mentioned with 
+
+others) \n3. Gray cube (metallic maybe?) \n4. Yellow cube (large rubber) \n5. Yellow shiny cylinder (big) \n6. Small 
+
+purple sphere \n\nNow the question says subtract all large rubber spheres. The green sphere is a large rubber sphere, 
+
+so that gets removed. Then subtract all big shiny cylinders. The yellow shiny cylinder is big and shiny, so that's 
+
+removed too. \n\nSo after removing those two, the remaining objects would be: \n\n- Purple cylinder (still there, 
+
+assuming it's rubber and not shiny) \n- Gray cube \n- Yellow cube \n- Small purple sphere \n\nWait , need to confirm if 
+
+the purple cylinder is considered large. The description says \"large rubber spheres \" so the green one is large. The 
+
+purple cylinder is mentioned as a separate object, likely large as well since the others are big except the small purple 
+
+sphere. So subtracting the green sphere and the yellow shiny cylinder, that leaves four objects: purple cylinder, gray 
+
+cube, yellow cube, and small purple sphere. Wait, but maybe the gray cube is metallic? The question didn't specify 材
+
+质 for subtraction except for the cylinders and spheres. The subtraction is only about the large rubber spheres and 
+
+big shiny cylinders. So the gray cube remains because it's a cube, not a sphere or cylinder, and its material might 
+
+not matter here. Similarly, the yellow cube is rubber, but it's a cube so it's not affected by the subtractions. \n\nSo 
+
+total remaining objects: 4? Wait let me recount: \n\nOriginal objects: 6 items. \n\nSubtract the green sphere (1) and 
+
+the yellow shiny cylinder (1). So 6-2=4. So the answer should be 4? \n\nWait the problem might have a different 
+
+count. Let me check again. \n\nWait the description says: \"Subtract all large rubber spheres. Subtract all big shiny 
+
+cylinders. \"\n\nSo :\n\nLarge rubber spheres: only the green one. \n\nBig shiny cylinders: the yellow shiny 
+
+cylinder. \n\nSo removing those two, the remaining are: \n\nPurple cylinder (rubber, large? Probably yes), \n\nGray 
+
+cube (metal, big? Maybe), \n\nYellow cube (rubber, large), \n\nSmall purple sphere (small, so not subtracted), \n\nSo 
+
+that's 4 objects left. Therefore the answer should be 4. \n\nBut maybe I miscounted. Let me list again: \n\nAfter 
+
+removal: \n\n- Purple cylinder: remains \n\n- Gray cube: remains \n\n- Yellow cube: remains \n\n- Small purple sphere: 
+
+remains \n\nYes , that's four. So the answer is 4. \n\nWait the user's example had an answer of 2, but maybe in their 
+
+image it's different. But according to the description given here, it's 4. Hmm, maybe I made a mistake. Let me see 
+
+the question again. \n\nWait the user provided an image description, but in the problem statement, maybe there are 
+
+only five objects? Let me check the original description again. \n\nThe image description says: \"a green sphere, a 
+
+purple cylinder, a gray cube, a yellow cube, a yellow shiny cylinder, and a small purple sphere. \" That's six objects. 
+
+Subtract two, so four left. So the answer should be 4. Maybe the user's example was different, but according to this, 
+
+it's four. So I think the correct answer is 4. \n\n</think> \n\nThe question requires subtracting specific objects from 
+
+the total. Here's the breakdown: \n\n1. **Original Objects**: \n - Green sphere (large rubber) \n - Purple cylinder 
+
+(large rubber) \n - Gray cube (metallic) \n - Yellow cube (large rubber) \n - Yellow shiny cylinder (big 
+
+metallic) \n - Small purple sphere \n\n2. **Subtractions**: \n - Remove all **large rubber spheres**: Only the green 
+
+sphere is removed. \n - Remove all **big shiny cylinders**: The yellow shiny cylinder is removed. \n\n3. **Remaining 
+
+Objects**: \n - Purple cylinder \n - Gray cube \n - Yellow cube \n - Small purple sphere \n\nThis results in **4 
+
+objects** remaining. \n\n$ \\boxed{4}$ \n[ Skywork time: 56.58456301689148 seconds] \n[Model used: target, pre -
+
+computed confidence: 0.99] 
+
+。
+
+Thinking time:56.85 s 
+
+The shape is made of unit squares. What is the area of the shape? 
+
+𝒅 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 > 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+<target> 0.54 </target> \n<confidence> 0.99 </confidence> 
+
+<think> The shape is a 2x3 grid of squares, which means it has 6
+
+unit squares. Therefore, the area of the shape is 6 square 
+
+units. \n\nThe area of the shape is 
+
+\\(\\boxed{6} \\).</think> \n<answer>$6$</answer> 
+
+Okay, let's see. The question is asking for the area of a shape made up of unit squares. Hmm, since I can't see the image, 
+
+maybe the description mentions it's divided into squares? Wait, the user provided an image with four squares arranged in a 
+
+2x2 grid? Or maybe it's a different configuration. Wait, the hint says the answer is an integer. Let me think again. \n\nWait ,
+
+the user mentioned the image is made of unit squares. Maybe the figure is a rectangle or some composite shape. Since the 
+
+answer requires an integer, perhaps it's a simple count of the squares. If the image is divided into a grid with, say, 4 squa res ,
+
+then the area would be 4. But maybe the figure is something else. Wait, the user's example had an image with two squares? 
+
+Maybe the shape is 2 units in area. Wait, the initial example given by the user was about a shape made of unit squares, and 
+
+the answer was 2. Maybe in this case, the figure is made up of two squares? Or perhaps the image is a 2x1 rectangle, so area is 
+
+2. Since the user's question here might be similar to their example, maybe the area is 4? Wait, I need to be careful here. Since 
+
+I can't view the image, perhaps the problem is standard. Wait, maybe the figure is a 3x3 grid but with some squares missing? 
+
+Alternatively, maybe it's a 2x2 square, so area 4. But the user's previous example had an answer of 2. Maybe this one is 
+
+different. Wait, perhaps the shape is formed by three squares? I'm getting confused because without seeing the image, it's 
+
+hard to tell. Maybe I should consider that the user provided an image with four squares, arranged in a way that the area is 
+
+4. Alternatively, maybe it's a more complex figure. Since the hint says the answer is an integer, and given the example forma t, 
+
+maybe the correct answer is 4. Wait, maybe the figure is two squares side by side, making the area 2. Hmm, this is tricky. 
+
+Since the user's instruction mentions that the answer should be in the form like 1, 2, 3, and given that the example used 2, 
+
+perhaps this question's answer is 4. Alternatively, maybe the figure is a 3x2 rectangle, giving an area of 6. I'm not sure. M ayb e
+
+I need to make an assumption here. Since the user might have a standard problem, perhaps the area is 4. I'll go with 
+
+that. \n</think> \n\nThe area of the shape is calculated by counting the number of unit squares it contains. Assuming the 
+
+shape is a 2x2 square grid, which consists of four individual unit squares, the total area would be: \n\n$ \\boxed{4}$ \n\nHowever ,
+
+considering the user's previous example and possible configuration, if the shape is composed of two unit squares, the area 
+
+would be: \n\n$ \\boxed{2}$ \n\nBut based on the image description of having multiple squares arranged in a grid, the most 
+
+plausible answer is: \n\n$ \\boxed{4}$ \n\nWait , perhaps the figure is divided into a 2x2 grid, forming four squares, so the area is 
+
+indeed 4. Therefore, the correct answer should be: \n\n$ \\boxed{4}$ \n\nBut I need to confirm. Since the user's question 
+
+includes an image with \"unit squares \" and the answer requires an integer, the standard approach is to count the squares. If 
+
+it's a 2x2 grid, the area is 4. Hence, the final answer is: \n\n$ \\boxed{4}$ \n\n**Final Answer** \n\\boxed{4} \n</think> \n\nThe 
+
+area of the shape is determined by counting the unit squares it contains. The shape is composed of a 2x2 grid of unit squares ,
+
+which totals four squares. Therefore, the area is: \n\n$ \\boxed{4}$ \n\n**Final Answer** \n\\boxed{4} 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 > 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+Thinking time:3.02s 
+
+𝒕  𝒅 
+
+Fig. 17: The JRL-based routing samples (preserved by draft models) on MathVista. Proactive Routing for Efficient Visual Reasoning 93.40s 
+
+what is the total volume of the measuring cup? 
+
+Okay, let's see. The question is asking for the total 
+
+volume of the measuring cup in grams. Hmm, 
+
+looking at the image, there's a measuring cup with 
+
+some flour in it. The measuring cup has markings 
+
+on it. The user wants the total volume, so maybe 
+
+the maximum capacity it can hold? \n\nWait , the 
+
+measuring cup has labels like \"Zucker \" and 
+
+\"Mehl/Farine \", which are sugar and flour 
+
+respectively. The measurements are in grams. The 
+
+cup goes up to 1000 grams. But the question is 
+
+about the total volume. Wait, maybe they want the 
+
+current amount measured? But the question says 
+
+\"total volume \", which might refer to the maximum 
+
+capacity. Let me check the image description 
+
+again. \n\nThe image shows a measuring cup with 
+
+flour up to maybe 600 grams? But the question is 
+
+phrased as \"total volume of the measuring cup \". 
+
+Since measuring cups usually have a maximum 
+
+volume, perhaps the answer is 1000 grams as that's 
+
+the highest marking on the cup. The markings go 
+
+up to 1000g. So the total volume would be 1000 
+
+grams. I think that's it. \n</think> \n\nThe 
+
+measuring cup in the image has markings 
+
+indicating measurements up to 1000 grams. The 
+
+question asks for the total volume (capacity) of the 
+
+measuring cup, which corresponds to its maximum 
+
+marked value. \n\n** Answer:** \\boxed{1000} 
+
+Thinking time:20.82s 
+
+<target> 0.9 </target> \n<confidence> 0.2 </confidence >
+
+<think> The image shows a measuring cup with a 
+
+scale that indicates the volume in grams. The scale is 
+
+marked in increments of 100 grams, and the cup is 
+
+filled to the 500 -gram mark. Therefore, the total 
+
+volume of the measuring cup is 500 grams. \n\nThe 
+
+answer is 
+
+\\(\\boxed{500} \\).</think> \n<answer>$500$</answer> 
+
+𝒅 𝒕 
+
+Thinking time:0.5s 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 < 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+Given that the Hue -Saturation subspace shown in Fig. 
+
+Q2 is a perfect circle and that colors A, B and C can 
+
+be represented as the 3 points shown in the subspace. 
+
+Which color has the smallest saturation coefficient? 
+
+Choices: \n(A) (c) \n(B) (a) \n(C) (e) \n(D) (d) \n(E) (b) 
+
+<target> 0.34 </target> \n<confidence> 0.00 </confidence> 
+
+<think> The saturation of a color in the Hue -Saturation 
+
+subspace is represented by the distance from the center 
+
+of the circle to the point representing the color. The color 
+
+with the smallest saturation coefficient will be the one 
+
+that is closest to the center of the circle. In the figure, 
+
+color C is the closest to the center, indicating it has the 
+
+smallest saturation coefficient. \n\nTherefore , the color 
+
+with the smallest saturation coefficient is C. \n\
+
+<answer>$C$</answer> 
+
+Okay, let's see. The question is about the Hue -Saturation subspace shown in the 
+
+figure, which is a circle. The points A, B, and C represent different colors. We need 
+
+to determine which color has the smallest saturation coefficient. \n\nHmm ,
+
+saturation in color terms refers to the intensity or purity of the color. In a hue -
+
+saturation diagram, saturation is usually represented radially from the center. So, 
+
+the further a point is from the center, the higher its saturation. Conversely, 
+
+points closer to the center have lower saturation. \n\nLooking at the figure 
+
+description, even though I can't see the image, the problem mentions that the 
+
+subspace is a perfect circle with points A, B, and C. The options given are labeled 
+
+(a) to (e), but the question mentions colors A, B, and C. Maybe the options 
+
+correspond to these points? Wait, the choices are labeled (a) through (e), but the 
+
+figure labels are A, B, C. Maybe there's a typo, but assuming the options are 
+
+correctly listed, perhaps the answer options refer to the positions in the 
+
+figure. \n\nWait , the user provided the figure as Fig. Q2, but since I can't view it, I 
+
+need to rely on standard color wheel principles. In a typical color wheel where 
+
+saturation increases with distance from the center, the color with the smallest 
+
+saturation would be the one closest to the center of the circle. \n\nAssuming that 
+
+in the figure, point B is closer to the center compared to A and C. If the options 
+
+are (a) to (e), maybe option E is point B? The choices given are: \n\n(A) (c) \n\n(B) 
+
+(a) \n\n(C) (e) \n\n(D) (d) \n\n(E) (b) \n\nWait , the options are a bit confusingly 
+
+presented. The question says \"which color has the smallest saturation 
+
+coefficient? \" The colors are A, B, C, but the options are labeled (a) through (e). 
+
+Maybe there's a misalignment here. Perhaps the options are actually referring to 
+
+the labels A, B, C, but mistyped? For example, option E is (b), which might 
+
+correspond to color B. \n\nAssuming that, if point B is closer to the center, then it 
+
+would have lower saturation. Therefore, the answer would be E, which corresponds 
+
+to (b), i.e., color B. \n\nAlternatively , maybe the figure has point B near the center. 
+
+Since the user can't show the image, but based on standard test questions, often 
+
+the middle point has lower saturation. So, likely the answer is E, 
+
+(b). \n</think> \n\nThe saturation of a color in a Hue -Saturation subspace is 
+
+determined by its distance from the center of the circle. The closer a point is to 
+
+the center, the lower its saturation. In the given figure, point **B** is positioned 
+
+closer to the center compared to points A and C. This indicates that color **B** 
+
+has the smallest saturation coefficient. \n\nAmong the provided options, the 
+
+correct choice corresponding to point B is labeled as **(e)**. 
+
+**Answer:** \\boxed{E} 
+
+𝒅 𝒕 
+
+Thinking time:34.58s 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 < 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+2.98s Thinking time:0.4s 
+
+Calculate the missing value. \nChoices :\n(A) 1 \n(B) 2 \n(C) 3 \n(D) 4", 
+
+<target> 0.74 </target> \n<confidence> 0.34 </confidence> 
+
+<think> The problem involves a pattern where the numbers in each triangle are 
+
+related. Let's analyze the given triangles: \n\n1. For the first triangle, the numbers are 
+
+2, 6, and 2. If we add the numbers in the triangle, we get \\(2 + 6 + 2 = 10 \\). \n2. For 
+
+the second triangle, the numbers are 4, 1, and 3. If we add the numbers in the 
+
+triangle, we get \\(4 + 1 + 3 = 8 \\). \n3. For the third triangle, the numbers are 3, 2, 
+
+and 5. If we add the numbers in the triangle, we get \\(3 + 2 + 5 = 10 \\). \n\nWe observe 
+
+that the sum of the numbers in each triangle is consistent. Therefore, for the fourth 
+
+triangle, the sum of the numbers should be \\(1 + ? + 0 = 10 \\). Solving for the missing 
+
+number, we get \\(1 + ? + 0 = 10 \\implies ? = 10 - 1 - 0 = 9 \\). \n\nHowever , the options 
+
+provided are (A) 1, (B) 2, (C) 3, (D) 4. It seems there might be a mistake in the pattern 
+
+or the options. Let's re -evaluate the pattern by considering the differences or other 
+
+possible operations. \n\nIf we look at the differences: \n- For the first triangle, \\(6 - 2
+
+= 4 \\). \n- For the second triangle, \\(4 - 1 = 3 \\). \n- For the third triangle, \\(5 - 2 = 
+
+3\\). \n\nThe differences are not consistent, so let's consider the sum of the numbers 
+
+in a different way. If we look at the sum of the numbers in the triangles and the 
+
+relationship between the numbers, we might find a different pattern. \n\nGiven the 
+
+options and the consistent sum pattern, the correct answer should be one of the 
+
+provided options. Let's re -evaluate the sum pattern again: \n\nIf we assume the sum of 
+
+the numbers in the triangles is consistent, then the missing number should be \\(10 - 1
+
+- 0 = 9 \\), but this is not one of the options. Let's consider the pattern of the 
+
+numbers in the triangles and the options provided. \n\nThe correct answer, based on 
+
+the pattern and the options, is \\(\\boxed{C} \\).</think> <answer>$3$</answer> 
+
+Okay, let's see. I need to figure out the missing number in the last triangle. The problem shows four triangles with numbers on their sides and one number inside. The first three triangles have numbers given, and the fourth has a question mark where the nu mber 
+
+should be. Hmm, maybe there's a pattern or formula connecting the numbers on the sides to the number inside the triangle. \n\nLooking at the first triangle: it's blue with numbers 6, 2, and 2. The inside number is 2. Wait, maybe the numbers on the sides relat e
+
+to the inside number through some operation. Let me check each triangle. \n\nFirst triangle: sides are 6, 2, and 2. The inside is 2. Let me see if adding the sides gives something. 6 + 2 + 2 = 10. Not sure. M ay be subtract? Let's see. Maybe the two bottom numbers? 
+
+The bottom sides here are 6 and 2, but the top is 2. Hmm. \n\nSecond triangle is green: sides are 1, 3, and the inside number is 4. Wait, the sides might be arranged differently. Maybe the two s id e numbers added together? Let's see: in the second triangle, maybe 1 
+
++ 3 = 4, which is the inside number. That seems possible. Let me check the first triangle then. The first triangle's sides: i f t he two side numbers (maybe the left and right?) are 6 and 2? Wait, the first triangle's numbers are labeled as 6, 2, and 2. Maybe the sides 
+
+are arranged such that the bottom edge is between the two numbers? Maybe the formula is (left side number) minus (right side num ber) equals the inside number? Let's test that. \n\nFirst triangle: If left and right sides are 6 and 2, then 6 - 2 = 4, but the inside 
+
+is 2. Hmm, that doesn't fit. Maybe multiplication? 6 * 2 = 12, no. Maybe addition divided by something? Not sure. \n\nLooking at the third triangle: purple with numbers 2, 5, and the inside is 3. If the pattern from the second triangle holds, where 1 + 3 = 4, then 
+
+maybe here 2 + 5 = 7, but the inside is 3. That doesn't fit. Maybe subtraction? 5 - 2 = 3. Oh! That works for the third triangle . Let's check the second triangle then: 3 - 1 = 2, but the inside number is 4. Hmm, conflicting results. \n\nWait maybe it's the sum of the 
+
+two smaller numbers? In the second triangle, 1 + 3 = 4, which matches. In the third triangle, 2 + 5 = 7, but the inside is 3. Do esn't fit. Maybe another approach. \n\nLooking at the first triangle again: numbers 6, 2, 2. Maybe (6 / 2) - something? 6 divided by 2 is 3, 
+
+but the inside is 2. Not sure. \n\nAlternative idea: perhaps the product of the two bottom numbers minus the top? Let's see: \n\nFirst triangle: assuming the top number is 2, and the bottom sides are 6 and 2. Then (6 * 2) - 2 = 12 - 2 = 10. Not matching. \n\nWait 
+
+maybe the formula is (left side) - (right side) = inside number? \n\nFirst triangle: If left is 6, right is 2, then 6 -2=4, but inside is 2. Not matching. \n\nSecond triangle: left 1, right 3, 1 -3 = -2, which is not 4. So that's out. \n\nAnother thought: maybe the sum of all 
+
+three sides' numbers equals the inside number? First triangle: 6+2+2=10, inside is 2. No. Second triangle: 1+3+4= 8, but inside is 4. Maybe half the sum? 10/2=5 vs 2. Not working. \n\nWait maybe the numbers on the corners? Each triangle has three numbers, perhaps 
+
+positioned at the corners, and the inside number is derived from them. Maybe the formula is (left corner + right corner) - top c orner? Let's try. \n\nFirst triangle: If the top is 2, left is 6, right is 2. Then (6 + 2) - 2 = 6. Not matching the inside 2. \n\nHmm , maybe 
+
+it's top number equals left minus right? For first triangle: 6 - 2 = 4, but inside is 2. Half of that? 4/2=2. That matches the first triangle. Let's test on the second triangle. \n\nSecond triangle: sides are 1, 3, and inside is 4. If left is 1, right is 3, then 1 - 3 = -2; half 
+
+would be -1, which doesn't match 4. So maybe different arrangement. \n\nAlternatively , maybe the bottom two sides? For first triangle, if the bottom sides are 6 and 2, then 6 -2=4, but inside is 2. Maybe divided by something? \n\nWait maybe the formula is (left 
+
+side number + right side number) divided by something. For the first triangle: (6 + 2)/ something = 2. That would require (8) /4 = 2. Not sure where the 4 comes from. \n\nSecond triangle: (1 + 3)/ something = 4. So 4 / something =4 → something is 1. Not 
+
+consistent. \n\nThis is tricky. Let me look at the third triangle: numbers 2, 5, and inside 3. If we do 5 - 2 = 3, which matches the inside number. So maybe for the third triangle, right minus left equals inside? Then in the second triangle, if arranged as left=1, 
+
+right=3, then 3 -1=2, but the inside is 4. Doesn't fit. \n\nWait maybe it's (left × right) divided by something. For third triangle: 2 ×5=10; 10 divided by something is 3. Not an integer. \n\nAlternative approach: look at the triangles' colors and positions? Maybe the 
+
+first row has blue and green triangles, second row purple and black. Not sure about color significance. \n\nWait maybe the numbers progress in a sequence. The first triangle's inside is 2, second is 4, third is 3... not obvious. \n\nWait the problem might involve the 
+
+triangle's orientation? The first and third are pointing down, second and fourth up? Not sure. \n\nLet me try another angle. Maybe the number inside is the result of a mathematical operation on the three numbers on the sides. Fo r each triangle: \n\nFirst 
+
+triangle: sides 6,2,2. Inside 2. \n\nPossibly 6 - (2+2) = 6 -4=2. That works! \n\nSecond triangle: sides 1,3, and inside is 4. Let's see: if the operation is left side minus (sum of the other two sides)? Wait 1 - (3 + 4)? No, the inside is t he result. Maybe (sum of two sides) 
+
+minus the third? \n\nFor first triangle: (6 + 2) - 2 = 6, not 2. \n\nAlternatively , maybe (right side - left side) + something? \n\nThis is getting convoluted. Let's try the first idea again where for the first triangle: 6 - (2 + 2) = 2, which matches. Let's test this formula 
+
+on the second triangle. \n\nSecond triangle: perhaps the largest number minus the sum of the other two? The sides are 1, 3, and the inside is 4. Wait if the sid es include the inside number? Maybe I got the sides wrong. \n\nWait maybe the triangle's edge numbers 
+
+are the three sides, and the inside number is computed based on them. Maybe the formula is: (Left number - Right number) = insid e? \n\nFirst triangle: If Left is 6, Right is 2, then 6 -2=4, but inside is 2. Half of that? 4/2=2. So maybe (Left - Right)/2? \n\nFirst 
+
+triangle: (6 -2)/2 = 2, which matches. \n\nSecond triangle: Let's see arrangement. The green triangle has numbers 1, 3, and inside 4. If Left is 1, Right is 3: (1 -3)/2 = ( -2)/2 = -1, which doesn't match 4. So maybe different sides assigned as Left and Right. \n\nPerhaps 
+
+the formula is (Top number - Bottom left - Bottom right)? Not sure. \n\nAlternative idea: maybe multiply two numbers and subtract the third? \n\nFirst triangle: 6*2 - 2 = 12 -2=10 ≠2. \n\nHmm . Maybe the sum of the bottom two sides minus the top? \n\nFirst 
+
+triangle: If the top is 2, then bottom sides 6 and 2: 6+2 -2 =6, not 2. \n\nThis is confusing. Maybe I need to look at the triangles' positions. The first is blue with numbers arranged as top=2, bottom left =6 , bottom right=2. The second is green with top=4, bottom 
+
+left=1, bottom right=3. Third is purple: maybe top=3, bottom sides 2 and 5. The fourth is black, with bottom left=1, bottom r igh t=0, and top having the question mark. \n\nWait maybe the inside number is the sum of the bottom two minus the top? Let's 
+
+rearrange: \n\nFor the first triangle: inside 2 = (6 + 2) - top. So 8 - top =2 → top=6. But the top was already 2. Maybe inverse. \n\nAlternatively , top (inside) = (bottom left - bottom right). For first triangle: 6 -2= 4, but inside is 2. Half of that? 4/2=2. So maybe 
+
+(bottom left - bottom right)/2 = inside. \n\nTesting on second triangle: bottom left is 1, bottom right 3. (1 -3)/2 = ( -2)/2 = -1, but inside is 4. Not matching. \n\nThird triangle: bottom sides 2 and 5. (2 -5)/2 = ( -3)/2 = -1.5, but inside is 3. Doesn't work. \n\nAlternative 
+
+formula: maybe bottom left + bottom right - top = inside? \n\nFirst triangle: 6 + 2 - top = inside. If inside is 2: 8 - top =2 → top=6. But the top number is 2. So maybe not. \n\nWait maybe the numbers on the triangle's corners are such that inside = (left corner + 
+
+right corner) - top corner? \n\nFirst triangle: assuming left=6, right=2, top=2. Then (6+2) -2 =6, which is not the inside 2. Not working. \n\nThis is taking time. Maybe look at the sequence of the given numbers and see a pattern. \n\nThe insides are 2,4,3,? Maybe the 
+
+numbers are following 2,4,3,... not obvious. The fourth triangle's bottom numbers are 1 and 0, top is ?, inside is ?. Wait th e q uestion is to find the missing value, which is the inside ? Mark. So maybe the formula is different. \n\nWait maybe the product of the 
+
+bottom two minus the top gives the inside? \n\nFirst triangle: 6*2 - top = inside. If inside is 2: 12 - top =2 → top=10. Doesn't match. \n\nAlternatively , top number is derived from bottom numbers. Maybe the inside number is the sum of the bottom two divided by 
+
+something. \n\nIn the third triangle: bottom numbers 2 and 5. (2+5)=7. 7 divided by something is 3. 7/ (3?) Not sure. \n\nI might be overcomplicating. Let me try to see if there's a pattern across the triangles. \n\nLooking at the triangles in order: \n\n1st triangle 
+
+inside: 2 \n\n2nd inside:4 \n\n3rd inside:3 \n\nLooking for a sequence: 2,4,3,... maybe next is 5? Not sure. \n\nAlternatively , the numbers could be following the triangle's color sequence or position. \n\nWait the fourth triangle has bottom numbers 1 and 0. Maybe the 
+
+inside is 1 - 0 =1? But need to confirm pattern. \n\nIf in the third triangle, inside 3 comes from 5 - 2 =3, then maybe the formula is right bottom minus left bottom? \n\nThird triangle: 5 -2=3, which matches. \n\nSecond triangle: bottom left 1, bottom right 3. Then 
+
+3-1=2, but the inside is 4. Doesn't fit. \n\nFirst triangle: bottom left 6, bottom right 2: 2 -6= -4, absolute value? 4, but inside is 2. Half of that? \n\nSo maybe for some triangles it's right minus left, others different. Maybe based on triangle orientation? \n\nFirst 
+
+and third triangles point downward, seconds and fourth upward. For downward pointing: inside = (bottom right - bottom left)/ som ething? \n\nFirst triangle: (2 -6 ) = -4 → maybe absolute value divided by 2: | -4 | /2 = 2, which matches. \n\nThird triangle: (5 -
+
+2 )=3 → inside is 3. Perfect. \n\nSecond triangle: pointing upward. Maybe it's (bottom right + bottom left )? \n\n1 + 3 =4, which matches the inside 4. \n\nFourth triangle: pointing upward, so maybe add the bottom numbers: 1 + 0 =1. So the missing inside number 
+
+would be 1? \n\nThat seems to fit. \n\nSo the rule might be: for upward pointing triangles (2nd and 4th), the inside number is the sum of the bottom left and right num be rs. \n\nFor downward pointing triangles (1st and 3rd), the inside number is (bottom right -
+
+bottom left ) absolute value divided by 2? Wait first triangle: bottom right is 2, bottom left is 6. 2 -6= -4, absolute is 4, div ided by 2 is 2. Yes. \n\nThird triangle: bottom right is 5, bottom left is 2. 5 -2=3, which is the inside number. So maybe for downward 
+
+triangles, it's simply (bottom right - bottom left ), but since it can be negative, maybe it's right minus left, and if negative , take absolute? Or just subtract in the order. \n\nWait in the third triangle, bottom right is 5, bottom left is 2, so 5 -2=3, which is 
+
+correct. \n\nFirst triangle: bottom right is 2, bottom left is 6, so 2 -6= -4, but the inside is 2. So maybe for downward triangles, it's (bottom r ight - bottom left ) * ( -1) divided by something? \n\nThis is getting too convoluted, but the key might be the triangle 
+
+direction. \n\nAssuming the rule is: \n\n- Upward triangles (2nd and 4th): inside = bottom left + bottom right \n\n- Downward triangles (1st and 3rd): in side = bottom right - bottom left (taking absolute value if necessary, but in first case gives -4, which when 
+
+halved gives 2. Wait maybe for downward, it's (bottom right - bottom left ) ) * -1 divided by 2? \n\nFirst triangle: (2 -6)= -4; * -1 is 4; divided by 2 is 2. Perfect. \n\nThird triangle: (5 -2)=3; * -1 would be -3, which doesn't help. So maybe just (bottom right - bottom 
+
+left ) ) divided by -2 ? \n\nWait this is too much adjustment. Maybe better to accept that for upward triangles, it's the sum, and for downward, it's (bottom r ig ht - bottom left ) ? \n\nBut first triangle would then be 2 -6= -4, which doesn't match the inside 2. So 
+
+perhaps different. \n\nAlternatively , maybe the direction doesn't matter, but the formula alternates? Not sure. \n\nBut given the time I've spent, maybe the intended answer is 1, following the upward triangle rule (sum of bottom numbers). Since th e fourth 
+
+triangle is upward pointing (like the second), then 1 + 0 =1, so the answer is A) 1. \n\nI think that's the most consistent pattern: upward triangles have inside number as the sum of the two bottom numbers, downward tr iangles maybe have another operation, but 
+
+since the question is about the fourth triangle which is upward, following that rule gives 1+0=1. \n</think> \n\nThe missing value in the fourth triangle can be determined by observing the pattern in the given triangles. \n\nFor upward -pointing triangles (like the 
+
+second and fourth), the number inside the triangle is the sum of the two bottom numbers. \n\n- In the second triangle: \\(1 + 3 = 4 \\), which matches the inside number. \n- Applying the same logic to the fourth triangle: the bottom numbers are \\(1 \\) and \\(0 \\), 
+
+so their sum is \\(1 + 0 = 1 \\). \n\nThus , the missing value is  \\(\\boxed{1} \\).
+
+**Answer:** \\boxed{A} 
+
+𝒅 𝒕 
+
+8.67s Thinking time:0.4s 
+
+Thinking time:217.29s 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 < 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+Fig. 18: The JRL-based routing samples (routed to target models) on MathVista. 10 Y. Zhou et al. <target> 0.00 </target> \n<confidence> 0.00 </confidence >
+
+<think> The problem involves a sector \\(OAB \\) with a radius of 1.0 cm. The area of the shaded 
+
+part in the figure can be determined by subtracting the area of the triangle \\(OAB \\) from the 
+
+area of the sector \\(OAB \\). \n\nThe area of the sector \\(OAB \\) is given by: \n\\[ \\text{Area of 
+
+the sector} = \\frac{ \\theta}{360^ \\circ} \\times \\text{Area of the circle} \\]\nwhere \\(\\theta \\)
+
+is the central angle in degrees. Since the radius is 1 cm, the area of the circle is \\(\\pi \\times 1^2 
+
+= \\pi \\) cm² . If the central angle \\(\\theta \\) is not given, we need to determine it from the 
+
+figure. However, the figure shows that the central angle is \\(90^ \\circ \\) (since the sector is a 
+
+quarter of the circle), so the area of the sector is: \n\\[ \\text{Area of the sector} = \\frac{90}{360} 
+
+\\times \\pi = \\frac{1}{4} \\pi \\text{ cm}^2 \\]\n\nThe area of the triangle \\(OAB \\)
+
+is: \n\\[ \\text{Area of the triangle} = \\frac{1}{2} \\times \\text{base} \\times \\text{height} = 
+
+\\frac{1}{2} \\times 1 \\times 1 = \\frac{1}{2} \\text{ cm}^2 \\]\n\nThe area of the shaded part is 
+
+the area of the sector minus the area of the triangle: \n\\[ \\text{Area of the shaded part} = 
+
+\\text{Area of the sector} - \\text{Area of the triangle} = \\frac{1}{4} \\pi - \\frac{1}{2} 
+
+\\]\n\nHowever, the problem asks for the area of the shaded part in the figure, and the options 
+
+provided are in terms of \\(\\pi \\). The correct interpretation should be that the area of the 
+
+shaded part is \\(\\frac{1}{4} \\pi - \\frac{1}{2} \\), but the options are in terms of \\(\\pi \\). The 
+
+correct area of the shaded part is \\(\\frac{1}{4} \\pi - \\frac{1}{2} \\), but the closest match in 
+
+the options is \\(\\frac{1}{2} \\) cm² .\n\nTherefore , the answer is 
+
+\\(\\boxed{C} \\).</think> \n<answer>$ \\frac{1}{2}$cm² </answer> 
+
+𝒅 𝒕 
+
+Thinking  time:228.87s 
+
+Thinking time:15.96s 
+
+As shown in the figure, when the width of the water surface AB in the circular bridge 
+
+hole is 8.0, When the water surface rises 1.0, the water surface width A′B′ in the 
+
+bridge hole is () Choices: A:√{15} 米 B:2√{15} 米 C:2√{17} 米 D: 不能计算 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 
+
+<target> 0.84 </target> \n<confidence> 0.99 </confidence 
+
+> 𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+>
+
+<think > The problem involves a circular bridge hole with a water surface width \\( AB = 8.0 \\)
+
+meters. When the water surface rises by 1.0 meter, we need to find the new water surface width 
+
+\\( A'B' \\). \n\n1. **Determine the radius of the circle**: \n - The width \\( AB = 8.0 \\) meters, so 
+
+the distance from the center \\( O \\) to the chord \\( AB \\) is \\( \\frac{1}{2} AB = 4.0 \\)
+
+meters. \n - Let the radius of the circle be \\( r \\). Using the Pythagorean theorem in the right 
+
+triangle formed by the radius, the perpendicular distance from the center to the chord, and 
+
+half of the chord, we have: \n \\[\n r^2 = 4^2 + d^2 \n \\]\n where \\( d \\) is the 
+
+perpendicular distance from the center to the chord. Since the water surface rises by 1.0 meter, 
+
+the new perpendicular distance is \\( d - 1 \\). \n\n2. **Set up the equation for the new chord 
+
+length**: \n - The new water surface width \\( A'B' \\) is the chord length when the distance 
+
+from the center to the chord is \\( d - 1 \\). Using the Pythagorean theorem again, we have 【r^2 
+
+= ( \\frac{A'B'}{2} )^ 2 + (d - 1)^2 \n \\]\n - From the first equation, \\( r^2 = 16 + d^2 \\). 
+
+Substitute \\( r^2 \\) in the second equation: \n \\[\n 16 + d^2 = \\left( \\frac{A'B'}{2} 
+
+\\right)^2 + (d - 1)^2 \n \\]\n - Expand and simplify the equation: \n \\[\n 16 + d^2 = 
+
+\\frac{(A'B')^2}{4} + d^2 - 2d + 1 \n \\]\n \\[\n 16 = \\frac{(A'B')^2}{4} - 2d + 
+
+1\n \\]\n \\[\n 15 = \\frac{(A'B')^2}{4} - 2d \n \\]\n \\[\n \\frac{(A'B')^2}{4} = 15 + 
+
+2d \n \\]\n \\[\n (A'B')^2 = 4(15 + 2d) \n \\]\n - Since \\( d = \\sqrt{r^2 - 16} \\), 
+
+substitute \\( d \\) back into the equation :[ (A'B')^2 = 4(15 + 2 \\sqrt{r^2 - 16 })] - We need to 
+
+find \\( r \\). From the first equation \\( r^2 = 16 + d^2 \\), and \\( d = \\sqrt{r^2 - 16} \\), we 
+
+get: \n \\[\n r^2 = 16 + (r^2 - 16 )][r ^2 = r^ 2]- This is consistent, so we need to find \\( d \\). 
+
+From the equation \\( 15 = \\frac{(A'B')^2}{4} - 2d \\), we solve for \\( A'B' \\): \n \\[\n (A'B')^2 
+
+= 4(15 + 2d) \n \\]\n \\[\n A'B' = 2 \\sqrt{15 + 2d }] - Since \\( d = \\sqrt{r^2 - 16} \\), we 
+
+substitute back to find \\( A'B' \\). The calculation shows that the new width \\( A'B' = 2 \\sqrt{15} 
+
+\\) meters. \n\nTherefore , the water surface width \\( A'B' \\) in the bridge hole is \\( 2 \\sqrt{15} \\)
+
+meters. \n\nThe answer is:  \\(\\boxed{B} \\).</think >
+
+<answer>$2 \\sqrt{15}$ 米</answer >
+
+Okay, so I need to solve this geometry problem about the circular bridge hole. Let me see... The question says that when the wid th of the water surface AB is 8.0 meters, and when the water level rises by 1.0 meter, what is the new width A'B'? The choice s a re given, so maybe I can visualize this. \n\nFirst , let me try to draw a mental picture. 
+
+There's a circular bridge hole. When the water surface is at AB, which is 8 meters wide. Then when the water rises 1 meter, t he new width is A'B', and we need to find that. \n\nHmm , since it's a circle, maybe I can model this with a circle equation. Let me think of the circle as having its center somewhe re above the original water level AB. 
+
+Since AB is the width at a certain water level, and when the water rises, the width changes. \n\nWait , perhaps it's better to consider the circle's radius and the positions of AB and A'B'. Maybe using some geometric principles he re. \n\nLet me recall that in a circle, the length of a chord depends on its distance from the center. So if I can 
+
+find the radius of the circle and the distance from the center to the original chord AB, then when the water level rises by 1 me ter, the new chord A'B' would be closer to the center, so its length might be longer or shorter depending on direction. Wait, bu t the water level rising would mean the chord is higher, so maybe moving towards 
+
+the center? \n\nWait , maybe the bridge hole is like an arch, so the original water level AB is a chord of the circle, and when the water rises, t he new water level is another chord higher up. The vertical distance between these two chords is 1 meter. We need to relate the len gths of these chords based on their distances from the 
+
+center. \n\nYes , that makes sense. Let me formalize this. \n\nLet’s denote the circle's center as O. Let’s suppose that the original chord AB is at a certain distance from the center. When the wa ter level rises by 1 meter, the new chord A'B' is 1 meter higher (assuming the bridge hole is oriented vertically). The key i s t o relate the lengths of 
+
+AB and A'B' through their distances from the center. \n\nLet me set up coordinates to make this clearer. Let's place the center of the circle along the vertical axis midway between point s A and B. Wait , actually, since AB is a horizontal chord (since it's a water surface width), the center must lie along the vertical line perpendicular to AB 
+
+at its midpoint. \n\nLet me define some variables: \n\nLet’s say the circle has radius r. Let’s denote the distance from the center O to the chord AB as h. Then, the length of AB is 8 me te rs. Using the formula for the length of a chord: length = 2 √(r² - d²), where d is the distance from the center to the chord. \n\nSo for chord AB: 8 = 
+
+2√(r² - h²). Therefore, √(r² - h²) = 4 => r² - h² = 16 --> equation (1). \n\nNow , when the water level rises by 1 meter, the new chord A'B' is 1 meter above AB. Therefore, the distance from the center O to th e new chord A'B' would be h - 1 (if the center is above AB). Wait, need to be careful with directions here. \n\nAssuming that the original 
+
+water level AB is below the center of the circle. So if the water rises, the distance from the center to the water level decreases. For example, if the center is above the origin al water level, then raising the water level would bring the chord closer to the center, hence the chord length would increase. Al ternatively, if the center was below, but 
+
+that might not make sense for a bridge hole. \n\nProbably the standard setup is that the deck of the bridge is the top of the circle, and the hole is the lower part? Hmm, maybe I need to think differently. \n\nAlternatively , maybe the bridge hole is the part under the bridge, so the full circle is the hole, and when the water level rises, it 
+
+covers more of the circle. Wait, perhaps the chord AB is the current water surface, and when the water rises, the surface goe s u p, cutting a higher chord A'B'. \n\nTo avoid confusion, maybe setting up coordinate axes would help. \n\nLet me try coordinate geometry. \n\nSuppose we model the circular bridge hole as a circle. Let's set up 
+
+coordinates such that the original chord AB is horizontal, and its midpoint is at the origin or some point. \n\nLet me assume that the lowest point of the circle is at the bottom of the bridge hole, but maybe it's better to set coordinates w it h the center of the circle at (0, k), and the original water level AB is a horizontal line intersecting 
+
+the circle, forming chord AB of length 8m. When the water level rises by 1m, the new water level is a line 1m above AB, formi ng chord A'B', whose length we need to find. \n\nLet me define coordinates: \n\nLet’s suppose the original chord AB is located at y = c, and the center of the circle is at (0, d). The distance from the center to the 
+
+chord AB is |d - c|. The length of AB is 8m, so using the chord length formula: \n\nLength AB = 2 * sqrt(r^2 - (distance from center)^2 ) \n\nSo ,\n\n8 = 2 * sqrt(r^2 - (d - c)^2 ) \n\nSimplify : 4 = sqrt(r^2 - (d - c)^2 ) \n\nThen squaring both sides: 16 = r^2 - (d - c)^2 --> r^2 = 16 + (d - c)^2 \n\nNow , when the water level rises by 1m, the new 
+
+water level is at y = c + 1. The new chord A'B' is this line intersecting the circle, so its length can be found similarly. \n\nThe distance from the center (0,d) to the new chord is |d - (c + 1)| = |(d - c) - 1| \n\nLet’s denote the original distance from center to AB as s = d - c (assuming d > c, so the center is above the original water level). Then 
+
+the new distance is s - 1. \n\nThen the length of A'B' would be 2 * sqrt(r^2 - (s - 1)^2 ) \n\nBut we need to express this in terms of known quantities. From earlier, we have r^2 = 16 + s^2. \n\nSubstituting into the new length: \n\nLength A'B' = 2 * sqrt( (16 + s^2 ) - (s - 1)^2 ) \n\nLet me compute the expression inside the square root: \n\n(16 + s²) 
+
+- (s - 1)² = 16 + s² - [s² - 2s + 1] = 16 + s² - s² + 2s -1 = 16 -1 + 2s = 15 + 2s. \n\nTherefore , Length A'B' = 2 * sqrt(15 + 2s). \n\nHmm , but we still have 's' in there, which is the original distance from the center to AB. We need another equation to find 's', bu t maybe there isn't enough information? Wait, the problem doesn't give the radius or any 
+
+other measurements. Is there something missing here? \n\nWait , maybe I made a wrong assumption in the coordinate setup. Perhaps the bridge hole is such that the bottom of the hole is at poi nt A or B? Maybe the figure shows that AB is the bottom of the bridge hole, and when the water level rises, it goes up from t her e. \n\nWait ,
+
+maybe the standard interpretation is that the original chord AB is at the bottom, so when the water level rises, the chord mo ves upward. But without the figure, it's a bit ambiguous. Maybe the problem is from a textbook where the figure is standard? \n\nAlternatively , maybe the bridge hole is a semicircle, and AB is the diameter? Wait, 
+
+if AB were the diameter, then the length would be fixed, but the problem states that when the water level rises, the width ch ang es, so AB is not the diameter. \n\nThis is getting confusing. Maybe there's a different approach. \n\nWait , perhaps the key is that the rise of 1 meter corresponds to the difference in chord lengths, and through 
+
+some properties, we can find the new length without knowing the radius. \n\nLet me think again. Suppose the circle has center O, and AB is a chord of the circle. The water level rises by 1m, so the new cho rd A'B' is parallel to AB and 1m above it. \n\nThe distance between the two chords AB and A'B' is 1m. The question is to find the length 
+
+of A'B' given that AB is 8m. \n\nThere is a formula relating two parallel chords and the distance between them. \n\nAlternatively , we can use the concept of the radius and the two chords. \n\nLet me denote: \n\nLet’s suppose the two chords are AB and A'B', separated by 1m. Let’s assume that the center O is somewhere along the 
+
+perpendicular bisector of AB (and A'B', since they're parallel). \n\nLet’s denote the distance from the center O to AB as h. Then the distance from O to A'B' would be h - 1 (if A'B' is closer to the cen ter) or h + 1, depending on the direction. We need to establish the relationship. \n\nUsing the chord length formula for both chords: \n\nFor AB: 
+
+length AB = 2 √(r² - h²) = 8 ⇒ √(r² - h²) = 4 ⇒ r² - h² = 16 --> equation (1) \n\nFor A'B': let’s say the distance from O to A'B' is h - 1 (assuming the water level rises towards the center). Then the length A'B' = 2 √(r² - (h - 1)^2 ) \n\nWe need to find this length, but we have two variables r and h. So unless there is another condition, perhaps 
+
+the bridge hole's total height? Maybe the bottom of the bridge hole is point A, so when the water level is at AB, maybe AB is at the bottom, so the distance from the center to AB would be r - k, but I'm getting tangled here. \n\nWait , maybe the minimal case: if the water level is at AB, which is 8m wide, and when it rises 1m, reaching A'B', 
+
+then perhaps the center is located such that the entire circle's lowest point is at AB? That might be. \n\nSuppose the original water level AB is the bottom of the circle. Then the center would be r above AB. In that case, the distance from the center to AB is r, so applying the chord length formula: \n\nAB length = 2 √(r² - (r)^2 ) = 0, 
+
+which contradicts AB being 8m. So that can't be. \n\nAlternative approach: maybe the bridge hole is a semicircle above the water? Wait, perhaps the figure is an inverted circle, like an arch .\n\nImagine the bridge has a circular arch underneath, and the water level is AB, which is a chord of the arch. When the water level rise s, the 
+
+chord A'B' is higher up. \n\nIn this case, the arch is the upper part of the circle, but the hole would be the lower part? This is getting too speculative wi th out the figure. \n\nPerhaps I should look for an answer in terms of the options provided, and see which one fits. \n\nLooking at the options: they involve sqrt(15), sqrt(17), etc. Maybe 
+
+through assuming some values. \n\nLet me try assuming that the center is 5 meters above the AB chord. Then, let's compute: \n\nIf AB is 8m, then using the chord length formula: \n\n8 = 2 √(r² - h²), where h is the distance from center to AB. \n\nSuppose I pick h = 3 meters arbitrarily, then: \n\n8 = 2 √(r² - 9) ⇒ 4 = √(r² - 9) ⇒ 16 = r² - 9
+
+⇒ r² = 25 ⇒ r = 5. \n\nSo if the distance from center to AB is 3m, then radius is 5m. \n\nThen , when the water level rises by 1m, the new distance from the center to A'B' is 3m - 1m = 2m. \n\nThen the new chord length would be 2 √(r² - (2)^2 ) = 2 √(25 - 4) = 2 √21 ≈ 2*4.583 = ~9.166 m. But none of the options have sqrt(21). 
+
+Hmm. \n\nAlternatively , maybe the distance increases? If the center is below the chord AB, then raising the water level would move the chord away f rom the center, increasing the distance, hence the chord length would decrease. \n\nWait , maybe my coordinate assumption was wrong. \n\nSuppose the center is below the original water 
+
+level AB. So the distance from O to AB is h, and when the water level rises, the new chord A'B' is higher, so further away from the center , thus its length would be shorter. \n\nLet me try this scenario. \n\nLet’s suppose the distance from the center O to AB is h ( 向下 ?), so the length AB = 8 = 2 √(r² - h²). \n\nWhen the water level rises by 1m, 
+
+the new distance from O to A'B' is h + 1, so the length A'B' = 2 √(r² - (h + 1)^2 ). \n\nBut again, with two variables r and h, we can't solve numerically unless another equation is available. \n\nThis suggests that perhaps there is insufficient information, but the problem gives options, so likely there's an assumption to be made, perhaps that 
+
+the bottom of the bridge hole is point A, so when the water level is at AB, the depth is such that... \n\nWait , maybe the bridge hole is a semicircle with AB as the diameter? But then the length would be fixed. \n\nAlternatively , maybe the rise of 1m corresponds to the height in the circle, and using similar triangles or 
+
+something. \n\nAnother thought: perhaps the two chords AB and A'B' are separated by 1m, and the line connecting their midpoints is 1m. Then, using the formul ae for both chords. \n\nLet me denote: \n\nLet’s call the midpoint of AB as M, and the midpoint of A'B' as M'. The distance between M and M' is 1m. \n\nThe center O lies along the 
+
+line perpendicular to AB (and A'B') at M. \n\nSo , the distance from O to AB is OM = let's say x meters. Then the distance from O to A'B' is OM' = x - 1 (if A'B' is closer to O) or x + 1. \n\nDepending on the position, but let's suppose that rising water means M' is 1m above M, so if O is above M, then OM' = x - 1. \n\nThen , for chord AB: \n\nAB /2 = 4 
+
+= √(r² - x²) → r² = x² + 16. \n\nFor chord A'B': \n\nLet’s say the distance from O is |x - 1| (depending on direction). Assuming O is above M, so when water rises, M' is closer to O, so distance is x - 1. \n\nThen A'B'/2 = √(r² - (x - 1)^2 ) = √( (x² + 16 ) - (x² - 2x + 1 ) ) = √( x² + 16 - x² + 2x -1 ) = √( 15 + 2x ) \n\nTherefore , the length A'B' = 2* √(15 + 
+
+2x ) \n\nBut we still have x as an unknown. Unless there is a relation that I'm missing. \n\nWait , maybe the bottom of the bridge hole is at a certain point. For example, if the bridge hole is a semicircle with AB as the b ase , then the center would be at a distance of r above AB, so x = r. \n\nThen , plugging into the first equation: \n\nr² = r² +
+
+16 → Which is impossible. So that can't be. \n\nThis is perplexing. Maybe the question assumes that the depth of the hole at the center is such that when the water level rises 1m from AB, we can relate it via Pythagoras. \n\nAlternatively , maybe the answer is 2 √15, which is option B. Let me see what x would need to be for that. \n\nIf A'B' 
+
+is 2 √15, then: \n\nA'B '/2 = √15 = √(15 + 2x ) ⇒ 15 = 15 + 2x ⇒ 2x=0 ⇒ x=0. \n\nThat would mean the center is at M, so the original chord AB is the one at distance 0 from the center? That would mean AB is the d ia meter. But then AB's length would be the diameter, so if AB is 8m, then the diameter is 8m, radius 4m. \n\nThen , when the 
+
+water level rises 1m from the diameter (which is already the maximum width), that doesn't make sense because you can't have a wi der chord than the diameter. So rising water beyond the diameter would submerge the entire bridge, but the problem states A'B ' i s a width, so maybe it's on the other side? \n\nThis is getting too convoluted. 
+
+Maybe the correct approach yields option B: 2 √15. \n\nAlternatively , maybe there was a figure where the circle's lowest point is A, so AB is horizontal at the bottom, and when water rises 1m, the chord is higher. \n\nLet me try this specific case. \n\nSuppose point A is the lowest point of the circle, so the center O is directly above A at a
+
+distance of r (the radius). Then, the chord AB is horizontal, passing through A, which is the bottom. Wait, but if A is the lowest point, t he n AB must be a horizontal line passing through A, but that would make AB a vertical chord? Maybe not. \n\nThis is really tricky without the figure. Given that the answer options include 2 √15 and 
+
+2√17, perhaps through trial with the previous equations. \n\nSuppose we let the term inside the sqrt for A'B' be 15, leading to 2 √15. That would require: \n\nFrom earlier, A'B'/2 = sqrt(15 + 2x ). If this equals sqrt(15), then 15 + 2x = 15 ⇒ x=0. Which implies the center is at M, making AB a diameter. But then as before, contradiction 
+
+arises. \n\nAlternatively , maybe the distance between the two chords is 1m, but the vertical distance between two parallel chords is related to the di ffe rence in their distances from the center. \n\nThe vertical distance between AB and A'B' is 1m. If the center is between them, then the distances ad d… 
+
+As shown in the figure, in the sector OAB with a radius of 1.0, and the area of the 
+
+shaded part in the figure is () Choices: A:πcm² B: \frac{2}{3}πcm² C: \frac{1}{2}cm² 
+
+D: \frac{2}{3}cm² 
+
+𝒅 𝒕 
+
+Thinking time:16.36s 
+
+𝑑 + 𝑑 − 𝑡 
+
+𝜏 >𝑻 𝒋𝒐𝒊𝒏𝒕 
+
+Thinking  time:153.97s 
+
+Okay, let me try to solve this problem. Hmm, the question is about finding the area of the shaded region in a sector OAB with ra dius 1.0 cm. The figure isn't shown, but maybe I can visualize it based on the description and 
+
+standard problems. Let me think step by step. \n\nFirst , since it's a sector OAB, probably points O, A, B form some kind of figure with two semicircles or something similar? Maybe the shaded area involves subtracting areas 
+
+of certain regions from the sector? \n\nWait , the user mentioned the choices include π and fractions with π, so maybe the shaded area is part of the sector minus some triangle areas? \n\nAlternatively , perhaps the shaded 
+
+area is the intersection or union of different regions within the sector. Since the options have both π terms and non -π terms, maybe there's a combination of circular sectors and triangles. \n\nLet me try to imagine the 
+
+figure. The problem mentions a sector OAB with radius 1.0. Maybe OA and OB are radii forming the sector, and there might be l ine s or curves dividing the sector into parts, some of which are shaded. \n\nSince I can't see the 
+
+image, maybe I should look for common problems of this type. A typical problem might involve a sector with a triangle inside, an d the shaded area is the segment or something like that. \n\nWait , one common problem is 
+
+when you have a sector and an inscribed circle or something, but given the answer choices, maybe it's a sector minus a triang le? \n\nAlternatively , maybe the shaded area consists of two segments? \n\nWait , perhaps the 
+
+figure is similar to the one where the shaded area is a lens shape formed by overlapping circles? But without seeing the figu re, this is tricky. Maybe I need to make assumptions based on standard questions. \n\nAnother 
+
+approach: Let's suppose that the shaded area is calculated by finding areas of sectors and subtracting triangle areas. \n\nAssuming the sector angle is 60 degrees or something, but since the radius is 1.0, maybe the area can 
+
+be computed using integration or geometric formulas. \n\nAlternatively , maybe the shaded area is (Area of sector OAB) minus (area of triangle OAB plus some other regions). Hmm, this is getting co nfu sing without the 
+
+figure. \n\nWait , maybe the problem is similar to Example 3 in some textbook? Let me think of another way. Since the options include (2/3) π and (1/2), perhaps the shaded area is a combination of a sector and a 
+
+triangle. \n\nWait , maybe the figure has the sector divided by two radii, creating some regions, and the shaded part is the union of two segmen ts? \n\nAlternatively , maybe the shaded area is the area common to two 
+
+quarter -circles? For instance, if points O, A, B form a right angle, and there are semicircles drawn on OA and OB, their interse ction might create a shaded area. \n\nWait , maybe the figure is like this: Sector OAB is a 
+
+quarter -circle (90 degrees), and there are two semicircles inside, one with diameter OA and another with diameter OB, leading to overlapping areas which are shaded. \n\nIf that's the case, let's try calculating. \n\nSuppose 
+
+sector OAB is a quarter -circle with radius 1. So the area of the sector would be (1/4)* π*(1)^2 = π/4. \n\nThen , if there are semicircles on OA and OB, each of those semicircles would have a diameter of 1, so radius 0.5. The area 
+
+of each semicircle would be (1/2)* π*(0.5)^2 = (1/2)* π*(1/4) )= π/8. Two of them would be π/4. \n\nBut how does that relate to the shaded area? \n\nMaybe the shaded area is the sector area minus the areas of the two 
+
+semicircles? Then it would be π/4 - π/4 = 0, which doesn't make sense. \n\nHmm , perhaps the shaded area is the combined area of the two semicircles minus the overlapping part? \n\nThis is getting too convoluted. Maybe I 
+
+should consider that the answer is among the choices, so perhaps the correct answer is 1/2 or 2/3 π?\n\nWait , another thought: maybe the shaded area is a circular segment. For example, if the sector angle is 120 degrees, 
+
+then the area of the sector is (120/360)* π*1^2 = (1/3) π. If there's a triangle inside, its area would be (sqrt(3)/4 )*1^ 2, but subtracting that might not lead to the options given. \n\nAlternatively , maybe the shaded area is the 
+
+area between two arcs: one being the sector arc, and another being an arc of a circle that intersects at certain points. \n\nThis is really challenging without the figure. Maybe I can search for similar problems. \n\nWait ,
+
+perhaps this is a standard problem where the shaded area ends up being 1/2 cm² ? But why? \n\nAlternatively , maybe the figure is such that the shaded area is a semicircle. If the radius is 1, a semicircle would have area 
+
+(1/2)* π*(1)^2 = π/2, but that's not among the options except option B is (2/3) π.\n\nHmm , maybe the sector is 270 degrees? Then area would be ( 3/4)* π, but subtracting something? \n\nI'm stuck here. Maybe I need to consider 
+
+that the answer is D: 2/3 cm² , but I need to verify. \n\nWait another idea: perhaps the shaded area is the area of the sector minus the area of an equilateral triangle? If the sector angl e is 60 degrees, area would be 
+
+(60/360)* π*1 = π/6. If the triangle has area (sqrt(3)/4), then the shaded segment would be π/6 - sqrt(3)/4, but this doesn't match the options. \n\nThis is frustrating. Maybe the correct answer is B: (2/3) π cm² ? Or perhaps C: 
+
+1/2 cm² ?\n\nWait , maybe the figure is a rectangle with semicircles, but within a sector. Alternatively, maybe it's the classic \"area common to two semicircles \" problem. \n\nSuppose the sector is a semicircle itself. If OA and 
+
+OB are perpendicular, forming a quarter circle, and there are two semicircles drawn inside, their intersection might form the sh aded area. \n\nLet me try assuming the shaded area is the lens -shaped intersection of two 
+
+semicircles. \n\nIf the sector is a semicircle (angle 180 degrees), radius 1, area (1/2)* π*1² = π/2. \n\nIf we have two semicircles: one with diameter OA (length 1), so radius 0.5, area (1/2)* π*(0.5)^2 = π/8. Similarly another 
+
+semicircle on OB, same area. The intersection area between the two semicircles might be calculated, but I'm not sure. \n\nThe total area covered by the two semicircles would be π/8 + π/8 - intersection area. But this seems too 
+
+vague. \n\nPerhaps I should give up and look for the standard solution to this common problem. \n\nWait , maybe the answer is D: 2/3 cm² . Because sometimes in such geometry problems, after calculating areas and 
+
+subtracting, you end up with a rational number like 2/3. \n\nAlternatively , maybe it's the area of the sector minus the area of a triangle, resulting in ( θ/2 - (base*height)/2 ). If θ is 120 degrees, then: \n\nSector area: 
+
+(120/360)* π*1²= (1/3) π\n\nTriangle area: If it's an equilateral triangle with sides length 1, area would be (sqrt(3))/4). But 1/3 π minus that is not matching the options. \n\nHmm , maybe the shaded area is a unit where after 
+
+calculations, it results in 1/2. Maybe the figure is such that the shaded area is a right triangle with legs 1 and 1, so area 0. 5, which is option C. \n\nGiven that one of the options is C: 1/2 cm² , maybe that's the answer. Since 
+
+the problem states \"the area of the shaded part in the figure \", and without more info, perhaps the simplest answer is 1/2. \n\nBut I'm just guessing here. Given the time I've spent and lack of progress, I'll go with option C: 
+
+1/2 cm² .\n\nWait , but the user's initial translation had options including π and others. Maybe I was wrong. Another common problem: the area between a sector and an inscribed circle. \n\nAlternatively , maybe the shaded 
+
+area is the area of the sector OAB minus the areas of two segments. \n\nThis is really tough . Maybe the answer is B: (2/3) π cm² . I've seen problems where the shaded area in a sector with some lines ends up being two -thirds 
+
+of the sector area. \n\nIf the sector is 180 degrees (semicircle), area π/2. If the shaded area is 2/3 of that, it would be (2/3)( π/2) = π/3, which isn't an option. Hmm. \n\nWait , maybe the sector angle is 240 degrees? Then area 
+
+would be (240/360)* π*1 = (2/3) π, which matches option B. If the shaded area is the entire sector, then that would be the answer. Maybe the figure shades the wh ole sector? But the problem mentions \"the shaded part \", 
+
+implying it's a part, not the whole. \n\nThis is very confusing. Given the options, and considering common problems, I think the most plausible answer is B: (2/3) π cm² or D: 2/3 cm² .\n\nWait , the radius is 1.0 cm, so areas 
+
+involving π would be in terms of π, while 选项 C and D are unitless? Wait no, the area should be in square centimeters. The options probably have typos, but assuming the us er input them correctly: \n\nOptions :\n\nA : π
+
+cm² \n\nB : (2/3) π cm² \n\nC : (1/2) cm² \n\nD : (2/3) cm² \n\nSo options C and D are without π, which might indicate they are numerical values if the radius is 1. Maybe the shaded area is a triangle with area 1/2, so op tio n
+
+C. \n\nGiven that, perhaps the shaded area is indeed a right triangle with legs 1 and 1, giving area 0.5. So I will settle on option C. \n\nBut I'm not fully confident. Maybe the correct answer is B. I need to make a decision 
+
+here. \n\nAfter reconsidering, perhaps the shaded area involves a 240 -degree sector minus some triangles, leading to (2/3) π. Since I can't be sure, but given the options, I'll choose option B. \n</think> \n\nThe problem involves 
+
+finding the area of the shaded region in a sector OAB with radius 1.0 cm. After careful consideration and analysis of possibl e c onfigurations, the most plausible solution leads to the area being \\(\\frac{2}{3} \\pi \\) cm² . This 
+
+conclusion is drawn from common geometric problem structures and the provided answer choices. \n\n**Step -by -Step Explanation:** \n\n1. **Understanding the Sector:** The sector OAB has a radius of 1.0 cm. Assuming the 
+
+sector angle is such that the shaded area calculation aligns with standard geometric problems. \n\n2. **Analyzing Possible Config urations:** Considering typical scenarios involving sectors and shaded regions, the area is 
+
+determined through subtraction of triangular areas from the sector area or through direct sector area calculations. \n\n3. **Calc ulating the Sector Area:** If the sector angle is \\(240^ \\circ \\), the area would be 
+
+\\(\\frac{240}{360} \\times \\pi \\times (1)^2 = \\frac{2}{3} \\pi \\) cm² , which matches option B. \n\n4. **Verification Against O ptions:** Among the given choices, \\(\\frac{2}{3} \\pi \\) cm² (Option B) is consistent with common 
+
+problem solutions involving sectors and shaded regions. \n\nThus , the correct answer is: \n\n\\boxed{B} \n\n**Answer:** \\boxed{B }
+
+Fig. 19: The JRL-based routing samples on MathVerse. Proactive Routing for Efficient Visual Reasoning 11 𝒅 𝒕 
+
+Thinking  time:55.38s 
+
+Thinking time:2.37s 
+
+As shown in the figure, straight lines a and b intersect at point O. If angle 1 is 
+
+equal to 50.0, then angle 2 is equal to () \nChoices :\nA:50 °\nB:40 °\nC:140 °\nD:130 °     
+
+> 𝑑 +𝑑 −𝑡
+> 𝜏 > 𝑻 𝒋𝒐𝒊𝒏𝒕
+
+The slope of f(x) at x=0 is ____ 
+
+Choices: \n(A) positive \n(B) negative \n(C) zero \n(D) undefined 
+
+𝒅 𝒕 
+
+Wrong GT : A. positive 
+
+Thinking  time:33.53s 
+
+<target> 0.94 </target> \n<confidence> 0.99 </confidence >
+
+<think> The problem involves the properties of angles formed by the intersection of two lines. 
+
+Specifically, we need to use the fact that the sum of the angles on a straight line is 180 degrees. 
+
+In the figure, angle 1 and angle 2 are supplementary angles, meaning they add up to 180 degrees. 
+
+Given that angle 1 is 50 degrees, we can find angle 2 by subtracting angle 1 from 180 
+
+degrees: \n\n\\[ \\text{angle 2} = 180^ \\circ - \\text{angle 1} = 180^ \\circ - 50^ \\circ = 130^ \\circ 
+
+\\]\n\nTherefore, the measure of angle 2 is 130 degrees .\n\nThe answer is 
+
+\\(\\boxed{D} \\).</think> \n<answer >$ \\boxed{D}$</answer >
+
+Okay, let's see. The problem is about two straight lines a and b intersecting at point O. Angle 1 is 
+
+given as 50 degrees, and we need to find angle 2. Hmm, first I should try to visualize the figure based 
+
+on the description. Since it's mentioned that lines a and b intersect at O, forming angles labeled 1 
+
+and 2. \n\nWait , maybe I should recall some basic geometry concepts here. When two lines intersect, 
+
+vertically opposite angles are equal. Also, adjacent angles form a linear pair, so they add up to 180 
+
+degrees. Let me think about the positions of angle 1 and angle 2. \n\nLooking at the image 
+
+description: there's a line a with a point O where another line b intersects. Angle 1 is near the top 
+
+left, and angle 2 is near the bottom right? Maybe they are vertical angles? Or perhaps angle 1 and 
+
+angle 2 are adjacent? \n\nThe user provided an image link but since I can't view images, I have to go 
+
+by the text description. The figure has angle 1 marked with a curve near the intersection, and angle 2 
+
+similarly. Maybe angle 1 and angle 2 are on a straight line? Wait, the labels might be arranged such 
+
+that angle 1 and angle 2 are supplementary. \n\nAlternatively , if angle 1 and angle 2 are vertical 
+
+angles, then they would be equal. But the options include 50 °, which would be the case if they were 
+
+vertical. However, one of the choices is 130 °, which is supplementary to 50 °. Maybe angle 2 is the 
+
+supplementary angle to angle 1? \n\nLet me try to sketch this mentally. Suppose line a is horizontal, 
+
+and line b is crossing it, making an 'X' shape. If angle 1 is 50 °, then its vertical opposite angle would 
+
+also be 50 °, and the other two angles would be 130 ° each. So angle 2 might be one of those 130 °
+
+angles. \n\nTherefore , if angle 1 is 50 °, then angle 2, being the supplementary angle, would be 180 ° -
+
+50 ° = 130 °. That would make the answer D:130 °. \n\nWait , but maybe the positions are different. Let 
+
+me confirm again. Since the problem mentions \"as shown in the figure, \" but without seeing it, I have 
+
+to assume standard positions. Typically, in such problems, if two angles are on a straight line, they 
+
+add up to 180 °. If angle 1 and angle 2 are adjacent and form a linear pair, then angle 2 would be 
+
+130 °. Alternatively, if they are vertical angles, they'd be equal. Since option A is 50 °, but the question 
+
+is asking for angle 2, perhaps the figure's configuration leads to angle 2 being supplementary. 
+
+\n\nGiven the answer choices, 130 ° is an option, so maybe that's the correct one. I think the key here 
+
+is that angles formed by intersecting lines have vertical angles equal and supplementary when 
+
+adjacent. Since angle 1 is 50 °, angle 2 might be the angle across from it (vertical) or next to it 
+
+(supplementary). Since 50 is an option, but the problem might be trying to trick us, perhaps angle 2 
+
+is the supplementary angle. Therefore, the answer is D:130 °.\n</think> \n\nThe problem involves two 
+
+intersecting lines, a and b, at point O. Given that angle 1 is $50.0^ \\circ$, we need to determine the 
+
+measure of angle 2. \n\nWhen two lines intersect, vertically opposite angles are equal, and adjacent 
+
+angles form a linear pair, summing to $180^ \\circ$. Based on typical geometric configurations and 
+
+the provided answer choices: \n\n- If angle 1 and angle 2 are vertical angles, they would be equal 
+
+($50^ \\circ$), but this is option A. \n- However, considering the possible positioning described, angle 2 
+
+is likely the supplementary angle to angle 1. This would mean angle 2 = $180^ \\circ - 50^ \\circ = 
+
+130^ \\circ$. \n\nThus , the correct answer is **D:130 °**. \n\n$ \\boxed{D }$ 
+
+Simple Question! 
+
+<target> 0.9 </target> \n< confidence> 0.9 </confidence >
+
+<think> The function given is \\( g(x) = 0.5^x \\). The slope of the function at any point 
+
+\\( x \\) is given by the derivative of \\( g(x) \\). \n\nThe derivative of \\( g(x) = 0.5^x \\)
+
+is: \n\\[ g'(x) = 0.5^x \\cdot \\ln(0.5) \\]\n\nAt \\( x = 0 \\), the derivative becomes: \n\\[ g'(0) 
+
+= 0.5^0 \\cdot \\ln(0.5) = 1 \\cdot \\ln(0.5) = \\ln(0.5) \\]\n\nSince \\( \\ln(0.5) = 
+
+\\ln \\left( \\frac{1}{2} \\right) = -\\ln(2) \\), we have: \n\\[ g'(0) = -\\ln(2) \\]\n\nThe value of 
+
+\\( \\ln(2) \\) is positive, so \\( -\\ln(2) \\) is negative. Therefore, the slope of \\( g(x) \\) at 
+
+\\( x = 0 \\) is negative. \n\nThe correct answer is (B).</think >
+
+<answer>(B)</answer >     
+
+> 𝑑 +𝑑 −𝑡
+> 𝜏 > 𝑻 𝒋𝒐𝒊𝒏𝒕
+
+Okay, let's see. The question is asking about the slope of f(x) at x=0. Hmm, 
+
+wait, the graph shown is for g(x) = 0.5^x. Maybe there's a typo and they 
+
+meant g(x)? Because the image is of g(x). Anyway, assuming the question 
+
+is about g(x). \n\nFirst , I need to recall what the slope at a point means. 
+
+The slope is the derivative at that point. Since g(x) is an exponential 
+
+function, 0.5^x, which can also be written as (1/2)^x or 2^{ -x}. \n\nTo 
+
+find the slope at x=0, I should compute the derivative of g(x). Let me 
+
+remember the derivative of a^ u. The derivative is a^ u * ln(a) * u'. Here, a 
+
+is 0.5, and the exponent is x, so u = x, so u' is 1. \n\nTherefore , g'(x) = 0.5^x 
+
+* ln(0.5) * 1. \n\nWait , ln(0.5) is negative because 0.5 is less than 1. So 
+
+the derivative would be negative, meaning the function is decreasing at 
+
+that point. \n\nLooking at the graph, since it's an exponential decay 
+
+function (because the base 0.5 is between 0 and 1), the function is 
+
+decreasing everywhere, so the slope at any point, including x=0, should 
+
+be negative. \n\nTherefore , the slope at x=0 is negative. So the answer 
+
+should be B. \n\nBut let me double -check. Maybe they meant f(x), but 
+
+since the graph provided is for g(x), perhaps there was a mistake in the 
+
+question. Assuming the question is correct and the function is indeed 
+
+g(x), then the answer is B. Negative. \n</think> \n\nThe question asks for 
+
+the slope of \\( f(x) \\) at \\( x = 0 \\), but the graph provided is for 
+
+\\( g(x) = 0.5^x \\). Assuming the question refers to \\( g(x) \\), we analyze 
+
+the slope. \n\nThe function \\( g(x) = 0.5^x \\) is an exponential decay 
+
+function, which decreases as \\( x \\) increases. The derivative of \\( g(x) \\)
+
+is calculated as: \n\\[\ng'(x) = 0.5^x \\cdot \\ln(0.5) \n\\]\nSince \\( \\ln(0.5) 
+
+\\) is negative, the derivative (slope) is negative at all points, including 
+
+\\( x = 0 \\). \n\nThus , the slope of \\( g(x) \\) at \\( x = 0 \\) is negative. 
+
+\n\n**Answer:** \\boxed{B }
+
+Correct ！
+
+Thinking time:4.19s 
+
+Fig. 20: Failure cases with high ratings during routing. The left panel reveals the lack of training on simple math problems. The right panel shows the annotation error in MathVista discovered by our ratings. 12 Y. Zhou et al. 
+
+B Analysis 
+
+B.1 Comparison with speculative decoding 
+
+Our PRP and speculative decoding methods are compatible and can work to-gether to further accelerate the inference. Compared to speculative decoding, our PRP offers several practical advantages. Speculative decoding requires frequent switching between the draft and target models within a single inference trajec-tory. Moreover, it relies on training a Process Reward Model (PRM) to identify erroneous steps produced by the draft model, which demands large-scale, high-quality process annotations and incurs substantial training and deployment cost. At inference time, speculative decoding must co-deploy both the draft and target models, as well as the PRM, even for a fixed number of tasks. In contrast, our approach only equips the draft model with a lightweight scoring capability, avoiding any additional human supervision or high-quality process labels. For a fixed inference budget, we first deploy the draft model to solve easy instances and filter out hard ones; the target model is then activated solely to assess or handle the hard subset. This staged routing enables effective resource allocation under tight constraints, without the overhead of training or maintaining a separate PRM or co-running two large models throughout the entire inference. Furthermore, we show Speculative Decoding(ViSpec) speedup ratios and average acceptance lengths τ with no performance loss in Tab. 3. 
+
+Table 3: Speculative Decoding method ViSpec results on Math Domain and ChartQA.            
+
+> ChartQA MathVista MathVerse
+> Method (T=1) Speedup Ratio Average Acceptance Length τSpeedup Ratio Average Acceptance Length τSpeedup Ratio Average Acceptance Length τ
+> ViSpec[NIPS25](Qwen2.5-VL-7B) 1.76 ×3.82 2.10 ×2.02 1.82 ×1.94
+
+C More Implementation Details. 
+
+C.1 Prompts in DRL and JRL training 
+
+As shown in Tab. 4, we list the prompt employed in Draft Rating Learning(DRL), 
+
+Pdraf t , and the prompt employed in Joint Rating Learning(JRL), Pjoint . By en-Forcing Pdraf t and Pjoint constraints, we require the model to emit a proactive rating beFore producing its thinking and final answer. SpecIfically, the score en-closed by <confidence></confidence> reflects the self-assessment of the draft model, while the score enclosed by <target></target> evaluates the target model. We then apply task-specIfic optimization to each score accordingly. 
+
+C.2 Experiment Details 
+
+Our code is implemented based on the open-r1 [19]. For training on MMK12 [34], we conduct it on 8 GPUs with 96G VRAM. We use 7 GPUs for training and one Proactive Routing for Efficient Visual Reasoning 13 
+
+card For vllm deployment, perForming multiple samples For each input. During training, we also employ an over-length reward function [49] to prevent too long and repeat output. For training on ChartQA [32], we conduct it on 8 GPUs with 40G VRAM. During training, we optimize the training process using several key hyperparameters: a maximum prompt length of 3000, a maximum completion length of 2048, a maximum pixel limit of 501760, and gradient accumulation over 5 steps. We also employ BF16 precision For faster training and reduce memory usage, enable gradient checkpointing to save memory during backpropagation. 
+
+C.3 Detailed Algorithmic Flowchart Draft Rating Learning(DRL) We present a detailed schematic of Draft Rat-ing Learning (DRL) in Algorithm 1. Building upon the baseline GRPO-based framework, we incorporate the computation of draft rating rewards, detect ad-vantage vanishing and trigger dynamic score substitution accordingly, and finally compute component-wise advantages independently to enable task-specific opti-mization. 
+
+Table 4: Prompts employed in DRL training and JRL training. Draft Rating Learning Prompt Pdraf t : Solve the question. The user asks a question, and you solves it. You first randomly evaluate the confidence score of the problem from 0.00 to 0.99, think about the reasoning process in mind and then provides the user with the answer. The answer is in latex Format and wrapped in $...$. The confidence score, reason-ing process and answer are enclosed within <confidence ></confidence >, <think > </think > and <answer ></answer > tags, respectively, i.e., <confidence >confidence score </confidence >< think > Since $1+1=2$, so the answer is $2$. </think >< answer > $2$ </answer >, which means assis-tant’s output should start with <confidence >< /confidence >,then <think >< /think > and end with <answer >< /answer >.
+
+Joint Rating Learning Prompt Pjoint : Solve the question. The user asks a question, and you solves it. You first randomly evaluate the target score and the confidence score of the prob-lem from 0.00 to 0.99, thinks about the reasoning process in the mind and then provides the user with the answer. The answer is in latex Format and wrapped in ... . The target and confi-dence score, reasoning process and answer are enclosed within 
+
+<target > < /target >, <confidence > < /confidence >, <think ></think > and <answer > </answer > tags, respectively, i.e., <target >target score </target >< confidence >confidence score </confidence >< think > Since 1 + 1 = 2, so the answer is 2. </think >< answer >2</answer >,which means assistant’s output should start with 
+
+<target >< /target >< confidence >< /confidence >, then 
+
+<think >< /think > and end with <answer >< /answer >.14 Y. Zhou et al. 
+
+Algorithm 1 Draft Rating Learning 
+
+Input : Image Q&A dataset D; initial draft model Mddraf t ; reward functions R =
+
+{Racc , R f mt , R df t }; DRL prompt Pdraf t ; hyperparameter α, μ, σ 
+
+Output : Mddraf t 
+
+1: for each (I, Q, A ) ∈ D do 
+
+2: The input x = ( Pdraf t , I, Q )
+
+3: Generate N responses O = {oi}Ni=1 ∼ M ddraf t (·| x)
+
+4: Compute the group accuracy Acc df t = 1
+
+> N
+
+PNi=1 1{correct (oi, A)}
+
+5: for each oi where i = 1 , · · · , N do :6: Extract draft rating di and the rest segment ri
+
+7: Compute the reward Ri = Racc i (x, o i, A ) + Rf mt i (oi) and Rdf t i (di, Acc df t )
+
+8: end for 
+
+9: if Advantage Vanishing: |mean ({di}Ni=1 ) − Acc df t | > μ and std ({di}Ni=1 ) < σ 
+
+then 
+
+10: for each oi where i = 1 , · · · , N − 1 do :11: Calculate sampling interval S using dN and Acc df t 
+
+12: Random sample d′ 
+
+> i
+
+from the interval S
+
+13: Substitute di in oi using d′
+
+> i
+
+14: Re-compute the reward Rdf t i (d′
+
+> i
+
+, Acc df t )
+
+15: end for 
+
+16: end if 
+
+17: Calculate { ˆAbase i }Ni=1 using {Ri}Ni=1 and { ˆAdi }Ni=1 using {Rdf t i }Ni=1 .18: Calculate task-specific Optimization loss: Ldf t i = Lbase i + αLdi .19: Update draft model Mddraf t by {L df t i }Ni=1 
+
+20: end for Proactive Routing for Efficient Visual Reasoning 15 
+
+Joint Rating Learning We present a detailed schematic of the Joint Rating Learning algorithm in Algorithm 2. Building on DRL, we first compute, for each input, the accuracy on the target model, then incorporate a target-rating reward. At every stage, we optimize the target-rating objective in a manner analogous to the draft-rating training procedure, ensuring consistent joint optimization across both draft and target ratings. 
+
+DRL-based Routing As shown inAlgorithm 3, we detail the routing policy when employing the DRL-trained Mddf t as the router. Specifically, Mddf t first generates a scored prefix; we extract the score d and compare it against the switching threshold Tdf t . If d > T df t , the draft model continues generating tokens; otherwise, we switch to the target model for subsequent decoding. 
+
+JRL-based Routing using draft-first strategy As shown in Algorithm 4, we adopt Mdjoint (trained with JRL) as the routing model. Mdjoint first generates a scoring prefix, from which we extract the scores d and t. We then compute the joint score d + d−tτ and compare it against the switching threshold, Tjoint . If the joint score exceeds Tjoint , the draft model continues generation; else, we switch to the target model. 
+
+D Potential and Future Work 
+
+By endowing the model with the ability to score itself and other models, we obtain signals that reflect the current task proficiency, training stability, and data quality. When a dataset contains low-quality annotations, numerous mislabeled samples, or unstable supervisory signals that encourage guessing, our scores exhibit pronounced fluctuations. By examining the correlation between scores and correctness, we can identify missing capabilities, anomalies in labeled test data, and whether the model has fully acquired the relevant knowledge. This, in turn, enables data curation, supervision refinement, and test set sanitization throughout training. Our method integrates difficulty-sensing ability into the performance opti-mization of general RL post-training. JRL enables a small draft model to assess the ability of any target model, including black-box APIs. We can only train a lightweight LoRA on draft model, or employ an extra swift JRL on the trained DRL model for efficiency In addition, when coordinating multiple experts specialized in different com-petencies, effective routing remains an open challenge. Our paradigm lays the groundwork for scaling routing and optimizing routing policies, particularly in multimodal settings. 16 Y. Zhou et al. 
+
+Algorithm 2 Joint Rating Learning 
+
+Input : Image Q&A dataset D; initial draft model Mdjoint ; target model Mt; reward functions R = {Racc , R f mt , R df t , R tgt }; JRL prompt Pjoint ; target model prompt P ;hyperparameter α, β, μ, σ 
+
+Output : Mdjoint 
+
+1: Target Accuracy Dict Dict Acctgt ← {} 
+
+2: for each (I, Q, A ) ∈ D do 
+
+3: The input x = ( P, I, Q )
+
+4: Generate M responses Ot = {oti }Mi=1 ∼ M t(·| x)
+
+5: Compute the group accuracy Acc tgt = 1
+
+> M
+
+PMi=1 1{correct (oti , A)}
+
+6: Add Acc tgt to Dict Acctgt 
+
+7: end for 
+
+8: for each (I, Q, A ) ∈ D do 
+
+9: The input x = ( Pjoint , I, Q )
+
+10: Generate N responses O = {oi}Ni=1 ∼ M ddraf t (·| x)
+
+11: Compute the group accuracy Acc df t = 1
+
+> N
+
+PNi=1 1{correct (oi, A)}
+
+12: Retrieve the target group accuracy Acc tgt from Dict Acctgt 
+
+13: for each oi where i = 1 , · · · , N do :14: Extract draft rating di, target rating ti, and the rest segment ri
+
+15: Compute the reward Ri = Racc i (x, o i, A ) + Rf mt i (oi), Rtgt i (ti, Acc tgt ) and 
+
+Rdf t i (di, Acc df t )
+
+16: end for 
+
+17: if Advantage Vanishing for d: |mean ({di}Ni=1 ) − Acc df t | > μ and std ({di}Ni=1 ) <σ then 
+
+18: for each oi where i = 1 , · · · , N − 1 do :19: Calculate sampling interval S using dN and Acc df t 
+
+20: Random sample d′ 
+
+> i
+
+from the interval S
+
+21: Substitute di in oi using d′
+
+> i
+
+22: Re-compute the reward Rdf t i (d′
+
+> i
+
+, Acc df t )
+
+23: end for 
+
+24: end if 
+
+25: if Advantage Vanishing for t: |mean ({ti}Ni=1 )−Acc tgt | > μ and std ({ti}Ni=1 ) < σ 
+
+then 
+
+26: for each oi where i = 1 , · · · , N − 1 do :27: Calculate sampling interval S using tN and Acc tgt 
+
+28: Random sample t′ 
+
+> i
+
+from the interval S
+
+29: Substitute ti in oi using t′
+
+> i
+
+30: Re-compute the reward Rtgt i (t′
+
+> i
+
+, Acc tgt )
+
+31: end for 
+
+32: end if 
+
+33: Calculate { ˆAbase i }Ni=1 using {Ri}Ni=1 , { ˆAti }Ni=1 using {Rtgt i }Ni=1 , and { ˆAdi }Ni=1 
+
+using {Rdf t i }Ni=1 .34: Calculate task-specific Optimization loss: Ljoint i = Lbase i + αLdi + βLti .35: Update draft model Mdjoint by {L joint i }Ni=1 
+
+36: end for Proactive Routing for Efficient Visual Reasoning 17 
+
+Algorithm 3 DRL-based Routing 
+
+Input: Image–question pair (I, Q ); draft rating prompt Pdft ; target prompt P ; routing draft model Mddf t ; target model; target model Mt; switch threshold Tdf t ; stop-token sequence S = [ ′< / ′,′ confidence ′,′ >′]
+
+Output: Final response y
+
+1: xdf t ← (I, Q, P df t )
+
+2: yprefix ← ∅ ▷ Initialize empty prefix 3: while True do 
+
+4: y0 ← Mddf t (xdf t , y prefix )
+
+5: yprefix ← yprefix ∥ y0
+
+6: if EndsWithStopSeq (yprefix , S ) then 
+
+7: break 
+
+8: end if 
+
+9: end while 
+
+10: d ← P arseDraf tScore (yprefix ) ▷ Extract the draft score from the emitted prefix 11: if d > T df t then  ▷ Keep using the draft model 12: y ← ContinueU ntilEoS (Mddf t , x dft , y prefix )
+
+13: else  ▷ Route to the target model 14: xt ← (I, Q, P )
+
+15: y ← ContinueU ntilEoS (Mt, x t)
+
+16: end if 
+
+17: return y
+
+Algorithm 4 JRL-based Routing 
+
+Input: Image–question pair (I, Q ); draft rating prompt Pjoint ; target prompt P ; rout-ing draft model Mdjoint ; target model; target model Mt; switch threshold Tjoint ;scaling parameter τ ; stop-token sequence S = [ ′< / ′,′ confidence ′,′ >′]
+
+Output: Final response y
+
+1: xjoint ← (I, Q, P joint )
+
+2: yprefix ← ∅
+
+3: while True do 
+
+4: y0 ← Mdjoint (xjoint , y prefix )
+
+5: yprefix ← yprefix ∥ y0
+
+6: if EndsWithStopSeq (yprefix , S ) then 
+
+7: break 
+
+8: end if 
+
+9: end while 
+
+10: d ← P arseDraf tScore (yprefix )
+
+11: t ← P arseT argetScore (yprefix )
+
+12: if d + d−tτ > T joint then 
+
+13: y ← ContinueU ntilEoS (Mdjoint , x dft , y prefix )
+
+14: else 
+
+15: xt ← (I, Q, P )
+
+16: y ← ContinueU ntilEoS (Mt, x t)
+
+17: end if 
+
+18: return y
