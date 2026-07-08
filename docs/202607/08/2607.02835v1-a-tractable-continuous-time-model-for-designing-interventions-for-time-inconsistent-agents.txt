@@ -1,0 +1,2645 @@
+Title: A Tractable Continuous-Time Model for Designing Interventions for Time-Inconsistent Agents
+
+URL Source: https://arxiv.org/pdf/2607.02835v1
+
+Published Time: Tue, 07 Jul 2026 00:31:36 GMT
+
+Number of Pages: 42
+
+Markdown Content:
+# A Tractable Continuous-Time Model for Designing Interventions for Time-Inconsistent Agents 
+
+Yasunori Akagi ∗1, Hideaki Kim 2, Daichi Fushihara 3, Ryosuke Nakahama 2, Hiroyasu Miyazaki 2, and Takeshi Kurashima 11NTT Human Informatics Laboratories, Kanagawa, Japan 
+
+> 2
+
+NTT Communication Science Laboratories, Kyoto, Japan 
+
+> 3
+
+NTT Network Service Systems Laboratories, Tokyo, Japan July 7, 2026 
+
+Abstract 
+
+Designing effective goals and rewards for time-inconsistent agents is a central problem in many long-term tasks, such as learning, exercise, work, and project completion. An agent may initially plan to com-plete a task, but later abandon it because, under non-exponential dis-counting, the perceived trade-off between immediate effort and delayed reward changes over time. This paper develops a tractable continuous-time model for analyzing and designing interventions for such agents in deadline-constrained progress-based tasks. In the model, an agent re-peatedly chooses a future progress trajectory that minimizes perceived cost and then follows its infinitesimal initial direction. Although this leads to a continuous-time dynamic behavior defined through a varia-tional problem, we show that the resulting trajectory admits a concise analytical representation under generalized hyperbolic discounting, a broad class of discount functions that includes exponential and hyper-bolic discounting as special cases. Using this representation, we charac-terize when the agent completes the task, abandons it immediately, or exhibits time-inconsistent abandonment after making partial progress. We then study two intervention design problems: optimal goal setting and optimal reward scheduling. For goal setting, we derive optimal goals both when exploitative rewards are allowed and when they are 
+
+> ∗
+
+Corresponding author. E-mail: yasunori.akagi@ntt.com 
+
+1
+
+> arXiv:2607.02835v1 [cs.GT] 3 Jul 2026 prohibited, and we identify conditions under which exploitative re-wards are ineffective. For reward scheduling, we show that, for a fixed number of stages, equal-length periods and equal rewards are optimal, and that finer reward splitting monotonically improves final progress up to a discount-independent limit. These results provide a continuous-time framework for intervention design for time-inconsistent agents and clarify how optimal interventions differ from those in existing discrete-time models.
+
+# 1 Introduction 
+
+Many long-term tasks require an external designer to choose goals, deadlines, and rewards for agents whose effort unfolds over time. Examples include a learning platform that sets milestones for a student, a company that offers bonuses for reaching sales targets, a health program that rewards exercise, or a project manager who divides a long project into intermediate deliverables. In such settings, the designer is not merely interested in predicting whether the agent will complete the task; the designer must also decide how to structure the task so that the agent makes as much progress as possible. This raises a basic intervention design problem: how should goals and rewards be chosen for agents who may fail to act according to their own long-term plans? A central reason why such failures occur is that agents may evaluate present and future costs differently over time. This is usually described through time preferences , or equivalently through a time discount function ,which specifies how an agent discounts costs and rewards that occur in the future [14]. In the standard exponential-discounting model, the relative value of two future outcomes is preserved as time passes, and the resulting preferences are dynamically consistent [33]. By contrast, non-exponential discounting generally leads to time inconsistency : a plan that appears op-timal from an earlier viewpoint may no longer appear optimal at a later time [14, 36]. One of the most prominent sources of such behavior is present bias , in which immediate costs and rewards receive disproportionately large weight relative to delayed ones [25, 31]. This phenomenon is especially important in deadline-constrained progress-based tasks. An agent may initially plan to complete a task because the delayed reward appears worth the required effort, but later abandon the task when the immediate cost of effort becomes more salient. For example, a person may plan to exercise regularly for a month in order to receive a health-related reward, but later skip training sessions as the immediate effort 2becomes more burdensome than it appeared at the planning stage. Similar patterns arise in studying, work, writing, and other cumulative-effort tasks. From the viewpoint of an intervention designer, the key question is not only why such abandonment occurs, but also how goals, deadlines, and rewards can be designed to mitigate it. Time-inconsistent planning has therefore become an important topic at the interface of artificial intelligence, economics, and computation. A sem-inal computational model was introduced by Kleinberg and Oren [21], who represented a task as a graph and modeled a present-biased agent as repeat-edly choosing a path with minimum perceived cost. This model captures qualitative phenomena such as procrastination and abandonment, and has stimulated a line of work on interventions for time-inconsistent agents, in-cluding motivating subgraphs, penalties, and other forms of task design [6, 7, 37]. However, the general graph-based formulation is often computa-tionally difficult, and many natural intervention design problems are NP-hard. To obtain stronger tractability, Akagi et al. [4, 5] studied progress-based tasks . In a progress-based task, an agent accumulates a real-valued measure of progress over a time horizon and receives a reward if the progress reaches a prescribed goal. This class does not cover all sequential decision prob-lems, but it captures an important family of cumulative-effort tasks, such as completing a thesis, accumulating study hours, exercising for a target duration, or making progress on a work project. The advantage of this re-striction is that it makes it possible to derive closed-form characterizations of the agent’s behavior and efficient solutions for intervention design prob-lems such as optimal goal setting and reward scheduling. This tractability is important because it allows us to obtain explicit design rules rather than relying solely on numerical simulation or solving a computationally hard planning problem. Existing tractable models of this kind, however, have two important lim-itations. First, they are formulated in discrete time. This requires the mod-eler to choose a time step, such as a day, a week, or a month. If the time step is too coarse, the model cannot represent fine-grained changes in motivation or effort. If the time step is too small, the state space and computational burden grow. Second, existing models typically focus on quasi-hyperbolic discounting or its special cases. Quasi-hyperbolic discounting is mathemat-ically convenient in discrete time, but it represents only one particular form of present bias [25, 31]. Human discounting behavior is often modeled by richer classes of discount functions, including hyperbolic discounting [2] and generalized hyperbolic discounting [26, 27]. These limitations motivate the 3development of a continuous-time model that remains analytically tractable while accommodating a broader class of discount functions. This paper develops such a model. Our first contribution is to propose a tractable continuous-time model for progress-based tasks performed by time-inconsistent agents. We formulate the agent’s behavior through a vari-ational principle [8]. At each time, the agent chooses a future progress tra-jectory that minimizes perceived cost, taking into account both discounted effort cost and delayed reward. The agent then follows the infinitesimal initial direction of this perceived-cost-minimizing trajectory and repeats the same procedure continuously over time. This formulation provides a natural continuous-time analogue of existing time-inconsistent planning models, in which an agent repeatedly reoptimizes according to time-discounted prefer-ences. At the same time, the continuous-time setting introduces a nontrivial mathematical challenge: the agent’s realized behavior is defined through an infinite sequence of infinitesimal reoptimizations over future trajectories. Our second contribution is a characterization of the agent’s behavior under generalized hyperbolic discounting. Despite the apparent complexity of the continuous-time dynamics, we show that the agent’s realized tra-jectory admits a concise analytical representation. Generalized hyperbolic discounting is a broad class of discount functions that includes exponential discounting as a limiting case and hyperbolic discounting as a special case [26]. Under this class, we reduce the analysis of abandonment to the shape of a single function. This yields a necessary and sufficient characterization of three qualitatively different regimes: immediate abandonment, success-ful completion, and abandonment after partial progress. The last regime is precisely the time-inconsistent case in our model: the agent begins the task because completion appears worthwhile from the initial viewpoint, but later abandons it after reoptimizing from a later viewpoint. This characteriza-tion is particularly important for intervention design, because it identifies cases in which the agent initially finds completion worthwhile but later needs support to follow through on that plan. Our third contribution is the analysis of optimal goal setting. Given a fixed time horizon and reward, the intervention designer chooses a goal that maximizes the agent’s final progress. We study both non-exploitative and exploitative settings. In the non-exploitative setting, the goal must be attainable and the agent must receive the reward upon completion. In the exploitative setting, the designer is allowed to set an unattainable goal that induces progress even though the agent ultimately fails to obtain the reward. Such interventions are ethically problematic because they exploit the agent’s time inconsistency, but analyzing them is important for understanding when 4and how institutional designs can take advantage of such behavior. We derive optimal goals in both settings and provide conditions under which exploitative rewards are ineffective. Our fourth contribution is the analysis of optimal reward scheduling. Given a total time horizon and a total reward budget, the designer may di-vide the task into multiple stages, each with its own subgoal and reward. We show that, when the number of stages is fixed, the optimal schedule divides both time and reward equally across stages. We further prove that increas-ing the number of stages monotonically improves the agent’s final progress, and that the limiting attainable progress is independent of the parameters of the discount function. This result suggests that sufficiently fine reward split-ting can mitigate the effect of time discounting in continuous time. It also contrasts sharply with existing discrete-time models with quasi-hyperbolic discounting, where the optimal reward schedule can depend qualitatively on the discount parameters and may sometimes favor not subdividing the task [4, 5]. A preliminary version of this paper appeared in the Proceedings of AAAI’25 [3]. The present paper substantially extends that work in two directions. First, it broadens the class of discount functions from expo-nential and hyperbolic discounting to generalized hyperbolic discounting, which includes both as special cases. Second, it removes the restriction to the special cost parameter α = 2 and develops the analysis for arbitrary 
+
+α > 1. These extensions lead to substantially more general characterizations of time-inconsistent behavior and optimal interventions. They are also tech-nically nontrivial, requiring a careful analysis of the shape and convergence of functions defined through integrals. The remainder of the paper is organized as follows. Section 2 reviews related work. Section 3 defines the continuous-time progress-based task model. Section 4 characterizes the agent’s trajectory and abandonment be-havior under generalized hyperbolic discounting. Section 5 studies the opti-mal goal-setting problem. Section 6 studies the optimal reward-scheduling problem. Section 7 concludes, and Section 8 provides proofs of the mathe-matical results. 
+
+# 2 Related Work 
+
+Time-inconsistent planning and intervention design. Our work is most closely related to computational models of time-inconsistent planning. Kleinberg and Oren [21] introduced a graph-based model in which a present-5biased agent repeatedly chooses a path of minimum perceived cost. This model captures characteristic behaviors such as procrastination and task abandonment, and has led to a line of work at the interface of economics and computation, including planning problems for sophisticated agents, multiple biases, variable present bias, and stochastic behavioral biases [16, 22, 23, 24]. A key feature of this line of work is that time-inconsistent behavior is treated not only as a descriptive phenomenon, but also as a target of algorithmic intervention. For example, prior studies have examined motivating sub-graphs, penalties, and other interventions that change the task environment faced by the agent [6, 7, 37]. These studies show that intervention design for time-inconsistent agents raises rich computational questions, but they also show that many natural problems in general graph-based models are computationally intractable. 
+
+Progress-based tasks. To obtain stronger tractability, Akagi et al. [5] introduced a progress-based model for present-biased agents. In this model, an agent accumulates a real-valued amount of progress over a finite horizon and receives a reward if the progress reaches a prescribed goal. This re-striction does not cover all planning problems, but it captures an important class of cumulative-effort tasks and enables closed-form characterizations of behavior and efficient solutions for intervention design problems. The model is also closely related to economic models of procrastination, incentives, and self-control in long-term projects [28, 29, 30]. Subsequent work extended this progress-based approach to β–δ discounting, a standard discrete-time model of present bias [25], and showed that the long-run discount factor δ
+
+can qualitatively change optimal interventions [4]. The present paper contin-ues this line of work, but moves from discrete time to continuous time and from restricted discounting models to generalized hyperbolic discounting. This allows us to analyze intervention design without requiring an arbitrary time discretization, while still preserving analytical tractability. 
+
+Discount functions and time-inconsistent preferences. Time dis-counting and time-inconsistent preferences have a long history in economics and behavioral economics [10, 14, 36, 38]. Exponential discounting has traditionally served as the standard model of intertemporal choice [33], but it cannot explain time-inconsistent behavior. This limitation moti-vated alternative discounting models, including hyperbolic discounting [2], quasi-hyperbolic discounting [25, 31], and generalized hyperbolic discounting [26]. Quasi-hyperbolic discounting is particularly convenient in discrete-time 6models and has been widely used to model present bias. Generalized hyper-bolic discounting, by contrast, provides a continuous-time class that includes exponential discounting as a limiting case and hyperbolic discounting as a special case. It has also been characterized axiomatically through impa-tience and the common difference effect with quadratic delay [27]. In this paper, generalized hyperbolic discounting plays a central role because it is broad enough to include classical discounting models, yet structured enough to permit a detailed analysis of abandonment and intervention design. 
+
+Continuous-time models of time inconsistency. A separate line of work studies time-inconsistent decision making in continuous time, often through formulations related to optimal control. Since non-exponential dis-counting typically makes globally optimal plans dynamically inconsistent, these studies often characterize behavior using equilibrium concepts. For example, Ekeland and Lazrak [11, 12] studied subgame-perfect equilibria in continuous time with non-constant discounting, and Karp [19] derived a dynamic programming equation for differentiable Markov-perfect equilib-ria. This line of research has been further developed in general continuous-time equilibrium-control frameworks and refinements of equilibrium con-cepts [9, 17]. Our work is related to these studies in that it also treats time inconsistency in continuous time, but it differs in two important re-spects. First, these studies primarily focus on sophisticated agents who anticipate future deviations and choose equilibrium strategies. In contrast, our model is closer to naivete: at each time, the agent chooses a perceived-cost-minimizing future trajectory without anticipating that future selves will later reoptimize. Second, our main objective is not to characterize equilib-rium controls in general dynamic decision problems, but to obtain tractable behavioral characterizations that can be used for goal and reward design in progress-based tasks. 
+
+Connections to reinforcement learning. Our framework is also related to reinforcement learning, where agents act so as to maximize discounted rewards [18]. The aims, however, are different. Reinforcement learning pri-marily studies how an agent learns effective behavior in an unknown environ-ment, whereas our goal is to characterize the behavior of a time-inconsistent agent under a specified behavioral model and to design interventions for that agent. These perspectives are complementary. Recent work has also studied reinforcement learning with non-exponential discounting and related identifiability questions [13, 34, 35], suggesting possible future connections 7𝑡 
+
+## 𝑥 
+
+## Period 𝑇 
+
+## Goal 𝜃 
+
+## Tim e
+
+## Progress Rewar dFigure 1: An illustrative example of a progress-based task. between learning-based models and the intervention-design approach devel-oped here. 
+
+# 3 Model Definition 
+
+3.1 Progress-based Task 
+
+Following the progress-based task framework [5], we consider a task in which an agent aims to reach a goal within a time limit by accumulating a real-valued quantity called progress. We assume that progress never decreases. Such tasks frequently occur in daily life. For example, consider a student who aims to complete an assignment within 8 hours on a given day. If the student finishes the assignment, they will earn school credit for the course. In this case, the period corresponds to the 8 hours, progress corresponds to the percentage of the assignment completed, and the reward corresponds to the value of earning the course credit. Another example could be a person participating in a health program that involves exercising for 30 hours within a month. In this scenario, the period is one month, and progress is measured by the hours spent exercising. The reward is the incentive provided upon completing the health program. The agent is rewarded with R if it achieves the goal progress θ within the period T , where R, θ, T ∈ R>0. We denote the agent’s state by a tuple ( t, x ), where t ∈ [0 , T ] is the time and x ∈ R≥0 is the progress. Note that time t
+
+is not restricted to discrete values but takes continuous values, a significant difference from the previous study [5]. Figure 1 describes an illustrative example of a progress-based task. 83.2 Perceived Cost 
+
+We will denote by Yt,x the set of absolutely continuous functions defined in [t, T ] which satisfies y(t) = x. A function y(s) ∈ Y t,x represents the progress trajectory that an agent in state ( t, x ) will take at future time s ∈ [t, T ]. For progress trajectory y(s), we define perceived cost P[y] by 
+
+P[y] := 
+
+Z Tt
+
+Lt(s, y ′(s)) ds − γt(T )R · 1[y(T ) ≥ θ], (1) 
+
+Lt(s, v ) := γt(s)c(v), (2) where y′(s) denotes the derivative function of y(s). Note that P[·] is a 
+
+functional that takes a function as an argument and returns a real value. The function γt : R → (0 , 1] is the discount function , which represents how the agent discounts the future benefit or cost; an agent at time t calculates the benefits and costs at a future time s by multiplying the discount factor 
+
+γt(s). The function c : R → R ∪ { +∞} is the cost function ; to increase progress at a rate of v, a cost of c(v) is incurred. Also, 1[·] is an indicator function; 1[y(T ) ≥ θ] = 1 if y(T ) ≥ θ, otherwise 1[y(T ) ≥ θ] = 0. The intuitive interpretation of perceived cost (1) is the total cost of a future progress trajectory to an agent, considering the discount function effect. The first term of (1) is the total cost perceived by the agent over the period from t to T , considering time discounting. It is calculated by integrating the agent’s perceived cost Lt(s, y ′(s)) at time s from t to T . The second is the reward term; the agent receives the time-discounted reward 
+
+γt(T )R if and only if the final progress y(T ) exceeds the goal progress θ.This term has a negative sign because rewards have the opposite effect of costs. 
+
+3.3 Agent Behavior Model 
+
+The agent at state ( t, x ) selects the trajectory y∗ 
+
+> t,x
+
+with the minimum per-ceived cost among the candidate trajectories Yt,x . If the cost-minimizing trajectory is not unique, we choose one that maximizes dy ∗ 
+
+> t,x (s)
+> ds s=t
+
+. Then, at time t, the agent generates progress along y∗
+
+> t,x
+
+; it produces progress of 
+
+ dy ∗ 
+
+> t,x (s)
+> ds s=t
+
+
+
+· dt during the infinitesimal time dt . Starting from the state (0 , 0), the agent repeats this procedure at each time t ∈ [0 , T ]. Figure 2 shows an illustrative example of this process. In this agent behavior model, the trajectory x(t) actually taken by the 9𝑡       
+
+> 𝑥
+> 𝑇
+> 𝜃
+> 𝑡
+> 𝑥
+> 𝑦 !,#
+> ∗(𝑠 )
+> 𝑇
+> 𝜃
+> 𝑇
+> 𝜃
+> ?
+> 𝑑𝑡
+> 𝑑 𝑦 !,#
+> ∗(𝑠 )
+> 𝑑𝑠 *%&!
+> ⋅𝑑𝑡
+> (a) (b) (c)
+
+Figure 2: An illustrative example of the agent behavior model. (a) The agent searches for a trajectory that minimizes the perceived cost among the candidate trajectories of future states Yt,x . The blue dashed line is an example of a candidate trajectory in Yt,x . (b) Let y∗
+
+> t,x
+
+(s) denote the trajectory found to minimize the perceived cost. (c) The agent generates progress along y∗
+
+> t,x
+
+(s). After this infinitesimal update, the agent returns to the situation in (a) and re-solves the same optimization problem from the new state. Note that while the time interval dt is inherently infinitesimal, it is depicted as larger for illustrative purposes. agent is fully determined by (1) and (2) and 
+
+y∗ 
+
+> t,x (t)
+
+:= argmin 
+
+> y∈Y t,x (t)
+
+P[y], (3) 
+
+dx (t)
+
+dt = dy ∗
+
+> t,x (t)
+
+(s)
+
+ds s=t
+
+, x (0) = 0 . (4) This agent’s behavior model is a natural extension of the discrete-time behavior models from previous research [5, 21] to continuous time. In the previous models, the agent repeatedly chooses the path with the minimum perceived cost among all possible future paths at each time step and acts along that path. In the model proposed in this paper, the path with the smallest perceived cost corresponds to y∗ 
+
+> t,x (t)
+
+in (3) and acting along the path corresponds to (4). The formulation of the agent’s behavior in (3) is based on the variational principle. The variational principle states that a system can be characterized by a function that minimizes or maximizes a given functional [8, 20, 39]. In our formulation, the agent’s future trajectory y∗ 
+
+> t,x (t)
+
+is defined as the value that minimizes the functional P, making it a clear example of the variational principle. By employing this formulation, we achieve a natural extension of existing agent behavior models to continuous time while also simplifying the analysis of agent behavior by utilizing the well-established variational 10 methods [32]. 
+
+3.4 Cost Function 
+
+This paper assumes that the cost function can be written as 
+
+c(∆) = 
+
+(∆α if ∆ ≥ 0, +∞ otherwise, (5) where α > 1 is a real parameter. Because this paper considers only tasks in which progress never decreases, we set c(∆) = + ∞ when ∆ < 0. We can control the shape of the cost function by adjusting the parameter α. This cost function is precisely the same as the one used in the previous study [5]. 
+
+3.5 Discount Function 
+
+The choice of a discount function has a substantial impact on an agent’s behavior. We impose the following natural assumptions on γt.(a) γt(s) is continuously differentiable on [ t, T ]. (b) ( t, s ) 7 → γt(s) is continuous on {(t, s ) | 0 ≤ t ≤ s ≤ T }.(c) γt(s) is non-increasing on [ t, T ]. (d) γt(t) = 1. This paper mainly focuses on generalized hyperbolic discounting [26], which is given by 
+
+γghyp  
+
+> t
+
+(s) := (1 + λ(s − t)) − μλ . (6) Here, λ, μ ∈ R>0 are parameters. Generalized hyperbolic discounting constitutes a broad class of discount functions that subsumes historically important and still widely used forms such as exponential [33] and hyperbolic [2] discounting. In particular, gen-eralized hyperbolic discounting converges to exponential discounting in the limit λ → +0, and it coincides with hyperbolic discounting when λ = μ.Moreover, it is known that the class of discount functions that simultane-ously satisfy two properties often observed in human discounting, namely 
+
+impatience and the common difference effect with quadratic delay , coincides with generalized hyperbolic discounting [27]. Figure 3 shows the shapes of the generalized hyperbolic discount functions. 11 5 10 15 20          
+
+> s
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> ghyp 0 (s) = 1.0, = 0.1
+> = 1.0, = 1.0
+> = 1.0, = 10.0 510 15 20
+> s
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> ghyp 0 (s)
+> = 0.1, = 1.0
+> = 1.0, = 1.0
+> = 10.0, = 1.0
+
+Figure 3: Plots of the generalized hyperbolic discount function γghyp 0 (s). In the left panel, λ is fixed to 1.0 and μ = 0 .1, 1.0, 10 .0. In the right panel, μ
+
+is fixed to 1.0 and λ = 0 .1, 1.0, 10 .0. 
+
+# 4 Properties of the Model 
+
+4.1 Closed Formula of Agent’s Trajectory 
+
+The trajectory of the agent x(t) is determined by (1)–(4). The resulting dynamics involve both a variational problem and a differential equation, and may therefore appear difficult to analyze. Nevertheless, we show that, under mild conditions, the agent’s trajectory x(t) can be expressed concisely. For simplicity, we introduce the following notations; Γt(s) := 
+
+Z
+
+γt(s)− 1 
+
+> α−1
+
+ds, (7) 
+
+ζ(t) := γt(T )(Γ t(T ) − Γt(t)) α−1.
+
+Note that (7) defines Γ t(s) only up to an additive constant. Since the subse-quent analysis depends only on differences of the form Γ t(s1) − Γt(s2), this ambiguity does not affect any of the results. 12 Theorem 1. Assume that ζ(t) is non-increasing on [0 , T ]. Then the agent’s trajectory is given by 
+
+x(t) = θ 1 − exp −
+
+Z min {t,t ∗}
+
+> 0
+
+ds 
+
+Γs(T ) − Γs(s)
+
+!! 
+
+, (8) where t∗ is defined as follows: If there exists t ∈ [0 , T ] such that exp 
+
+
+
+−α R t 
+
+> 0
+> ds
+> Γs(T)−Γs(s)
+
+
+
+ζ(t) > Rθα , (9) then t∗ is the infimum of all such t; otherwise, t∗ = T .Theorem 1 shows that we can calculate the agent’s trajectory if the discount function γt satisfies the property that Γ t(s) and R min( t,t ∗)0 
+
+> ds
+> Γs(T)−Γs(s)
+
+are analytically or numerically computable. The value t∗ is the abandonment time when the agent gives up making further progress because any additional progress would not be worth the reward. The condition that ζ(t) is non-increasing corresponds to the scenario where once an agent abandons a task, they do not resume it (see Section 8.1). If this condition does not hold, the agent would repeatedly abandon and resume the task, resulting in more complex behavior. While this case is also interesting, we leave a detailed analysis of it for future work, and this paper focuses on the case where ζ(t)is non-increasing. Note that x(0) = 0, and under the assumption on γt(s)stated in Section 3.5, we can show that x(T ) = θ if t∗ = T .We explain the derivation of Theorem 1 briefly. First, we use the vari-ational method to solve for (3). Typically, the variational method can only find local optima. However, in this case, due to the special structure of the cost function (5), the functional P becomes a convex functional. This prop-erty allows us to obtain the global optimum y∗ 
+
+> t,x (t)
+
+by solving a differential equation called the Euler–Lagrange equation [32]. We finally derive (8) by solving the differential equation (4) using the obtained y∗
+
+> t,x (t)
+
+. For details, please refer to Section 8.1. The following lemma verifies that the assumption in Theorem 1 is satis-fied under generalized hyperbolic discounting. 
+
+Lemma 2. If γt = γghyp  
+
+> t
+
+defined as (6), then ζ(t) is non-increasing on [0 , T ]. Combining Theorem 1 and Lemma 2 with explicit calculations yields the following theorem on the agent’s trajectory under generalized hyperbolic discounting. 13 Theorem 3. Define η(t) and fT (t) by 
+
+η(t) := 
+
+Z t
+
+> 0
+
+ds 
+
+(1 + λ(T − s)) μλ(α−1) +1 − 1 ,fT (t) := 
+
+ μ + λ(α − 1) (α − 1) 
+
+h
+
+(1 + λ(T − t)) μλ(α−1) +1 − 1
+
+i
+
+> α−1
+
+·
+
+(1 + λ(T − t)) μλ exp 
+
+
+
+−α
+
+ μα − 1 + λ
+
+
+
+η(t)
+
+
+
+. (10) When γt = γghyp  
+
+> t
+
+is defined as (6), the agent’s trajectory is given by 
+
+x(t) = θ
+
+
+
+1 − exp 
+
+
+
+−
+
+ μα − 1 + λ
+
+
+
+η(min( t, t ∗)) 
+
+ 
+
+, (11) where t∗ is defined as follows: If there exists t ∈ [0 , T ] such that 
+
+fT (t) > Rθα , (12) then t∗ is the infimum of all such t; otherwise, t∗ = T .In Theorem 3, the main obstacle to an analytic treatment is the func-tion η(t). The function η(t) belongs to the class of Gauss hypergeometric functions [1], and the integral cannot be expressed by elementary functions except in special cases, for example when μλ(α−1) = 1. However, as we show later, even though such a complicated function is involved, we can still an-alyze the agent’s behavior mathematically and discuss optimal intervention strategies. Note that x(0) = 0, and lim t→T x(t) = θ if t∗ = T .In what follows, we restrict attention to the generalized hyperbolic dis-counting case, that is, γt = γghyp  
+
+> t
+
+.
+
+4.2 Abandonment Time and Time Inconsistency 
+
+In this section, we investigate the abandonment time t∗ in Theorem 3, which represents the time at which the agent gives up. The value of t∗ is important not only because it determines the trajectory that the agent follows during the task, but also because it determines whether the agent exhibits time-inconsistent behavior. Indeed, when t∗ = 0, the agent gives up from the outset and does not start the task, whereas when t∗ = T , the agent completes the task. In either case, the agent behaves time-consistently. In contrast, 14 when 0 < t ∗ < T , the agent starts the task expecting to complete it and receive the reward, but later abandons it after judging that the cost of completion is no longer worth the reward. Thus, the agent exhibits time-inconsistent behavior. Since t∗ is defined as the infimum of all t satisfying (12), with t∗ = T
+
+if no such t exists, understanding the behavior of t∗ requires analyzing the shape of fT (t) on [0 , T ]. The following lemma characterizes the shape of 
+
+fT (t), in particular where its maximum is attained. 
+
+Lemma 4. The equation (α − 1) x μλ +α−1 − α
+
+ μλ(α − 1) + 1 
+
+
+
+xα−1 + μλ = 0 (13) has a unique real solution with x > 1. Let x0 denote this solution, and define 
+
+t0 := T − xα−10 − 1
+
+λ .
+
+(a) If t0 ≤ 0, then fT (t) is strictly decreasing on [0 , T ]. In particular, its maximum is attained at t = 0. (b) If t0 > 0, then fT (t) is strictly increasing on [0 , t 0] and strictly decreas-ing on [ t0, T ]. In particular, its maximum is attained at t = t0.The following theorem follows immediately from Lemma 4 and the defi-nition of t∗.
+
+Theorem 5. (a) If t0 ≤ 0, then 
+
+t∗ =
+
+(
+
+0 if fT (0) > Rθα ,T otherwise . (14) (b) If t0 > 0, then 
+
+t∗ =
+
+
+
+0 if fT (0) > Rθα ,t′ if fT (0) ≤ Rθα < f T (t0),T otherwise ,
+
+(15) where t′ ∈ [0 , t 0] is the unique value satisfying 
+
+fT (t′) = Rθα . (16) 15 Theorem 5 implies the following. If t0 ≤ 0, that is, if T ≤ xα−10 −1 
+
+> λ
+
+, then the agent behaves time-consistently regardless of the values of the goal θ
+
+and the reward R. In contrast, if t0 > 0, that is, if T > xα−10 −1 
+
+> λ
+
+, then the agent may exhibit time-inconsistent behavior depending on the values of θ
+
+and R. Since xα−10 −1 
+
+> λ
+
+does not depend on T , time-inconsistent behavior is more likely to arise when T is large. Furthermore, we can analyze the agent’s behavior as λ → 0, that is, as the discount function approaches exponential discounting. To explain this, we first present the following lemma. 
+
+Lemma 6. lim λ→0 xα−10 −1 
+
+> λ
+
+= ∞.Lemma 6 indicates that we have T ≤ xα−10 −1 
+
+> λ
+
+for sufficiently small λ. This implies that the agent behaves time-consistently as the discount function approaches exponential discounting. This result is consistent with the well-known fact that exponential discounting does not induce time-inconsistent behavior [14]. 
+
+# 5 Optimal Goal-setting Problem 
+
+In this section, we consider the problem of finding the goal θ∗ that maximizes the final progress x(T ): 
+
+θ∗ := argmax 
+
+> θ≥0
+
+x(T ), (17) given the period T , reward R, and parameters α, λ, and μ. This problem captures how an intervener should choose a goal so as to maximize an agent’s progress over a fixed time horizon under a given reward. We refer to this as the optimal goal-setting problem .This problem is of practical importance in many real-world situations. For example, consider a company president, acting as the intervener, who offers employees a fixed bonus for achieving a sales goal within six months. A natural question is how this goal should be set to maximize final sales. If the goal is set too high, employees may lose motivation because the goal appears unattainable, leading to lower final sales. By contrast, if the goal is set too low, employees may reach it too easily, obtain the bonus, and reduce their effort thereafter, again resulting in lower sales. These considerations illustrate the importance of choosing an appropriate goal, as formulated in (17). 16 The solution to the goal-setting problem depends crucially on whether 
+
+exploitative rewards are allowed. Exploitative rewards are decoy rewards that take advantage of an agent’s time inconsistency. Because a time-inconsistent agent may make substantial progress even when ultimately abandoning the goal, setting a high and unattainable goal can in some cases induce greater progress than setting a lower and achievable one, despite the agent’s eventual failure to complete the task. Such a policy may also benefit the intervener, since no reward needs to be paid when the agent does not achieve the goal. At the same time, exploitative rewards raise ethical con-cerns, for example by reducing motivation or undermining long-term effort, and therefore require careful consideration. The significance of exploita-tive rewards has been discussed in the literature [6, 21, 37]. In particular, Akagi et al. [5] showed that, for agents with quasi-hyperbolic discounting, exploitative rewards can substantially increase overall progress. We therefore study both settings, namely, one in which exploitative re-wards are allowed and one in which they are disallowed. When exploitative rewards are allowed, the optimization problem is exactly (17). When they are disallowed, we impose the additional constraint x(T ) = θ, which guar-antees that the agent achieves the goal and receives the reward. 
+
+5.1 Non-Exploitative Reward Case 
+
+Theorem 7. When exploitative rewards are not permitted, 
+
+θ∗ =
+
+(
+
+R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+t0 ≤ 0,R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+t0 > 0.
+
+Theorem 7 implies that, when exploitative rewards are not allowed, the solution to the optimal goal-setting problem can be expressed in a simple form. Since exploitative rewards are not allowed, the final progress x(T ) must equal θ. Therefore, the maximum final progress is equal to θ∗. It follows that the maximum final progress is monotonically increasing in the reward 
+
+R. With respect to T , the following lemma holds. 
+
+Lemma 8. fT (0) and fT (t0) are monotonically decreasing in T .Therefore, the maximum final progress is also monotonically increasing in the time horizon T . These results show that increasing the reward or relaxing the time constraint makes it possible to induce greater progress from the agent. 17 5.2 Exploitative Reward Case 
+
+Theorem 9. We consider the case where exploitative rewards are allowed. Define g(t) by 
+
+g(t) := fT (t)− 1
+
+> α
+
+
+
+1 − exp 
+
+
+
+−
+
+ μα − 1 + λ
+
+
+
+η(t)
+
+ 
+
+.
+
+Since g is continuous on the compact interval [0 , t 0], the maximizer exists. Define 
+
+τ ∗ := argmax  
+
+> τ∈[0 ,t 0]
+
+g(τ ).
+
+Then, the following hold: (a) When t0 ≤ 0, θ∗ = R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+and x(T ) = θ∗.(b) When t0 > 0 and fT (t0)− 1 
+
+> α
+
+≥ g(τ ∗), θ∗ = R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+and x(T ) = θ∗.(c) When t0 > 0 and fT (t0)− 1 
+
+> α
+
+< g (τ ∗), θ∗ = R 1 
+
+> α
+
+fT (τ ∗)− 1 
+
+> α
+
+and x(T ) = 
+
+R 1 
+
+> α
+
+g(τ ∗). In cases (a) and (b), x(T ) = θ∗ holds, implying that exploitative rewards are ineffective and that non-exploitative rewards are optimal. In contrast, in case (c), x(T )̸ = θ∗, implying that exploitative rewards are optimal: 
+
+R 1 
+
+> α
+
+g(τ ∗), which is the maximum final progress achieved under exploitative rewards, exceeds R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+, which is the maximum final progress achieved under non-exploitative rewards. We now ask when condition (c) holds. The condition t0 > 0 was exam-ined in the previous section, so here we focus on the condition fT (t0)− 1 
+
+> α
+
+<g(τ ∗). 
+
+Theorem 10. If 1 < α ≤ 1 + μ+√4λμ +μ2 
+
+> 2λ
+
+, then fT (t0)− 1 
+
+> α
+
+≥ g(τ ∗). Theorem 10 implies that exploitative rewards are ineffective when α
+
+satisfies 1 < α ≤ 1 + μ+√4λμ +μ2 
+
+> 2λ
+
+. In other words, exploitative rewards are ineffective when α is sufficiently small. Since 1 + μ+√4λμ +μ2 
+
+> 2λ
+
+= 1 +    
+
+> μλ+
+> q4μλ+
+
+( μλ )2 
+
+> 2
+
+, this upper bound depends only on the ratio μ/λ . As λ → +0, generalized hyperbolic discounting approaches exponential discounting, and lim λ→+0 
+
+
+
+1 + μ+√4λμ +μ2
+
+> 2λ
+
+
+
+= + ∞. Therefore, when generalized hyperbolic 18 discounting is close to exponential discounting, exploitative rewards are ineffective regardless of the value of α. When λ = μ, generalized hy-perbolic discounting coincides with hyperbolic discounting. In this case, 1 + μ+√4λμ +μ2 
+
+> 2λ
+
+= 3+ √52 ≈ 2.62 , so exploitative rewards are ineffective when-ever 1 < α ≤ 3+ √52 .Theorem 10 provides a sufficient condition under which exploitative re-wards are ineffective. One may then ask whether there exist parameter settings for which exploitative rewards are in fact effective. Such parameter settings do exist. For example, when α = 3, λ = 10000, μ = 10000, and 
+
+T = 100, we obtain 
+
+t0 ≈ 99 .9996 , fT (t0)− 1 
+
+> α
+
+≈ 0.0178 , g(95) ≈ 0.0234 .
+
+Hence, in this case, t0 > 0 and fT (t0)− 1 
+
+> α
+
+< g (τ ∗). Therefore, exploitative rewards are effective in this case. 
+
+# 6 Optimal Reward Scheduling Problem 
+
+This section studies a more advanced intervention design problem, namely, the optimal reward scheduling problem . In this setting, the intervener is allowed to split the total reward into multiple parts and distribute them to the agent over time. The inputs to the problem are the total time horizon T , the total re-ward R, and the agent parameters α, λ, and μ. The intervener first chooses a positive integer N , and then divides the total time horizon T into N
+
+periods T1, . . . , T N ∈ R≥0 and the total reward R into N partial rewards 
+
+R1, . . . , R N ∈ R≥0. These variables must satisfy PNi=1 Ti = T and PNi=1 Ri =
+
+R. The intervener also specifies target progress levels θi ∈ R≥0 for each 
+
+i ∈ { 1, . . . , N }. We refer to the tuple  N, (Ti)Ni=1 , (Ri)Ni=1 , (θi)Ni=1 
+
+ as a re-ward schedule. Given a reward schedule, the agent accumulates progress over N stages. In stage i, the agent attempts to achieve the target progress θi within period 
+
+Ti in order to obtain reward Ri. We assume that progress in each stage is independent of the others. That is, in stage i, the agent makes progress without taking into account the rewards or targets associated with any other stage. Let Pi denote the increment of progress in stage i. Our objective is to maximize the total progress increment PNi=1 Pi by choosing an appropriate reward schedule. Here, we consider the setting in which exploitative rewards are not allowed. That is, we assume that Pi = θi holds at each stage i.Figure 4 illustrates an example of a reward schedule in this setting. 19 𝑇 !
+
+Time 
+
+Progress 
+
+𝑇 "
+
+𝜃 !
+
+𝜃 "
+
+𝑅 "
+
+𝑅 !
+
+1st stage 2nd stage Figure 4: An example of reward schedule when N = 2. 
+
+Theorem 11. When N is fixed, the optimal reward schedule is 
+
+Ti = TN , Ri = RN , θi = R 1 
+
+> α
+> i
+
+F (Ti) α−1 
+
+> α
+
+,
+
+where 
+
+F (T ) := 
+
+
+
+F1(T ) T ≤ xα−10 −1 
+
+> λ
+
+,F2(T ) T > xα−10 −1 
+
+> λ
+
+,F1(T ) := fT (0) − 1 
+
+> α−1
+
+,F2(T ) := fT
+
+
+
+T − xα−10 − 1
+
+λ
+
+− 1
+
+> α−1
+
+.
+
+The optimal objective function value PNi=1 Pi equals to 
+
+G(N ) := R 1
+
+> α
+
+
+
+N · F
+
+ TN
+
+ α−1
+
+> α
+
+.
+
+Theorem 11 implies that when we fix N , we can write the optimal reward schedule in closed form. Furthermore, it is optimal to evenly distribute the total rewards and provide them at regular intervals. 
+
+Theorem 12. G(N ) is monotonically increasing with respect to N and lim   
+
+> N→∞
+
+G(N ) = R 1 
+
+> α
+
+T α−1 
+
+> α
+
+.
+
+20 Theorem 12 indicates that finer divisions of rewards and periods lead to greater total progress. However, there is an upper bound to the total progress, and as N increases, the total progress converges to this upper bound. An important observation is that the limit R 1 
+
+> α
+
+T α−1 
+
+> α
+
+does not depend on the discount function parameters λ and μ. This implies that providing intermediate rewards at sufficiently fine intervals can counteract the effects of the discount function. In practical situations, it is impossible to divide rewards infinitely finely, and there are often constraints on the number of divisions. Even in such cases, splitting the rewards as finely as possible can mitigate the effects of time discounting and maximize the attainable progress. This result contrasts with the previous findings under quasi-hyperbolic discounting; [4, 5] demonstrated that under discrete time quasi-hyperbolic discounting, varying the reward intervals based on the discount-function pa-rameter is optimal. For specific parameters, providing the rewards in a lump sum (i.e., N = 1) is optimal, whereas for other parameters, dividing the re-wards as finely as possible is optimal. In contrast, in the continuous-time model proposed in this paper, the optimal strategy is to divide the rewards as finely as possible, regardless of the parameters of the discount function. This contrast suggests that the choice of time model and discounting model can qualitatively affect the structure of optimal reward schedules. A more de-tailed comparison between discrete-time and continuous-time formulations is an interesting direction for future work. 
+
+# 7 Conclusion 
+
+This paper developed a tractable continuous-time framework for designing interventions for time-inconsistent agents in progress-based tasks. By for-mulating the agent’s behavior through a variational principle, we obtained a concise analytical representation of the realized trajectory under general-ized hyperbolic discounting. This representation enabled us to characterize when the agent completes the task, abandons it immediately, or exhibits time-inconsistent abandonment after making partial progress. We then used this characterization to study two intervention design prob-lems. For optimal goal setting, we derived optimal goals both with and with-out exploitative rewards, and identified conditions under which exploitative rewards are ineffective. For optimal reward scheduling, we showed that equal time intervals and equal reward allocations are optimal when the number of 21 stages is fixed, and that finer reward splitting monotonically improves final progress up to a discount-independent limit. These results provide explicit design rules for interventions in continuous-time progress-based tasks and reveal qualitative differences from existing discrete-time models. Several limitations remain. The model focuses on one-dimensional, non-decreasing progress, which is essential for tractability but excludes more general sequential decision problems with branching states, uncertainty, or decreasing progress. Empirical validation is also an important direction for future work. Testing whether the predicted abandonment regimes and optimal intervention structures arise in human behavior would clarify the practical scope of the proposed framework. 
+
+# 8 Proofs 
+
+8.1 Proof of Theorem 1 
+
+Proof. First, we review an existing result from the literature on the calculus of variations [32]. Let us denote by Ap[a, b ] the set of functions that are abso-lutely continuous on the interval [ a, b ] and whose derivatives are p-integrable, where p ∈ [1 , ∞]. We consider the following variational problem; min .
+
+> y∈A p
+
+Z ba
+
+f (s, y, y ′(x)) ds 
+
+s.t. y(a) = A, y (b) = B, 
+
+(18) where f (x0, x 1, x 2) is continuously differentiable. Write 
+
+fi(x0, x 1, x 2) = ∂∂x i
+
+f (x0, x 1, x 2) ( i = 0 , 1, 2) .
+
+Then, the following theorem holds. 
+
+Theorem 13 ([32], Theorem 3) . If the function f (x0, x 1, x 2) is convex with respect to ( x1, x 2) and there exist functions y ∈ A p[a, b ] and z ∈ A 1[a, b ]that satisfy 
+
+z(s) = f2(s, y, y ′), z ′(s) = f1(s, y, y ′), (19) 
+
+y(a) = A, y (b) = B, 
+
+then y is an optimal solution of (18). 22 The equations (19) are called Euler–Lagrange equation. Next, we move to the proof of Theorem 1. A function y that minimizes 
+
+P[y] satisfies y(T ) = θ or y(T ) = x(t). This is because y(T ) = θ holds when 
+
+y(T ) ≥ θ and y(T ) = x(t) holds otherwise from the definitions of functional 
+
+P[y] and cost function c(∆). (i) When y(T ) = x(t), it is clear that the optimal choice is y(s) = x(t)for s ∈ [t, T ], and in this case, P[y] = 0. (ii) When y(T ) = θ, because 
+
+P[y] = 
+
+Z Tt
+
+Lt(s, y ′(s)) ds − γt(T )R
+
+holds, it is sufficient to solve the problem min  
+
+> y∈A 1[t,T ]
+
+Z Tt
+
+Lt(s, y ′(s)) ds s.t. y (t) = x(t), y (T ) = θ. (20) Note that A1[t, T ] consists of all absolutely continuous function in [ t, T ]. Here, we consider a new variational problem min  
+
+> y∈A 1[t,T ]
+
+Z Tt
+
+˜Lt(s, y ′(s)) ds s.t. y (t) = x(t), y (T ) = θ, (21) where ˜c(∆) := |∆|α,
+
+˜Lt(s, v ) := γt(s)˜ c(v).
+
+In this problem, if an optimal solution exists for problem (21), then an op-timal solution also exists for problem (20), and the optimal solutions coin-cide. Indeed, any optimal solution to problem (21) must be non-decreasing. Otherwise, replacing the trajectory by a monotone path with the same endpoints would strictly decrease the objective function, contradicting op-timality. Therefore, solving problem (21) is equivalent to solving prob-lem (20), and we henceforth consider only problem (21). The function ˜Lt(s, y ′(s)) = γt(s)|y′(s)|α is continuously differentiable and convex with respect to ( y(s), y ′(s)). Also, 
+
+y(s) = x(t) + ( θ − x(t)) · Γt(s) − Γt(t)Γt(T ) − Γt(t) , (22) 
+
+z(s) = α
+
+ θ − x(t)Γt(T ) − Γt(t)
+
+α−1
+
+23 satisfy the Euler–Lagrange equation (19) and y, z ∈ A 1[a, b ]. From The-orem 13, (21) has an optimal solution, and the solution is given by (22). Thus, (22) is also an optimal solution of (20) , and in this case a simple calculation gives 
+
+P[y] = (θ − x(t)) α − ζ(t)R
+
+(Γ t(T ) − Γt(t)) α−1 .
+
+From (i) and (ii), we have 
+
+y∗
+
+> t,x (t)
+
+(s) = 
+
+(x(t) (θ − x(t)) α − ζ(t)R > 0,x(t) + (θ−x(t))(Γ t(s)−Γt(t)) Γt(T )−Γt(t) otherwise . (23) Next, we solve (4). By differentiating (23), we get 
+
+dy ∗
+
+> t,x (t)
+
+(s)
+
+ds =
+
+
+
+0 (θ − x(t)) α − ζ(t)R > 0,
+
+(θ − x(t)) · γt(s)− 1  
+
+> α−1
+> Γt(T)−Γt(t)
+
+otherwise .
+
+If the condition ( θ − x(ˆ t)) α − ζ(ˆ t)R > 0 is satisfied for a certain ˆ t, then it follows from the form of (4) and non-increasingness of ζ(t), that x(t) remains constant for t ∈ ˆt, T . Let ˜ t denote the infimum of all such ˆ t. Then, 
+
+dy ∗
+
+> t,x (t)
+
+(s)
+
+ds = ( θ − x(t)) · γt(s)− 1
+
+> α−1
+
+Γt(T ) − Γt(t)holds for t ∈ 0, ˜t. In this case, solving (4) under the condition x(0) = 0 yields 
+
+x(t) = θ
+
+
+
+1 − exp 
+
+
+
+−
+
+Z t
+
+> 0
+
+ds 
+
+Γs(T ) − Γs(s)
+
+ 
+
+.
+
+Because (θ − x(t)) α − ζ(t)R = θα exp 
+
+
+
+−α
+
+Z t
+
+> 0
+
+ds 
+
+Γs(T ) − Γs(s)
+
+
+
+− ζ(t)R
+
+holds, ˜ t is the minimum t that satisfies (9). 24 8.2 Proof of Lemma 2 
+
+Proof. A simple calculation yields Γt(s) = α − 1
+
+μ + λ(α − 1) (1 + λ(s − t)) μλ(α−1) +1 ,ζ(t) = 
+
+ α − 1
+
+μ + λ(α − 1) 
+
+α−1
+
+(1 + λ(T − t)) − μλ
+
+h
+
+(1 + λ(T − t)) μλ(α−1) +1 − 1
+
+iα−1
+
+.
+
+Since α−1 
+
+> μ+λ(α−1)
+
+> 0, it suffices to show that ˜ζ(x) = x−ν 
+
+x1+ να−1 − 1
+
+α−1
+
+is non-decreasing for x ≥ 1, where we define x := 1 + λ(T − t) and ν := μλ .Indeed, 
+
+d˜ζ(x)
+
+dx = x−ν−1
+
+x να−1 − 1
+
+α−2
+
+(α − 1) x να−1 + ν
+
+
+
+is nonnegative for x ≥ 1 because α > 1 and ν > 0, which implies that ˜ζ(x)is non-decreasing for x ≥ 1. 
+
+8.3 Proof of Lemma 4 
+
+Proof. We first compute the derivative of log fT (t): log fT (t) = ( α − 1) log 
+
+ μα − 1 + λ
+
+
+
+− (α − 1) log 
+
+h
+
+(1 + λ(T − t)) μλ(α−1) +1 − 1
+
+i
+
++ μλ log(1 + λ(T − t)) − α
+
+ μα − 1 + λ
+
+ Z t
+
+> 0
+
+ds 
+
+(1 + λ(T − s)) μλ(α−1) +1 − 1 ,
+
+and hence 
+
+d log fT (t)
+
+dt = λ ·
+
+(α − 1) x μλ +α−1 − α
+
+ μλ 
+
+> 1
+> α−1
+
++ 1 
+
+
+
+xα−1 + μλ
+
+xα−1
+
+
+
+x μλ +α−1 − 1
+
+ . (24) where x := (1 + λ(T − t)) 1 
+
+> α−1
+
+. Since the denominator in (24) is positive for 
+
+x > 1, the sign of d log fT (t) 
+
+> dt
+
+is determined by the sign of 
+
+g(x) := ( α − 1) x μλ +α−1 − α
+
+ μλ
+
+1
+
+α − 1 + 1 
+
+
+
+xα−1 + μλ .
+
+25 Because 
+
+dg (x)
+
+dx =
+
+ μλ + α − 1
+
+
+
+xα−2
+
+(α − 1) x μλ − α
+
+
+
+,g(x) is strictly decreasing for 1 ≤ x < 
+
+ αα−1
+
+ λμ
+
+, and strictly increasing for 
+
+x > 
+
+ αα−1
+
+ λμ
+
+. Moreover, 
+
+g(1) = −1 − μλ(α − 1) < 0,
+
+lim  
+
+> x→+∞
+
+g(x) = + ∞.
+
+Hence, the equation g(x) = 0 has a unique solution for x > 1. Denote this solution by x0. Then g(x) < 0 for 1 < x < x 0, g(x0) = 0, and g(x) > 0 for 
+
+x > x 0. Thus, the monotonicity table for log fT (t) can be written as follows using t0 := T − xα−10 −1 
+
+> λ
+
+:(i) If t0 > 0, 
+
+t 0 · · · t0 · · · Td log fT (t)
+
+dt + 0 −
+
+log fT (t) ↗ ↘
+
+(ii) If t0 ≤ 0, 
+
+t 0 · · · Td log fT (t)
+
+dt −
+
+log fT (t) ↘
+
+The claim follows immediately from these monotonicity tables. 
+
+8.4 Proof of Lemma 6 
+
+Proof. Because x0 is the solution of (13), we have (α − 1) x μλ +α−10 = α
+
+ μλ(α − 1) + 1 
+
+
+
+xα−10 − μλ .
+
+26 Dividing both sides by xα−10 yields (α − 1) x μλ 
+
+> 0
+
+= α
+
+ μλ(α − 1) + 1 
+
+
+
+− μλ x−(α−1) 0
+
+= μλ(α − 1) + α + μλ · xα−10 − 1
+
+xα−10
+
+.
+
+Hence, 
+
+μλ · xα−10 − 1
+
+xα−10
+
+= ( α − 1) x μλ 
+
+> 0
+
+− μλ(α − 1) − α. 
+
+Since x0 > 1, the left-hand side is positive, and therefore (α − 1) x μλ 
+
+> 0
+
+≥ μλ(α − 1) + α. 
+
+It follows that 
+
+x μλ 
+
+> 0
+
+≥ μ
+
+(α − 1) 2λ + αα − 1 .
+
+Taking logarithms, we obtain log x0 ≥ λμ log 
+
+ μ
+
+(α − 1) 2λ + αα − 1
+
+
+
+.
+
+Since x0 > 1 and α > 1, we have ( α − 1) log x0 > 0, and thus 
+
+xα−10 − 1 = e(α−1) log x0 − 1 ≥ (α − 1) log x0,
+
+where we used the elementary inequality et − 1 ≥ t for t ≥ 0. Combining this with the previous bound gives 
+
+xα−10 − 1
+
+λ ≥ α − 1
+
+μ log 
+
+ μ
+
+(α − 1) 2λ + αα − 1
+
+
+
+.
+
+As λ → 0, the quantity inside the logarithm diverges to + ∞, and hence log 
+
+ μ
+
+(α − 1) 2λ + αα − 1
+
+
+
+→ ∞ .
+
+Therefore, 
+
+xα−10 − 1
+
+λ → ∞ as λ → 0.
+
+This completes the proof. 27 8.5 Proof of Theorem 7 
+
+Proof. By (11), the condition x(T ) = θ holds if and only if t∗ = T . If 
+
+t0 ≤ 0, then (14) implies that t∗ = T is equivalent to fT (0) ≤ Rθα . Therefore, 
+
+x(T ) = θ is maximized when θ = R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+. If t0 > 0, then (15) implies that t∗ = T is equivalent to fT (t0) ≤ Rθα . Therefore, x(T ) = θ is maximized when θ = R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+.
+
+8.6 Proof of Lemma 8 
+
+Proof. From (10), we have 
+
+fT (0) = 
+
+ μ + λ(α − 1) (α − 1) 
+
+h
+
+(1 + λT ) μλ(α−1) +1 − 1
+
+i
+
+> α−1
+
+(1 + λT ) μλ ,fT (t0) = 
+
+ μ + λ(α − 1) (α − 1) 
+
+h
+
+x μλ +α−10 − 1
+
+i
+
+> α−1
+
+x μ(α−1)  
+
+> λ
+> 0
+
+·
+
+exp 
+
+−α
+
+ μα − 1 + λ
+
+ Z T − xα−10 −1
+
+> λ
+> 0
+
+ds 
+
+(1 + λ(T − s)) μλ(α−1) +1 − 1
+
+.
+
+We first show that fT (0) is monotonically decreasing. Taking the loga-rithm, we obtain log fT (0) = ( α − 1) log 
+
+ μ + λ(α − 1) (α − 1) 
+
+
+
+(1 + λT ) μλ(α−1) +1 − 1
+
+ + μλ log(1 + λT ).
+
+Differentiating with respect to T , we obtain 
+
+ddT log fT (0) = −(α − 1) 
+
+ μλ(α−1) + 1 
+
+
+
+λ(1 + λT ) μλ(α−1) 
+
+(1 + λT ) μλ(α−1) +1 − 1 + μ
+
+1 + λT 
+
+= −μ − λ(α − 1) (1 + λT ) μλ(α−1) +1 
+
+(1 + λT )
+
+
+
+(1 + λT ) μλ(α−1) +1 − 1
+
+ .
+
+Since the numerator is strictly negative and the denominator is strictly pos-itive, we obtain 
+
+ddT log fT (0) < 0,
+
+28 and so fT (0) is strictly decreasing in T .We next show that fT (t0) is strictly decreasing in T . It suffices to show that 
+
+I(T ) := 
+
+Z T − xα−10 −1
+
+> λ
+> 0
+
+ds 
+
+(1 + λ(T − s)) μλ(α−1) +1 − 1is strictly increasing in T . By setting u = T − s, we obtain 
+
+I(T ) = 
+
+Z T 
+
+> xα−10−1
+> λ
+
+du 
+
+(1 + λu ) μλ(α−1) +1 − 1 .I′(T ) = 1(1 + λT ) μλ(α−1) +1 − 1 .
+
+Since λ > 0, μ > 0, and α > 1, the denominator is strictly positive, and thus I′(T ) > 0. Therefore, I(T ) is strictly increasing in T .
+
+8.7 Proof of Theorem 9 
+
+Proof. If t0 ≤ 0, then (14) implies that x(T ) = 0 when θ > R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+,whereas x(T ) = θ when θ ≤ R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+. Therefore, the optimal choice is 
+
+θ = R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+.Next, consider the case t0 > 0. If θ > R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+, then (15) implies that x(T ) = 0. If R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+< θ ≤ R 1 
+
+> α
+
+fT (0) − 1 
+
+> α
+
+, then t∗ = t′, where t′ is defined in (16), and hence 
+
+x(T ) = θ
+
+
+
+1 − exp 
+
+
+
+−
+
+ μα − 1 + λ
+
+
+
+η t′ 
+
+= R 1 
+
+> α
+
+g(t′).
+
+Note that, by choosing θ appropriately, any point in [0 , t 0] can arise as t′.If θ ≤ R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+, then x(T ) = θ, so the optimal choice is θ =
+
+R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+.Therefore, the optimal value of θ is R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+if R 1 
+
+> α
+
+fT (t0)− 1 
+
+> α
+
+≥ R 1 
+
+> α
+
+g(τ ∗),
+
+and is R 1 
+
+> α
+
+fT (τ ∗)− 1 
+
+> α
+
+otherwise. 29 8.8 Proof of Theorem 10 
+
+Proof. It suffices to show that g(t) is monotonically increasing on (0 , t 0]. Indeed, if this is the case, then for every τ ∈ [0 , t 0], 
+
+g(τ ) ≤ g(t0) = fT (t0)− 1
+
+> α
+
+
+
+1 − exp 
+
+
+
+−
+
+ μα − 1 + λ
+
+
+
+η(t0)
+
+ 
+
+≤ fT (t0)− 1 
+
+> α
+
+,
+
+and therefore fT (t0)− 1 
+
+> α
+
+≥ g(τ ∗).
+
+We now prove that g(t) is monotonically increasing on (0 , t 0]. Let 
+
+p(t) := 1 + λ(T − t), q(t) := exp 
+
+
+
+−
+
+ μα − 1 + λ
+
+
+
+η(t)
+
+
+
+.
+
+Then log g(t) = − 1
+
+α log fT (t) + log(1 − q(t)) ,
+
+so (log g(t)) ′ = − 1
+
+α (log fT (t)) ′ − q′(t)1 − q(t) .
+
+By (24), (log fT (t)) ′ = λ · (α − 1) p(t)β − αβp (t) + ( α − 1)( β − 1) 
+
+p(t)( p(t)β − 1) ,
+
+where β := μλ(α−1) + 1. Also, 
+
+q′(t) = −λ
+
+ μλ(α − 1) + 1 
+
+ q(t)
+
+p(t) μλ(α−1) +1 − 1 = − λβq (t)
+
+p(t)β − 1 .
+
+Substituting these expressions gives (log g(t)) ′ = λα(p(t)β − 1) 
+
+
+
+−(α − 1) p(t)β−1 − (α − 1)( β − 1) 
+
+p(t) + αβ 
+
+1 − q(t)
+
+
+
+.
+
+It is enough to show that 
+
+h(t) := −(α − 1) p(t)β−1 − (α − 1)( β − 1) 
+
+p(t) + αβ 
+
+1 − q(t) . (25) is non-negative on (0 , t 0]. To this end, we first prove the following lemma. 30 Lemma 14. If 1 < α ≤ 1 + μ+√4λμ +μ2 
+
+> 2λ
+
+, then for 
+
+P (u) := ( αβ − 2α + 1) u2β + αβu β+1 − 2(2 α − 1)( β − 1) uβ
+
++ αβ (β − 1) u − (β − 1)( αβ − 2α − β + 1) ,
+
+we have P (u) > 0 for every u ≥ 1. 
+
+Proof. A direct calculation gives 
+
+P ′(u) = 2 β(αβ − 2α + 1) u2β−1 + αβ (β + 1) uβ − 2β(2 α − 1)( β − 1) uβ−1 + αβ (β − 1) ,P ′′ (u) = 2 β(2 β − 1)( αβ − 2α + 1) u2β−2 + αβ 2(β + 1) uβ−1 − 2β(2 α − 1)( β − 1) 2uβ−2
+
+= βu β−2
+
+2(2 β − 1)( αβ − 2α + 1) uβ + αβ (β + 1) u − 2(2 α − 1)( β − 1) 2
+
+,
+
+and 
+
+P (1) = β2, P ′(1) = 2 β2, P ′′ (1) = β2(α(β − 1) + 2 β).
+
+Since 1 < α ≤ 1 + μ+√4λμ +μ2 
+
+> 2λ
+
+, we have αβ − 2α + 1 ≥ 0. Therefore, the function inside the parentheses in the expression for P ′′ (u) is increasing for 
+
+u ≥ 1, and since P ′′ (1) > 0, it follows that P ′′ (u) > 0 for all u ≥ 1. Hence 
+
+P ′(u) is increasing on [1 , ∞), and since P ′(1) > 0, we obtain P ′(u) > 0 for all u ≥ 1. Finally, P (1) > 0 implies P (u) > 0 for all u ≥ 1. 
+
+Lemma 15. If h(˜ t) = 0, then h′(˜ t) > 0. 
+
+Proof. Differentiating h(t) yields 
+
+h′(t) = (α − 1)( β − 1) λ p(t)β − 1
+
+p(t)2 − αβ 2λq (t)(p(t)β − 1)(1 − q(t)) 2 . (26) Now suppose that h(˜ t) = 0. By (25), 
+
+q(˜ t) = (α − 1) p(˜ t)β + ( α − 1)( β − 1) − αβp (˜ t)(α − 1) p(˜ t)β + ( α − 1)( β − 1) .
+
+Substituting this into (26), we obtain 
+
+h′(˜ t) = λ(α − 1) 
+
+αp (˜ t)2 p(˜ t)β − 1 P (p(˜ t)) .
+
+Since p(˜ t) ≥ 1, Lemma 14 implies that P (p(˜ t)) > 0, and therefore h′(˜ t) >
+
+0. 31 We now return to the proof that h(t) is nonnegative on (0 , t 0]. Since lim  
+
+> t→0+
+
+h(t) = + ∞,
+
+we have h(t) > 0 for sufficiently small t > 0. Suppose for contradiction that there exists some t ∈ (0 , t 0] such that h(t) < 0. Then, by continuity, there exists some ˜ t ∈ (0 , t 0] such that h(˜ t) = 0. Choosing ˜ t as the first such point after which h becomes negative, we must have h′(˜ t) ≤ 0, contradicting Lemma 15. Therefore, h(t) ≥ 0 on (0 , t 0]. 
+
+8.9 Proof of Theorem 11 
+
+Proof. Since exploitative rewards are not allowed, when Ri and Ti are fixed at each stage i, Theorem 7 implies that the optimal choice is 
+
+θi = R 1 
+
+> α
+> i
+
+F (Ti) α−1 
+
+> α
+
+.
+
+Therefore, the optimal reward-scheduling problem with fixed N reduces to the following optimization problem over  (Ti)Ni=1 , (Ri)Ni=1 
+
+:max  
+
+> (Ti)Ni=1 ,(Ri)Ni=1
+> N
+
+X
+
+> i=1
+
+R 1 
+
+> α
+> i
+
+F (Ti) α−1 
+
+> α
+
+(27) s.t. 
+
+> N
+
+X
+
+> i=1
+
+Ri = R, Ri ≥ 0 (i = 1 , . . . , N ),
+
+> N
+
+X
+
+> i=1
+
+Ti = T, Ti ≥ 0 (i = 1 , . . . , N ).
+
+Furthermore, by H¨ older’s inequality, 
+
+> N
+
+X
+
+> i=1
+
+R 1 
+
+> α
+> i
+
+F (Ti) α−1 
+
+> α
+
+≤
+
+> N
+
+X
+
+> i=1
+
+Ri
+
+! 1 
+
+> αN
+
+X
+
+> i=1
+
+F (Ti)
+
+! α−1
+
+> α
+
+= R 1
+
+> α
+> N
+
+X
+
+> i=1
+
+F (Ti)
+
+! α−1
+
+> α
+
+.
+
+Since equality holds if and only if Ri ∝ F (Ti), the optimization problem (27) can be further reduced to max 
+
+> (Ti)Ni=1
+> N
+
+X
+
+> i=1
+
+F (Ti) (28) s.t. 
+
+> N
+
+X
+
+> i=1
+
+Ti = T, Ti ≥ 0 (i = 1 , . . . , N ).
+
+32 To investigate the structure of the optimal solution to the optimization problem (28), we use the following properties of the function F .
+
+Lemma 16. F is continuously differentiable on [0 , ∞) and concave on [0 , ∞). 
+
+Proof. We first show that F is continuously differentiable on [0 , ∞). Since 
+
+F1 and F2 are clearly continuous and differentiable for T ≥ 0, it suffices to show continuity and differentiability at T = xα−10 −1 
+
+> λ
+
+, that is, 
+
+F1
+
+ xα−10 − 1
+
+λ
+
+
+
+= F2
+
+ xα−10 − 1
+
+λ
+
+
+
+and 
+
+F ′
+
+> 1
+
+ xα−10 − 1
+
+λ
+
+
+
+= F ′
+
+> 2
+
+ xα−10 − 1
+
+λ
+
+
+
+.
+
+From (10), we obtain 
+
+F1(T ) = α − 1
+
+μ + λ(α − 1) 
+
+
+
+1 + λT − (1 + λT )− μλ(α−1) 
+
+
+
+,F ′
+
+> 1
+
+(T ) = λ(α − 1) 
+
+μ + λ(α − 1) 
+
+
+
+1 + μλ(α − 1) (1 + λT )− μλ(α−1) −1
+
+
+
+,F2(T ) = (α − 1) 
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+μ + λ(α − 1) exp 
+
+ α(μ + λ(α − 1)) (α − 1) 2 η
+
+
+
+T − xα−10 − 1
+
+λ
+
+ 
+
+,F ′
+
+> 2
+
+(T ) = 
+
+α
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+(α − 1) 
+
+
+
+(1 + λT ) μλ(α−1) +1 − 1
+
+ exp 
+
+ α(μ + λ(α − 1)) (α − 1) 2 η
+
+
+
+T − xα−10 − 1
+
+λ
+
+ 
+
+.
+
+Now, 
+
+F1
+
+ xα−10 − 1
+
+λ
+
+
+
+= α − 1
+
+μ + λ(α − 1) 
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+,F2
+
+ xα−10 − 1
+
+λ
+
+
+
+= α − 1
+
+μ + λ(α − 1) 
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+,
+
+so 
+
+F1
+
+ xα−10 − 1
+
+λ
+
+
+
+= F2
+
+ xα−10 − 1
+
+λ
+
+
+
+.
+
+33 Moreover, 
+
+F ′
+
+> 1
+
+ xα−10 − 1
+
+λ
+
+
+
+= λ(α − 1) 
+
+μ + λ(α − 1) 
+
+
+
+1 + μλ(α − 1) x− μλ −α+1 0
+
+
+
+,F ′
+
+> 2
+
+ xα−10 − 1
+
+λ
+
+
+
+= αα − 1 x− μλ 
+
+> 0
+
+,
+
+and therefore 
+
+F ′
+
+> 1
+
+ xα−10 − 1
+
+λ
+
+
+
+− F ′
+
+> 2
+
+ xα−10 − 1
+
+λ
+
+
+
+= λμ + λ(α − 1) x− μλ −α+1 0
+
+
+
+(α − 1) x μλ +α−10 − α
+
+ μλ
+
+1
+
+α − 1 + 1 
+
+
+
+xα−10 + μλ
+
+
+
+= 0 .
+
+Here we used the fact that x0 is a solution to (13). This indicates 
+
+F ′
+
+> 1
+
+ xα−10 − 1
+
+λ
+
+
+
+= F ′
+
+> 2
+
+ xα−10 − 1
+
+λ
+
+
+
+.
+
+and that F is continuously differentiable on [0 , ∞). Next, we show that F is concave. For F1(T ), 
+
+F ′′  
+
+> 1
+
+(T ) = − μα − 1 (1 + λT )− μλ(α−1) −2,
+
+and hence F1(T ) is concave for T ≥ 0. Next, for F2(T ), we compute 
+
+F ′′  
+
+> 2
+
+(T ) = 
+
+α
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+(μ + λ(α − 1)) (α − 1) 2 exp 
+
+ α(μ + λ(α − 1)) (α − 1) 2 η
+
+
+
+T − xα−10 − 1
+
+λ
+
+ 
+
+· 
+
+> αα−1
+
+− (1 + λT ) μλ(α−1) 
+
+
+
+(1 + λT ) μλ(α−1) +1 − 1
+
+2 .
+
+Thus, it suffices to show that 
+
+αα − 1 − (1 + λT ) μλ(α−1) < 0.
+
+When T > xα−10 −1 
+
+> λ
+
+, we have (1 + λT ) 1 
+
+> α−1
+
+> x 0. Moreover, since (α − 1) x μλ +α−10 − α
+
+ μλ
+
+1
+
+α − 1 + 1 
+
+
+
+xα−10 + μλ = 0 ,
+
+34 it follows that 
+
+x μλ 
+
+> 0
+
+= α(μ + λ(α − 1)) 
+
+λ(α − 1) 2 − μλ(α − 1) xα−10
+
+.
+
+Therefore, 
+
+αα − 1 − (1 + λT ) μλ(α−1) < αα − 1 − x μλ
+
+> 0
+
+= αα − 1 − α(μ + λ(α − 1)) 
+
+λ(α − 1) 2 + μλ(α − 1) xα−10
+
+= − αμ λ(α − 1) 2 + μλ(α − 1) xα−10
+
+= μλ(α − 1) 2xα−10
+
+ α 1 − xα−10
+
+ − 1 < 0.
+
+This proves that F2(T ) is concave when T > xα−10 −1 
+
+> λ
+
+.By the concavity of F established in Lemma 16 and Jensen’s inequality, 
+
+> N
+
+X
+
+> i=1
+
+F (Ti) = N
+
+> N
+
+X
+
+> i=1
+
+1
+
+N F (Ti) ≤ N · F
+
+> N
+
+X
+
+> i=1
+
+1
+
+N Ti
+
+!
+
+= N · F
+
+ TN
+
+
+
+.
+
+Equality holds if and only if Ti = TN for all i.
+
+8.10 Proof of Theorem 12 
+
+Proof. Let G1(N ) := N · F1
+
+  TN
+
+ and G2(N ) := N · F2
+
+  TN
+
+. It suffices to show that G1 is monotonically increasing when TN ≤ xα−10 −1 
+
+> λ
+
+, and that G2 is monotonically increasing when TN > xα−10 −1 
+
+> λ
+
+.We first consider G1. We have 
+
+G1(N ) = α − 1
+
+μ + λ(α − 1) N + λT − N
+
+
+
+1 + λT N
+
+− μλ(α−1) 
+
+!
+
+,G′
+
+> 1
+
+(N ) = α − 1
+
+μ + λ(α − 1) 1 −
+
+
+
+1 + λT N
+
+− μλ(α−1) 
+
+− μT 
+
+(α − 1) N
+
+
+
+1 + λT N
+
+− μλ(α−1) −1!
+
+.
+
+Now let 
+
+x := 1 + λT N , ν := μλ(α − 1) , h(x) := x−ν .
+
+35 Then 
+
+G′
+
+> 1
+
+(N ) = α − 1
+
+μ + λ(α − 1) 
+
+ 1 − x−ν − νx −ν−1(x − 1) 
+
+= α − 1
+
+μ + λ(α − 1) 
+
+ h(1) − h(x) + h′(x)( x − 1) 
+
+= α − 1
+
+μ + λ(α − 1) (x − 1) 
+
+
+
+h′(x) − h(x) − h(1) 
+
+x − 1
+
+
+
+.
+
+By the mean value theorem, there exists some ˜ x with 1 < ˜x < x such that 
+
+h′(˜ x) = h(x) − h(1) 
+
+x − 1 .
+
+Therefore, 
+
+G′
+
+> 1
+
+(N ) = α − 1
+
+μ + λ(α − 1) (x − 1)  h′(x) − h′(˜ x).
+
+Since h is convex, we have h′(x)−h′(˜ x) > 0. Hence G′
+
+> 1
+
+(N ) > 0, and therefore 
+
+G1(N ) is monotonically increasing. Next, we consider G2. We have 
+
+G2(N ) = N ·
+
+(α − 1) 
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+μ + λ(α − 1) 
+
+· exp 
+
+ α(μ + λ(α − 1)) (α − 1) 2
+
+Z TN − xα−10 −1
+
+> λ
+> 0
+
+ds 
+
+ 1 + λ  TN − s μλ(α−1) +1 − 1
+
+
+
+= N ·
+
+(α − 1) 
+
+
+
+xα−10 − x− μλ
+
+> 0
+
+
+
+μ + λ(α − 1) exp α(μ + λ(α − 1)) (α − 1) 2
+
+Z TNxα−10 −1
+
+> λ
+
+ds ′
+
+(1 + λs ′) μλ(α−1) +1 − 1
+
+!
+
+,
+
+where in the second equality we used the change of variables s′ := TN − s.Hence log G2(N ) = log N + α(μ + λ(α − 1)) (α − 1) 2
+
+Z TNxα−10 −1
+
+> λ
+
+ds ′
+
+(1 + λs ′) μλ(α−1) +1 − 1 + const ., 
+
+and therefore (log G2(N )) ′ = 1
+
+N + α(μ + λ(α − 1)) (α − 1) 2
+
+
+
+− TN 2
+
+ 1
+
+ 1 + λT N
+
+ μλ(α−1) +1 − 1=(α − 1) 2N
+
+h 1 + λT N
+
+ μλ(α−1) +1 − 1
+
+i
+
+− α(μ + λ(α − 1)) TN 2(α − 1) 2
+
+ 1 + λT N
+
+ μλ(α−1) +1 − 1
+
+ .
+
+36 Thus, defining 
+
+g(N ) := ( α − 1) 2N
+
+"
+
+1 + λT N
+
+ μλ(α−1) +1 
+
+− 1
+
+#
+
+− α(μ + λ(α − 1)) T, 
+
+it suffices to show that g(N ) ≥ 0 when 
+
+TN > xα−10 − 1
+
+λ ⇔ 0 < N < λT xα−10 − 1 .
+
+Let x :=  1 + λT N
+
+ 1 
+
+> α−1
+
+. Then 
+
+g′(N ) = ( α − 1) 
+
+
+
+− μλ x μλ +α−1 +
+
+ μλ + α − 1
+
+
+
+x μλ − α + 1 
+
+
+
+.
+
+Define ˜g(x) := − μλ x μλ +α−1 +
+
+ μλ + α − 1
+
+
+
+x μλ − α + 1 .
+
+Then ˜g′(x) = μλ
+
+ μλ + α − 1
+
+
+
+x μλ −1 1 − xα−1 < 0,
+
+so ˜ g(x) is strictly decreasing. Since ˜ g(1) = 0 and x ≥ x0 > 1, it follows that ˜g(x) < 0. Therefore, g′(N ) < 0, and hence g(N ) is strictly decreasing on 0 < N < λT xα−10 −1 . Because 
+
+g
+
+ λT xα−10 − 1
+
+
+
+= ( α − 1) 2 λT xα−10 − 1
+
+
+
+x μλ +α−10 − 1
+
+
+
+− α(μ + λ(α − 1)) T
+
+= (α − 1) λT xα−10 − 1
+
+·
+
+ 
+
+(α − 1) x μλ +α−10 − α
+
+ μλ
+
+1
+
+α − 1 + 1 
+
+
+
+xα−10 + μλ
+
+
+
++ μ + λ(α − 1) 
+
+λ(α − 1) 
+
+
+
+= (μ + λ(α − 1)) Txα−10 − 1 > 0,
+
+we conclude that g(N ) > 0 for all 0 < N < λT xα−10 −1 . This proves that G2(N )is monotonically increasing on 0 < N ≤ λT xα−10 −1 .37 Finally, lim   
+
+> N→∞
+
+G(N ) = R 1
+
+> α
+
+
+
+lim   
+
+> N→∞
+
+N · F
+
+ TN
+
+ α−1
+
+> α
+
+= R 1
+
+> α
+
+
+
+lim   
+
+> N→∞
+
+G1(N )
+
+ α−1
+
+> α
+
+,
+
+and lim   
+
+> N→∞
+
+G1(N ) = α − 1
+
+μ + λ(α − 1) lim   
+
+> N→∞
+
+N + λT − N
+
+
+
+1 + λT N
+
+− μλ(α−1) 
+
+!
+
+= α − 1
+
+μ + λ(α − 1) lim   
+
+> N→∞
+
+N + λT − N
+
+> ∞
+
+X
+
+> k=0
+
+− μλ(α−1) 
+
+k
+
+ λT N
+
+k!! 
+
+= α − 1
+
+μ + λ(α − 1) lim  
+
+> N→∞
+
+
+
+N + λT − N
+
+
+
+1 − μT 
+
+(α − 1) N + O(N −2)
+
+ 
+
+= α − 1
+
+μ + λ(α − 1) · μ + λ(α − 1) 
+
+α − 1 T
+
+= T. 
+
+In the above derivation, we used the generalized binomial theorem [15]: (1 + z)r =
+
+> ∞
+
+X
+
+> k=0
+
+rk
+
+
+
+zk
+
+for |z| < 1. Therefore, lim N →∞ G(N ) = R 1 
+
+> α
+
+T α−1 
+
+> α
+
+.
+
+# Declaration of Generative AI Use 
+
+The authors used generative AI tools to assist with language editing and improving the clarity of the manuscript. The authors reviewed and edited all AI-assisted outputs and take full responsibility for the content of the paper. 
+
+# References 
+
+[1] Abramowitz, M., Stegun, I.A., 1964. Handbook of mathematical func-tions with formulas, graphs, and mathematical tables. volume 55. US Government printing office. 38 [2] Ainslie, G., 1975. Specious reward: A behavioral theory of impulsive-ness and impulse control. Psychological Bulletin 82, 463. [3] Akagi, Y., Kim, H., Kurashima, T., 2025. A continuous-time tractable model for present-biased agents, in: Proceedings of the 39th AAAI Conference on Artificial Intelligence, pp. 13510–13519. [4] Akagi, Y., Kurashima, T., 2026. Delta matters: An analytically tractable model for β–δ discounting agents, in: Proceedings of the 40th AAAI Conference on Artificial Intelligence, pp. 16621–16630. [5] Akagi, Y., Marumo, N., Kurashima, T., 2024. Analytically tractable models for decision making under present bias, in: Proceedings of the 38th AAAI Conference on Artificial Intelligence, pp. 9441–9450. [6] Albers, S., Kraft, D., 2019. Motivating time-inconsistent agents: Acomputational approach. Theory of Computing Systems 63, 466–487. [7] Albers, S., Kraft, D., 2021. On the value of penalties in time-inconsistent planning. ACM Transactions on Economics and Compu-tation 9, 1–18. [8] Berdichevsky, V., 2009. Variational principles. Springer. [9] Bj¨ ork, T., Khapko, M., Murgoci, A., 2017. On time-inconsistent stochastic control in continuous time. Finance and Stochastics 21, 331– 360. [10] Camerer, C.F., Loewenstein, G., 2004. Behavioral economics: Past, present, future. Advances in Behavioral Economics 1, 3–51. [11] Ekeland, I., Lazrak, A., 2006. Being serious about non-commitment: Subgame perfect equilibrium in continuous time. arXiv preprint arXiv:math/0604264 . [12] Ekeland, I., Lazrak, A., 2008. Equilibrium policies when preferences are time inconsistent. arXiv preprint arXiv:0808.3790 . [13] Fedus, W., Gelada, C., Bengio, Y., Bellemare, M.G., Larochelle, H., 2019. Hyperbolic discounting and learning over multiple horizons. arXiv preprint arXiv:1902.06865 . [14] Frederick, S., Loewenstein, G., O’Donoghue, T., 2002. Time discount-ing and time preference: A critical review. Journal of Economic Liter-ature 40, 351–401. 39 [15] Graham, R.L., Knuth, D.E., Patashnik, O., 1994. Concrete mathemat-ics: A foundation for computer science. Addison-Wesley Professional. [16] Gravin, N., Immorlica, N., Lucier, B., Pountourakis, E., 2016. Procras-tination with variable present bias, in: Proceedings of the 17th ACM Conference on Economics and Computation, pp. 361–361. [17] He, X.D., Jiang, Z., 2021. On the equilibrium strategies for time-inconsistent problems in continuous time. SIAM Journal on Control and Optimization 59, 3860–3886. [18] Kaelbling, L.P., Littman, M.L., Moore, A.W., 1996. Reinforcement learning: A survey. Journal of Artificial Intelligence Research 4, 237– 285. [19] Karp, L.S., 2007. Non-constant discounting in continuous time. Journal of Economic Theory 132, 557–568. [20] Kim, H., 2021. Fast Bayesian inference for Gaussian Cox processes via path integral formulation. Advances in Neural Information Processing Systems 34, 26130–26142. [21] Kleinberg, J., Oren, S., 2014. Time-inconsistent planning: A compu-tational problem in behavioral economics, in: Proceedings of the 15th ACM Conference on Economics and Computation, pp. 547–564. [22] Kleinberg, J., Oren, S., Raghavan, M., 2016. Planning problems for sophisticated agents with present bias, in: Proceedings of the 17th ACM Conference on Economics and Computation, pp. 343–360. [23] Kleinberg, J., Oren, S., Raghavan, M., 2017. Planning with multiple biases, in: Proceedings of the 18th ACM Conference on Economics and Computation, pp. 567–584. [24] Kleinberg, J., Oren, S., Raghavan, M., Sklar, N., 2021. Stochastic model for sunk cost bias, in: Proceedings of the 37th Conference on Uncertainty in Artificial Intelligence, PMLR. pp. 1279–1288. [25] Laibson, D., 1997. Golden eggs and hyperbolic discounting. The Quar-terly Journal of Economics 112, 443–478. [26] Loewenstein, G., Prelec, D., 1992. Anomalies in intertemporal choice: Evidence and an interpretation. The Quarterly Journal of Economics 107, 573–597. 40 [27] al Nowaihi, A., Dhami, S., 2006. A note on the Loewenstein–Prelec theory of intertemporal choice. Mathematical Social Sciences 52, 99– 108. [28] O’Donoghue, T., Rabin, M., 1999. Doing it now or later. American Economic Review 89, 103–124. [29] O’Donoghue, T., Rabin, M., 2006. Incentives and self-control. Econo-metric Society Monographs 42, 215. [30] O’Donoghue, T., Rabin, M., 2008. Procrastination on long-term projects. Journal of Economic Behavior & Organization 66, 161–175. [31] Phelps, E.S., Pollak, R.A., 1968. On second-best national saving and game-equilibrium growth. The Review of Economic Studies 35, 185– 199. [32] Rockafellar, R., 2001. Convex analysis in the calculus of variations. Advances in Convex Analysis and Global Optimization: Honoring the Memory of C. Caratheodory (1873–1950) , 135–151. [33] Samuelson, P.A., 1937. A note on measurement of utility. The Review of Economic Studies 4, 155–161. [34] Schultheis, M., Rothkopf, C.A., Koeppl, H., 2022. Reinforcement learn-ing with non-exponential discounting. Advances in Neural Information Processing Systems 35, 3649–3662. [35] Skalse, J.M.V., Abate, A., 2025. Partial identifiability in inverse re-inforcement learning for agents with non-exponential discounting, in: Proceedings of the 39th AAAI Conference on Artificial Intelligence, pp. 27636–27643. [36] Strotz, R.H., 1955. Myopia and inconsistency in dynamic utility maxi-mization. The Review of Economic Studies 23, 165–180. [37] Tang, P., Teng, Y., Wang, Z., Xiao, S., Xu, Y., 2017. Computational issues in time-inconsistent planning, in: Proceedings of the 31st AAAI Conference on Artificial Intelligence, pp. 3665–3671. [38] Wilkinson, N., Klaes, M., 2017. An introduction to behavioral eco-nomics. Bloomsbury Publishing. 41 [39] Zappala, E., Fonseca, A.H.d.O., Moberly, A.H., Higley, M.J., Abdal-lah, C., Cardin, J.A., van Dijk, D., 2023. Neural integro-differential equations, in: Proceedings of the 37th AAAI Conference on Artificial Intelligence, pp. 11104–11112. 42

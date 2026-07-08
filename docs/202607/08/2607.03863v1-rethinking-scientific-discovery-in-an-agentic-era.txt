@@ -1,0 +1,473 @@
+Title: Rethinking Scientific Discovery in an Agentic Era
+
+URL Source: https://arxiv.org/pdf/2607.03863v1
+
+Published Time: Tue, 07 Jul 2026 02:12:51 GMT
+
+Number of Pages: 26
+
+Markdown Content:
+# Rethinking Scientific Discovery in an Agentic Era 
+
+# Yining Zheng 1,2,∗,†, Yuxin Wang 1,2,∗,†, Jiahao Lu 1,2, Shicheng Fang 1,2, Weiyi Wang 1,Yongzhuo Yang 1,2, Bowen Li 1,2, Haochen Ma 1,2, Chen Hu 1,2, Bowen Chen 1,2, Yang Wang 1,2, Huanhui Chen 1, Yitong Chen 1, Jiajun Chen 1,2, Zhiyuan Li 1,2, Yanlin Li 1,2, Zhuo Yang 1, Qifeng Wu 1,2, Jiaying He 1,2, Zhĳie Jinluo 1,2, Xiaohu Xu 1,3, Yi Feng 1,2, Juncheng Qian 1,2, Yizhou Chen 2, Yang Cheng 2, Tong Zhu 1,3, Tianlei Ying 1,2, Hongyu Yu 2,Hongjun Xiang 2, Xipeng Qiu 1,2,†
+
+> 1
+
+Shanghai Innovation Institute , 2Fudan University , 3East China Normal University 
+
+> ∗
+
+These authors contributed equally. 
+
+> †
+
+Corresponding authors: zhengyining@sii.edu.cn, wangyuxin@sii.edu.cn, qiuxipeng@sii.edu.cn 
+
+# Abstract 
+
+Artificial intelligence has achieved remarkable progress in scientific discovery, yet most AI4Science systems remain fragmented tools that still rely on human scientists to coordinate problem formulation, literature grounding, model invocation, simulation, validation, and knowledge reuse. This paper presents SCION (Scientific Collaborative Innovation with Agentic Organizational Nexus) , an agentic scientific operating system that serves as an organizational nexus : through a Science Agent acting as a Meta-Harness , it connects scientific tasks, tools, agents, artifacts, and memory across a collaborative research organization. Rather than functioning as a single model, chatbot, or workflow script, SCION transforms scientific research itself into an executable, auditable, and reusable operational process. The system centers on the Research Execution Plan (REP) , a structured representation that compiles high-level scientific intent into staged objectives, dependencies, verification checkpoints, tool requirements, expected artifacts, and fallback conditions. On this basis, SCION integrates a hierarchical multi-agent runtime, profile-driven agent specialization, selective context construction, governed delegation, and layered epistemic memory to support long-horizon scientific execution. We further formulate scientific discovery under SCION as Target-conditioned Inverse Search , and extend this formulation to hidden-target settings through batch active search under finite experimental budgets. These formulations show how the Science Agent’s Meta-Harness converts scientific goals, constraints, and feedback into adaptive search procedures over candidates, tools, and experimental trajectories. Representative applications are discussed in materials analysis, multi-property molecule design, and target-specific protein or antibody screening. Experiments on scientific reading, idea generation, molecule generation, and antibody screening show that SCION improves over existing autonomous research-agent baselines, particularly in tasks requiring decomposition, verification, iterative refinement, and memory reuse. Overall, SCION shifts AI from isolated predictive tools toward a coordinated operational layer—an organizational nexus—for scientific work, enabling more traceable, recoverable, and reusable modes of AI-assisted scientific innovation. 1
+
+> arXiv:2607.03863v1 [cs.CL] 4 Jul 2026
+
+# 1 Introduction 
+
+Over the past decade, artificial intelligence has become an important driver of scientific discovery. In the AI for Science (AI4Science) paradigm, data-driven and deep-learning methods have been used for structure prediction, property estimation, candidate generation, literature analysis, and experimental planning [ 1 –4]. Landmark systems such as AlphaFold for protein structure prediction [ 2] and GNoME for inorganic materials discovery [ 5] show that advanced AI models can solve scientific subtasks that were previously difficult to scale with manual or purely physics-based approaches. However, the success of these models has not yet produced a corresponding transformation of the full research operating model [ 6]. In most laboratories and research organizations, AI tools are still deployed as isolated capability nodes within a workflow whose coordination remains human-centered [ 7, 8 ]. A scientist must formulate a problem, identify relevant literature, select tools, prepare inputs, launch simulations or model calls, inspect failures, reconcile inconsistent outputs, and decide how each intermediate result should affect the next step. As the number of tools, models, datasets, and experimental options grows, this manual coordination layer becomes a bottleneck [ 9 , 10 ]. The limiting factor is no longer only model accuracy, but the ability of the research system to represent intent, coordinate action, preserve memory, and recover from failure across long multi-stage workflows. Scientific productivity depends not only on stronger models, but also on a new systems layer for scientific work. A useful AI4Science infrastructure should not merely answer questions or predict properties. It should be able to translate high-level research objectives into executable task structures, expose the appropriate tools and context to specialized agents, monitor and validate intermediate outputs, retain both successful and failed trajectories, and make the resulting process auditable by human scientists. In other words, the research workflow itself should become a first-class computational object. The SCION (Scientific Collaborative Innovation with Agentic Organizational Nexus) is designed around this objective. It is positioned as an agentic organizational nexus for scientific workflows, connecting high-level research intent with the tools, agents, artifacts, and memory of a research group, rather than a single model, chatbot, or visualization dashboard. Its central abstraction is the Research Execution Plan (REP), a structured and machine-operable research plan compiled from high-level scientific intent. A REP is an executable plan that makes the intended research procedure explicit: it specifies research objectives, constraints, planned stages, stage dependencies, verification checkpoints, required tools, expected artifacts, and fallback conditions. It also records how intermediate evidence should affect subsequent actions, so that the system can branch, retry, terminate, or escalate work without losing provenance. On top of this representation, the system coordinates a hierarchy of agents for reading, scientific reasoning, execution, collaboration, and report generation. Beneath it, a layered memory subsystem preserves project history, provenance, intermediate artifacts, failure records, and reusable domain knowledge. This paper makes four main contributions. First, it identifies the structural bottleneck created when humans act as the central dispatcher across fragmented AI4Science tools. Second, it describes a three-layer architecture for intent representation, multi-agent execution, and epistemic memory. Third, it formulates scientific discovery under this architecture as target-conditioned inverse search and, under hidden target property condition, as batch active search. Fourth, it discusses representative application patterns in materials analysis, multi-property molecule design, and target-specific antibody screening. 
+
+# 2 Related Work 
+
+## 2.1 Common AI4Science 
+
+Common AI4Science has produced highly capable models for specific scientific tasks. Representative examples include AlphaFold for protein structure prediction [ 2 ], GNoME for inorganic materials discovery [ 5 ], and 
+
+> ‗These authors contributed equally.
+> †Corresponding authors.
+
+2data-driven models for mappings such as structure-to-property [ 11 ], composition-to-property [ 12 ], property estimation, candidate generation, literature analysis, and experimental planning [ 1, 3, 4]. Together, this line of work shows that learning-based methods can outperform manual or purely physics-based approaches on important local problems, making them indispensable components of modern AI4Science workflows. However, these advances do not by themselves transform the full scientific research process. Most common AI4Science models are still optimized for isolated input-output tasks, while scientific discovery is a cross-stage workflow involving problem formulation, literature grounding, hypothesis decomposition, tool selection, simulation or experiment design, anomaly handling, validation, and knowledge reuse [ 6, 13 ]. As a result, their outputs often remain passive references for human decision-making rather than active components of a coordinated research runtime. Human scientists must still act as the central dispatcher across fragmented tools, databases, software environments, and analytical platforms [ 7 , 8]. The resulting bottleneck is not only model accuracy, but the absence of a system-level infrastructure for representing research intent, coordinating multi-stage execution, preserving memory and provenance, and recovering from failure across long-horizon workflows [9, 10, 14]. 
+
+## 2.2 Agents for Scientific Research 
+
+The rise of Large Language Models (LLMs) has motivated a second line of work that moves beyond isolated prediction models toward agentic implementations for scientific research. Tool-using scientific agents such as ChemCrow [ 15 ] and Coscientist [ 16 ] demonstrate that LLMs can plan, invoke domain tools, and maintain intermediate reasoning traces. Pipeline-based autonomous research agents go further by automating larger portions of the research loop, including AI-Researcher [ 17 ], AI-Scientist-v1 [ 7], AI-Scientist-v2 [ 18 ], InternAgent-1.0 [ 19 ], and AutoResearchClaw [ 20 ]. They typically arrange literature review, idea generation, experiment design, coding, evaluation, and report writing into staged workflows, extending automation from local scientific tasks to broader research procedures. Agentic research systems introduce more flexible decomposition, tool invocation, coding assistance, retrieval, critique, and iterative refinement. Representative examples include EvoScientist [ 21 ], DR-Claw [ 22 ], and ScienceClaw [ 23 ], spanning self-evolving multi-agent frameworks, research workspaces, and distributed artifact exchange. ARIS [ 24 ] represents a related collaborative system built around coding agents such as Claude Code and Codex. These systems highlight the value of multi-agent collaboration and adaptive execution in scientific tasks. Still, most existing agentic implementations remain organized as pipelines, scripts, or task-level collaboration frameworks. Unlike general LLM-agent operating systems [ 25 ], they generally lack unified operating-system-level orchestration, explicit lifecycle management, persistent long-term memory [26], robust recovery mechanisms, and governed provenance tracking. As a result, prolonged tasks can still suffer from hallucinations [ 27 ], silent failure propagation, and logical dead loops [ 28 ]. SCION is positioned to address this gap by treating the scientific workflow itself as the primary computational object, with explicit research plans, governed multi-agent execution, layered memory, verification checkpoints, and reusable project-level state. 
+
+# 3 Rethinking AI and Human Positions in an Agentic Era 
+
+SCION is not designed as a visualization dashboard or a monolithic scientific application, but as an agentic nexus that orchestrates the entire scientific research workflow, connecting scientific intent with the tools, agents, artifacts, and memory used to act on it. Unlike many AI-enabled research assistants currently available, which primarily function as personal productivity tools for individual scientists, SCION is designed as an organizational solution for collective research. As summarized in Figure 1, its target is not only the single-user research loop, but the coordinated workflow of laboratories, research groups, and institutional research programs. The core objective of SCION is to support structured research agency in AI-assisted workflows. It integrates research goals, autonomous actions, and empirical validations into a unified systems framework, making the research process itself an engineering object that can be compiled, scheduled, monitored, audited, and 3Figure 1 SCION in the organizational research process. The diagram places SCION as the nexus between high-level scientific intent and the heterogeneous tools, agents, artifacts, and memory used during research execution. Its role is to coordinate organizational workflows for laboratories and research groups, rather than merely provide personal assistance or access to an isolated model. 
+
+optimized. In this sense, it is intended to cover the full research lifecycle, including problem formulation, literature grounding, hypothesis decomposition, computational or experimental execution, result validation, and cross-project knowledge accumulation. Its systemic positioning is analogous to an operating system in computer science: it bridges heterogeneous multimodal foundation models, scientific software stacks, and experimental infrastructure at the bottom, while interfacing with the abstract research intents of human scientists at the top. 
+
+## 3.1 A Meta-Harness Way to Scientific Discovery 
+
+SCION is not intended to remove human scientists from the research process. Rather, it reorganizes the operational division of labor in scientific workflows. In the conventional paradigm, human scientists not only define scientific questions but also function as the runtime layer of the research system: they translate intent into tool calls, move information across incompatible software environments, monitor intermediate failures, and decide when to retry, branch, or terminate an exploration path. As a result, scientific throughput is often constrained not only by model capability, compute, or instrumentation, but also by the human effort required to coordinate them. Following the broader notion of a Meta-Harness , we use the term here to characterize an orchestration layer above individual scientific tools, models, agents, artifacts, and memory systems. A conventional harness connects a model, tool, or procedure to a task-specific workflow. A meta-harness operates one level higher: it coordinates multiple task-level harnesses and execution components into a unified research process. Under this view, the Science Agent inside SCION functions as the meta-harness for scientific discovery. SCION provides the operating-system-level substrate, including plan representation, context construction, memory, delegation, tool boundaries, and governance policies, while the Science Agent composes these resources into executable discovery procedures. 43.2 AI: From Isolated Tools to Workflow Participants 
+
+Within SCION, AI is repositioned from a passive tool for isolated commands to a stage-aware operational collaborator for scientific work. Guided by the Research Execution Plan, the current project state, and accumulated memory, agents do not mechanically execute a fixed end-to-end pipeline; instead, they judge whether the active work concerns problem formulation, literature grounding, hypothesis decomposition, execution, validation, or cross-project learning, and then activate the appropriate tools, agents, context, and verification mechanisms. In this position, AI can translate high-level intent into executable representations, connect evidence sources to downstream tasks, expand scientific questions into testable branches, coordinate computational or experimental actions, synthesize intermediate evidence, and produce milestone outputs. It also functions as a team-level trajectory manager: assumptions, decision points, artifacts, failed attempts, successful results, and reasoning traces are summarized into reusable scientific memory, enabling research groups to compare branches, decide whether to continue or terminate a path, and transfer structured experience across projects. 
+
+## 3.3 Humans: From Process Execution to Strategic Navigation 
+
+Human scientists are correspondingly relieved from acting as the glue code of the research system. Their role is elevated toward: 1. Posing Paradigm-level Questions: Identifying the most valuable scientific objectives, defining search spaces, and setting the overall direction of investigation. 2. Value Alignment and Ethical Boundary Setting: Establishing risk thresholds for exploration, including biosafety, toxicity, and scientific compliance constraints. 3. High-dimensional Scientific Judgment: Intervening when parallel exploration paths require mecha-nistic interpretation, model trust calibration, or a strategic change of direction. 
+
+# 4 Multi-Agent Architecture Design 
+
+The operational core of SCION is best understood through four tightly coupled mechanisms: hierarchical multi-agent organization, profile-driven agent realization, context-governed execution, and layered epistemic memory with recoverable delegation, as illustrated in Figure 2. Together these mechanisms transform a general-purpose language model into a persistent scientific runtime that can decompose work, invoke heterogeneous tools, preserve continuity, and remain auditable across extended research cycles. Importantly, the system is not implemented as a collection of unrelated assistants. Instead, it uses one common agent kernel and differentiates behavior by agent profiles, memory permissions, tool surfaces, and deployment scope. This makes the architecture simultaneously modular at the level of scientific labor and uniform at the level of runtime realization. 
+
+## 4.1 Hierarchical Multi-Agent Organization 
+
+Scientific work involves heterogeneous cognitive modes that should not compete within a single reasoning stream. SCION therefore organizes agents as a hierarchy rather than as a flat pool or a monolithic assistant. A central motivation for this organization is context hygiene in open-ended projects. Complex scientific and engineering projects rarely begin with complete specifications; they usually start from rough ideas and become clearer only through discussion, trial, failure, review, and revision. If all of this material remains inside one long interaction, the main session is quickly contaminated by requirement negotiation, implementation details, abandoned attempts, failed tool traces, lengthy explanations, and review records. The session then loses its identity: neither the scientist nor the agent can reliably distinguish global project logic from task-local noise. SCION therefore treats project-main as a clean project-level master session. It preserves only the global objective, key decisions, branch structure, approved summaries, and process-level documentation needed to 5Figure 2 Schematic diagram of the SCION core architecture. The architecture combines a hierarchical multi-agent runtime, selective context construction, layered epistemic memory, and governed long-horizon execution. The diagram highlights how planning, delegation, verification, and memory are coupled so that scientific work can remain auditable and recoverable across extended workflows. 
+
+keep the project intelligible. Concrete scientific work is delegated to specialist subagents, whose local sessions may contain noisy exploration, clarification questions, failed attempts, and detailed tool traces. Their outputs are reintegrated into project-main only after normalization and summarization. This design avoids two common failure modes in long projects: asking every question inside an already polluted main context, or opening a new session that forces the user to redescribe the entire project from scratch. The reading 
+
+agent is responsible for literature retrieval, document reading, evidence synthesis, and citation-grounded summaries. The idea agent transforms field background and grounded literature evidence into candidate research ideas, novelty judgments, proposal-level rationales, and prioritized ideation branches. The sci agent handles hypothesis refinement, mechanism-level reasoning, experiment design, and domain-constrained scientific synthesis. The exec agent operates computational environments, scripts, external tools, simulations, and artifact-producing workflows. The lark agent connects the project to collaboration platforms, group communication, and external coordination. These specialists are deliberately task-local: they absorb the detailed operational burden of a branch, including speculative ideation and failed exploration, and return compressed evidence, decisions, and artifacts to the project-level coordinator. Furthermore, collaboration groups can be established to address milestone-related challenges by facilitating focused discussion, cross-functional collaboration, and timely problem-solving. At each moment, the active agent set is denoted by 
+
+𝒜 𝑡 = {𝑎 𝑐 , 𝑎 1 , 𝑎 2 , . . . , 𝑎 𝑘 }, (1) where 𝑎 𝑐 is the coordinator agent (project-main agent) and 𝑎 1 , . . . , 𝑎 𝑘 are specialist agents responsible for literature grounding, idea generation and evaluation, scientific reasoning, tool execution, and collaboration-platform interaction. The coordinator maintains project-level continuity, decides whether to respond directly or delegate, and integrates downstream outputs into a coherent next action. In project-scoped execution, the coordinator refers to the project-main agent in Table 1; its purpose is not to execute every detail, but to keep the master project state clean enough for strategic reasoning, documentation, and human approval. 6Table 1 Canonical agent roles in SCION. Runtime role Agent kind Scope Primary function and realization 
+
+shared-main main shared Entry coordinator for personal or non-project sessions; maintains user-level continuity and delegates only to shared-safe specialists. 
+
+project-main main project Clean project-level master coordinator; retains global objectives, key decisions, branch struc-ture, approved summaries, project memory, tools, and constraints; integrates specialist outputs into project-level action. 
+
+sci sci project specialist Performs scientific reasoning, hypothesis re-finement, experiment design, and domain-constrained analytical synthesis. 
+
+idea idea shared specialist Generates and judges ideas based on the sci-entific field and literatures found. 
+
+reading reading shared specialist Retrieves, reads, and synthesizes literature or evidence; optimized for grounding and summarization rather than environmental ac-tuation. 
+
+exec exec project specialist Operates over commands, tools, local environ-ments, and external compute; produces tool traces, artifacts, and runtime-side operational state. 
+
+lark lark shared specialist Handles collaboration-platform interaction, message synchronization, and external com-munication workflows. 
+
+The coordinator performs a routing decision 
+
+𝜋 (𝑎 | 𝑠 𝑡 , 𝑜 𝑡 , 𝑚 𝑡 ), (2) where 𝑠 𝑡 denotes the observable interaction state, 𝑜 𝑡 denotes the current objective and constraint state, and 𝑚 𝑡 
+
+denotes the retrieved memory state. This formulation emphasizes that delegation is conditioned not only on the latest user request, but also on accumulated operational history and the currently active scientific objective. Role specialization reduces cross-task interference and allows different agents to maintain narrower but deeper competence surfaces. The runtime further distinguishes between shared coordination and project-scoped coordination. Shared coordination is used for global or personal interactions that do not require project-private tools, workspaces, or credentials. Project-scoped coordination is used when local project environments, project memory, and project-specific constraints must all be exposed to the agent society. This separation preserves security boundaries while reusing a common agent kernel. Table 1 summarizes the canonical agent roles used in this hierarchy. This taxonomy should be understood as a cognitive division of labor rather than as a software packaging choice. The distinction between coordinator agents and specialist agents allows the system to separate intent interpretation from evidence synthesis, scientific reasoning, execution, and external communication. As a result, no single agent must simultaneously optimize for all roles, and the coordinator can remain relatively stable even when specialist tools or skills evolve. 74.2 Profile-Driven Agent Realization 
+
+Although the agents above appear behaviorally distinct, they are all realized through the same kernel. Formally, each agent can be described by a profile 
+
+𝑃 𝑎 = ⟨id 𝑎 , 𝜅 𝑎 , 𝛿 𝑎 , 𝒯 𝑎 , 𝒮 𝑎 , ℳ𝑎 , 𝜌 𝑎 ⟩, (3) where id 𝑎 is the runtime identifier, 𝜅 𝑎 the agent kind, 𝛿 𝑎 the deployment scope, 𝒯 𝑎 the tool profile, 𝒮 𝑎 the skill profile, ℳ𝑎 the memory profile, and 𝜌 𝑎 the runtime policy. The common kernel is responsible for message normalization, context rendering, tool-loop execution, delegation handling, and result normalization. What changes across agents is therefore not the existence of a separate runtime skeleton, but the profile that governs what an agent may see, invoke, remember, and write. This design has two architectural consequences. First, the architecture remains extensible: introducing a new specialist does not require cloning a new agent runtime, but defining a new profile over the same kernel. Second, the architecture decouples cognitive topology from deployment topology. An agent may be invoked locally, on a remote runtime, or within a project-specific execution environment, while preserving the same abstract coordination semantics from the perspective of the coordinator. 
+
+## 4.3 Context Construction as a Runtime Primitive 
+
+In SCION, context is not a passive transcript but an actively assembled execution surface. An agent never receives the entire global system state. Instead, the runtime constructs an agent-specific context 
+
+𝒞 (𝑡 ) 
+
+> 𝑎
+
+= ℐ𝑎 ∪ 𝒪 𝑡 ∪ ℰ (𝑡 ) 
+
+> 𝑎
+
+∪ 𝒯 𝑎 ∪ 𝒮 𝑎 ∪ ℳ (𝑡 ) 
+
+> 𝑎
+
+, (4) where ℐ𝑎 denotes the identity and mission specification of agent 𝑎 , 𝒪 𝑡 the current objective slice and active constraints, ℰ(𝑡 ) 
+
+> 𝑎
+
+the execution environment and workspace state, 𝒯 𝑎 the tool surface, 𝒮 𝑎 the injected skill substrate, and ℳ(𝑡 ) 
+
+> 𝑎
+
+the retrieved memory. The design principle is selective exposure rather than maximal exposure: each agent receives only the information necessary for its role, thereby reducing prompt competition and limiting irrelevant state contamination. Context construction also serves as a governance mechanism. Shared agents do not receive project-private workspaces or project-specific credentials. Project agents may access local tools and custom skills, but only within the boundary of the active project environment. In this sense, context design determines not only what an agent can reason about, but also what it is operationally permitted to do. Before prompt rendering, the runtime first assembles a typed intermediate context representation and only then serializes it into model-facing instructions. This means that prompt generation is downstream of context modeling rather than the other way around. The architecture therefore treats context assembly as a first-class control surface. Table 2 lists the main context blocks and their architectural functions. Because different agents receive different context surfaces, the system does not merely instantiate multiple copies of one assistant. It creates multiple cognitive viewpoints over the same underlying scientific process. A coordinator sees project- or user-level continuity; a reading agent sees evidentiary material; an execution agent sees the action environment; a scientific reasoning agent sees hypotheses, constraints, and domain goals. This selective asymmetry is a central property of the architecture. 
+
+## 4.4 Layered Memory and Continuity Preservation 
+
+The memory subsystem is designed to preserve continuity without flattening all history into the prompt. The system distinguishes multiple scopes of memory, including session memory, agent-private working memory, user-profile memory, project memory, shared runtime memory, artifact memory, and audit memory. For 8Table 2 Structured context blocks injected into an agent. Context block Typical content Architectural function Identity block agent identity, role, mission, coordination duty Establishes the cognitive posture from which the agent interprets the task. Objective block current goal, delegation rea-son, active constraints, ex-pected output Binds reasoning to the immediate scientific objective rather than the full global history. Environment block workspace state, runtime mode, project boundary, available resources Defines what resources are operationally visi-ble and actionable. Tool block tool summaries, invocation affordances, safety hints Exposes executable action surfaces without overwhelming the agent with raw implemen-tation detail. Skill block skill summaries and optional file references Injects procedural domain knowledge while deferring full skill materialization until needed. Memory block L1 active memory, L2 durable memory, L3 reference mem-ory, priority policy Restores continuity and retrieval order while preserving relevance. 
+
+retrieval, these scopes are organized into a layered structure 
+
+ℳ(𝑡 ) 
+
+> 𝑎
+
+=
+
+
+
+𝑀 (𝑡 ) 
+
+> 𝑎, L1
+
+, 𝑀 (𝑡 ) 
+
+> 𝑎, L2
+
+, 𝑀 (𝑡 )
+
+> 𝑎, L3
+
+
+
+, (5) where L1 captures active session continuity, L2 stores durable user and project knowledge, and L3 retains artifact- and audit-oriented reference memory. The retrieval policy prioritizes L1 over L2 and L2 over L3, while still allowing fresh user instructions to override stale records. L1 supports short-horizon reasoning by preserving recent dialogue, task-local tool outcomes, and structured working todos. L2 records longer-lived facts such as user preferences, project decisions, scientific assumptions, and reusable operational constraints. L3 stores traces, artifacts, failure branches, and provenance records that are essential for recoverability and auditability but need not always enter the active reasoning window. This separation prevents transient local state from being mistaken for durable knowledge. To prevent unbounded prompt growth, the system performs rolling summarization over unsummarized interaction spans and promotes sufficiently stable facts into durable memory. The result is a memory architecture that compresses experience without erasing it: recent events remain explicit, while older but still valuable information is transformed into typed summaries and long-term records. Memory access is also role-dependent, so different agents read and write different slices of the epistemic state according to their memory profiles. Table 3 summarizes the memory scopes, retrieval layers, and access semantics. Equally important is the distinction between working memory and durable memory. Working memory is instrumentally useful for advancing the current task but may be invalidated within a short horizon. Durable memory must survive across sessions and remain meaningful when recalled later. The architecture therefore does not simply store everything that happened; it continuously decides what should remain transient, what should be summarized, and what should become reusable knowledge. 
+
+## 4.5 Governed Delegation and Long-Horizon Recovery 
+
+Scientific workloads are often asynchronous, tool-heavy, and failure-prone. Delegation in SCION is therefore implemented as a governed runtime operation rather than as an informal conversational transfer. Each delegation carries an explicit target agent, a rationale, provenance metadata, and an execution expectation, typically ranging from immediate execution to long-running jobs. This allows the system to maintain 9Table 3 Memory scopes, retrieval layers, and access semantics. Memory scope Layer Semantic role Typical access discipline 
+
+session_memory L1 Recent interaction continuity Read during active dialogue; cleared with session reset. 
+
+agent_private_ working_memory 
+
+L1 Transient todos and local plans Writable by the active agent; not treated as durable knowledge unless summarized or promoted. 
+
+user_profile_-memory 
+
+L2 Stable user prefer-ences and constraints Updated only when facts are suffi-ciently persistent; primarily read by coordinator agents. 
+
+project_memory L2 Project decisions, assumptions, and reusable findings Available in project-scoped execu-tion; isolated from shared coordina-tion. 
+
+shared_project_ runtime_memory 
+
+L2 Shared runtime-side operational state Written by runtime-facing specialists when shared project execution state must persist across turns. 
+
+artifact_memory L3 Generated outputs and reusable artifacts Retrieved as reference evidence when prior artifacts become rele-vant to current action. 
+
+audit_memory L3 Traces, provenance, failure records, execu-tion evidence Used for recoverability, verification, and post hoc analysis rather than routine prompt injection. 
+
+Table 4 Delegation semantics across different execution horizons. Class Typical tasks Completion path Architectural significance instant clarification, bounded reasoning, lightweight retrieval same-turn return Preserves conversational respon-siveness while still allowing role specialization. short focused synthesis, con-strained tool use, local execution loops near-term return to coordinator Enables localized depth without forcing the coordinator to absorb specialist reasoning directly. long simulation, environ-ment setup, extensive computation, callback-driven tasks asynchronous job completion and reintegration Supports coherent progress over tasks that exceed a single conversa-tional or execution window. 
+
+coherence across simulation, retrieval, environment preparation, and other subtasks that cannot be completed within a single synchronous turn. The runtime further incorporates critic checkpoints and anomaly interception mechanisms. Intermediate outputs can be evaluated against workflow consistency conditions, tool-interface constraints, domain rules, and project-specific safety boundaries. When an agent drifts from the objective, hallucinates unsupported content, or enters an unproductive branch, the runtime can trigger rollback, branch termination, re-routing, or resource reallocation. In this sense, the architecture does not merely parallelize reasoning; it governs a recoverable search process over scientific action trajectories. The delegation layer also distinguishes user-visible outputs from internal-only intermediate states. Some specialist results are not final answers but preparatory actions, authentication checks, environment setup outcomes, or callback confirmations. These intermediate results are reintegrated into the coordinator rather than exposed directly to the scientist. Such a distinction is critical in multi-agent settings because it prevents low-level control traffic from polluting the human-facing interaction surface. Table 4 summarizes the execution horizons supported by this delegation mechanism. 10 Taken together, these mechanisms show that SCION is not merely a prompt-engineered assistant with more tools. It is a profile-governed, memory-bearing, delegation-capable multi-agent runtime in which scientific work is distributed across specialized cognitive surfaces while remaining coordinated, inspectable, and recoverable. 
+
+# 5 Scientific Discovery as Meta-Harness 
+
+As implemented by SCION, the Science Agent’s meta-harness behavior is organized around three persistent layers. The first layer is task representation: high-level scientific intent is compiled into a Research Execution Plan that specifies objectives, constraints, dependencies, verification checkpoints, expected artifacts, and fallback conditions. The second layer is runtime execution: specialized agents, tools, and project-scoped environments are coordinated to carry out the plan while monitoring intermediate results. The third layer is memory accumulation: successful trajectories, failed attempts, artifacts, provenance, and reusable knowledge are preserved so that later decisions do not start from an empty state, as shown in Figure 3. This Science-Agent-centered organization changes the form of scientific work in four ways. First, implicit intent becomes explicit executable plans through REPs. Second, manual cross-tool coordination becomes governed multi-agent execution in project-scoped runtimes. Third, isolated intermediate outputs become persistent epistemic assets through long-term memory and retrieval. Fourth, evaluation expands from single-model accuracy to system-level properties such as recoverability, auditability, and knowledge reuse. The result is not a replacement of scientists, but a reallocation of routine coordination work toward an auditable agentic runtime, while human scientists remain responsible for problem formulation, constraints, interpretation, and final scientific judgment. We further describe how the Science Agent in SCION uses the meta-harness formulation in two scientific discovery scenarios. 
+
+## 5.1 Scientific Discovery with Known Target Property: Target-Conditioned Inverse Search 
+
+Figure 3 illustrates how the Science Agent operationalizes target-conditioned inverse search. The above shift in production relations can also be described as a shift in the mathematical form of scientific work. Let 
+
+𝑓 : 𝒳 → 𝒴 (6) denote the forward scientific process that maps a candidate object 𝑋 ∈ 𝒳 to an observed or validated outcome 
+
+𝑌 ∈ 𝒴 , such that 
+
+𝑌 = 𝑓 (𝑋 ). (7) Depending on the domain, 𝑋 may denote a molecular structure, a protein sequence, a material configuration, a spectral assignment, or a synthesis protocol, while 𝑌 may denote the corresponding functional property profile, structural behavior, experimental response, or task-specific performance target. In practical scientific discovery, the objective is usually not to predict 𝑌 from a known 𝑋 , but to identify an 𝑋 ∗
+
+that satisfies a desired target 𝑌 ∗. This can be expressed as a target-conditioned inverse problem: 
+
+𝑓 (𝑋 ∗) ≈ 𝑌 ∗. (8) In the ideal case, one would solve 
+
+𝑋 ∗ = 𝑓 −1(𝑌 ∗). (9) Here, 𝑓 −1 denotes an ideal inverse map. However, in real scientific settings the inverse 𝑓 −1 is typically non-unique, partially observable, computationally intractable, or not explicitly available. Therefore, the practical objective is not to recover a closed-form global inverse, but to search for feasible candidates whose 11 Figure 3 Science Agent for target-conditioned inverse search. A desired scientific target is transformed into executable search actions through planning, candidate generation, tool use, verification, and memory update. Under this view, Science Agent acts as an approximate inverse operator that repeatedly refines candidates rather than merely applying a forward predictive model. 
+
+validated outcomes approach the target: 
+
+𝑋 ∗ ∈ arg min  
+
+> 𝑋 ∈𝒳
+
+ℒ   𝑓 (𝑋 ), 𝑌 ∗ , (10) where ℒ(· , ·) should be understood operationally not merely as an abstract discrepancy measure, but as the output of a verifier component that tests whether the realized outcome 𝑓 (𝑋 ) satisfies the requirements encoded in 𝑌 ∗. In practice, this verifier may combine threshold checks, rule-based constraints, physical consistency tests, safety filters, and domain-specific acceptance criteria into a unified decision mechanism. Equivalently, one may write the corresponding verifier as 
+
+𝒱   𝑓 (𝑋 ), 𝑌 ∗ , (11) where 𝒱 returns either an acceptance decision or a verification score indicating whether 𝑓 (𝑋 ) is adequate for the target. Under this view, the search process is not only minimizing a loss, but repeatedly proposing candidates and invoking a verifier to determine whether they should be accepted, rejected, or refined. From this perspective, the role of Science Agent is to operationalize a target-conditioned approximate inverse procedure. We denote this realized procedure informally as 
+
+𝑋 ∗ = 𝑓 −1SA (𝑌 ∗). (12) Here, 𝑓 −1SA should not be interpreted as an analytic inverse function comparable to the ideal 𝑓 −1. Instead, it denotes the inverse-search procedure induced by the Science Agent runtime, where the subscript SA 
+
+marks that the inverse is realized by the Science Agent rather than computed analytically. Given a target 
+
+𝑌 ∗, the system first compiles the target and its constraints into a Research Execution Plan, then generates and evaluates candidate objects through coordinated agents and tools, verifies intermediate outcomes, and updates memory so that later search steps are conditioned on prior successes and failures. 12 At the system level, this procedure can be viewed as selecting an approximate inverse-search strategy from a feasible procedure class: 
+
+𝑓 −1SA ∈ arg min 
+
+> 𝑔 ∈ℱ inv
+
+ℒ   𝑓 (𝑔 (𝑌 ∗)) , 𝑌 ∗. (13) In this expression, ℱinv denotes the class of inverse-search procedures that can be composed by the system under the available resources, tools, agents, and constraints. A procedure 𝑔 ∈ ℱ inv may involve different choices of planning strategy, candidate-generation method, simulation or prediction toolchain, verification rule, rollback condition, and memory-update policy. Thus, the optimization is not over closed-form inverse functions, but over executable scientific search procedures. SCION does not solve this selection in closed form; rather, it approximates it online, compiling an initial procedure from the Research Execution Plan and then revising the active choices of generation, tool use, verification, and rollback as intermediate evidence accumulates. More concretely, 𝑓 −1SA can be understood schematically as a composition of runtime components: 
+
+𝑓 −1SA ≈ MemoryUpdate ◦ Verify ◦ Execute ◦ Generate ◦ Plan .
+
+Here, ◦ denotes functional composition, with the execution order proceeding from right to left. Given a target 
+
+𝑌 ∗, the system first plans, then generates candidate objects, executes evaluations through tools or simulations, verifies the resulting evidence, and finally updates memory for subsequent search steps. The planner translates 𝑌 ∗ and its constraints into a REP. The generator proposes candidate objects or search branches. The executor invokes models, simulations, databases, or experimental interfaces to evaluate candidates. The verifier determines whether the observed or predicted outcome satisfies the target requirements. The memory updater records successful, failed, and ambiguous trajectories so that subsequent search is conditioned on accumulated evidence. This decomposition is schematic rather than a fixed pipeline: different scientific domains may instantiate these components with different agents, tools, and verification criteria. Concretely, these stages map onto SCION’s runtime: planning corresponds to REP compilation by the coordinator, generation primarily to the idea and sci agents, execution to the exec agent and external tools, verification to critic checkpoints and domain verifiers, and memory update to the layered memory subsystem. Section 7 evaluates two such instantiations: multi-property molecule generation as target-conditioned inverse search, and target-specific antibody screening as its hidden-target counterpart. This formulation clarifies why SCION is more than a collection of independent AI tools. A conventional pipeline applies isolated predictors to estimate fragments of the forward map 𝑓 . By contrast, SCION attempts to construct and revise an executable inverse-search process associated with 𝑌 ∗, under explicit constraints, intermediate verification, rollback conditions, and memory reuse. The essence of the system is therefore not only better prediction, but the conversion of scientific discovery into a governed procedure for approximate inverse design. 
+
+## 5.2 Scientific Discovery with Hidden Target Property: Batch Active Search 
+
+In many scientific discovery settings, the specified target property 𝑌 ∗ is not explicitly known to the researchers. A verifier may be available, but the underlying property that makes a candidate desirable may only be revealed through resource-limited observations. Such a problem can be modeled as target-conditioned inverse search with a hidden target property, which naturally leads to a batch active search formulation shown in Figure 4. We consider a pool-based batch active search problem over a finite candidate set 𝒳 = {𝑥 𝑖 }𝑁 𝑖 =1. Each candidate 
+
+𝑥 𝑖 is associated with an unknown scalar property 𝑟 𝑖 ∈ ℝ, which measures the scientific quantity of interest. A candidate is regarded as a target if its property exceeds a predefined threshold 𝜏 , inducing a binary label 
+
+𝑦 𝑖 = 1[𝑟 𝑖 ≥ 𝜏 ], 𝑦 𝑖 ∈ { 0, 1}. (14) Thus, the binary label is thresholded from the underlying property value. 13 Figure 4 SCION for batch active search under hidden target properties. Each round selects candidate batches, receives limited feedback, updates the current belief state, and revises the next-round search policy. This setting captures discovery problems where the target criterion is only partially revealed through costly observations. 
+
+At round 𝑡 ∈ { 1, . . . , 𝐻 }, the learner selects a batch 𝐵 𝑡 ⊆ 𝒰 𝑡 −1 of size |𝐵 𝑡 | = 𝑏 , where 𝒰 𝑡 −1 denotes the set of unlabeled candidates remaining after round 𝑡 − 1. The oracle then returns, for each queried candidate 𝑥 ∈ 𝐵 𝑡 ,both its binary label 𝑦 (𝑥 ) and its underlying property value 𝑟 (𝑥 ). The observation history is updated as 
+
+𝒟 𝑡 = 𝒟 𝑡 −1 ∪ {( 𝑥, 𝑦 (𝑥 ), 𝑟 (𝑥 )) : 𝑥 ∈ 𝐵 𝑡 }. (15) The total query budget is 𝑇 = 𝐻𝑏 , where 𝐻 is the number of experimental rounds and 𝑏 is the batch size. Following the standard active search formulation, the utility of an observed set 𝒟 is defined as the number of targets discovered: 
+
+𝑢 (𝒟) =
+
+Õ
+
+> (𝑥,𝑦,𝑟 )∈𝒟
+
+𝑦. (16) The goal of batch active search is therefore to design a policy 𝜋 = {𝜋 𝑡 }𝐻 𝑡 =1 that sequentially selects batches so as to maximize the expected number of positives found by the end of the budget: 
+
+max  
+
+> 𝜋
+
+𝔼 𝜋 [𝑢 (𝒟 𝐻 )] . (17) Equivalently, at each round 𝑡 , the Bayesian optimal batch decision can be written as 
+
+𝐵 ★ 
+
+> 𝑡
+
+= arg max 
+
+> 𝐵 ⊆𝒰 𝑡 −1
+> |𝐵 |=𝑏
+
+𝔼 [𝑢 (𝒟 𝐻 ) | 𝒟 𝑡 −1 , 𝐵 ] . (18) This objective is nonmyopic, since the value of the current batch depends not only on the immediate positives it contains, but also on how the newly revealed observations reshape posterior beliefs and downstream batch selections. Computing 𝐵 ★ 
+
+> 𝑡
+
+exactly is intractable, since it requires marginalizing over all future observations and batch choices. SCION therefore does not evaluate this expectation directly; instead, its Science Agent approximates the round-𝑡 policy from the accumulated history 𝒟 𝑡 −1, as formalized below. 14 Let 
+
+𝑝 𝑡 −1(𝑥 ) := Pr  𝑦 (𝑥 ) = 1 | 𝒟 𝑡 −1
+
+ = Pr (𝑟 (𝑥 ) ≥ 𝜏 | 𝒟 𝑡 −1) (19) denote the posterior probability that candidate 𝑥 is positive given the current history. A myopic batch strategy selects the batch with the largest immediate expected gain, 
+
+𝐵 myopic  
+
+> 𝑡
+
+= arg max 
+
+> 𝐵 ⊆𝒰 𝑡 −1
+> |𝐵 |=𝑏
+
+Õ
+
+> 𝑥 ∈𝐵
+
+𝑝 𝑡 −1(𝑥 ), (20) which ignores the effect of the current observations on future rounds. Importantly, although the active search objective is defined over binary target labels, the returned property values provide additional graded information beyond the thresholded feedback. This is particularly useful in sparse-reward regimes where queried batches may contain few or even no positive labels, i.e., 𝑦 (𝑥 ) = 0
+
+for most or all queried candidates. In such cases, binary observations alone provide only weak signal for policy improvement, whereas the continuous property values 𝑟 (𝑥 ) still induce relative ranking information over candidates and support a coarse surrogate characterization of the local search landscape. The role of the numerical feedback is therefore not to replace the target label, but to densify the learning signal under thresholded verification, so that subsequent batch decisions can be guided even when the observed labels are uniformly negative. This formulation also clarifies the relation between batch active search and the target-conditioned inverse search introduced in the previous subsection. There, scientific discovery was modeled as the problem of finding a feasible approximate inverse 𝑓 −1SA (𝑌 ∗) under verifier-mediated feedback. With hidden target property, however, this inverse search cannot be executed as an unconstrained global procedure. Instead, it is unfolded into a sequential decision process, in which the system repeatedly allocates limited queries, observes feedback, and revises its search policy over rounds. In this sense, batch active search provides a budget-constrained operational formulation of scientific discovery under hidden targets. More specifically, at round 𝑡 , once the system has received the accumulated history 𝒟 𝑡 −1, the problem is no longer simply to estimate which candidates are positive in isolation. Rather, the problem is to use the current evidence to optimize the next-round search action in a target-conditioned manner. That is, each round instantiates a conditional inverse-search problem of the form 
+
+𝜋 𝑡 ≈ 𝑓 −1SA (· | 𝒟 𝑡 −1) , (21) where the 𝑌 ∗ is hidden in 𝒟 𝑡 −1 and the output is not a final solution candidate 𝑋 ∗ in one step, but a round-specific batch-selection strategy for choosing 𝐵 𝑡 . The feedback obtained from previous rounds, including both the binary verifier outputs and the underlying property values, therefore serves to reshape the approximate inverse operator used at the current round. Equivalently, each round may be viewed as solving a local target-conditioned inverse search problem whose purpose is to improve the single-round policy under the remaining budget. From this perspective, the role of SCION is to operationalize this iterative policy-level inverse search. After each experimental round, SCION takes the updated history 𝒟 𝑡 −1 as input, interprets the observed success and failure patterns, exploits the graded property feedback to recover coarse ordering structure even under all-negative labels, and produces a revised strategy for the next batch. What is being optimized is therefore not only a static predictor over 𝒳 , but the history-conditioned search procedure itself. In this sense, SCION 
+
+functions as an adaptive inverse operator over policies: it converts round-by-round experimental feedback into improved single-round decision rules, so that the overall multi-round process progressively approximates a budget-constrained target-conditioned inverse search. Section 7 evaluates exactly this single-round policy: given the screening history 𝒟 𝑡 −1, each system must select the next batch, and performance is measured by how well the selected candidates recover the true high-value set. 15 6 Scientific Applications 
+
+This section illustrates how the two discovery formulations above can be instantiated in representative scientific domains. The purpose is not to re-derive the inverse-search or active-search objectives, but to show how their variables, feedback signals, constraints, and executable procedures correspond to concrete research workflows. Table 5 summarizes the mapping across three representative applications: theoretical materials analysis, multi-property molecular design, and target-specific antibody screening.     
+
+> Table 5 Application-level instantiations of the SCION discovery formulations. Application Candidate space Target, feedback, and constraints SCION role Theoretical materials analysis Compositions, crystal structures, doped configurations, defects, surfaces Target material properties such as stability, band gap, adsorption energy, or transport behavior; constrained by physical plausibility, charge balance, thermodynamic stability, and simulation consistency. Coordinates literature grounding, structure preparation, simulation scheduling, post-processing, verification, and mechanistic synthesis. Multi-property molecular design Molecular graphs, SMILES strings, scaffolds, scaffold derivatives Target molecular properties such as potency, solubility, permeability, toxicity risk, ADMET, or synthesizability; constrained by chemical validity, synthesizability, safety filters, and multi-objective trade-offs. Coordinates candidate generation, property prediction, docking or simulation, retrosynthetic assessment, filtering, ranking, and memory reuse. Target-specific antibody screening Antibody sequences, nanobodies, protein binders, scaffold-conditioned candidates Binary hit labels and numerical feedback such as affinity, enrichment, expression yield, or developability score; constrained by limited screening budget, rare positives, specificity, stability, and manufacturability. Uses historical feedback to select the next batch, update beliefs over the pool, and improve budget-constrained screening decisions.
+
+## 6.1 Theoretical Analysis of Materials 
+
+Theoretical materials analysis instantiates the target-conditioned inverse-search setting. A candidate 𝑋 ∈ 𝒳 mat 
+
+may denote a composition, crystal structure, doped configuration, defect configuration, or surface arrangement [29, 30]. The forward process maps such a material candidate to theoretical or computational observables: 
+
+𝑓 mat : 𝒳 mat → 𝒴 mat , (22) where 𝒴 mat may include formation energy, band gap, magnetic response, adsorption energy, stability metrics, transport coefficients, or mechanistic descriptors [ 11 , 31 – 33 ]. The discovery objective is to identify feasible material candidates whose validated responses approach a target property profile 𝑌 ∗.In this domain, the main difficulty is not only prediction, but the operational coordination of a long theoretical workflow. Candidate structures must be generated or retrieved, simulation inputs must be prepared, computational jobs must be scheduled, numerical outputs must be post-processed, and physically implausible or inconsistent results must be detected. The feasible set 𝒳 feasible may impose charge balance, structural stability, thermodynamic plausibility, known synthesis boundaries, or project-specific physical constraints. SCION realizes the corresponding approximate inverse-search process by compiling the target material profile and constraints into a Research Execution Plan. The plan may include stages for literature grounding, structure generation, simulation, post-processing, anomaly detection, and mechanistic synthesis. Specialized 16 agents can then coordinate computation, evidence retrieval, and analysis across multiple branches, while verifier components check physical consistency and trigger rollback or refinement when outputs violate domain constraints. The resulting traces, failed structures, discarded hypotheses, and successful candidates are stored as reusable memory for subsequent materials investigations. 
+
+## 6.2 Multi-Property Molecular Design 
+
+Multi-property molecular design provides another instance of target-conditioned inverse search, but with a different candidate space and constraint structure. Here, 𝑋 ∈ 𝒳 mol denotes a candidate molecular structure, represented for example as a graph, a SMILES (Simplified Molecular-Input Line-Entry System) string, scaffold, or scaffold derivative [ 34 –37 ]. The forward process evaluates a molecule into a vector of relevant properties: 
+
+𝑓 prop (𝑋 ) =  𝑦 1(𝑋 ), 𝑦 2(𝑋 ), . . . , 𝑦 𝑚 (𝑋 ) , (23) where the properties may include potency, selectivity, solubility, permeability, metabolic stability, toxicity risk, ADMET (absorption, distribution, metabolism, excretion, and toxicity) profiles, and synthesizability [ 38 ]. The goal is to find molecules whose property vectors approach a target profile 𝑌 ∗ while satisfying hard chemical and project-specific constraints. Compared with materials analysis, molecular design is characterized by a larger discrete search space and stronger validity constraints. A generated candidate must be chemically valid, preferably synthesizable, safe under predefined filters, and competitive under multiple objectives. In practice, the output is often not a single optimum but a ranked candidate set or an approximate Pareto frontier reflecting trade-offs among desired properties. SCION supports this workflow by coordinating candidate generation, property evaluation, retrosynthetic or synthesizability assessment, docking or simulation, toxicity filtering, and cross-property ranking. Verifier components remove invalid SMILES, infeasible structures, candidates that violate hard filters, or molecules that drift away from the target profile. Memory is especially useful in this setting because rejected motifs, failed optimization paths, and previously observed trade-off patterns can be reused in later design rounds rather than rediscovered from scratch. 
+
+## 6.3 Target-Specific Antibody Screening 
+
+Target-specific antibody screening instantiates the hidden-target batch active-search setting. Given a target protein or antigen 𝑇 ∗, the system operates over a finite candidate pool 
+
+𝒳 = {𝑥 𝑖 }𝑁 𝑖 =1 , (24) where each 𝑥 𝑖 may represent an antibody sequence, nanobody, protein binder, scaffold-conditioned design, or another target-specific biomolecular construct [ 39 , 40 ]. Unlike the previous two applications, the target criterion is often only partially revealed through costly evaluations such as binding assays, enrichment experiments, affinity prediction, structure-based screening, expression tests, or developability assessment [41, 42]. For each queried candidate, the oracle may return both a binary hit decision and a numerical feedback value. The binary label indicates whether the candidate satisfies a task-specific acceptance criterion, such as sufficient binding affinity, target specificity, stability, manufacturability, or developability. The numerical value may correspond to binding affinity, inhibition potency, enrichment score, expression yield, developability score, or a scalarized screening metric. This numerical feedback is important because early screening rounds may contain few positive hits, while graded scores can still provide relative ranking information among negative or near-miss candidates. SCION supports this setting by converting historical screening feedback into a next-round batch-selection strategy. After each round, the system updates its belief over the candidate pool, interprets positive, negative, 17 and near-threshold observations, and selects a new batch under the remaining budget. In this case, the role of SCION is not to search for a single final candidate in one step, but to improve the history-conditioned screening policy over multiple rounds. This makes target-specific antibody screening a natural example of budget-constrained discovery under hidden target properties. 
+
+# 7 Experiments 
+
+This section evaluates whether SCION improves system-level scientific work beyond isolated model answering. The evaluation covers four tasks: scientific reading and reasoning in physics, idea generation, multi-property molecular generation, and target-specific antibody screening. We first describe the shared baselines and implementation details, then report the task setting, dataset, evaluation metrics, and results for each benchmark. 
+
+Baselines. The baselines fall into two groups. The first consists of pipeline-based autonomous research agents, including AI-Researcher [ 17 ], AI-Scientist-v2 [ 18 ], InternAgent-1.0 [ 19 ], and AutoResearchClaw [ 20 ]. The second consists of agentic research systems, including EvoScientist [ 21 ], DR-Claw [ 22 ], and ScienceClaw [ 23 ]. We also include ARIS [ 24 ], a collaborative system built around Claude Code and Codex. Each experiment reports the subset of baselines available for that benchmark. 
+
+Implementation details. Within each benchmark, all systems receive the same task inputs and context constraints. The Scientific Reading experiment uses Kimi 2.5 [ 43 ] as the model backbone, while the Idea Maker, Molecule Generator, and Antibody Screening experiments use nex-n1.1 [ 44 ]. For ARIS, we use Claude Opus 4.6 in Claude Code and GPT-5.5 in Codex. SCION is evaluated as an agentic workflow that decomposes tasks, preserves intermediate evidence, and produces normalized outputs for the corresponding evaluation protocol. For pipeline agents like AI-Researcher, we adapt the subagents of them to specified tasks. 
+
+## 7.1 Scientific Reading 
+
+Task setting. In Scientific Reading, each system must solve open-ended physics problems by constructing a complete reasoning path rather than selecting from predefined answers. All systems receive the same problem statement and are required to generate both a solution process and a final answer. 
+
+Dataset. We evaluate on CMPhysBench [ 45 ], a condensed-matter physics benchmark containing 520 graduate-level calculation problems. The benchmark covers representative subfields such as magnetism, superconductivity, strongly correlated systems, semiconductors, and theoretical foundations. 
+
+Evaluation metrics. The primary metrics are answer accuracy and SEED score from CMPhysBench [ 45 ]. Accuracy measures whether the final answer is equivalent to the reference answer. The SEED score, introduced with CMPhysBench [ 45 ], provides partial credit by comparing symbolic or mathematical expressions through a scalable expression-edit-distance procedure. 
+
+Results. As shown in Figure 5, SCION achieves the best performance among the reported systems, with a SEED score of 44.10 and an accuracy of 35.58%. EvoScientist is the strongest baseline, reaching a SEED score of 42.48 and an accuracy of 34.04%. The margin is modest but consistent across both metrics, with SCION ahead by 1.62 SEED points and 1.54 accuracy points. 
+
+## 7.2 Idea Maker 
+
+Task setting. The Idea Maker benchmark evaluates structured scientific research ideation. Given a research query, each system is required to generate a research proposal that includes the motivation, literature gap, core hypothesis, proposed method, experimental validation plan, and expected scientific contribution. 18 SEED Accuracy 
+
+0
+
+10 
+
+20 
+
+30 
+
+40 
+
+50       
+
+> Score
+> SCION DR-Claw AutoResearchClaw ScienceClaw
+> AI-Researcher AI-Scientist-v2 EvoScientist InternAgent-1.0
+
+Figure 5 Metric-wise Scientific Reading results on CMPhysBench. SEED score and final-answer accuracy are reported for SCION and the available autonomous research-agent baselines. Higher values indicate stronger physics reasoning performance and better agreement with the reference solutions. 
+
+Dataset. Following the idea-generation setting in EvoScientist [ 21 ], we use a test set of 30 AI research queries covering diverse contemporary topics in artificial intelligence. Each query is used to prompt SCION and each baseline system under the same task instruction and output requirements. 
+
+Evaluation metrics. We evaluate idea novelty using pairwise comparison with an LLM judge. Following the pairwise evaluation protocol used in EvoScientist, the idea generated by SCION is compared against the idea generated by one baseline system for the same query, and the outcome is recorded as Win, Tie, or Lose from the perspective of SCION. EvoScientist evaluates idea quality with LLM-based pairwise judgments and reduces positional bias by swapping the order of the two compared outputs. In our evaluation, we use GPT-5.5 as the LLM judge and focus on the novelty dimension, which measures whether an idea is original, non-trivial, and meaningfully different from existing research directions. For each SCION–baseline pair, the comparison is conducted over all 30 queries. To reduce positional bias, each pair of generated ideas is judged twice with swapped presentation order. 
+
+Comparison Win Tie Lose 
+
+SCION vs AI-Researcher 88.33 0.00 11.67 SCION vs AI-Scientist-v2 86.67 0.00 13.33 SCION vs EvoScientist 98.33 0.00 1.67 SCION vs InternAgent-1.0 88.33 0.00 11.67 SCION vs AutoResearchClaw 100.00 0.00 0.00 SCION vs DR-Claw 61.67 1.67 36.67 SCION vs ScienceClaw 100.00 0.00 0.00 SCION vs ARIS 91.67 1.67 6.67 
+
+Table 6 Pairwise novelty evaluation for the Idea Maker task using GPT-5.5 as the LLM judge. Entries are Win/Tie/Lose percentages from the perspective of SCION. Each SCION–baseline comparison is evaluated over 30 queries with swapped answer order, resulting in 60 pairwise judgments per comparison. 
+
+Results. Table 6 shows that SCION wins the novelty comparison against every evaluated baseline by a majority margin. It reaches a 100.00% win rate against AutoResearchClaw and ScienceClaw, and a 98.33% win 19 rate against EvoScientist. The closest comparison is DR-Claw, where SCION obtains a 61.67% win rate, a 1.67% tie rate, and a 36.67% lose rate. These results suggest that, under GPT-5.5 pairwise judging, SCION more frequently produces ideas judged as more novel than those produced by existing autonomous research-agent baselines. 
+
+## 7.3 Molecule Generator 
+
+Task setting. The Molecule Generator benchmark instantiates the constrained inverse-design setting described in the multi-property molecular design application [ 46 ]. Each system receives a target property profile 𝑌 ∗, a set of hard chemical constraints, and optional project context such as seed scaffolds, forbidden substructures, or preferred synthetic routes. The expected output is a ranked candidate set with machine-readable molecular representations and the reasoning or tool traces used to justify the ranking. 
+
+Dataset. Each benchmark task combines multiple molecular objectives, including blood-brain barrier penetration (BBBP), penalized logP (pLogP), quantitative estimate of drug-likeness (QED), mutagenicity, and human intestinal absorption (HIA). For compact reporting, we abbreviate the target combinations as BPQ for BBBP+pLogP+QED, MPQ for Mutagenicity+pLogP+QED, BHMQ for BBBP+HIA+Mutagenicity+QED, BMPQ for BBBP+Mutagenicity+pLogP+QED, and HMPQ for HIA+Mutagenicity+pLogP+QED. 
+
+Evaluation metrics. The primary metric is success rate, defined as the fraction of generated candidates that satisfy all hard constraints and meet the target property after verification. Unlike [ 46 ], where predicting the direction suffices, our evaluation based on target property thresholds makes the task significantly more challenging. 
+
+BPQ MPQ BHMQ BMPQ HMPQ 
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4      
+
+> Success rate
+> SCION DR-Claw AutoResearchClaw
+> ScienceClaw AI-Researcher AI-Scientist-v2
+> EvoScientist InternAgent-1.0 ARIS
+
+Figure 6 Success rate on multi-property molecule generation tasks. The bars report the fraction of generated candidates that satisfy all hard constraints and meet the target property thresholds after verification, for each target-property combination; an absent bar denotes a success rate of zero. Higher values indicate better coordination of generation, validity checking, property filtering, and multi-objective ranking. 
+
+20 Results. As shown in Figure 6, SCION achieves the highest average success rate across the multi-property molecule-generation tasks and obtains the best result on four of the five target combinations. Its average success rate is 0.3064, compared with 0.1897 for ARIS, the strongest non-SCION baseline on average. The gap is especially visible in the more constrained three- and four-objective settings. For BHMQ, SCION reaches 0.2033, while the best baseline reaches 0.0636. For BMPQ and HMPQ, SCION reaches 0.2801 and 0.3958, respectively, compared with the strongest baseline results of 0.1492 and 0.1667. On MPQ, ARIS obtains the highest single-task success rate of 0.3320. The advantage of SCION becomes more visible when the task requires simultaneous satisfaction of multiple heterogeneous constraints. In such settings, simple generation or single-agent reasoning is insufficient: candidate molecules must be generated, checked for validity, filtered against target properties, and re-ranked under competing objectives. The higher success rates therefore support the central architectural claim of this paper: a governed agentic runtime can improve scientific generation tasks by coordinating decomposition, verification, and iterative refinement rather than relying only on one-shot model output. 
+
+## 7.4 Antibody Screening 
+
+Task setting. The antibody-screening experiment evaluates the one-round policy optimization problem introduced in the batch active search formulation [ 47 –49 ]. At round 𝑡 , each system receives the accumulated screening history 𝒟 𝑡 −1, including previously tested antibody or protein candidates, binary hit labels, and numerical property feedback such as affinity, enrichment, or developability scores. The system must output a ranked list of unevaluated candidates or a batch-selection policy for the next screening round. The agents are evaluated based on synthetic feedback data obtained at an intermediate screening round t ( 𝑡 > 1). 
+
+Dataset. The evaluation dataset comprises target-specific antibody candidate pools from real protein discovery campaigns, with screening labels derived from a composite property calculated from multiple quantitative attributes. We label top 10% candidates as label 1 and the others label 0. Candidates are split evenly into training and test sets (1:1 ratio). The training set simulates the historical screening data available to the system, while the test set represents the remaining candidates to be evaluated in the current round. 
+
+Evaluation metrics. The primary metric is F1, computed by comparing the top 10% candidates selected by the system with the true top 10% high-performing antibodies in the test set. A higher F1 score indicates a better balance between selecting true positive candidates and avoiding low-value candidates. 
+
+Results. Figure 7 reports the antibody-screening results obtained from a single intermediate screening round. SCION obtains the best F1 score of 0.370. The strongest baseline is ARIS with 0.278, so SCION provides an absolute improvement of 0.092 and a relative improvement of approximately 33.1%. Compared with ScienceClaw and AI-Scientist-v2, both of which obtain 0.200, SCION improves the F1 score by approximately 85.0%. This result points to a stronger ability to convert historical screening feedback into an actionable next-round selection policy. It is consistent with the batch active search formulation in Section 5.2: the system is not merely asked to score each candidate independently, but to use previous binary labels and numerical feedback to decide which candidates should be prioritized under a limited screening budget. The improvement in F1 therefore reflects stronger alignment between the selected candidate set and the true high-value antibody set in the held-out screening round. 
+
+# 8 Conclusion 
+
+Every major shift in scientific productivity is accompanied by a reconstruction of the underlying infrastructure. This paper has presented SCION as an agentic scientific operating system—an organizational nexus for collaborative research—that re-architects the research process around three persistent capabilities: research 21 SCION 
+
+> DR-Claw
+> AutoResearchClaw
+> ScienceClaw
+> AI-Researcher
+> AI-Scientist-v2
+> EvoScientist
+> InternAgent-1.0
+> ARIS
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+> F1
+
+Figure 7 F1 results for one-round target-specific antibody screening. Each bar measures how well a system selects high-value candidates from a held-out next-round screening set. Higher F1 indicates a better balance between recovering true positive binders and avoiding low-value candidates under a limited screening budget. 
+
+intent orchestration, multi-agent execution, and plan-level knowledge reuse. With these capabilities, AI can function less as a peripheral predictive utility and more as a coordinated operational layer for end-to-end scientific work. Equally important, SCION can shift part of the coordination burden in scientific labor. It reduces the need for human scientists to act as manual dispatchers and keeps their attention on scientific strategy, value alignment, and interpretation, while the system supports decomposition, execution, and memory formation. The application cases in materials analysis, multi-property molecular design, and target-specific antibody screening show that the significance of SCION is not merely computational scale, but the creation of a traceable and reusable mode of collaborative scientific innovation. Looking ahead, combining this operating-system model with automated experimentation and high-throughput wet labs may pave the way toward a cyber-physical infrastructure for science, which constitutes our planned future work. 22 References 
+
+[1] Hanchen Wang, Tianfan Fu, Yuanqi Du, Wenhao Gao, Kexin Huang, Ziming Liu, Payal Chandak, Shengchao Liu, Peter Van Katwyk, Andreea Deac, et al. Scientific discovery in the age of artificial intelligence. Nature , 620(7972): 47–60, 2023. [2] John Jumper, Richard Evans, Alexander Pritzel, Tim Green, Michael Figurnov, Olaf Ronneberger, Kathryn Tunyasu-vunakool, Russ Bates, Augustin Žídek, Anna Potapenko, et al. Highly accurate protein structure prediction with alphafold. nature , 596(7873):583–589, 2021. [3] Joseph L Watson, David Juergens, Nathaniel R Bennett, Brian L Trippe, Jason Yim, Helen E Eisenach, Woody Ahern, Andrew J Borst, Robert J Ragotte, Lukas F Milles, et al. De novo design of protein structure and function with rfdiffusion. Nature , 620(7976):1089–1100, 2023. [4] Michael D. Skarlinski, Sam Cox, Jon M. Laurent, James D. Braza, Michaela Hinks, Michael J. Hammerling, Manvitha Ponnapati, Samuel G. Rodriques, and Andrew D. White. Language agents achieve superhuman synthesis of scientific knowledge, 2024. URL https://arxiv.org/abs/2409.13740 .[5] Amil Merchant, Simon Batzner, Samuel S Schoenholz, Muratahan Aykol, Gowoon Cheon, and Ekin Dogus Cubuk. Scaling deep learning for materials discovery. Nature , 624(7990):80–85, 2023. [6] Woong Shin, Renan Souza, Daniel Rosendo, Frédéric Suter, Feiyi Wang, Prasanna Balaprakash, and Rafael Ferreira da Silva. The (r)evolution of scientific workflows in the agentic ai era: Towards autonomous science, 2025. URL 
+
+https://arxiv.org/abs/2509.09915 .[7] Chris Lu, Cong Lu, Robert Tjarko Lange, Yutaro Yamada, Shengran Hu, Jakob Foerster, David Ha, and Jeff Clune. Towards end-to-end automation of ai research. Nature , 651(8107):914–919, 2026. [8] Christoph Scheurer and Karsten Reuter. Role of the human-in-the-loop in emerging self-driving laboratories for heterogeneous catalysis. Nature Catalysis , 8(1):13–19, 2025. [9] Xinzhe Li. A review of prominent paradigms for llm-based agents: Tool use, planning (including rag), and feedback learning. In Proceedings of the 31st international conference on computational linguistics , pages 9760–9779, 2025. [10] Yubin Kim, Ken Gu, Chanwoo Park, Chunjong Park, Samuel Schmidgall, A Ali Heydari, Yao Yan, Zhihan Zhang, Yuchen Zhuang, Mark Malhotra, et al. Towards a science of scaling agent systems. arXiv preprint arXiv:2512.08296 ,2025. [11] Tian Xie and Jeffrey C Grossman. Crystal graph convolutional neural networks for an accurate and interpretable prediction of material properties. Physical review letters , 120(14):145301, 2018. [12] Alexander Dunn, Qi Wang, Alex Ganose, Daniel Dopp, and Anubhav Jain. Benchmarking materials property prediction methods: the matbench test set and automatminer reference algorithm. npj Computational Materials , 6(1): 138, 2020. [13] Jiaqi Wei, Yuejin Yang, Xiang Zhang, Yuhan Chen, Xiang Zhuang, Zhangyang Gao, Dongzhan Zhou, Guangshuai Wang, Zhiqiang Gao, Juntai Cao, et al. From ai for science to agentic science: A survey on autonomous scientific discovery. arXiv preprint arXiv:2508.14111 , 2025. [14] Holland Hysmith, Elham Foadian, Shakti P Padhy, Sergei V Kalinin, Rob G Moore, Olga S Ovchinnikova, and Mahshid Ahmadi. The future of self-driving laboratories: from human in the loop interactive ai to gamification. 
+
+Digital Discovery , 3(4):621–636, 2024. [15] Andres M Bran, Sam Cox, Oliver Schilter, Carlo Baldassari, Andrew D White, and Philippe Schwaller. Chemcrow: Augmenting large-language models with chemistry tools. arXiv preprint arXiv:2304.05376 , 2023. [16] Daniil A Boiko, Robert MacKnight, Ben Kline, and Gabe Gomes. Autonomous chemical research with large language models. Nature , 624(7992):570–578, 2023. [17] Jiabin Tang, Lianghao Xia, Zhonghang Li, and Chao Huang. Ai-researcher: Autonomous scientific innovation, 2025. URL https://arxiv.org/abs/2505.18705 .
+
+23 [18] Yutaro Yamada, Robert Tjarko Lange, Cong Lu, Shengran Hu, Chris Lu, Jakob Foerster, Jeff Clune, and David Ha. The ai scientist-v2: Workshop-level automated scientific discovery via agentic tree search, 2025. URL 
+
+https://arxiv.org/abs/2504.08066 .[19] InternAgent Team, Bo Zhang, Shiyang Feng, Xiangchao Yan, Jiakang Yuan, Runmin Ma, Yusong Hu, Zhiyin Yu, Xiaohan He, Songtao Huang, Shaowei Hou, Zheng Nie, Zhilong Wang, Jinyao Liu, Tianshuo Peng, Peng Ye, Dongzhan Zhou, Shufei Zhang, Xiaosong Wang, Yilan Zhang, Meng Li, Zhongying Tu, Xiangyu Yue, Wangli Ouyang, Bowen Zhou, and Lei Bai. Internagent: When agent becomes the scientist – building closed-loop system from hypothesis to verification, 2025. URL https://arxiv.org/abs/2505.16938 .[20] Jiaqi Liu, Peng Xia, Siwei Han, Shi Qiu, Letian Zhang, Guiming Chen, Haoqin Tu, Xinyu Yang, Jiawei Zhou, Hongtu Zhu, Yun Li, Jiaheng Zhang, Yuyin Zhou, Zeyu Zheng, Cihang Xie, Mingyu Ding, and Huaxiu Yao. Autoresearchclaw: Fully autonomous research from idea to paper, 2026. URL https://github.com/aiming-lab/ AutoResearchClaw .[21] Yougang Lyu, Xi Zhang, Xinhao Yi, Yuyue Zhao, Shuyu Guo, Wenxiang Hu, Jan Piotrowski, Jakub Kaliski, Jacopo Urbani, Zaiqiao Meng, Lun Zhou, and Xiaohui Yan. Evoscientist: Towards multi-agent evolving ai scientists for end-to-end scientific discovery, 2026. URL https://arxiv.org/abs/2603.08127 .[22] Dingjie Song, Hanrong Zhang, Dawei Liu, Yixin Liu, Zongxia Li, Zhengqing Yuan, Siqi Zhang, and Lichao Sun. Dr. claw: An ai research workspace from idea to paper, 2026. URL https://github.com/OpenLAIR/dr-claw .[23] Fiona Y. Wang, Lee Marom, Subhadeep Pal, Rachel K. Luu, Wei Lu, Jaime A. Berkovich, and Markus J. Buehler. Autonomous agents coordinating distributed discovery through emergent artifact exchange, 2026. URL https: //arxiv.org/abs/2603.14312 .[24] Ruofeng Yang, Yongcan Li, and Shuai Li. Aris: Autonomous research via adversarial multi-agent collaboration, 2026. URL https://arxiv.org/abs/2605.03042 .[25] Kai Mei, Xi Zhu, Wujiang Xu, Wenyue Hua, Mingyu Jin, Zelong Li, Shuyuan Xu, Ruosong Ye, Yingqiang Ge, and Yongfeng Zhang. Aios: Llm agent operating system. arXiv preprint arXiv:2403.16971 , 2024. [26] Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li, Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong Wen. A survey on the memory mechanism of large language model-based agents. ACM Transactions on Information Systems ,43(6):1–47, 2025. [27] Xuannan Liu, Xiao Yang, Zekun Li, Peipei Li, and Ran He. Agenthallu: Benchmarking automated hallucination attribution of llm-based agents. arXiv preprint arXiv:2601.06818 , 2026. [28] Mahmoud Mohammadi, Yipeng Li, Jane Lo, and Wendy Yip. Evaluation and benchmarking of llm agents: A survey. In Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining V. 2 , pages 6129–6139, 2025. [29] Stefano Curtarolo, Wahyu Setyawan, Gus L.W. Hart, Michal Jahnatek, Roman V. Chepulskii, Richard H. Taylor, Shidong Wang, Junkai Xue, Kesong Yang, Ohad Levy, Michael J. Mehl, Harold T. Stokes, Denis O. Demchenko, and Dane Morgan. Aflow: An automatic framework for high-throughput materials discovery. Computational Materials Science , 58:218–226, 2012. ISSN 0927-0256. doi: https://doi.org/10.1016/j.commatsci.2012.02.005. URL 
+
+https://www.sciencedirect.com/science/article/pii/S0927025612000717 .[30] Anubhav Jain, Shyue Ping Ong, Geoffroy Hautier, Wei Chen, William Davidson Richards, Stephen Dacek, Shreyas Cholia, Dan Gunter, David Skinner, Gerbrand Ceder, and Kristin A. Persson. Commentary: The materials project: A materials genome approach to accelerating materials innovation. APL Materials , 1(1):011002, 07 2013. ISSN 2166-532X. doi: 10.1063/1.4812323. URL https://doi.org/10.1063/1.4812323 .[31] Chi Chen, Weike Ye, Yunxing Zuo, Chen Zheng, and Shyue Ping Ong. Graph networks as a universal machine learning framework for molecules and crystals. Chemistry of Materials , 31(9):3564–3572, April 2019. ISSN 1520-5002. doi: 10.1021/acs.chemmater.9b01294. URL http://dx.doi.org/10.1021/acs.chemmater.9b01294 .[32] Chi Chen and Shyue Ping Ong. A universal graph deep learning interatomic potential for the periodic table. Nature Computational Science , 2(11):718–728, November 2022. ISSN 2662-8457. doi: 10.1038/s43588-022-00349-3. URL 
+
+http://dx.doi.org/10.1038/s43588-022-00349-3 .
+
+24 [33] Kevin Ryczko, David A. Strubbe, and Isaac Tamblyn. Deep learning and density-functional theory. Physical Review A, 100(2), August 2019. ISSN 2469-9934. doi: 10.1103/physreva.100.022512. URL http://dx.doi.org/10.1103/ PhysRevA.100.022512 .[34] Yan Sun, Lianghong Chen, Zihao Jing, Yan Yi Li, Dongkyu Kim, Jing-Yan Gao, Reza Noroozi, Grace Y. Yi, Conrard Giresse Tetsassi Feugmo, Anna Klinkova, Kyla Sask, Agustinus Kristiadi, Boyu Wang, Elizabeth R. Gillies, Kun Ping Lu, HaoTian Harvey Shi, and Pingzhao Hu. Generative ai for the design of molecules: Advances and challenges. Journal of Chemical Information and Modeling , 65(23):12668–12690, 2025. doi: 10.1021/acs.jcim.5c02234. URL https://doi.org/10.1021/acs.jcim.5c02234 . PMID: 41253282. [35] Xiangru Tang, Howard Dai, Elizabeth Knight, Fang Wu, Yunyang Li, Tianxiao Li, and Mark Gerstein. A survey of generative ai for de novo drug design: New frontiers in molecule and protein generation, 2024. URL https: //arxiv.org/abs/2402.08703 .[36] Wengong Jin, Regina Barzilay, and Tommi Jaakkola. Junction tree variational autoencoder for molecular graph generation, 2019. URL https://arxiv.org/abs/1802.04364 .[37] Marcus Olivecrona, Thomas Blaschke, Ola Engkvist, and Hongming Chen. Molecular de novo design through deep reinforcement learning, 2017. URL https://arxiv.org/abs/1704.07555 .[38] G. Richard Bickerton, Gaia V. Paolini, Jeremy Besnard, Sorel Muresan, and Andrew L. Hopkins. Quantifying the chemical beauty of drugs. Nature Chemistry , 4(2):90–98, feb 2012. doi: 10.1038/nchem.1243. URL https: //doi.org/10.1038/nchem.1243 .[39] J. Dauparas, I. Anishchenko, N. Bennett, H. Bai, R. J. Ragotte, L. F. Milles, B. I. M. Wicky, A. Courbet, R. J. de Haas, N. Bethel, P. J. Y. Leung, T. F. Huddy, S. Pellock, D. Tischer, F. Chan, B. Koepnick, H. Nguyen, A. Kang, B. Sankaran, A. K. Bera, N. P. King, and D. Baker. Robust deep learning–based protein sequence design using proteinmpnn. 
+
+Science , 378(6615):49–56, 2022. doi: 10.1126/science.add2187. URL https://www.science.org/doi/abs/10. 1126/science.add2187 .[40] Gregory W. Kyro, Tianyin Qiu, and Victor S. Batista. A model-centric review of deep learning for protein design, 2025. URL https://arxiv.org/abs/2502.19173 .[41] Kaihui Cheng, Ce Liu, Qingkun Su, Jun Wang, Liwei Zhang, Yining Tang, Yao Yao, Siyu Zhu, and Yuan Qi. Alphafolding: 4d diffusion for dynamic protein structure prediction with reference and motion guidance, 2024. URL 
+
+https://arxiv.org/abs/2408.12419 .[42] Jun Cheng, Guido Novati, Joshua Pan, Clare Bycroft, Akvil ˙e Žemgulyt ˙e, Taylor Applebaum, Alexander Pritzel, Lai Hong Wong, Michal Zielinski, Tobias Sargeant, Rosalia G. Schneider, Andrew W. Senior, John Jumper, Demis Hassabis, Pushmeet Kohli, and Žiga Avsec. Accurate proteome-wide missense variant effect prediction with alphamissense. Science , 381(6664):eadg7492, 2023. doi: 10.1126/science.adg7492. URL https://www.science. org/doi/abs/10.1126/science.adg7492 .[43] Ding Ding, Zeqian Ju, Yichong Leng, Songxiang Liu, Tong Liu, Zeyu Shang, Kai Shen, Wei Song, Xu Tan, Heyi Tang, et al. Kimi-audio technical report. arXiv preprint arXiv:2504.18425 , 2025. [44] Yuxuan Cai, Lu Chen, Qiaoling Chen, Yuyang Ding, Liwen Fan, Wenjie Fu, Yufei Gao, Honglin Guo, Pinxue Guo, Zhenhua Han, et al. nex-n1.1, 2025. [45] Weida Wang, Dongchen Huang, Jiatong Li, Tengchao Yang, Ziyang Zheng, Di Zhang, Dong Han, Benteng Chen, Binzhao Luo, Zhiyu Liu, Kunling Liu, Zhiyuan Gao, Shiqi Geng, Wei Ma, Jiaming Su, Xin Li, Shuchen Pu, Yuhan Shui, Qianjia Cheng, Zhihao Dou, Dongfei Cui, Changyong He, Jin Zeng, Zeke Xie, Mao Su, Dongzhan Zhou, Yuqiang Li, Wanli Ouyang, Yunqi Cai, Xi Dai, Shufei Zhang, Lei Bai, Jinguang Cheng, Zhong Fang, and Hongming Weng. Cmphysbench: A benchmark for evaluating large language models in condensed matter physics, 2025. URL 
+
+https://arxiv.org/abs/2508.18124 .[46] Vishal Dey, Xiao Hu, and Xia Ning. Gellmo: Generalizing large language models for multi-property molecule optimization, 2025. URL https://arxiv.org/abs/2502.13398 .[47] Michael Bailey, Saeed Moayedpour, Ruĳiang Li, Alejandro Corrochano-Navarro, Alexander Kötter, Lorenzo Kogler-Anele, Saleh Riahi, Christoph Grebner, Gerhard Hessler, Hans Matter, Marc Bianciotto, Pablo Mas, Ziv Bar-Joseph, 
+
+25 and Sven Jager. Deep batch active learning for drug discovery. January 2024. doi: 10.7554/elife.89679.2. URL 
+
+http://dx.doi.org/10.7554/eLife.89679.2 .[48] Rushil Gupta, Jason Hartford, and Bang Liu. Llms for bayesian optimization in scientific domains: Are we there yet?, 2025. URL https://arxiv.org/abs/2509.21403 .[49] Shali Jiang, Gustavo Malkomes, Geoff Converse, Alyssa Shofner, Benjamin Moseley, and Roman Garnett. Efficient nonmyopic active search. In Doina Precup and Yee Whye Teh, editors, Proceedings of the 34th International Conference on Machine Learning , volume 70 of Proceedings of Machine Learning Research , pages 1714–1723. PMLR, 06–11 Aug 2017. URL https://proceedings.mlr.press/v70/jiang17d.html .
+
+26
