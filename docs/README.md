@@ -6,89 +6,89 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-30 ~ 2026-07-09
-- 运行时间：2026-07-09 14:28:49 UTC
+- 最新运行日期：2026-07-09
+- 运行时间：2026-07-09 22:06:26 UTC
 - 运行状态：成功
 - 本次总论文数：23
 - 精读区：9
 - 速读区：14
 
 ### 今日简报（AI）
-本期日报精选23篇论文，重点精读满分9.0的编码智能体编排与真实环境学习缩放定律研究。最值得关注的方向：多智能体协同探索（SwarmResearch）和现实世界经验驱动的学习规律（EdgeBench），同时留意物理设计优化框架AgenticPD。建议普通读者优先关注智能体从封闭到开放、从仿真到真实场景的迁移能力，这是当前AI落地的关键瓶颈。
-- 详情：[/20260630-20260709/README](/20260630-20260709/README)
+今日推荐23篇论文，精读聚焦GUI智能体持续学习与交互式无限世界两大方向。最值得关注的是《UI-MOPD》与《Infinite Worlds》两篇9.0分高分论文，前者提出多平台在线策略蒸馏法，后者构建了支持丰富交互的无限世界框架。对普通读者而言，建议优先精读这两篇，速读部分可留意AWS AgentCore生命周期管理等工程实践。
+- 详情：[/202607/09/README](/202607/09/README)
 
 ### 精读区论文标签
-1. [SwarmResearch: Orchestrating Coding Agents for Open-Ended Discovery](/20260630-20260709/2607.02807v1-swarmresearch-orchestrating-coding-agents-for-open-ended-discovery)  
+1. [UI-MOPD: Multi-Platform On-Policy Distillation for Continual GUI Agent Learning](/202607/09/2607.04425v1-ui-mopd-multi-platform-on-policy-distillation-for-continual-gui-agent-learning)  
+   标签：评分：9.0/10、query:agent-dist
+   evidence：多平台在线策略蒸馏用于持续GUI代理学习
+2. [Infinite Worlds with Versatile Interactions](/202607/09/2607.07534v1-infinite-worlds-with-versatile-interactions)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：提出编排框架用于长期运行编码代理以改进探索
-2. [EdgeBench: Unveiling Scaling Laws of Learning from Real-World Environments](/20260630-20260709/2607.05155v1-edgebench-unveiling-scaling-laws-of-learning-from-real-world-environments)  
+   evidence：实现无限交互水平并集成智能体控制机制
+3. [From Noisy Traces to Root Causes: Structural Trajectory Analysis and Causal Extraction for Agent Optimization](/202607/09/2607.07702v1-from-noisy-traces-to-root-causes-structural-trajectory-analysis-and-causal-extraction-for-agent-optimization)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：从真实世界环境研究长时域代理学习的缩放定律
-3. [TurnOPD: Making On-Policy Distillation Turn-Aware for Efficient Long-Horizon Agent Training](/20260630-20260709/2607.05804v1-turnopd-making-on-policy-distillation-turn-aware-for-efficient-long-horizon-agent-training)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：通过回合感知蒸馏进行长视界代理训练
-4. [CurateEvo: Data-Curation Evolving for Agentic Post-Training](/20260630-20260709/2607.06140v1-curateevo-data-curation-evolving-for-agentic-post-training)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：通过失败驱动数据策展演化提升长期决策能力
-5. [TriRoute: Unified Learned Routing for Joint Adaptive Attention, Experts, and KV-Cache Allocation](/20260630-20260709/2607.06601v1-triroute-unified-learned-routing-for-joint-adaptive-attention-experts-and-kv-cache-allocation)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：统一学习路由，用于专家选择、注意力和缓存分配
-6. [From Atomic Actions to Standard Operating Procedures: Iterative Tool Optimization for Self-Evolving LLM Agents](/20260630-20260709/2607.07321v1-from-atomic-actions-to-standard-operating-procedures-iterative-tool-optimization-for-self-evolving-llm-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：提出通过工具优化为SOP实现LLM代理自我进化
-7. [Recursive Self-Improvement in AI: From Bounded Self-Refinement to Autonomous Research Loops](/20260630-20260709/2607.07663v1-recursive-self-improvement-in-ai-from-bounded-self-refinement-to-autonomous-research-loops)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：递归自我改进综述，涵盖自我精炼、自我博弈、自我进化
-8. [When Agents Do Not Stop: Uncovering Infinite Agentic Loops in LLM Agents](/20260630-20260709/2607.01641v1-when-agents-do-not-stop-uncovering-infinite-agentic-loops-in-llm-agents)  
+   evidence：结构轨迹分析与因果提取优化长周期智能体
+4. [ACE-Brain-0.5: A Unified Embodied Foundational Model for Physical Agentic AI](/202607/09/2607.04426v1-ace-brain-05-a-unified-embodied-foundational-model-for-physical-agentic-ai)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：揭示无限代理循环是一种代理控制问题
-9. [Behavior Leverage Imbalance in Multi-Teacher On-Policy Distillation](/20260630-20260709/2607.07050v1-behavior-leverage-imbalance-in-multi-teacher-on-policy-distillation)  
-   标签：评分：8.0/10、query:agent-dist
-   evidence：用于学习工具使用行为的智能体蒸馏技术
+   evidence：统一具身基础模型，具备自我改进能力
+5. [Beyond the Leaderboard: A Synthesis of Tool-Use, Planning, and Reasoning Failures in Large Language Model Agents](/202607/09/2607.05775v1-beyond-the-leaderboard-a-synthesis-of-tool-use-planning-and-reasoning-failures-in-large-language-model-agents)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：综合了大语言模型智能体在长周期推理中的失败模式
+6. [The Harness Effect: How Orchestration Design Sets the Token Economics of Enterprise Agentic AI](/202607/09/2607.06906v1-the-harness-effect-how-orchestration-design-sets-the-token-economics-of-enterprise-agentic-ai)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：分析编排层设计对代理token经济学的控制
+7. [Agentic Data Environments](/202607/09/2607.07397v1-agentic-data-environments)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：提出代理数据环境作为安全执行的有源基板
+8. [Single-Rollout Asynchronous Optimization for Agentic Reinforcement Learning](/202607/09/2607.07508v1-single-rollout-asynchronous-optimization-for-agentic-reinforcement-learning)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：为长视界代理任务提出的异步强化学习优化方法
+9. [Agon: Competitive Cross-Model RL with Implicit Rival Grading of Reasoning](/202607/09/2607.07690v1-agon-competitive-cross-model-rl-with-implicit-rival-grading-of-reasoning)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：竞争性交叉模型RL通过隐含对手评分实现自我改进
 
 ### 速读区论文标签
-1. [AgenticPD: A Stage-Aware Agentic Framework for Physical Design QoR Optimization](/20260630-20260709/2607.04758v1-agenticpd-a-stage-aware-agentic-framework-for-physical-design-qor-optimization)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：带代理监管的分阶段代理框架，用于控制物理设计优化
-2. [AgenticPD: A Stage-Aware Agentic Framework for Physical Design QoR Optimization](/20260630-20260709/2607.04758v2-agenticpd-a-stage-aware-agentic-framework-for-physical-design-qor-optimization)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：阶段感知的代理框架，包含法官代理和专用代理，用于长周期优化
-3. [STAPO: Selective Trajectory-Aware Policy Optimization for LLM Agent Training](/20260630-20260709/2607.04963v1-stapo-selective-trajectory-aware-policy-optimization-for-llm-agent-training)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：针对长期任务LLM智能体的策略优化
-4. [SpaCellAgent: A Self-Evolving LLM-Based Multi-Agent Framework for Trajectory Analysis](/20260630-20260709/2607.07467v1-spacellagent-a-self-evolving-llm-based-multi-agent-framework-for-trajectory-analysis)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：自演化模块实现迭代改进
-5. [Holonic Active Distillation for Scalable Multi-Agent Learning in Multi-Sensor Systems](/20260630-20260709/2606.31578v1-holonic-active-distillation-for-scalable-multi-agent-learning-in-multi-sensor-systems)  
-   标签：评分：7.0/10、query:agent-dist
-   evidence：通过全息主动蒸馏实现智能体蒸馏技术
-6. [ContextNest: Verifiable Context Governance for Autonomous AI Agent](/20260630-20260709/2607.02116v1-contextnest-verifiable-context-governance-for-autonomous-ai-agent)  
+1. [Registry-Governed Agent Lifecycle:Completing EDDOps with Evaluation-DrivenRegistration, Promotion, and Retirement on AWS AgentCore](/202607/09/2607.00345v1-registry-governed-agent-lifecyclecompleting-eddops-with-evaluation-drivenregistration-promotion-and-retirement-on-aws-agentcore)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：通过上下文治理控制自主AI代理的知识来源
-7. [CONTRA: Red-Teaming Configurations of Personalizable Agents](/20260630-20260709/2607.03220v1-contra-red-teaming-configurations-of-personalizable-agents)  
+   evidence：基于评估驱动的企业级LLM智能体生命周期管理与模型选择框架
+2. [CADENZA in Action: Breaking the Monolith with Intent-Dependent Plan Spaces for Semantic Queries](/202607/09/2607.01468v1-cadenza-in-action-breaking-the-monolith-with-intent-dependent-plan-spaces-for-semantic-queries)  
+   标签：评分：7.0/10、query:moe-routing
+   evidence：动态选择语义操作符的模型实现，属于LLM推理路由
+3. [ElephantAgent: Contextual State Continuity in Agentic Systems](/202607/09/2607.01919v1-elephantagent-contextual-state-continuity-in-agentic-systems)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：对自主代理配置进行红队测试以保障安全性
-8. [Learning Task-Sufficient World Models by Synergizing Agentic Exploration and Structured Modeling](/20260630-20260709/2607.04409v1-learning-task-sufficient-world-models-by-synergizing-agentic-exploration-and-structured-modeling)  
+   evidence：通过上下文状态连续性协议防御代理系统状态投毒
+4. [Hardware-Enforced Semantic Coordination for Safety-Critical Real-Time Autonomous Systems](/202607/09/2607.02376v1-hardware-enforced-semantic-coordination-for-safety-critical-real-time-autonomous-systems)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：代理通过结构化建模和探索学习世界模型，以实现长期规划和适应
-9. [Governed Individuation: Cryptographically Decoupling an Agent's Learning from Its Authority](/20260630-20260709/2607.04613v1-governed-individuation-cryptographically-decoupling-an-agents-learning-from-its-authority)  
+   evidence：提出硬件强制的协调机制用于安全关键自主系统
+5. [Agent-driven Long-tail Simulation for Autonomous Driving](/202607/09/2607.04331v1-agent-driven-long-tail-simulation-for-autonomous-driving)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：密码学方法将代理学习与权限解耦以确保行为约束
-10. [StateFuse: Deterministic Conflict-Preserving Memory for Multi-Agent Systems](/20260630-20260709/2607.05844v1-statefuse-deterministic-conflict-preserving-memory-for-multi-agent-systems)  
+   evidence：大语言模型驱动的智能体长尾仿真
+6. [AgentGym2: Benchmarking Large Language Model Agents in De-Idealized Real-World Environments](/202607/09/2607.05174v1-agentgym2-benchmarking-large-language-model-agents-in-de-idealized-real-world-environments)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：多智能体系统的冲突保留内存
-11. [Query-Centric Optimization of AI Workflows via Approximate Query Processing and Proxy Models](/20260630-20260709/2607.00254v1-query-centric-optimization-of-ai-workflows-via-approximate-query-processing-and-proxy-models)  
-   标签：评分：6.0/10、query:moe-routing
-   evidence：通过代理模型动态选择减少大模型调用
-12. [PLACEMEM: Toward a Compute-Aware Memory Plane for Lifelong Agents](/20260630-20260709/2607.04089v1-placemem-toward-a-compute-aware-memory-plane-for-lifelong-agents)  
+   evidence：在非理想化真实环境中对长周期智能体进行基准测试
+7. [Beyond Static Evaluation: Building Simulation Environments for Scalable Agentic Reinforcement Learning](/202607/09/2607.05773v1-beyond-static-evaluation-building-simulation-environments-for-scalable-agentic-reinforcement-learning)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：用于可扩展代理强化学习的仿真环境
+8. [LLM Agents for Deliberative Collaboration: A Study on Joint Decision Making Under Partial Observability](/202607/09/2607.06157v1-llm-agents-for-deliberative-collaboration-a-study-on-joint-decision-making-under-partial-observability)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：针对联合决策中深思熟虑LLM智能体的基准和支架，实现复杂环境下的驾驭
+9. [From Signals to Structure: How Memory Architecture Drives Language Emergence in LLM Agents](/202607/09/2607.00233v1-from-signals-to-structure-how-memory-architecture-drives-language-emergence-in-llm-agents)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：提出面向终身代理的版本化内存胶囊，包含KV感知路由和级联失效
-13. [HAS-Bench: Evaluating LLM-Based Human-Agent Systems under Configurable Human Participation](/20260630-20260709/2607.04329v1-has-bench-evaluating-llm-based-human-agent-systems-under-configurable-human-participation)  
+   evidence：研究LLM agent长程协调的记忆架构
+10. [Janus: a Playground for User-Involved Agentic Permission Management](/202607/09/2607.01510v1-janus-a-playground-for-user-involved-agentic-permission-management)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：提出HAS-Bench评估人-代理系统，支持可配置控制，与驾驭代理相关
-14. [Autonomous Information Seeking: A Roadmap for Agentic Recommender Systems](/20260630-20260709/2607.04433v1-autonomous-information-seeking-a-roadmap-for-agentic-recommender-systems)  
+   evidence：用户参与的agent权限管理和评估harness
+11. [AgentFlow: Building Agent Dependency Graphs for Static Analysis of Agent Programs](/202607/09/2607.01640v1-agentflow-building-agent-dependency-graphs-for-static-analysis-of-agent-programs)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：关于自主推荐系统的综述，涉及自主性和适应性，与长时域代理相关
+   evidence：代理依赖的静态分析框架辅助理解和控制
+12. [Akashic: A Low-Overhead LLM Inference Service with MemAttention](/202607/09/2607.05708v1-akashic-a-low-overhead-llm-inference-service-with-memattention)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：为长上下文LLM agent提供低开销内存系统，支持长程运行
+13. [Task Decomposition-Guided Reranking for Adaptive Agent Skill Retrieval](/202607/09/2607.06283v1-task-decomposition-guided-reranking-for-adaptive-agent-skill-retrieval)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：面向复杂任务的适应性技能选择
+14. [When Agents Remember Too Much: Memory Poisoning Attacks on Large Language Model Agents](/202607/09/2607.06595v1-when-agents-remember-too-much-memory-poisoning-attacks-on-large-language-model-agents)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：长期记忆智能体的安全漏洞，涉及控制与防护
 
 
 <div class="dpr-home-promo-card">
