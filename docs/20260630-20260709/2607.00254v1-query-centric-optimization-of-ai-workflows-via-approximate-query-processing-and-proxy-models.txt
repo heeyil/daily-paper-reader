@@ -1,0 +1,720 @@
+Title: Query-Centric Optimization of AI Workflows via Approximate Query Processing and Proxy Models
+
+URL Source: https://arxiv.org/pdf/2607.00254v1
+
+Published Time: Thu, 02 Jul 2026 00:16:08 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# Query-Centric Optimization of AI Workflows via Approximate Query Processing and Proxy Models 
+
+## Huayi Wang 
+
+Georgia Institute of Technology Atlanta, USA hwang762@gatech.edu 
+
+## Jun Xu 
+
+Georgia Institute of Technology Atlanta, USA jx@cc.gatech.edu 
+
+## Gromit Yeuk-Yin Chan 
+
+Adobe Research San Jose, USA ychan@adobe.com 
+
+ABSTRACT 
+
+Many modern AI workflows—ranging from LLM post-training pipelines to agentic reasoning tasks—can be expressed as declar-ative queries whose expensive predicate is evaluated by a large model or reward function. We propose a query-centric formulation of these workflows and show that classical database techniques, namely approximate query processing (AQP) and proxy-model (PM) based filtering, can substantially reduce the number of expensive model invocations without requiring changes to the underlying models or pipelines. Our first strategy treats the workflow as an online aggregation problem: it progressively samples records, main-tains a running aggregate estimate with a confidence interval, and terminates early once the interval stabilizes, accepting the estimate when it falls within a user-specified error bound. Our second strat-egy trains a lightweight, CPU-resident decision tree on a small set of oracle-labeled examples and uses it to pre-filter records whose outcome can be predicted with high confidence, routing only uncer-tain records to the expensive model. We evaluate both strategies on TPC-DS aggregate queries and on real LLM post-training pipelines including math reasoning, general instruction following, and code generation. On TPC-DS, Strategy AQP keeps aggregate error under 10% while reaching its adaptive stopping point at 10–15% of oracle calls under balanced distributions—an 85–90% reduction—and Strat-egy PM reduces oracle calls by 60–70% on natural-label workloads. On LLM pipelines, Strategy AQP reaches its adaptive stopping point at 20–50% of oracle calls with less than 5% accuracy loss on the structured math and code tasks (open-ended instruction following, scored by a reward model, shows a larger but bounded reduction), and Strategy PM reduces reward-model scoring time by up to 19 ×
+
+on structured tasks with less than 10% accuracy loss. 
+
+PVLDB Reference Format: 
+
+Huayi Wang, Jun Xu, and Gromit Yeuk-Yin Chan. Query-Centric Optimization of AI Workflows. PVLDB, 14(1): XXX-XXX, 2020. doi:XX.XX/XXX.XX 
+
+PVLDB Artifact Availability: 
+
+The source code, data, and/or other artifacts have been made available at https://github.com/Why1221/Query-Centric-AI-optimization. 
+
+> This work is licensed under the Creative Commons BY-NC-ND 4.0 International License. Visit https://creativecommons.org/licenses/by-nc-nd/4.0/ to view a copy of this license. For any use beyond those covered by this license, obtain permission by emailing info@vldb.org. Copyright is held by the owner/author(s). Publication rights licensed to the VLDB Endowment. Proceedings of the VLDB Endowment, Vol. 14, No. 1 ISSN 2150-8097. doi:XX.XX/XXX.XX
+
+1 INTRODUCTION 
+
+The rapid growth of expensive Large Language Model (LLM) com-putation in AI workflows [ 4, 9]—from training foundation models to invoking them hundreds of times in agentic task pipelines [ 3, 20 ]— has created new opportunities to optimize latency and cost. More importantly, many of the current AI-centric workflows can be ex-pressed as database queries. Consider the following two examples: 
+
+Example 1.1 . A recurring pattern in modern LLM post-training pipelines — explicitly documented in both the Llama 2 and Llama 3 technical reports [ 7 , 26 ] — is what can be understood as the following SQL query operation: 
+
+SELECT * FROM model_outputs ORDER BY reward_model_score LIMIT K 
+
+Demonstrated in Figure 1, for each training prompt, K=8–32 can-didate responses are sampled from the current model, scored by a reward model, and only the top-scoring response is retained as supervised fine-tuning data for the next training round. This re-jection sampling step is applied iteratively over six rounds, with the reward model also serving as a retrospective quality filter over the full training corpus. This generate-rank-select loop is a central mechanism by which the model bootstraps its own training data quality without additional human annotation. 
+
+Example 1.2 . Agentic reasoning tasks—workflows in which an AI model must gather context, apply multi-step inference, and produce a decision or action—are typically treated as orchestration prob-lems, implemented through bespoke application logic spread across pipelines, queues, and LLM API calls. Yet consider a canonical ex-ample: “computing the average order value among customers whose recent orders suggest churn risk” , a task that today is commonly del-egated to an agent framework with hand-written retrieval, prompt assembly, and filtering logic [ 3, 22 ]. As illustrated in Figure 2, this workflow can be expressed as the following single declarative query: 
+
+SELECT customer_id, AVG(order_total) FROM orders WHERE llm_classify(order_description, 
+
+'churn_risk ') = 'HIGH ' GROUP BY customer_id 
+
+where llm_classify itself may encapsulate a multi-step agentic pipeline, yet appears in the query simply as a semantic predicate that filters records before a standard aggregation is applied. This observation suggests that agentic reasoning tasks can be naturally viewed as declarative queries with semantic predicates. These two examples, drawn from opposite ends of the LLM lifecycle, illustrate a recurring pattern we refer to as query-centric AI workflows . To increase the throughput of these workflows, we observe an opportunity that lies between the query results and the AI pipeline: query-level properties—such as the distribution of aggregated columns or the selectivity of ranking clauses—can guide 
+
+> arXiv:2607.00254v1 [cs.DB] 30 Jun 2026
+
+Figure 1: Illustration of rejection sampling as a SQL query in the LLM post-training recipe. 
+
+the selective substitution or early termination of expensive model calls, increasing throughput while bounding or empirically controlling the impact on the final result. For example, in the churn query, if 
+
+order_total is approximately uniformly distributed across churn risk levels, a cheaper surrogate model can replace llm_classify 
+
+without materially affecting the AVG result; in the rejection sampling query, the LIMIT K clause implies that only the top-𝐾 candidates need to reach the reward model, allowing the remainder to be pruned early. Thus, while naively executing the AI pipeline over all records is prohibitively expensive, query processing systems can exploit these query-result relationships to avoid redundant model invocations and reduce end-to-end cost. 
+
+Our Approach. To exploit these opportunities, we propose two complementary approaches. First, we cast query-centric AI work-flows as an approximate query processing (AQP) [ 8 ] problem: rather than invoking the AI pipeline on every record, we draw a pro-gressive sample of rows, compute an estimate of the aggregate result along with a confidence interval, and terminate early once the estimate converges to within a user-specified error bound. Sec-ond, we introduce a proxy-based filtering strategy: a lightweight surrogate model is trained to identify records whose AI pipeline output can be predicted with high confidence—routing only the remaining “hard” records to the expensive model. Together, these two approaches reduce the number of expensive model invocations: the AQP-based approach provides statistical confidence-interval control on aggregate results, together with an empirically validated adaptive stopping criterion for ranking ( LIMIT ) workloads, while the filtering-based approach routes only low-confidence records to the expensive model based on the proxy’s confidence. A key advantage of the query-centric formulation is that it makes explicit a rich set of structural predicates — such as response length, presence of special symbols, or formatting patterns in mathematical outputs — that can be expressed as lightweight WHERE clauses over the generated records. For the proxy-model based approach, these predicates are invisible to inference-based proxies such as smaller reward models [ 19 , 27 ], which operate purely on semantic content. 
+
+Figure 2: Illustration of an analytical query involving AI agents as a User Defined Function (UDF). 
+
+By treating them as input features, we show that a straightforward decision tree trained on a small set of reward-model-labeled exam-ples can exploit these query-derived signals to filter records early with a favorable cost–quality trade-off. This result underscores a broader point: the query-centric view does not merely reframe ex-isting workflows — it actively surfaces optimization opportunities that are inaccessible from the pipeline view alone. We conduct a comprehensive experimental evaluation on two classes of query-centric AI workloads. The first is a set of TPC-DS queries whose expensive predicate is evaluated by an ML classifier; these experiments demonstrate the effectiveness of the AQP-based approach, showing that progressive sampling achieves <10% ag-gregate error while invoking the oracle on only around 10% of tuples. The second is a suite of real LLM post-training pipelines spanning math reasoning (GSM8K), general instruction following (UltraFeedback), and code generation (HumanEval+, MBPP), which demonstrate both strategies: the proxy-based filter reduces reward-model scoring time by up to 19 × with less than 10% downstream quality loss on the structured tasks. 
+
+Contributions. Our main contributions are as follows: 
+
+• We formalize query-centric AI workflows as ML queries and propose two complementary strategies to reduce expensive model invocations: an AQP-based approach with statisti-cal confidence-interval control (and an empirically vali-dated adaptive stopping criterion for ranking workloads) and a proxy-based filtering approach that routes only low-confidence records to the oracle. 
+
+• We discuss a lightweight strategy-selection rule that chooses between AQP and proxy-based filtering based on query structure, confidence-interval behavior, and observed data characteristics. 
+
+> 2
+
+• We evaluate both strategies on TPC-DS and real LLM pipelines, reducing reward-model scoring time by up to 19 × while staying within 10% of full-RM accuracy on structured LLM tasks, and oracle calls by 85–90% with <10% aggregate error on TPC-DS under balanced distributions. 
+
+2 BACKGROUND AND PROBLEM 
+
+In this section, we describe the background, as well as the inputs, outputs, and goals of our query-centric AI workflow. To begin with, we explain the characteristics of common AI workflows that can be expressed as queries. Consider the following query examples: 
+
+> -- Q1 SELECT AVG(churn_rate), predicted_segment FROM customer_analytics_db GROUP BY predicted_segment -- Q2 SELECT genre FROM movie_db WHERE predicted_rating > 4 -- Q3 SELECT * FROM loan_application_db WHERE predicted_default = True -- Q4 SELECT t1.user, t2.movie FROM user_db as t1 LEFT JOIN movie_db as t2 ON t1.predicted_preferred_genre = t2.genre --Q5 SELECT * FROM census_db ORDER BY predicted_income ASC LIMIT 50000
+
+The queries Q1-5 demonstrate various needs of predictive AI workflows to output designated tables. In a straightforward data science pipeline, we first fetch all the rows into memory and input them into the workflows. Then, after acquiring the predictions, we store them in a separate column and aggregate or filter the rows to output the results. Yet from a data management perspective, the above workflow causes a lot of data processing on all rows in the database, but only a small fraction of rows appear in the final output. For example, in Q3 , if the default rate is only 10%, a reliable proxy or early filter may reject many likely-negative entries before they reach the full AI pipeline. To sum up, a query-centric AI workflow contains two types of speed-up opportunities. First, there is a filter 
+
+condition ( Q2-4 ) where we only need to focus on a subset of labels. We could derive a simpler pipeline that optimizes the subset’s task. Query clauses like WHERE , JOIN , and LIMIT could trigger such a condition. Secondly, there is also an aggregate condition ( Q1 ) where we could consider different weights on different labels. For example, for conditions like GROUP BY , rows with a particular label might contain similar value distribution on the numerical column so that we do not need to query many of them to get the average. Furthermore, given the needs of feature engineering, the AI pipeline might need to query lots of columns to produce the pre-dictions. Many predictive systems are powered by expensive AI pipelines that contain complex (1) feature engineering and (2) model architecture. We refer to these inference steps as targeted AI pipelines . During its usage, the pipeline queries the data that needs to be predicted from sources and acquires the data in a tabular data format. Then, it transforms the input data into a target schema. For example, records are transformed into labels by a classification pipeline, numbers by a regression pipeline, and clusters by a clus-tering pipeline. Yet, as inference pipelines grow more sophisticated, they become increasingly expensive to execute. We summarize these problems into two goals. Given a database, a query, and an AI pipeline, we want to (1) derive an estimator of the query result based on samples to reduce the number of records sent through the AI pipeline ( G1 ); and (2) build a simpler proxy model that estimates the AI workflow’s result on the query efficiently and accurately ( G2 ). While many query optimization techniques for ML inference have been proposed to speed up the process [ 9, 12 , 19 , 27 ], one of our distinctions is to do it without changing the database architecture. In the industrial setting, it is preferred to have minimal changes on the query processor and the layers underneath due to extra costs incurred on database migration and maintenance. Besides, the database already contains several optimization features like caching and indexing that we can leverage. 
+
+2.1 Inputs, Outputs, and Goals 
+
+Our strategies take a query, a dataset, and an AI workflow as input, and output an approximated query result. Our goals on the query optimization are to reduce the size of the query data to the AI workflow and speed up the remaining queries. To be specific, for the targeted ML pipeline, we expect the output to be either a classification label or a regression value. Our scope of the queries is as follows: (1) Aggregate Queries on a numerical column with the group-by clause based on ML pipeline. (2) Selection Queries on particular rows with the filter clause based on ML pipeline. (3) Limit Queries that control the size of output with sorting criteria based on the ML pipeline. From these queries, we can observe that some predicted labels or values are more important than others. For example, we only need to focus on those data points whose predicted values are in a certain range. Thus, a query-centric AI workflow, unlike typical Machine Learning (ML) pipelines that assign equal importance to each row’s predictions, results in different preferences on the pipeline output. To understand the different importance among different AI work-flow outputs and assign them as weights to the proxy model, our strategies first conduct a query result size estimation based on the query and pipeline, and then apply either an estimator to predict results with sampling or a proxy model that optimizes the subset from the query. We will explain the technical details in Section 4. 
+
+3 RELATED WORK 
+
+Our work draws on and departs from three bodies of literature. We first review classical approximate query processing in Section 3.1, which provides the statistical foundation for our AQP formulation. We then discuss query optimization systems that handle ML predi-cates inside a database system in Section 3.2, which share our goal of reducing oracle invocations but assume the oracle is embedded 
+
+> 3
+
+in the query engine. Finally, we review LLM pipeline optimization work in Section 3.3, which reduces the cost of AI workflows but operates at the pipeline level without exploiting query structure. The distinction that cuts across all three is the query-centric view: by treating AI agentic workflows as declarative queries, we expose optimization opportunities that are invisible from the pipeline view alone—namely, that aggregate functions, LIMIT clauses, and WHERE 
+
+predicates constrain how many records need to reach the oracle at all. This is what enables our two strategies: an AQP formulation that terminates oracle calls early once the aggregate estimate con-verges, and a proxy model whose outputs are expressed as SQL predicates evaluated natively by the query engine. 
+
+3.1 Approximate Query Processing 
+
+Online aggregation [ 8 ] introduced the idea of computing aggregate results progressively as rows are scanned: after each batch of sam-ples, the system updates the aggregate estimate and its confidence interval, and terminates early once the interval width falls within a user-specified error bound. The key guarantee is that the estimate is unbiased and the confidence interval is valid at every step. Wan-derJoin [ 16 ] extends this framework to queries with joins. The core difficulty is that uniform sampling from each table independently produces few join matches when join selectivity is low, making the estimator high-variance. WanderJoin resolves this by perform-ing random walks over the join graph: each walk traces one path through the joined tables and produces one unbiased sample from the join result without materializing the full join. Our AQP formulation applies this framework to AI workflows, where the setting differs from standard AQP in one critical way: in classical AQP, each sampled row’s value is obtained by a cheap col-umn read; in query-centric AI workflows, each row’s value requires an expensive oracle or reward-model call that dominates the total query cost. We therefore treat the number of oracle invocations, rather than rows scanned, as the optimization target, and terminate sampling as soon as the confidence interval converges to within the user-specified error bound. 
+
+3.2 Query Optimization with ML Predicates 
+
+Prior work on optimizing queries with expensive ML predicates falls into two categories. The first targets video analytics. NoScope [ 12 ], BlazeIt [ 11 ], and TASTI [ 14 ] accelerate video queries by inserting a lightweight neural network ahead of the expensive oracle model: the proxy scores each frame and filters out records unlikely to satisfy the predicate before they reach the full model. This approach requires training and running a separate neural network at query time, which itself incurs GPU inference on every record that reaches the proxy. The second category targets general ML predicates expressed as UDFs. PP [ 19 ] and CORE [ 27 ] rewrite the query plan to insert proxy filters ahead of costly ML UDFs inside the DBMS, requiring the oracle to be registered as part of the query execution engine. CORE relaxes PP’s independence assumption across predicates us-ing branch-and-bound search, achieving up to 63% higher through-put than PP. ABae [ 13 ] embeds a trained neural proxy into the query plan to stratify records for budget allocation. Aero [ 9 ] goes further by modifying the query engine itself to monitor UDF statistics at runtime and dynamically reorder predicate evaluation, achieving up to 6.4 × speedup over a static plan. Both categories therefore require either inserting a neural net-work into the query pipeline, or modifying the query engine to incorporate the ML oracle into the query plan. Our work identifies that AI agentic workflows can be expressed as declarative queries, and this observation opens a different opportunity: both our AQP formulation and proxy-based filtering can invoke an existing query engine directly without modifying it. The AQP formulation issues progressive sampling queries natively to the engine. The decision-tree proxy produces structural predicates expressible as SQL WHERE 
+
+clauses, which the engine evaluates directly—the only external step is a one-time, lightweight training phase on a small sample of oracle-labeled records, after which the proxy runs entirely within the query execution framework. 
+
+3.3 LLM Pipeline Optimization 
+
+A parallel line of work optimizes LLM-powered workflows from the machine learning and systems perspective. These efforts fall into three categories: designing a declarative structure of LLM pipelines, routing queries to cheaper models, and reducing generation cost in Best-of-𝑁 sampling. First, LOTUS [ 20 ] introduces semantic operators, a declarative programming model that extends relational algebra with LLM-based operations such as semantic filtering, joining, and ranking over unstructured text. Abacus [ 21 ] builds a cost-based optimizer on top of LOTUS that selects among operator implementations under a cost budget. TAG [ 3] frames natural language questions as table-augmented generation tasks, enabling accurate analytical query answering without Text-to-SQL. DocETL [ 22 ] takes an agentic approach to pipeline design, rewriting user-specified LLM pipelines into decomposed plans that are 25–80% more accurate than hand-engineered baselines on complex document processing tasks. These systems optimize what LLM operations to perform and how to structure them across a dataset. Our work is complementary: we take the query plan as fixed and ask how many records need to reach the oracle to answer it accurately. For optimization through model routing, FrugalGPT [ 4] routes each query to the cheapest LLM that can answer it accurately, achieving up to 98% cost reduction over always using GPT-4 with no accuracy loss on several benchmarks. Task Cascades [ 23 ] de-composes a task into a cascade of cheaper sub-operations, escalat-ing only uncertain records to the expensive oracle; across eight document-processing tasks at a 90% target accuracy, it reduces end-to-end cost by an average of 36% over a standard model-cascade baseline. Both approaches reduce cost by substituting a cheaper model for the expensive one, but still invoke a model on every record in the dataset. Our approach is orthogonal: rather than find-ing a cheaper model to call, we reduce the number of records that require any model invocation at all. Lastly, best-of-𝑁 sampling generates 𝑁 candidate responses per prompt and retains the top-scoring one, and is a standard com-ponent of LLM post-training pipelines [ 7, 26 ]. Speculative Rejec-tion [ 24 ] reduces the cost of generating candidates: it stops gener-ating tokens for a candidate early if an interim reward estimate falls below a threshold, requiring between 16 and 32 times fewer 
+
+> 4
+
+GPU resources than standard Best-of-𝑁 to achieve comparable re-ward. Kalayci et al. [ 10 ] connect Best-of-𝑁 to the Pandora’s Box optimal stopping problem and propose a UCB-style algorithm that reduces the number of candidates generated by 15–35%. Both Spec-ulative Rejection and the Pandora’s Box formulation operate on the generation side. Our work instead optimizes the scoring side of best-of-𝑁 RLHF: given a fixed pool of 𝑁 candidates, we reduce the number of reward-model invocations needed to identify the top-𝑘 
+
+responses. The candidate-generation cost is fixed across all methods we compare and is orthogonal to our optimization; our scoring-side reduction is therefore complementary to—and can be combined with—generation-side methods such as Speculative Rejection [24] and the Pandora’s Box approach [10]. 
+
+4 QUERY-CENTRIC AI WORKFLOW INFERENCE 
+
+The core idea of an inference optimization from a query-centric AI workflow is that we do not need to fetch all the data points and invoke the AI pipeline on each of them to obtain accurate results that require predictions. For example, if the query aims at collecting the AVG(c1) where the predicted values at c2 are equal to "label 1" while all values in c1 are equal to 0, we do not even need to invoke the AI pipeline on a single row to acquire 0 as the correct ML query result. On the other hand, if we do not aggregate the rows in the query result (e.g. SELECT ), we still do not need to invoke the AI pipeline on much of the database if the query has a filter by prediction labels. Therefore, there exists an execution plan that decides how many AI-pipeline invocations we need, as well as how they should be constructed. In the following sections, we describe two main strategies to process the queries without invoking the AI pipeline on all data from the database, their tradeoffs, and how to interplay them together to optimize query performance. 
+
+4.1 Strategy AQP: Treating the Workflow as an Approximate Query Processing Problem 
+
+The first strategy treats these workflows as an Approximate Query Processing (AQP) problem and estimates aggregate results from samples. We use an online aggregation approach [ 8] to provide ap-proximate results with confidence intervals and gradually improve with an increasing number of samples. Given an AGG(expression) 
+
+and any samples where AGG could be SUM , AVG , COUNT or VAR and 
+
+expression could involve any columns in the database, the ML query should provide an estimator ˆ𝑌 with a confidence interval: 
+
+𝑃𝑟 [| ˆ𝑌 − AGG(expression) | ≤ 𝜖 ] ≥ 𝛼 . (1) 
+
+𝜖 is the user-defined half width of the confidence interval and 𝛼 is the confidence level. The algorithm that leverages online aggrega-tions is as follows. Iteratively, we uniformly random-sample (i.e., 
+
+bootstrap ) some data points from the database with probability 𝑝 ,calculate ˆ𝑌 and the confidence-interval half-width from the sam-ples, and continue to sample until the half-width stabilizes, i.e., it no longer decreases significantly across rounds. If the stabilized half-width is within the user-specified bound 𝜖 , the estimate is accepted; if it stabilizes above 𝜖 , Strategy AQP is not well suited to this query. 
+
+4.1.1 Illustration: AQP with SUM . For concreteness, we first address the following SUM query: 
+
+> SELECT SUM(c1) WHERE c2 = "label 1"
+
+Suppose the predicted “label 1” rows 𝛾 are sampled with the probability 𝑝 (𝛾 ), and the aggregated function on 𝛾 (i.e., SUM ) is 
+
+𝜐 (𝛾 ). Then, 𝜐 (𝛾 )/ 𝑝 (𝛾 ) is an unbiased estimator of Í𝛾 𝜐 (𝛾 ), which is the SUM function we want to compute. As we obtain samples and compute 𝜐 (𝛾 𝑖 )/ 𝑝 𝑖 throughout the iterations, we take its average (still an unbiased estimator of SUM ) with a reducing variance as more samples are collected. Moreover, with expectation and variance, we could use standard statistical formulas to calculate the confidence interval to decide whether we are satisfied with the query results and terminate the pipeline. In this way, we could reduce the number of rows to the AI workflow systematically. 
+
+4.1.2 AGG Functions. AGG functions like SUM, AVG, VAR and COUNT are similar to the SUM example. They are all based on sample points to estimate their distribution. Let the observation value for these functions on the 𝑖 -th trial be 𝑣 𝑖 . Then the estimator of ˆ𝑌 with 𝑛 trials is: ˆ𝑌 = 1
+
+> 𝑛
+
+Í𝑛 𝑖 =1 𝑣 𝑖 . To use Equation 1 to decide when to stop sampling and return results, we estimate the sample standard deviation: 𝑠 =√︃ 1
+
+> 𝑛 −1
+
+Í𝑛 𝑖 =1 (𝑣 𝑖 − ˆ𝑌 )2. With the estimator for 
+
+ˆ𝑌 and the sample standard deviation 𝑠 , the achieved half-width of the confidence interval in Equation 1 is 𝑍 𝛼 𝑠  
+
+> √𝑛
+
+; we stop sampling once this half-width stabilizes across rounds, and accept the estimate only if it has stabilized within the user-specified bound 𝜖 .Other AGG functions, such as MIN and MAX, are difficult for the sampling method. They usually do not follow a certain distribution like Gaussian. Assuming these values depend on one unique row only, the expected number and standard deviation of sampling trials needed will be 𝑁 𝑏 and √︃ (1 − 𝑏 𝑁 )/( 𝑏 𝑁 )2 where 𝑁 is the number of rows and 𝑏 is the sample size. If 𝑏 ≪ 𝑁 , the 95% CI for the number of trials will be large. If 𝑏 is not much smaller than 𝑁 , sampling becomes comparable to a full table scan. In both cases, a full scan is preferable. To address the limitation on these AGG functions, we introduce the second strategy that we should construct queries to select points with target labels with small cost, in the next section. 
+
+4.1.3 LIMIT Queries. Beyond AGG functions, Strategy AQP ex-tends naturally to LIMIT queries of the form: 
+
+> SELECT * ORDER BY score DESC LIMIT k
+
+This pattern appears directly in LLM post-training pipelines: for each prompt, 𝑁 candidate responses are generated and scored by a reward model, and only the top-𝑘 responses are retained [ 7 ]. Rather than invoking the oracle on all 𝑁 candidates, we ask: how many candidates must we sample so that the global top-𝑘 are likely to be included? 
+
+Stopping Criterion via Order Statistics.. Let the 𝑁 candidates have i.i.d. continuous reward scores drawn from an unknown dis-tribution 𝐹 . By a standard order-statistics argument, the probability that all 𝑘 global top candidates are contained in a uniform random sample of 𝑚 out of 𝑁 is: 
+
+𝑃 𝑘 (𝑚, 𝑁 ) = 
+
+> 𝑘 −1
+
+Ö
+
+> 𝑖 =0
+
+𝑚 − 𝑖 𝑁 − 𝑖 . (2) 
+
+> 5
+
+This result is distribution-free : it holds regardless of 𝐹 . A conserva-tive distribution-free stopping rule would terminate sampling when 
+
+𝑃 𝑘 (𝑚, 𝑁 ) ≥ 𝛼 , where 𝛼 is the aforementioned confidence level in Equation 1. The special case 𝑘 = 1 recovers the simpler bound 
+
+𝑃 1 (𝑚, 𝑁 ) = 𝑚 /𝑁 ≥ 𝛼 , i.e., sampling a fraction 𝛼 of candidates suffices to include the global best with probability 𝛼 .For large 𝑁 , Equation 2 is well approximated by: 
+
+𝑚 ≈ 𝑁 · 𝛼 1/𝑘 , (3) showing that larger 𝑘 requires sampling a larger fraction of candidates— since all 𝑘 of the global top scorers must be retained—which makes this worst-case bound conservative and motivates the adaptive criterion below. 
+
+Adaptive Stopping in Practice.. While Equation 2 provides a distribution-free guarantee, it is a worst-case bound: it assumes the top-𝑘 candidates may appear anywhere in the population with equal probability, requiring a sample of size 𝑚 ≈ 𝑁 ·𝛼 1/𝑘 regardless of the actual score distribution. In practice, this can be overly conservative. Following standard practice in approximate query processing [ 8], we instead allow the user to specify a tolerance 𝛿 > 0, and terminate sampling when the worst score among the current top-𝑘 stabilizes: 
+
+|𝑟 (𝑚 )(𝑘 ) − 𝑟 (𝑚 −1)(𝑘 ) | ≤ 𝛿, (4) where 𝑟 (𝑚 )(𝑘 ) denotes the 𝑘 -th highest reward score observed after drawing 𝑚 (𝑚 ≥ 𝑘 + 1) candidates. This criterion exploits the actual score distribution rather than assuming the worst case, and therefore terminates earlier whenever high-score candidates are concentrated in a small fraction of the population. This adaptive stopping rule is empirical rather than distribution-free: it does not provide the worst-case guarantee in Equation 2, but in our workloads we find that once the 𝑘 -th best observed score stabilizes, the global top-𝑘 candidates are captured with high probability. In our evaluation on LLM fine-tuning pipelines (Section 5.2), we find that this adaptive stopping criterion achieves a substantially better cost–accuracy trade-off than the theoretical bound, reducing oracle model calls by up to 80% while maintaining downstream quality within 5% of the full-oracle baseline. 
+
+4.2 Strategy PM: Proxy Model to Increase Throughput on Model Inference 
+
+The second strategy to avoid feeding all data to the AI workflow is to develop a predictive model that handles the “easy” input 
+
+before passing the remaining data to the AI pipelines. We define easy data as rows whose pipeline outcome can be predicted with high confidence by a rule-based model, or whose prediction error does not affect the final query result . That being said, even if the outputs from the proxy model might have wide percentage errors, if they do not affect the top-k final results in the LIMIT clause for example, we can safely terminate the proxy model routine. Thus, the idea is to train an efficient proxy model with limited ground truth samples and process the majority of the data without affecting the quality of the final output, thus increasing the throughput of the query. 
+
+4.2.1 Illustration: SELECT rows with label “1”. Let us consider a simple query: SELECT * FROM table where label = ’1’ The goal is to train a rule-based model as a proxy model which could 
+
+Figure 3: Overview of Strategy PM. A one-time training phase (left) labels a small uniform sample with the reward model and trains a decision-tree proxy on surface features, calibrat-ing a variance threshold 𝜎 th and a score threshold 𝜏 . At infer-ence (right), the proxy scores all 𝑁 candidates per prompt; when calibrated as reliable, the variance gate skips uninfor-mative prompts at zero oracle cost, and the candidate filter forwards only high-scoring survivors to the reward model for the final top-𝑘 selection. 
+
+mimic the ML pipeline as efficient SQL to select data points with the predicted label “1” from the database. The routine is as follows: First, we uniformly randomly sample a few rows from the database, pass them to the AI workflow to obtain the labels, and train a lightweight, query-specific proxy model trained on-the-fly at query execution time. We use a cascade approach to determine to what extent the data needs to go through the AI pipeline based on the output characteristics (e.g. when the prediction confidence is low on the data). 
+
+4.2.2 Overview of Proxy Model. To implement this strategy (Fig-ure 3), we train a rule-based proxy model on-the-fly at query ex-ecution time. Given a query, an input relation, and a targeted AI pipeline, we first draw a small uniform random sample of records, pass them through the AI pipeline to collect ground-truth outputs (labels or scores), and use this labeled set to train a lightweight, query-specific surrogate. For simplicity, we use a Decision Tree (DT), though the routine applies equally to other rule-based models such as Bayesian rules or random forests. The key advantage of a DT is that training is fast and the resulting model is expressible as a set of SQL-compatible predicates, keeping the proxy natively within 
+
+> 6
+
+the query execution framework. For example, in an LLM rejection sampling pipeline, the sample is scored by a reward model (RM) and the DT is trained to predict RM scores from surface features of the candidate responses. In practice, we require a minimum of 5% inferred points from this pipeline. 
+
+4.2.3 Feature Engineering. Rather than relying on the pipeline’s internal representations, the proxy is trained on cheap, pipeline-agnostic surface features extracted directly from each record — covering structural properties (e.g., formatting completeness, sym-bol density), lexical statistics (e.g., lexical diversity, compression ratio), and domain hints (e.g., presence of numeric results or struc-tured syntax). These features compute in negligible time relative to a single pipeline call and require no model invocation. Crucially, they function as query-derived structural predicates: lightweight 
+
+WHERE -clause filters that are invisible to inference-based surrogates operating on semantic content alone. For example, in fine-tuning LLMs, such features include response length, equation density, and answer markers—signals a lightweight proxy can use to discard weak candidates for specialized tasks such as mathematical reason-ing or coding before invoking an expensive Reward Model. 
+
+4.2.4 Cascade Gating. We now expand the rejection-sampling cas-cade, which is the form used throughout our LLM evaluation (Sec-tion 5.2). The query is SELECT * ORDER BY rm_score DESC LIMIT k over the 𝑁 candidates of each prompt, and the proxy is a decision tree that predicts the RM score from surface features. Because each prompt is an independent query group of 𝑁 candidates, the cascade is applied per prompt and specializes into two coupled tests. 
+
+Variance gate (group-level skip). The tree first scores all 𝑁 can-didates of a prompt and we measure the within-prompt dispersion of these predictions, 𝜎 pred = std ( ˆ𝑠 1, . . . , ˆ𝑠 𝑁 ). When 𝜎 pred falls be-low a threshold 𝜎 th , the candidates are deemed interchangeable, meaning no candidate is confidently better than the rest, so the entire prompt is skipped: we return a single candidate (chosen by a random number generator with a fixed seed for reproducibility) and issue zero RM calls for that prompt. This is the LLM-specific instance of the fallback rule discussed below. When the proxy as-signs near-uniform values across a group, ranking is uninformative and oracle scoring is wasted. 
+
+Candidate filter (within-group pruning). If a prompt survives the variance gate, we avoid scoring all 𝑁 candidates by pruning the obviously weak ones. We retain the survivor set 𝑆 = { 𝑐 : ˆ𝑠 (𝑐 ) ≥ 𝜏 },where 𝜏 is a score threshold, forward only 𝑆 to the RM, and select 
+
+arg max 𝑐 ∈𝑆 over the true RM scores. If 𝑆 is empty, meaning no candidate clears 𝜏 , we fall back to forwarding all 𝑁 candidates to preserve correctness. This costs |𝑆 | RM calls in place of 𝑁 .Both thresholds are calibrated on the training sample alone and depend only on the proxy’s predictions, never on oracle accuracy, so the gating is independent of ground truth. Concretely, 𝜎 th is set to the 𝑞 𝜎 -quantile of the per-prompt prediction dispersions over the training prompts, and 𝜏 to the 𝑞 𝜏 -quantile of the tree’s predicted scores over all training candidates. 
+
+Two cascade presets. The two tests above are exposed as two presets that are special cases of the same mechanism. Strategy A (filter-only) disables the variance gate ( 𝑞 𝜎 = 0, so no prompt is skipped) and runs only the candidate filter at a moderately high quantile ( 𝑞 𝜏 = 0.6). This conservative setting is used when proxy predictions are weakly discriminative, for example in the general instruction-following domain, where free-form responses make surface features less informative and the continuous reward target requires the RM to perform the final ranking over a broad survivor set. Strategy B (gate + filter) activates both tests with an aggressive gate ( 𝑞 𝜎 = 0.99 , skipping the large majority of low-dispersion prompts) and a lower filter quantile ( 𝑞 𝜏 = 0.5). This is used for strong generators on structured tasks (Math, Code), where the tree predicts RM scores well and most prompts are resolved without any RM call. The choice between the two is itself made automatically from the training sample using the mean training RM score ¯𝑠 as a proxy for generator strength: the general domain always uses A, while otherwise B is selected when ¯𝑠 exceeds a calibrated threshold (a strong generator whose answers are broadly high-scoring) and A otherwise. Tying the cascade’s aggressiveness to the observed difficulty of the input batch in this way, rather than to a fixed reduction rate, is what allows the same gate to yield up to 19 ×
+
+RM-call reduction on structured domains while remaining safe on harder, free-form ones. 
+
+4.2.5 Fallback or Early Termination. When the proxy assigns near-uniform scores but its calibrated reliability is low, the system falls back to invoking the full pipeline, preserving correctness. Con-versely, when the proxy is both near-uniform and reliable on the calibration sample, or when all proxy scores are comfortably within the query’s acceptance region, the pipeline can be bypassed en-tirely. This ties the cascade’s aggressiveness to the actual difficulty of the input batch rather than a fixed reduction rate. For example, a reliably low-scoring batch signals that none of the candidates merit fine-tuning, and the round can be skipped. 
+
+4.3 Deciding Which Strategy to Use 
+
+The two strategies are complementary and the choice between them is guided by the query structure and the observed data distribution. 
+
+Query structure. If the query contains no aggregation (e.g., a bare 
+
+SELECT clause), Strategy AQP does not apply and we default to Strategy PM. If the query contains an aggregation, both strategies are candidates; since Strategy AQP is analytical and runs in 𝑂 (1)
+
+after sampling, it is always cheap to attempt and serves as the baseline. 
+
+Confidence interval width. We rely on Strategy AQP as the primary estimator when its confidence interval is within the user-specified error bound 𝜖 . When the CI is too wide — typically due to a skewed label distribution or high output variance — we switch to or augment with Strategy PM, which avoids the variance accumulation problem by routing hard records to the full pipeline directly. 
+
+Minimum sample size. Both strategies require a minimum sample of 5–10% of the input relation to produce reliable estimates; this threshold is the empirically observed lower bound below which neither the CI nor the proxy model generalizes usefully. In practice, we draw this initial sample once and reuse it to initialize both strategies, amortizing the sampling cost across the two. 
+
+4.4 Multiple Query Functions 
+
+For queries that produce multiple independent outputs like SELECT SUM(c1), AVG(c2), ... , we can treat them separately, running the 
+
+> 7
+
+same strategies in parallel. However, when a single query involves more than one aggregate function, as in the following example: 
+
+SELECT SUM(c1) + SUM(c2) WHERE c3 = "label 1" 
+
+There exists an opportunity to terminate some computations early if some functions’ results do not contribute significantly to the variance of the final result. Formally, let the query produce aggregate estimates ˆ𝐴 1, . . . , ˆ𝐴 𝑘 , and let the final output be a function 
+
+𝑌 = 𝑓 (𝐴 1, . . . , 𝐴 𝑘 ). Each ˆ𝐴 𝑖 is maintained with an error estimate (e.g., variance or confidence interval) from Strategy AQP. At runtime, we estimate the contribution of each aggregate 𝐴 𝑖 
+
+to the uncertainty of 𝑌 . Specifically, we approximate: impact 𝑖 = 𝜕𝑓 𝜕𝐴 𝑖 
+
+· Δ𝐴 𝑖 ,
+
+where Δ𝐴 𝑖 is the current error bound of 𝐴 𝑖 . The term 𝜕𝑓 𝜕𝐴 𝑖 captures how sensitive the final result is to changes in 𝐴 𝑖 .When 𝑓 is simple (e.g., sum, difference, ratio), this sensitivity can be computed analytically. For general expressions, including UDFs, we approximate it using finite differences by perturbing the aggregate value: 
+
+𝜕𝑓 𝜕𝐴 𝑖 
+
+≈ 𝑓 ( ˆ𝐴 1, . . . , ˆ𝐴 𝑖 + ℎ𝑖 , . . . ) − 𝑓 ( ˆ𝐴 1, . . . , ˆ𝐴 𝑖 − ℎ𝑖 , . . . )
+
+2ℎ𝑖 
+
+.
+
+Here, we choose ℎ𝑖 to be proportional to the current uncertainty of 𝐴 𝑖 (i.e., ℎ𝑖 = Δ𝐴 𝑖 ) so that the sensitivity estimate is evaluated at the scale of the current confidence interval. Using this estimate, the system can selectively stop refining aggregates whose contribution is small. In particular, we stop sam-pling for 𝐴 𝑖 when: impact 𝑖 ≤ 𝜖, 
+
+for a user- or system-defined tolerance 𝜖 .This strategy naturally prioritizes aggregates based on their influ-ence on the final result. For example, in additive queries, aggregates with small variance quickly become irrelevant and can be termi-nated early. In contrast, in ratio queries, the denominator often dominates the error and continues to receive samples. 
+
+5 EVALUATION 
+
+In this section, we evaluate our query-centric optimization on two kinds of AI workflows. Our goals are: 
+
+• Using AI workflows derived from TPC-DS queries, we demonstrate that under balanced distributions AGG results can be approximated within 10% error while the adaptive stopping point is reached at 10–15% of tuples—an 85–90% reduction in oracle calls. 
+
+• Using LLM post-training tasks with Reward Models as an example, we reduce reward-model scoring time by up to 
+
+19 × while staying within 10% of full-RM accuracy on struc-tured Math and Code tasks and within ∼15% of the full-RM reward score on the open-ended General task. 
+
+5.1 Evaluating AGG Queries with TPC-DS 
+
+Experimental Setup. We choose TPC-DS as the evaluation work-load for two reasons. First, real-world AI-agentic query workflows are largely black-box: their internal predicates and data distribu-tions are opaque, making controlled experimentation difficult. Sec-ond, TPC-DS is a widely adopted benchmark that covers representa-tive SQL query patterns with diverse aggregate functions, providing a well-understood setting in which we can precisely control label distributions and isolate the effect of each strategy. Specifically, we select eight representative TPC-DS queries (Q7, 13, 50, 52, 53, 54, 55, 56) spanning three aggregate functions (SUM, AVG, and COUNT). For each query, we split the original WHERE predicate into two parts: the predicted predicate that we could pre-dict using columns in the table and the other structural filters and joins. We construct a data table by joining the relevant fact and dimension tables according to the original query’s join conditions, materializing the filters explicitly. The predictive predicate is con-verted into a binary row label. We then evaluate a single scalar aggregate (SUM, AVG, or COUNT) over all rows satisfying the learned predicate, stripping the original query’s GROUP BY, OR-DER BY, and LIMIT clauses to isolate the core problem—accurately estimating an aggregate under a predictive predicate with limited oracle calls that mimics an AI workflow. Since the value distributions of TPC-DS are referenced from real world data tables, applying the original WHERE predicate to dimension columns (e.g., i_category , i_class for Q53) to produce a natural label distribution limits our opportunities to stress test our strategies with a comprehensive set of ranges of label distributions. Thus, we also set the positive-label rate to 30% and 50% to simulate more balanced distributions that may arise in practice. We define the oracle budget as the number of calls to retrieve these labels from the column. For each strategy and label distribution, we vary the oracle budget from 0.1% to 20% of total rows, repeat each configuration 10 times, and report the mean aggregate error with confidence intervals. Both strategies use uniform random sampling to select the data for calling the oracle initially. 
+
+Results for Strategy AQP. We present the results of Strategy AQP under the settings described above in Figures 4 and 5. Figure 4 measures the real errors of the queries under different percentages of oracle calls and Figure 5 measures the estimated CI with increasing numbers of sampling rounds . For Figure 4, the dots along the line represent the increasing number of sampling trials (e.g., the 4th dot means we have done four trials of sampling). Each trial bootstraps 1% of the data so that the total of oracle calls might be less than the total number of samples due to overlapping. Overall, the results show that if the label distributions are uniform (p=30%, 50%), the error of the AGG results drops below 10% with less than 10% of oracle calls. For real distributions based on the data characteristics in TPC-DS, larger tables still achieve similar results, whereas small tables with fewer than 10,000 rows (e.g., Q13, 54) might require more than 20% of oracle calls. We hypothesize that our sampling strategy follows the Law of Large Numbers; for small tables, running the original AI workflow may be preferable. Figure 5 shows that all queries reach their adaptive stopping point at around 10–13 rounds of sampling, an 85–90% reduction in oracle calls. Under balanced distributions the confidence interval (Section 4.1.2) has narrowed below 10% by then, whereas under the natural distribution the small-table cases stop with the interval still wide, indicating that Strategy AQP alone may be unreliable and 
+
+> 8
+
+adjusted 𝑝 =50% adjusted 𝑝 =30% true label (natural) 0 5 10 15 20             
+
+> Oracle Call Percentage (%)
+> 0
+> 5
+> 10
+> 15
+> Mean Aggregate Error (%) 0510 15 20
+> Oracle Call Percentage (%)
+> 0
+> 20
+> 40
+> 60
+> 80
+> Mean Aggregate Error (%) 0510 15 20
+> Oracle Call Percentage (%)
+> 0
+> 10
+> 20
+> 30
+> 40
+> 50
+> Mean Aggregate Error (%) 0510 15 20
+> Oracle Call Percentage (%)
+> 0
+> 10
+> 20
+> 30
+> 40
+> Mean Aggregate Error (%)
+
+(a) Q7 ( 𝑝 =1.4% ,𝑛 = 529 , 437 ) (b) Q13 ( 𝑝 =1.0% , 𝑛 = 6, 477 ) (c) Q50 ( 𝑝 =26 .3% , 𝑛 = 2, 311 ) (d) Q52 ( 𝑝 =1.7% ,𝑛 = 86 , 313 )0 5 10 15 20             
+
+> Oracle Call Percentage (%)
+> 0
+> 2
+> 4
+> 6
+> 8
+> 10
+> Mean Aggregate Error (%) 0510 15 20
+> Oracle Call Percentage (%)
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> 120
+> Mean Aggregate Error (%) 0510 15 20
+> Oracle Call Percentage (%)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Mean Aggregate Error (%) 0510 15 20
+> Oracle Call Percentage (%)
+> 0
+> 20
+> 40
+> 60
+> Mean Aggregate Error (%)
+
+(e) Q53 ( 𝑝 =4.1% ,𝑛 = 541 , 763 ) (f) Q54 ( 𝑝 =6.1% ,𝑛 = 2, 201 ) (g) Q55 ( 𝑝 =1.7% ,𝑛 = 94 , 025 ) (h) Q56 ( 𝑝 =4.5% ,𝑛 = 20 , 165 )
+
+Figure 4: Strategy AQP: mean aggregate error vs. oracle-call percentage for all eight TPC-DS queries. Shaded regions show the 25th–75th percentile range; the dashed red line marks 10% error. 𝑝 denotes the natural positive-label rate and 𝑛 denotes the table size. Under balanced distributions (green, orange), sampling converges below 10% error within 10% of oracle calls. Under the natural distribution (blue), queries with low positive rates or small base tables (e.g., Q13 and Q54) fail to converge even at 20% oracle budget, signaling that Strategy AQP alone is unreliable and should be complemented by a reliable proxy or a full-oracle fallback. 
+
+should be complemented by Strategy PM only when the proxy is reliable. 
+
+Results for Strategy PM. For Strategy PM, we use the natural TPC-DS labels rather than randomized labels, because randomized labels would destroy learnable structure for the decision tree. We present the AGG errors and the fallback (mechanism described in Section 4.2.5) oracle rate (the rate of oracle calls incurred during the fallback process, excluding those used to train the proxy) in Figure 6. Overall, 5 out of 8 queries (Q7, 52, 53, 55, 56) performed as expected, in the sense that the errors reached or stayed at a low margin ( < 10% ) as the training samples increased to at most 20%, with additional oracle calls decreasing along the way. In total, the oracle calls are around 30–40%, implying a 60–70% reduction in oracle calls to the expensive AI pipeline. For Q50 and 54, the cascade sent most of the data to the oracle due to low prediction probabilities from the trained DT, showing that the fallback mecha-nism detects cases where the DT is not sufficiently confident. For Q13, the cascade increasingly relies on the DT as its prediction probabilities rise, but the aggregate error remains high because the underlying predictive task is intrinsically hard for the tree; this case highlights the limitation of proxy-based filtering. These observa-tions demonstrate our strategy’s capability in different situations (easy vs hard predictive tasks and known vs unknown difficulties from DT). 
+
+5.2 Evaluating Queries Representing Reward-Model-Based Fine-Tuning on LLMs 
+
+LLM pipeline workload. To evaluate query-centric system across diverse task domains in post-training pipelines, we select three rep-resentative pipelines: a Math fine-tuning task based on GSM8K [ 5], a General task based on UltraFeedback [ 6], and a Code task targeting code generation (a combination of two widely-used coding bench-marks HumanEval+ [ 18 ] and MBPP [ 2]). For each prompt from the pipeline, we generate 𝑁 = 32 candidate responses following standard practice in RLHF rejection sampling [7]. Each pipeline uses a top-ranked Reward Model (RM) for those specific tasks [ 15 ] (Math & Code: Skywork-Reward-V2-Qwen3-8B, General: UltraRM-13B) as the oracle to score the generated candidates from LLMs on the questions in the dataset and select the top ones for fine-tuning in the next iteration. Thus, our goal is to reduce reward-model scoring calls while maintaining answer quality; candidate generation and fine-tuning costs are orthogonal to this evaluation. For each domain we evaluate four generator models with varying numbers of parameters to understand our improvements on fine-tuning with different model scales: Qwen3-8B [ 25 ], LLaMA-3.1-8B [ 7], Mistral-7B-V0.3 [ 1 ] and Qwen3-32B [ 25 ]. We ran the first three models on a single NVIDIA RTX 5090 and the last one with 32B parameters on 8 ×A100 80 GB GPUs. We apply both Strategy AQP and Strategy PM to this routine; Strategy PM here is the cascade-gating and fallback mechanism described in Section 4.2. We measure accuracy and RM (reward-model) calls. Throughout this subsection, the times we report are reward-model scoring times, the cost of invoking the RM on the candidates. 
+
+Accuracy metrics. For Math and Code tasks, accuracy is defined as exact-match correctness—whether the numerical answer matches the ground truth and whether test cases pass, respectively. For the General task, although reference answers exist, ROUGE score [ 17 ]against the reference is ineffective as a quality metric: responses of vastly different quality yield nearly identical ROUGE scores, since instruction-following responses tend to share similar surface 
+
+> 9
+
+adjusted 𝑝 =50% adjusted 𝑝 =30% true label (natural) 5 10 15 20 25              
+
+> Number of Sampling Times
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> 10.0
+> 12.5
+> 15.0
+> Half-width CI/Mean %
+> 10
+> 11 11 510 15 20 25
+> Number of Sampling Times
+> 20
+> 40
+> 60
+> 80
+> 100
+> 120
+> Half-width CI/Mean %
+> 13
+> 11 13 510 15 20 25
+> Number of Sampling Times
+> 10
+> 20
+> 30
+> 40
+> Half-width CI/Mean %
+> 11
+> 10
+> 14 510 15 20 25
+> Number of Sampling Times
+> 10
+> 20
+> 30
+> 40
+> Half-width CI/Mean %
+> 8
+> 14 11
+
+(a) Q7 (AVG, 𝑝 =1.4% ) (b) Q13 (AVG, 𝑝 =1.0% ) (c) Q50 (COUNT, 𝑝 =26 .3% ) (d) Q52 (SUM, 𝑝 =1.7% )5 10 15 20 25               
+
+> Number of Sampling Times
+> 2
+> 4
+> 6
+> 8
+> Half-width CI/Mean %
+> 10
+> 10
+> 9510 15 20 25
+> Number of Sampling Times
+> 20
+> 40
+> 60
+> 80
+> 100
+> Half-width CI/Mean %
+> 10
+> 13
+> 11 510 15 20 25
+> Number of Sampling Times
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Half-width CI/Mean %
+> 12
+> 12 14 510 15 20 25
+> Number of Sampling Times
+> 10
+> 20
+> 30
+> 40
+> 50
+> 60
+> Half-width CI/Mean %
+> 10
+> 10 13
+
+(e) Q53 (SUM, 𝑝 =4.1% ) (f) Q54 (COUNT, 𝑝 =6.1% ) (g) Q55 (COUNT, 𝑝 =1.7% ) (h) Q56 (SUM, 𝑝 =4.5% )
+
+Figure 5: Strategy AQP: estimated relative error vs. number of sampling rounds for all eight queries. 𝑝 denotes the natural positive-label rate. The y-axis is the 95% confidence interval half-width divided by the current sample mean; circles mark the adaptive stopping point, where the half-width no longer decreases significantly. Under balanced distributions, the half-width has dropped below 10% by the stopping point. Under the natural distribution, small-table cases (Q13, Q54) reach their stopping point at a similar number of rounds but with a half-width still far above 10%, so Strategy AQP alone may be unreliable and should be complemented by Strategy PM only when the proxy is reliable. 0                    
+
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 510 15 20
+> Training Sample (%)
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> 10.0
+> Fallback Oracle Rate (%) 0
+> 20
+> 40
+> 60
+> Aggregate Error (%)
+> 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0
+> Training Sample (%)
+> 0
+> 5
+> 10
+> 15
+> 20
+> Fallback Oracle Rate (%) 0
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 510 15 20
+> Training Sample (%)
+> 0
+> 25
+> 50
+> 75
+> 100
+> Fallback Oracle Rate (%) 0
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0
+> Training Sample (%)
+> 0
+> 5
+> 10
+> Fallback Oracle Rate (%)
+
+(a) Q7 (AVG, 𝑝 =1.4% ) (b) Q13 (AVG, 𝑝 =1.0% ) (c) Q50 (COUNT, 𝑝 =26 .3% ) (d) Q52 (SUM, 𝑝 =1.7% )0                        
+
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0
+> Training Sample (%)
+> 0
+> 5
+> 10
+> 15
+> 20
+> Fallback Oracle Rate (%) 0
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 510 15 20
+> Training Sample (%)
+> 0
+> 25
+> 50
+> 75
+> 100
+> Fallback Oracle Rate (%) 0
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0
+> Training Sample (%)
+> 0
+> 5
+> 10
+> Fallback Oracle Rate (%) 0
+> 10
+> 20
+> 30
+> Aggregate Error (%)
+> 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0
+> Training Sample (%)
+> 0
+> 10
+> 20
+> 30
+> Fallback Oracle Rate (%)
+
+(e) Q53 (SUM, 𝑝 =4.1% ) (f) Q54 (COUNT, 𝑝 =6.1% ) (g) Q55 (COUNT, 𝑝 =1.7% ) (h) Q56 (SUM, 𝑝 =4.5% )
+
+Figure 6: Strategy PM aggregate error vs. training sample percentage under the natural label distribution. Shaded regions show the 25th–75th percentile range across 100 repeated trials. On 5 out of 8 queries (Q7, Q52, Q53, Q55, Q56), the proxy reduces aggregate error below 10% as training samples increase, while the fallback rate decreases—indicating the DT gains confidence and handles more records without oracle calls. Q54 is a boundary case: error decreases slowly but the fallback rate remains high ( ∼60%), as the DT lacks sufficient discriminative features. For Q13, the predictive task is intrinsically hard for the decision tree: the DT assigns high confidence incorrectly, leading to persistent aggregate error despite low fallback rate. 
+
+10 Progressive Sampling Strategy AQP ◦ Stopping Point of Strategy AQP ⋆ Strategy PM ♦ Full-RM 0.92        
+
+> 0.94
+> 213s (5.3x) 72s (16x) 1137s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(a) Qwen3-8B 0.90         
+
+> 0.92
+> 0.94
+> 270s (4.0x) 56s (19x) 1079s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(b) LLaMA-3.1-8B 0.5         
+
+> 0.6
+> 0.7
+> 0.8
+> 411s (2.9x) 552s (2.2x) 1195s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(c) Mistral-7B-V0.3 0.95         
+
+> 0.96
+> 0.97
+> 280s (4.0x) 58s (19x) 1119s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(d) Qwen3-32B (A) Math Reasoning (GSM8K). Accuracy is measured by exact-match correctness of the numerical answer. 2       
+
+> 3
+> 4
+> 5
+> 6
+> 3368s (2.7x) 7624s (1.2x) 8980s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> UltraRM reward score
+
+(e) Qwen3-8B 0 20 40 60 80 100    
+
+> Reward-model call %
+> 0
+> 2
+> 4
+> 6
+> UltraRM reward score
+> 3759s (2.1x) 6392s (1.3x) 8020s
+
+(f) LLaMA-3.1-8B 0 20 40 60 80 100    
+
+> Reward-model call %
+> 0
+> 2
+> 4
+> 6
+> 8
+> UltraRM reward score
+> 4101s (1.9x) 5466s (1.4x) 7720s
+
+(g) Mistral-7B-V0.3 2        
+
+> 3
+> 4
+> 5
+> 6
+> 4424s (2.5x) 7526s (1.4x) 10891s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> UltraRM reward score
+
+(h) Qwen3-32B (B) General Instruction Following (UltraFeedback). Quality is measured by the UltraRM-13B reward score of the selected response, as no ground-truth labels exist for this open-ended domain. 0.78        
+
+> 0.79
+> 0.80
+> 21s (8.0x) 17s (9.7x) 167s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(i) Qwen3-8B 0.60         
+
+> 0.65
+> 0.70
+> 0.75
+> 52s (4.0x) 21s (9.9x) 209s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(j) LLaMA-3.1-8B 0.4         
+
+> 0.5
+> 0.6
+> 123s (2.9x) 159s (2.3x) 357s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(k) Mistral-7B-V0.3 0.84         
+
+> 0.85
+> 0.86
+> 22s (8.0x) 10s (18x) 175s
+> 020 40 60 80 100
+> Reward-model call %
+> 0
+> Accuracy
+
+(l) Qwen3-32B (C) Code Generation (HumanEval+, MBPP). Accuracy is measured by pass@1. 
+
+Figure 7: Oracle cost vs. quality trade-off across three LLM pipeline domains and four generator models. Each plot shows quality ( 𝑦 -axis) vs. fraction of oracle reward-model calls ( 𝑥 -axis). Strategy AQP consistently achieves a favorable cost–quality trade-off, whose adaptive stopping point achieves close to full-RM quality at roughly 20–50% of the oracle budget. Strategy PM further improves on random sampling in domains where structural features are predictive of reward scores. 
+
+form regardless of their actual helpfulness. We therefore adopt the reward score from UltraRM-13B [ 6] as the quality metric. UltraRM-13B is the reward model that comes with the UltraFeedback dataset, trained on its human-preference annotations to reflect general instruction-following quality, so its score itself is a meaningful measure of answer quality and the standard proxy for quality in this domain [6]. 
+
+RM calls. For Strategy AQP, the stopping point is determined adap-tively based on Equation 4 with tolerance 𝛿 = 0.05 . We also vary the sampling rate from 10% to 100% to observe the changes in final accuracy. For Strategy PM, we set the training sample percentages to be 5% for Math and Code and 10% for General. This is because the structural features used by the decision tree—such as response length, equation density, and answer markers—are naturally more discriminative for Math and Code tasks, where correct responses exhibit distinctive formatting patterns. For General tasks, responses are free-form text and such surface features are less likely to capture the nuanced quality differences that the reward model distinguishes, requiring more training samples to achieve comparable proxy ac-curacy. 
+
+Results. We report the results in Figure 7. Overall, both strategies substantially reduce RM calls while preserving quality close to the full-RM baseline. On the math and code domains, Strategy AQP stays within 5% accuracy of full-RM and Strategy PM within 10%. On the open-ended General domain, where quality is the UltraRM-13B reward score, both strategies stay within ∼15% of full-RM, across all four generator models. Strategy AQP consistently achieves its adaptive stopping point at 12–50% of oracle calls, recovering close to full-RM quality at roughly 2–8 × reduction in reward-model scoring time. Strategy PM reduces reward-model scoring time by up to 19 ×
+
+on certain configurations of Math and Code tasks—the best single result being LLaMA-3.1-8B on Math (56s vs. 1079s)—where struc-tural features such as equation density and answer markers provide 
+
+11 strong discriminative signal for the decision tree. On the General task, Strategy PM achieves more modest gains, consistent with our observation that free-form text responses are harder to filter using surface features alone. Across all settings, the two strategies exhibit complementary strengths: Strategy AQP provides a reliable and general reduction at low cost, while Strategy PM offers additional gains in structured domains. This cross-domain complementarity validates the query-centric view: by treating the post-training pipeline as a LIMIT query, standard AQP and proxy-based optimization techniques expose substantial savings in reward-model calls that are invisible from the pipeline view alone. 
+
+6 CONCLUSION 
+
+We presented a query-centric formulation of AI workflows and showed that two classical database techniques—approximate query processing and proxy-based predicate filtering—directly reduce the number of expensive model invocations without modifying the underlying models or pipelines. Experiments on TPC-DS and three LLM post-training pipelines confirm that the two strategies are complementary: Strategy AQP provides reliable reduction under balanced label distributions, while Strategy PM provides additional gains when structural features support a reliable proxy. Together, they reduce reward-model scoring time by up to 19 ×, with Strat-egy AQP staying within 5% and Strategy PM within 10% of full-RM accuracy on the structured Math and Code domains (and both within ∼15% of the full-RM reward score on the open-ended Gen-eral domain). This work focuses on a representative set of LLM post-training workflows; an important direction for future work is to extend the query-centric view to a broader class of ML pipelines—including multi-step agentic workflows and retrieval-augmented generation— where the same AQP and proxy-model optimizations may yield further gains. 
+
+REFERENCES 
+
+[1] Mistral AI. 2024. Mistral-7B-v0.3. https://huggingface.co/mistralai/Mistral-7B-v0.3. Apache 2.0 License. [2] Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski, David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, et al . 2021. Program Synthesis with Large Language Models. arXiv preprint arXiv:2108.07732 (2021). [3] Asim Biswal, Liana Patel, Siddarth Jha, Amog Kamsetty, Shu Liu, Joseph E. Gonzalez, Carlos Guestrin, and Matei Zaharia. 2024. Text2SQL is Not Enough: Unifying AI and Databases with TAG. arXiv:2408.14717 [cs.DB] https://arxiv. org/abs/2408.14717 [4] Lingjiao Chen, Matei Zaharia, and James Zou. 2024. FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance. Transactions on Machine Learning Research (2024). [5] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. 2021. Training Verifiers to Solve Math Word Problems. arXiv preprint arXiv:2110.14168 (2021). [6] Ganqu Cui, Lifan Yuan, Ning Ding, Guanming Yao, Wei Zhu, Yuan Ni, Guotong Xie, Zhiyuan Liu, and Maosong Sun. 2023. UltraFeedback: Boosting Language Models with High-quality Feedback. arXiv:2310.01377 [cs.CL] [7] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Ab-hishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al . 2024. The Llama 3 Herd of Models. arXiv:2407.21783 [cs.AI] https://arxiv.org/abs/2407.21783 [8] Joseph M. Hellerstein, Peter J. Haas, and Helen J. Wang. 1997. Online aggregation. 
+
+SIGMOD Rec. 26, 2 (June 1997), 171–182. https://doi.org/10.1145/253262.253291 [9] Gaurav Tarlok Kakkar, Jiashen Cao, Aubhro Sengupta, Joy Arulraj, and Hyesoon Kim. 2025. Aero: Adaptive Query Processing of ML Queries. Proc. ACM Manag. Data 3, 3, Article 174 (June 2025), 27 pages. https://doi.org/10.1145/3725408 [10] Yusuf Kalayci, Vinod Raman, and Shaddin Dughmi. 2025. Optimal Stopping vs Best-of-𝑁 for Inference Time Optimization. arXiv:2510.01394 [cs.LG] https: //arxiv.org/abs/2510.01394 [11] Daniel Kang, Peter Bailis, and Matei Zaharia. 2019. BlazeIt: optimizing declar-ative aggregation and limit queries for neural network-based video analytics. 
+
+Proc. VLDB Endow. 13, 4 (Dec. 2019), 533–546. https://doi.org/10.14778/3372716. 3372725 [12] Daniel Kang, John Emmons, Firas Abuzaid, Peter Bailis, and Matei Zaharia. 2017. NoScope: optimizing neural network queries over video at scale. Proc. VLDB Endow. 10, 11 (Aug. 2017), 1586–1597. https://doi.org/10.14778/3137628.3137664 [13] Daniel Kang, John Guibas, Peter Bailis, Tatsunori Hashimoto, Yi Sun, and Matei Zaharia. 2021. Accelerating approximate aggregation queries with expensive predicates. Proc. VLDB Endow. 14, 11 (July 2021), 2341–2354. https://doi.org/10. 14778/3476249.3476285 [14] Daniel Kang, John Guibas, Peter D. Bailis, Tatsunori Hashimoto, and Matei Zaharia. 2022. TASTI: Semantic Indexes for Machine Learning-Based Queries over Unstructured Data. In Proceedings of the 2022 International Conference on Management of Data (Philadelphia, PA, USA) (SIGMOD ’22) . Association for Computing Machinery, New York, NY, USA, 1934–1947. https://doi.org/10.1145/ 3514221.3517897 [15] Nathan Lambert, Valentina Pyatkin, Jacob Morrison, LJ Miranda, Bill Yuchen Lin, Khyathi Chandu, Nouha Dziri, Sachin Kumar, Tom Zick, Yejin Choi, et al . 2025. Rewardbench: Evaluating reward models for language modeling. In Findings of the Association for Computational Linguistics: NAACL 2025 . 1755–1797. [16] Feifei Li, Bin Wu, Ke Yi, and Zhuoyue Zhao. 2016. Wander join: Online aggre-gation via random walks. In Proceedings of the 2016 International Conference on Management of Data . 615–629. [17] Chin-Yew Lin. 2004. ROUGE: A Package for Automatic Evaluation of Summaries. In Text Summarization Branches Out . Association for Computational Linguistics, 74–81. [18] Jiawei Liu, Chunqiu Steven Xia, Yuyao Wang, and Lingming Zhang. 2023. Is Your Code Generated by ChatGPT Really Correct? Rigorous Evaluation of Large Language Models for Code Generation. In Thirty-seventh Conference on Neural Information Processing Systems . https://openreview.net/forum?id=1qvx610Cu7 [19] Yao Lu, Aakanksha Chowdhery, Srikanth Kandula, and Surajit Chaudhuri. 2018. Accelerating Machine Learning Inference with Probabilistic Predicates. In Pro-ceedings of the 2018 International Conference on Management of Data (Houston, TX, USA) (SIGMOD ’18) . Association for Computing Machinery, New York, NY, USA, 1493–1508. https://doi.org/10.1145/3183713.3183751 [20] Liana Patel, Siddharth Jha, Melissa Pan, Harshit Gupta, Parth Asawa, Carlos Guestrin, and Matei Zaharia. 2025. Semantic Operators and Their Optimization: Enabling LLM-Based Data Processing with Accuracy Guarantees in LOTUS. Proc. VLDB Endow. 18, 11 (July 2025), 4171–4184. https://doi.org/10.14778/3749646. 3749685 [21] Matthew Russo, Chunwei Liu, Sivaprasad Sudhir, Gerardo Vitagliano, Michael Cafarella, Tim Kraska, and Samuel Madden. 2025. Abacus: A cost-based optimizer for Semantic Operator Systems. arXiv preprint arXiv:2505.14661 (2025). [22] Shreya Shankar, Tristan Chambers, Tarak Shah, Aditya G. Parameswaran, and Eugene Wu. 2025. DocETL: Agentic Query Rewriting and Evaluation for Complex Document Processing. Proc. VLDB Endow. 18, 9 (May 2025), 3035–3048. https: //doi.org/10.14778/3746405.3746426 [23] Shreya Shankar, Sepanta Zeighami, and Aditya Parameswaran. 2026. Task Cascades for Efficient Unstructured Data Processing. Proc. ACM Manag. Data 4, 1, Article 88 (April 2026), 26 pages. https://doi.org/10.1145/3786702 [24] Hanshi Sun, Momin Haider, Ruiqi Zhang, Huitao Yang, Jiahao Qiu, Ming Yin, Mengdi Wang, Peter L. Bartlett, and Andrea Zanette. 2024. Fast best-of-N decod-ing via speculative rejection. In Proceedings of the 38th International Conference on Neural Information Processing Systems (Vancouver, BC, Canada) (NIPS ’24) .Curran Associates Inc., Red Hook, NY, USA, Article 1025, 23 pages. [25] Qwen Team. 2025. Qwen3 Technical Report. arXiv:2505.09388 [cs.CL] https: //arxiv.org/abs/2505.09388 [26] Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, et al . 2023. Llama 2: Open Foundation and Fine-Tuned Chat Models. arXiv:2307.09288 [cs.CL] https://arxiv.org/abs/2307.09288 [27] Zhihui Yang, Zuozhi Wang, Yicong Huang, Yao Lu, Chen Li, and X. Sean Wang. 2022. Optimizing machine learning inference queries with correlative proxy models. Proc. VLDB Endow. 15, 10 (June 2022), 2032–2044. https://doi.org/10. 14778/3547305.3547310
