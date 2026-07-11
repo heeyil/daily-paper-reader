@@ -1,0 +1,1395 @@
+Title: Markov Information Processes
+
+URL Source: https://arxiv.org/pdf/2607.04308v1
+
+Published Time: Tue, 07 Jul 2026 02:26:58 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# MARKOV INFORMATION PROCESSES 
+
+Furkan Sezer *
+
+July 7, 2026 
+
+# ABSTRACT 
+
+We study information design when a designer with commitment shapes the information of strategi-cally interacting, far-sighted agents whose actions drive a persistent, controlled Markov state. We introduce the Markov Bayes correlated equilibrium (Markov BCE), the controlled-Markov gener-alisation of the BCE of Bergemann and Morris (2016), characterised by a dynamic obedience con-dition that adds a continuation-value term to the static one and reduces to it when actions cannot move the state. Recommending actions is without loss; the designer’s problem is recursive in the agents’ promised continuation utilities and is solved by a set-valued backward-induction algorithm whose optimum exists and lies between the no-disclosure and first-best values. For linear-quadratic-Gaussian payoffs the obedience condition becomes a covariance condition with a modified interac-tion matrix, and the stationary case reduces to an algebraic Riccati equation. When agents instead learn the transition, we identify the rent an agent earns from a model of the dynamics sharper than the designer anticipates: it is non-negative, zero at the known-dynamics benchmark, and deterred only by building slack into obedience. Under persistent excitation the cumulative rent grows loga-rithmically as heterogeneous agents’ estimates converge. Two worked examples, in congestion and resource coordination, together with a numerical study illustrate the theory. 
+
+Keywords: information design; controlled Markov processes; dynamic games; learning in games; system identification 
+
+Mathematics Subject Classification (2020): 91A15; 91A26; 90C40; 93E20 
+
+# 1 Introduction 
+
+Information design asks how a designer who commits to an information structure can shape the equilibrium behaviour of strategically interacting agents [1, 2]. With many agents the relevant solution concept is the Bayes correlated equi-librium (BCE) of [3]: by the revelation principle the designer recommends an action profile and the only constraint is 
+
+obedience , that each agent prefers to follow its own recommendation given the posterior the recommendation induces. In the linear-quadratic-Gaussian (LQG) class, obedience reduces to a condition on the second moments of actions and payoff states [4]. This paper develops a dynamic counterpart in which a persistent state evolves as a controlled Markov process and the agents are far-sighted . We call the resulting solution concept the Markov Bayes correlated equilibrium (Markov BCE): a generalisation of BCE characterised by a dynamic obedience condition in place of the static one. Crucially, a 
+
+dynamic revelation principle holds here, meaning that recommending actions remains without loss of generality in this dynamic, controlled-state environment. The distinction that drives our analysis is between agents who optimize only the current stage and agents who understand that their action today shifts the distribution of tomorrow’s state and hence their own future payoffs. The Markov-persuasion literature [5–7] takes the former route: a single stream of myopic receivers, no game among them, and per-stage persuasion. We take the latter. Far-sighted agents make obedience genuinely intertemporal: a deviation must be deterred not only at the stage payoff but also through its continuation consequences. This couples the obedience constraints across time and places the design problem in the recursive, promise-keeping tradition of dynamic incentive design [8, 9], while keeping the multi-agent obedience structure of [3]. The closest economics antecedent, [10], studies information design in multi-stage games with far-sighted players; 
+
+> ∗
+
+Texas A&M University (furkan.sezer@tamu.edu, furkanszr@yahoo.com). 
+
+> arXiv:2607.04308v1 [math.OC] 5 Jul 2026
+
+Markov Information Processes 
+
+relative to that work we organise the dynamics around a controlled Markov state and obtain a closed-form covariance characterisation in the LQG class. The paper has two parts. Part I (Sections 4–8) is the known-dynamics benchmark: the transition is common knowledge, the designer commits against it, and obedience binds exactly. Part II (Sections 9–11) perturbs this benchmark by letting agents observe the persistent state and learn the dynamics. Because the transition is controlled, an agent that has learned it better than the designer’s committed policy accounts for can deviate to steer the state in its favor; the benchmark of Part I is precisely the reference point against which this advantage is measured. The two parts use different informational environments (in Part I the persistent state is hidden from agents, in Part II it is observed), and the difference is deliberate. Under known dynamics observability is strategically inert, so hiding s
+
+keeps the Part I benchmark general; it acquires content only once the transition must be learned, because one cannot steer a state one cannot see. Section 9 makes this precise and shows the split nests: conditioning the Part I obedience condition on an observed state recovers the Part II benchmark as a special case. 
+
+# 2 Related Work and Positioning 
+
+This paper sits at the confluence of information design and Bayes correlated equilibrium, dynamic and Markov persua-sion, recursive incentives and promised-utility methods, the identification of linear dynamical systems, and continuous-time stochastic Stackelberg information design. We review each strand and then state how the present framework differs. 
+
+2.1 Information design and Bayes correlated equilibrium. 
+
+The designer-commitment paradigm originates with Bayesian persuasion [1] and its many-player, many-state gener-alisation, the Bayes correlated equilibrium of [2, 3], which lifts correlated equilibrium [11] to incomplete information and reduces the design problem to an obedience constraint. Information design in games and its public/private sig-nal structure are developed by [12], and the linear-quadratic-Gaussian specialisation, in which obedience becomes a condition on the second moments of actions and states, is [4]. Our static case (Section 4) is exactly this obedience condition; the contribution is the Markov Bayes correlated equilibrium , its dynamic, controlled-Markov extension to far-sighted agents, characterised by the dynamic obedience condition. 
+
+2.2 Dynamic and Markov persuasion. 
+
+A growing literature makes persuasion dynamic. [13] discloses a Markov state to a single receiver in continuous time; [14] characterise optimal dynamic information provision in a Markov environment; [15] study dynamic goal-setting; and [16] give a general sequential information-design framework. On the algorithmic side, Markov persuasion pro-cesses [5–7] treat a designer facing a stream of receivers in a Markov environment. These analyses share a boundary we cross: the receivers are short-lived (the Markov-persuasion stream), or single with an action that cannot move the state [13, 14], or single and far-sighted but facing no other strategic player [15], or one of many players who each act once in a designed order [16]. We instead fix a set of far-sighted, mutually strategic agents whose actions move the state, which makes obedience intertemporal and couples the constraints across agents and time. The closest an-tecedent is [10], who generalise Bayes correlated equilibrium to multi-stage games: their sequential Bayes correlated equilibrium is characterised by obedience at every history, and they frame the characterisation as a revelation principle for dynamic information design. Our Markov BCE is the specialisation of that concept to a controlled-Markov state, where history collapses to the persistent state. The specialisation is what buys the structure absent from the general multi-stage formulation: a recursive, promise-keeping designer problem, a closed-form LQG covariance characterisa-tion, and a stationary infinite-horizon theory. Part II then departs from the common-knowledge-game premise entirely, asking what an agent gains from learning the state’s transition kernel, a question that does not arise when the game is fixed and known. 
+
+2.3 Recursive incentives and promised-utility methods. 
+
+Carrying the agents’ promised continuation utilities as state variables is the promise-keeping tradition of repeated and dynamic games [8, 17] and its continuous-time counterpart [9]. Dynamic mechanism design with evolving private information [18] shares the forward-looking incentive structure but allocates through transfers; we have no transfers and design only information, so our binding object is the dynamic obedience condition rather than an envelope or payoff-equivalence formula. A parallel principal–agent line prices the value of information directly: in a continuous-time moral-hazard contract, [19] define the value of the information the principal lacks as the gap between her first-best 
+
+2Markov Information Processes 
+
+and second-best value functions, the same first-best-minus-constrained structure our value bounds (Proposition 7.2) take, though there the instrument is a transfer and here it is disclosure. Section 7 casts the designer’s problem in this recursive form, with the obedience constraints as the implementability conditions. 
+
+2.4 Learning in games and identification of linear systems. 
+
+Part II’s agents estimate a controlled linear-Gaussian transition, which places the learning analysis in the identification of linear dynamical systems: self-normalised least squares [20], finite-sample identification without mixing [21], and the sample complexity of linear-quadratic control [22]; the strategic side, agents learning while the designer adapts, connects to learning in games [23]. Our use of these tools is specific: the estimation rate feeds, through a Riccati-Lipschitz step, the rent of Proposition 11.1, yielding the logarithmic-rent Theorem 11.3. To our knowledge the resulting object, an agent’s rent from a superior model of a designed environment’s dynamics, is new. 
+
+2.5 Continuous-time stochastic Stackelberg information design. 
+
+Finally, the settings of our worked examples come from two continuous-time stochastic Stackelberg control problems in which a leader steers strategic followers through the information structure: [24] pairs a committed Gaussian public signal with a Groves transfer for multi-area power-system coordination, while [25] steers evacuation zones playing a congestion game via advisory precision and a tiered release schedule, without transfers. In both, the latent state is a filtered jump-diffusion and the leader’s distributionally robust problem is an Isaacs equation solved in the viscosity sense. Each is solved on its own terms: stochastic optimal control, not the discrete-time framework developed here. Section 12 borrows only their strategic structure, and Part II’s learning problem is a discrete-time, multi-agent analogue of a dynamic-information question raised in the continuous-time persuasion literature [26]. 
+
+# 3 Contributions 
+
+• We define a Markov information process (MKIP): a horizon-H, controlled-Markov information-design prob-lem with designer commitment and far-sighted agents (Section 5). • We introduce the Markov Bayes correlated equilibrium (Markov BCE), the controlled-Markov, far-sighted generalisation of BCE, characterised by a dynamic obedience condition (Definition 6.1) derived from a one-shot-deviation argument; it augments the static Bergemann–Morris obedience condition with a continuation-value differential and reduces to it in the static limit (Proposition 6.2). A dynamic revelation principle (Propo-sition 7.1) shows that action recommendations are without loss of generality, justifying the formulation. • We formulate the designer’s problem recursively, with the agents’ promised continuation utilities as endoge-nous state variables, and give an Abreu–Pearce–Stacchetti set-valued backward-induction algorithm for the designer-optimal Markov BCE (Algorithm 1). We characterise the Markov BCE as a policy/continuation-value fixed point and prove existence (Proposition 7.3); under standard regularity the designer’s optimum is attained (Proposition 7.4) and lies between the no-disclosure and first-best values (Proposition 7.2). • For LQG payoffs (Section 8) we show dynamic obedience is a covariance condition with a modified interac-tion matrix ˜Φh and a controlled-transition term, with quadratic continuation values (Theorem 8.2); the static covariance condition is the action-independent / undiscounted limit, the set-valued recursion collapses to a parametric Riccati recursion, and the infinite-horizon stationary case is a discounted algebraic Riccati fixed point with a contraction-based existence guarantee (Proposition 8.3). • In Part II we let agents observe the state and learn the transition. For general payoffs and kernels we define the rent an agent earns from a superior model of the dynamics and show it is non-negative, bounded by the agent’s misspecification, monotone in the class of models to be deterred, and zero exactly at the known-dynamics benchmark of Part I (Propositions 10.1, 10.2). In the LQG class the rent has a closed form, quadratic in the agent’s model error (Proposition 11.1); deterring it forces the designer to satisfy obedience with a robustness margin (Proposition 11.2); and under stationary primitives and persistent excitation the cumulative rent is 
+
+˜O(log T ) as heterogeneous agents’ estimates of the dynamics converge (Theorem 11.3). • We illustrate the LQG theory with two worked examples (Section 12), drawn from congestion (evacuation) [25] and resource-coordination (power) [24] settings that are recast as Markov information processes and are related by a single sign of the cross-coupling, together with a numerical illustration comparing utilitarian and worst-case (maximin) designs (Section 12.1). 
+
+3Markov Information Processes 
+
+# Part I: Markov Information Processes with Known Dynamics 
+
+# 4 Static Case: Bayes Correlated Equilibrium 
+
+Fix a finite set of players N = {1, . . . , n }, action sets Ai with profiles a = ( ai)i∈N ∈ A = ∏ 
+
+> i
+
+Ai, a payoff state 
+
+γ ∈ Γ with common prior μ ∈ ∆(Γ) , and payoffs ui(γ, a ). A decision rule is a map σ : Γ → ∆( A); by the revelation principle we read σ(a | γ) as the probability of recommending profile a in state γ, with each agent privately told its own component ai (the dynamic counterpart of this reduction is Proposition 7.1). 
+
+Definition 4.1 (Obedience / BCE, [3]) . The decision rule σ is a Bayes correlated equilibrium if for every i ∈ N , every recommended ai occurring with positive probability, and every alternative a′ 
+
+> i
+
+∈ A i,
+
+∑
+
+> γ∈Γ
+
+∑ 
+
+> a−i∈A −i
+
+μ(γ) σ(ai, a −i | γ) [ui(γ, a i, a −i) − ui(γ, a ′
+
+> i
+
+, a −i)] ≥ 0. (1) Condition (1) is the obedience condition of [3]: holding fixed the joint law of the state and the recommendations to others, following the recommendation is optimal. It is the ground on which the rest of the paper is built; the dynamic obedience condition given at Definition 6.1 generalises (1). 
+
+# 5 Markov Information Processes 
+
+A Markov information process (MKIP) augments the static game with a persistent state and a controlled transition, and lets agents be far-sighted over a horizon H with discount factor δ ∈ (0 , 1] .
+
+Primitives. At each stage h ∈ [H] := {1, . . . , H } there are: a persistent Markov state s ∈ S , observed by the designer; a transient payoff state γ ∈ Γ with prior μh ∈ ∆(Γ) ; stage payoffs uh,i : S × Γ × A → R; a designer objective vh : S × Γ × A → R; and a transition kernel Ph : S × Γ × A → ∆( S) depending on the realised actions. 
+
+Timing within stage h.
+
+1. The persistent state sh is given and γh ∼ μh is drawn. 2. The designer, having committed at the outset to a policy σ = ( σh)h∈[H] with σh : S × Γ → ∆( A), draws a profile ah ∼ σh(· | sh, γ h) and privately recommends ah,i to each agent i.3. Each agent chooses an action; payoffs uh,i (sh, γ h, ·) and the designer objective vh(sh, γ h, ·) accrue at the realised profile. 4. The next state is drawn from the realised profile, sh+1 ∼ Ph(· | sh, γ h, a h).In Part I, agents observe their own recommendation (and the public calendar h); they need not observe sh or γh, about which the recommendation is informative. The designer commits to σ and cannot react to an unobserved within-stage deviation; deviations propagate only through the realised next state sh+1 , which the designer observes and on which its continuation policy depends. 
+
+Far-sighted agents. Each agent i ranks outcomes by the expected discounted sum 
+
+E
+
+[ ∑Hh=1 δh−1uh,i (sh, γ h, a h)
+
+]
+
+. (2) In particular an agent that contemplates disobeying at stage h accounts for the effect of its action on sh+1 and hence on its own continuation payoff. This is the sole behavioural departure from the myopic Markov-persuasion model, and it is what makes obedience dynamic. 
+
+# 6 Dynamic Obedience 
+
+Fix a policy σ. Under full obedience the process is Markov in s, so define agent i’s continuation value from stage h at persistent state s,
+
+Wh,i (s) := E
+
+[ ∑Hτ =h δτ −h uτ,i (sτ , γ τ , a τ )
+
+∣∣∣ sh = s
+
+]
+
+, WH+1 ,i ≡ 0, (3) 
+
+4Markov Information Processes 
+
+where the expectation is taken under γτ ∼ μτ , aτ ∼ στ (· | sτ , γ τ ), sτ +1 ∼ Pτ (· | sτ , γ τ , a τ ) with every agent obeying. Because payoffs are bounded and the horizon is finite, a recommendation policy is incentive compatible for far-sighted agents if and only if no single-stage deviation is profitable (the one-shot-deviation principle). At stage h, persistent state s, an agent recommended ai that contemplates playing a′ 
+
+> i
+
+instead obtains, in conditional expectation over (γ, a −i)
+
+given ai,
+
+Qh,i (s, a i, a ′
+
+> i
+
+) := E
+
+[
+
+uh,i (s, γ, a ′
+
+> i
+
+, a −i) + δ Es′ ∼Ph (·| s,γ,a ′
+
+> i,a −i)
+
+[Wh+1 ,i (s′)] ∣∣∣ ai
+
+]
+
+, (4) where the inner expectation reflects that the deviation changes the law of sh+1 , after which the agent reverts to obedi-ence. 
+
+Definition 6.1 (Dynamic obedience) . The policy σ satisfies dynamic obedience , and is a Markov Bayes correlated equilibrium (Markov BCE) of the MKIP, if for every i ∈ N , stage h, state s, recommended ai (positive probability), and alternative a′
+
+> i
+
+, ∑
+
+> γ, a −i
+
+μh(γ) σh(ai, a −i | s, γ )
+
+[
+
+uh,i (s, γ, a i, a −i) − uh,i (s, γ, a ′
+
+> i
+
+, a −i)
+
+︸ ︷︷ ︸
+
+> stage incentive
+
++ δ ∆ih(s, γ, a i, a −i; a′
+
+> i
+
+)
+
+︸ ︷︷ ︸
+
+> continuation incentive
+
+]
+
+≥ 0,
+
+(5) 
+
+where the continuation-value differential is 
+
+∆ih(s, γ, a i, a −i; a′
+
+> i
+
+) := Es′ ∼Ph (·| s,γ,a i,a −i)
+
+[Wh+1 ,i (s′)] − Es′ ∼Ph (·| s,γ,a ′
+
+> i,a −i)
+
+[Wh+1 ,i (s′)]. (6) Equation (5) is the obedience condition (1) with one new object: the term δ ∆ih, which prices the future. Obeying and disobeying lead to different distributions over sh+1 , hence to different continuation values Wh+1 ,i ; a far-sighted agent internalises this, and the designer must compensate for it. The constraint at stage h therefore depends, through 
+
+Wh+1 ,i , on the entire continuation policy: the obedience constraints are coupled forward in time. 
+
+Proposition 6.2 (Reduction to the static case) . Suppose (i) H = 1 ; or (ii) the transition is action-independent, 
+
+Ph(· | s, γ, a ) = Ph(· | s, γ ) for all a; or (iii) δ = 0 . Then ∆ih ≡ 0 and (5) coincides, stage by stage, with the static Bergemann–Morris obedience condition (1) .Proof. Under (i) WH+1 ,i ≡ 0; under (ii) the two laws of s′ in (6) are identical; under (iii) the continuation term is multiplied by zero. In each case ∆ih ≡ 0, and (5) becomes ∑ 
+
+> γ,a −i
+
+μh σh[uh,i (s, γ, a i, a −i) − uh,i (s, γ, a ′
+
+> i
+
+, a −i)] ≥ 0,which is (1). 
+
+# 7 The Designer’s Problem 
+
+The designer’s problem is 
+
+max  
+
+> σ
+
+E
+
+[ H∑
+
+> h=1
+
+δh−1vh(sh, γ h, a h)
+
+]
+
+subject to dynamic obedience (5) , (7) imposed at every stage, state, and recommendation. Restricting the designer’s instrument to an action recommendation 
+
+σh : S × Γ → ∆( A) rather than an abstract private signal is without loss: it is the dynamic counterpart of the revelation principle for Bayes correlated equilibrium [10], specialised to the controlled-Markov setting. 
+
+Proposition 7.1 (Dynamic revelation principle) . Consider any dynamic information structure in which, at each stage 
+
+h, the designer commits to a private-signalling kernel πh : S × Γ → ∆( M ) sending agent i a message mh,i , and the agents play a perfect Bayesian equilibrium of the induced game under the discounted preferences (2) , with deviations unmonitored and propagating only through the realised next state. Then there is a direct recommendation policy 
+
+σ = ( σh), σh : S × Γ → ∆( A), that induces the same joint law of (sh, γ h, a h) at every stage (hence the same designer value and agent payoffs), and under which obeying the recommendation is an equilibrium, i.e. σ satisfies dynamic obedience (5) . Conversely every dynamically obedient σ is induced by an information structure, namely itself. The designer’s problem is therefore without loss the optimization (7) over dynamically obedient recommendation policies. 
+
+5Markov Information Processes 
+
+Proof. Fix the information structure π and an equilibrium with action strategies mapping message histories to actions, and define the recommendation policy by the equilibrium action law, 
+
+σh(a | s, γ ) := Pr [ah = a ∣∣ sh = s, γ h = γ]
+
+under π and the equilibrium. Because the transition Ph depends on the realised (sh, γ h, a h) alone and not on messages, recommending ah ∼ σh and having agents obey reproduces, by induction on h, the same joint law of (sh, γ h, a h) as 
+
+π; the designer value and all agent payoffs coincide. For obedience, when agent i is recommended ah,i under σ its posterior over (sh, γ h, a h, −i) is the pooling of the posteriors it held, under π, at every message that led the equilibrium to play ah,i . Two features make the recommended action optimal under this pooled posterior. First, by the model’s monitoring structure a within-stage deviation is unobserved and affects the future only through the realised sh+1 , so the deviator’s continuation value is the designer’s committed continuation evaluated at sh+1 , the same function of the deviation under σ as under π. The one-shot-deviation comparison at stage h is therefore identical under the two: the change in current payoff plus δ times the continuation change transmitted through sh+1 , which is exactly the differential ∆ih of (5). Second, the recommended action was optimal at each pooled message in the equilibrium under π; since the stage-plus-continuation payoff is affine in the posterior, an action optimal at every message in the pool is optimal at their average. Hence obeying ah,i 
+
+is optimal under the recommendation’s posterior for every i and h, which is (5). The converse is immediate. 
+
+Remark 1 (Scope) . The principle holds within the information-design class the model defines: the designer designs information and cannot monitor or contract on within-stage actions. If the designer could condition its continuation on observed within-stage deviations, richer history-dependent schemes could enlarge the implementable set and action recommendations would no longer be without loss, a monitoring/mechanism-design problem outside the present scope. 
+
+Because the stage-h constraints in (7) involve the continuation values Wh+1 ,i , the problem does not separate into independent per-stage programs. The standard device is to carry the agents’ promised continuation utilities w =(wi)i∈N as endogenous state variables [8, 9]. Let Jh(s, w ) be the largest discounted designer objective attainable from stage h at persistent state s when each agent 
+
+i is promised continuation utility wi and obedience holds. Then 
+
+Jh(s, w ) = max    
+
+> σh,{w′(·)}
+
+E
+
+[
+
+vh(s, γ, a ) + δ J h+1 
+
+(s′, w ′(s′))]
+
+(8) subject to, for all i, a i, a ′
+
+> i
+
+, the dynamic obedience condition (5) written with Wh+1 ,i (·) replaced by the continuation-utility map w′
+
+> i
+
+(·), and the promise-keeping identities 
+
+wi = E[uh,i (s, γ, a ) + δ w ′
+
+> i
+
+(s′)], i ∈ N , (9) with terminal condition JH+1 (s, ·) = 0 . A policy is optimal if and only if it attains (8) at every stage given a self-consistent profile of continuation-utility maps. The recursion makes explicit that the agents’ continuation values are co-state variables of the design problem: the price of the dynamic incentive term δ∆ih is the shadow value of the promise-keeping constraint (9). The recursion (8) is solved by an Abreu–Pearce–Stacchetti (APS) set-valued backward induction [8]. Because the stage-h obedience and promise-keeping constraints depend on the continuation only through the promised-utility profile w′(·), the designer need not track the entire continuation policy but only, at each state, the set of promised-utility profiles an obedient continuation can deliver. Write Ch(s) ⊆ RN for that set. It is computed backward by Algorithm 1: the designer’s optimal value is max w∈C 1(s1 ) J1(s1, w ), and the optimal policy is recovered by unrolling the stored maximisers forward. In general the sets Ch(s) are computed by the standard APS monotone outer-approximation iteration. In the LQG class they admit a finite parametrisation: the continuation enters only through the quadratic coefficient Πh+1 ,i of Lemma 8.1, obedience becomes the covariance condition of Theorem 8.2, and the set-valued recursion of Algorithm 1 reduces to the parametric Riccati recursion (13) of Lemma 8.1; in the infinite-horizon stationary case it becomes the discounted algebraic Riccati fixed point of Proposition 8.3, solved by value iteration. 
+
+Remark 2 (Computing the sets in general) . Outside structured classes the sets Ch(s) are continuous set-valued objects and exact computation is not tractable. Under a public randomisation device each Ch(s) is convex, and the standard remedy applies: inner and outer polytope approximations of the APS operator converge monotonically to Ch(s) and bracket the optimal value [8, 27]. The LQG collapse above is what turns Algorithm 1 from a conceptual scheme into an exact procedure; its complexity in that class is given in Proposition 8.4. 
+
+The designer’s optimal value sits between two policy-free benchmarks, which also bound what commitment buys. 
+
+6Markov Information Processes 
+
+Algorithm 1 Designer-optimal Markov BCE: APS-style promised-utility backward induction  
+
+> 1:
+
+Initialize CH+1 (s) ← { 0} and JH+1 (s, ·) ← 0 for all s. 
+
+> 2:
+
+for h = H down to 1 do  
+
+> 3:
+
+for each persistent state s do  
+
+> 4:
+
+Form the admissible set of promised utilities 
+
+Ch(s) ← { w ∈ RN : ∃ σh(· | s, γ ) and a map w′(·) with w′(s′) ∈ C h+1 (s′) ∀s′,
+
+such that σh satisfies dynamic obedience (5) with continuation w′, and promise-keeping (9) holds }. 
+
+> 5:
+
+for each w ∈ C h(s) do  
+
+> 6:
+
+Jh(s, w ) ← max   
+
+> σh, w ′(·)
+
+E[vh(s, γ, a ) + δ J h+1 (s′, w ′(s′)) ] over the (σh, w ′) admitting w. 
+
+> 7:
+
+end for  
+
+> 8:
+
+end for  
+
+> 9:
+
+end for  
+
+> 10:
+
+Output optimal value max w∈C 1(s1 ) J1(s1, w ) and the attaining policy σ⋆ by forward unrolling the stored max-imisers. 
+
+Proposition 7.2 (Value bounds and commitment monotonicity) . Let J⋆(s1) = max w∈C 1(s1 ) J1(s1, w ) be the designer-optimal value. Let V bab (s1) be the designer’s value when it recommends, in every stage, a Bayes–Nash equilibrium of the stage game under the prior (no state-contingent disclosure), and let V fb (s1) be the value of the re-laxed problem in which the obedience constraints (5) are dropped and the designer chooses the action profile directly. Then 
+
+V bab (s1) ≤ J⋆(s1) ≤ V fb (s1),
+
+and J⋆ is non-decreasing in the designer’s feasible recommendation set: a richer message space or weaker informa-tion constraint weakly raises J⋆. The gaps J⋆ − V bab ≥ 0 and V fb − J⋆ ≥ 0 measure, respectively, the value of information design and the price of obedience. Proof. A stationary Bayes–Nash recommendation is dynamically obedient (each agent best-responds stage by stage, continuation included), hence a Markov BCE and feasible in (8), giving V bab ≤ J⋆. Dropping (5) enlarges the feasible set of (8), so its maximum cannot fall: J⋆ ≤ V fb . Both bounds are instances of the same fact, that the value of (8) is monotone in the feasible set, which also gives monotonicity of J⋆ in the designer’s commitment. 
+
+7.1 The policy / continuation-value fixed point 
+
+Dynamic obedience (5) at stage h is stated in terms of the continuation values Wh+1 ,i , which are themselves generated by the policy through (3). A Markov BCE is therefore a joint solution of these two dependencies, which we record as a fixed point. 
+
+Proposition 7.3 (Markov BCE as a fixed point; existence) . For a policy σ let T (σ) = ( Wh,i )h,i be the continuation values (3) it induces, and let O(W) be the set of policies satisfying (5) when each Wh+1 ,i is taken from W. A policy is a Markov Bayes correlated equilibrium iff σ ∈ O (T (σ)) . In finite horizon this fixed point is resolved by backward induction, and a Markov BCE exists whenever the stage obedient set is nonempty at every stage, in particular whenever the stage game admits a Bayes–Nash equilibrium, which for the LQG payoff (10) holds under Φ + Φ ⊤ ≻ 0.Proof. The equivalence is the definition: σ obeys (5) against its own induced continuation values iff σ ∈ O (T (σ)) .The dependence is acyclic in finite horizon: Wh+1 ,i depends only on σh+1 , . . . , σ H , never on σh. Hence backward induction applies: with WH+1 ,i ≡ 0 choose σH in the (static) stage-H obedient set, which fixes WH, ·; given Wh+1 ,·
+
+choose any σh satisfying (5), a system of linear inequalities in σh decoupled from earlier stages, which fixes Wh, ·;iterate to h = 1 . The resulting σ satisfies (5) at every stage. Nonemptiness of each stage set holds whenever the stage game has a Bayes–Nash equilibrium (recommend it conditional on γ); for (10) with Φ + Φ ⊤ ≻ 0 the quadratic stage game is strictly concave with a unique such equilibrium. 
+
+Proposition 7.3 gives existence of a Markov BCE; the designer wants the value-maximising one, and Algorithm 1 returns its value provided that maximum is attained. Standard regularity makes it so. 
+
+Proposition 7.4 (Existence of an optimal Markov BCE) . Suppose the payoff-state space Γ and the action space A are compact metric, the stage payoffs uh,i and the designer payoff vh are bounded and continuous, and each transition kernel Ph is weakly (Feller) continuous. Then for every h and s the set Ch(s) of implementable promised-utility profiles 
+
+7Markov Information Processes 
+
+is compact and the value Jh(s, ·) is upper semicontinuous, the designer’s problem max w∈C 1(s1 ) J1(s1, w ) attains its maximum, and an optimal Markov BCE policy exists and is the one Algorithm 1 computes. Proof. Recommendation policies σh(· | s, γ ) are probability measures on the compact A, a weak-∗ compact set (Prokhorov). Backward induction: CH+1 (s) = {0} is compact and JH+1 ≡ 0 is continuous. Assume Ch+1 (·)
+
+compact-valued and Jh+1 upper semicontinuous. The stage-h constraints (dynamic obedience (5) and promise-keeping (9)) are, by continuity of uh,i and Feller continuity of Ph, closed conditions on (σh, w ′(·)) , so the feasible set is a closed, hence compact, subset of the compact policy space; Ch(s) is its image under the continuous promise map (9) and is therefore compact. The stage objective E[vh +δJ h+1 (s′, w ′(s′))] is upper semicontinuous in (σh, w ′) (Feller continuity and the induction hypothesis), so by Berge’s maximum theorem Jh(s, ·) is upper semicontinuous and the stage argmax is nonempty and compact-valued. Iterating to h = 1 , C1(s1) is compact and J1(s1, ·) upper semicontin-uous, so the maximum is attained (Weierstrass); a measurable selection of stage maximisers yields the optimal policy, which is exactly the forward unrolling in Algorithm 1. 
+
+Remark 3 (Designer selection and uniqueness) . The fixed point is generically not unique: like static BCE, dynamic obedience defines a set of policies. The designer selects within it by value through the recursion (8) , so the optimal policy is the value-maximising fixed point. By contrast, the continuation values along a fixed policy are unique, being the backward evaluation of (3) . In the infinite-horizon stationary case the acyclic structure is lost and the fixed point becomes a genuine algebraic one (Section 8.1). 
+
+# 8 LQG Markov Information Processes 
+
+We specialise to the linear-quadratic-Gaussian class. In an LQG game, player i’s payoff is quadratic, 
+
+ui(s, γ, a ) = −Φi,i a2 
+
+> i
+
+− 2 ∑ 
+
+> j6=i
+
+Φi,j aiaj + 2( γi + si)ai + di(a−i, γ ), (10) where the Φi,j , i, j ∈ N , are real coefficients with Φi,i > 0, and di(a−i, γ ) is an arbitrary function of the opponents’ actions a−i ≡ { aj }j6 =i and the payoff state γ, with a ∈ A ≡ Rn and γ ∈ Γ ≡ Rn. We collect the coefficients in 
+
+Φ = [Φ i,j ] ∈ Rn×n. The payoff is quadratic in ai but need not be quadratic in the others’ actions or the payoff state, via the term di(a−i, γ ); this term cannot be influenced by player i and so does not affect its best response. We focus on scalar actions, ai ∈ R. We write si for the Markov state of agent i, forming the i-th component of s ∈ Rn.We pair (10) with a controlled linear-Gaussian transition, 
+
+sh+1 = Ahsh + Bhah + Chγh + εh, εh ∼ N (0 , Σε), εh ⊥ (sh, γ h, a h), (11) with Ah, B h, C h ∈ Rn×n, and we write B(i) 
+
+> h
+
+for the i-th column of Bh (the channel through which ai moves the state). The prior on (γh, s h) and the recommendation policy are jointly Gaussian, so that (γh, s h, a h) is jointly Gaussian under the designer’s policy and conditional expectations are affine. Throughout, E and cov are taken under this joint law at the stage in question. 
+
+Lemma 8.1 (Quadratic continuation values) . Under (10) –(11) and a linear-Gaussian recommendation policy, each agent’s continuation value (3) is quadratic, 
+
+Wh,i (s) = s⊤Πh,i s + π⊤
+
+> h,i
+
+s + ch,i , ΠH+1 ,i = 0 , π H+1 ,i = 0 , c H+1 ,i = 0 , (12) 
+
+where (Π h,i , π h,i , c h,i ) solve the backward recursion obtained by substituting the policy-induced affine law of ah in 
+
+(γh, s h) and the transition (11) into Wh,i (s) = E[uh,i (s, γ, a ) + δW h+1 ,i (s′) | sh = s] and collecting terms by degree in s. In particular the quadratic coefficient satisfies the finite-horizon Riccati recursion 
+
+Πh,i = δ A ⊤ 
+
+> h
+
+Πh+1 ,i Ah + Rh,i , ΠH+1 ,i = 0 , (13) 
+
+where Rh,i gathers the stage-payoff and policy-dependent quadratic terms; the recursion is parametric in the recom-mendation policy through Rh,i .Proof. Backward induction. WH+1 ,i ≡ 0 is (12) with zero coefficients. If Wh+1 ,i is quadratic, then since ah is affine in (γh, s h) under the policy and s′ is affine in (sh, γ h, a h) by (11), the integrand uh,i + δW h+1 ,i (s′) is quadratic in 
+
+(sh, γ h, a h, ε h); taking the Gaussian expectation given sh = s leaves a quadratic in s (the noise contributes only the constant δ Tr(Π h+1 ,i Σε)). Matching degrees gives the stated recursion, with the δA ⊤ 
+
+> h
+
+Πh+1 ,i Ah term coming from the s-linear part of ¯s′ = E[s′ | s].
+
+8Markov Information Processes 
+
+Theorem 8.2 (Dynamic LQG obedience) . Consider an LQG MKIP with payoff (10) and transition (11) , and suppose 
+
+Φ + Φ ⊤ is positive definite. Then dynamic obedience (5) holds at stage h if and only if, for every i ∈ N ,
+
+∑
+
+> j∈N
+
+˜Φh,ij cov( ai, a j ) = cov( ai, γ i) + cov( ai, s i) + δ (B(i) 
+
+> h
+
+)⊤Πh+1 ,i 
+
+[Ah cov( ai, s ) + Ch cov( ai, γ )], (14) 
+
+where cov( ai, s ) = (cov( ai, s k)) k∈N , cov( ai, γ ) = (cov( ai, γ k)) k∈N , the continuation matrices Πh+1 ,i are those of Lemma 8.1, and the effective interaction matrix is 
+
+˜Φh,ij := Φ ij − δ (B(i) 
+
+> h
+
+)⊤Πh+1 ,i B(j) 
+
+> h
+
+. (15) 
+
+When the transition is action-independent ( Bh = 0 ) or δ = 0 , (14) reduces to the static Bergemann–Morris condition 
+
+∑
+
+> j∈N
+
+Φij cov( ai, a j ) = cov( ai, γ i) + cov( ai, s i), i ∈ N . (16) 
+
+Proof. Since Φii > 0 the stage payoff is strictly concave in ai, and by (11) and Lemma 8.1 the continuation term 
+
+δ E[Wh+1 ,i (s′) | ai] is quadratic in the agent’s own action; Φ + Φ ⊤ ≻ 0 guarantees the resulting stage best response is well defined. Hence dynamic obedience (5) holds iff the recommended action satisfies the first-order condition in conditional expectation given the recommendation ai. Writing ¯s′ = Ahs + Bha + Chγ for the conditional mean next state and differentiating uh,i + δW h+1 ,i (¯ s′) in ai,
+
+E
+
+[
+
+− 2Φ ii ai − 2∑ 
+
+> j6=i
+
+Φij aj + 2( γi + si) + 2 δ(B(i) 
+
+> h
+
+)⊤Πh+1 ,i ¯s′ + δ(B(i) 
+
+> h
+
+)⊤πh+1 ,i 
+
+∣∣∣ ai
+
+]
+
+= 0 . (17) Substituting ¯s′ = Ahs + ∑ 
+
+> k
+
+B(k) 
+
+> h
+
+ak + Chγ and collecting the action terms, the coefficient on aj is −2(Φ ij −
+
+δ(B(i) 
+
+> h
+
+)⊤Πh+1 ,i B(j) 
+
+> h
+
+) = −2˜Φh,ij . Dividing (17) by 2 gives, in conditional expectation, 
+
+∑
+
+> j∈N
+
+˜Φh,ij E[aj | ai] = E[γi | ai] + E[si | ai] + δ(B(i) 
+
+> h
+
+)⊤Πh+1 ,i 
+
+(AhE[s | ai] + ChE[γ | ai]) + δ 
+
+> 2
+
+(B(i) 
+
+> h
+
+)⊤πh+1 ,i .
+
+(18) Multiplying (18) by the centered recommendation (ai − E[ai]) and taking expectations, the tower property gives 
+
+E[( ai − Eai) E[X | ai]] = cov( ai, X ); the constant term drops, and we obtain (14). Conversely, under joint normality the conditional expectations in (18) are affine, so (14) implies (18) and hence (5). Setting Bh = 0 kills both the 
+
+˜Φ correction and the bracketed term, and δ = 0 does likewise, leaving (16), the second-moment characterisation of [4]. 
+
+Remark 4 (What far-sightedness adds) . Relative to the static condition (16) , Theorem 8.2 shows that far-sighted agents change the obedience condition in two ways. First, the strategic-interaction matrix is shifted from Φ to ˜Φh: the controlled transition makes agents’ continuation values interact through the state even where their stage payoffs do not. Second, a new term couples the recommendation to the persistent and payoff states through the transition kernel. Both vanish when the agent’s action cannot move the state ( Bh = 0 ), yielding the myopic-receiver case. 
+
+8.1 Infinite-horizon stationary case 
+
+Take the primitives time-homogeneous ( Ah ≡ A, Bh ≡ B, Ch ≡ C, μh ≡ μ), let H → ∞ , and seek a stationary policy with stationary continuation value Wi(s) = s⊤Πis+π⊤ 
+
+> i
+
+s+ci. The backward recursion of Lemma 8.1 becomes the algebraic fixed point 
+
+Πi = δ A ⊤ΠiA + Ri(Ξ; Π i), (19) where Ξ collects the stationary second moments of (γ, s, a ) under the policy and Ri is the quadratic-in-s part of the stage return. Because the obedient policy’s own-curvature is renormalised to ˜Φii = Φ ii − δ(B(i))⊤ΠiB(i) by Theorem 8.2, the policy that Ri is evaluated at depends on Πi, so (19) is a genuine discounted algebraic Riccati 
+
+equation rather than a linear Lyapunov equation. A stationary Markov BCE is a joint fixed point (Ξ ⋆, Π⋆) of (19) and the stationary obedience condition (14) evaluated with ˜Φ(Π ⋆).
+
+Proposition 8.3 (Existence of the stationary fixed point) . Suppose δ ‖A‖2 < 1. Then for each fixed admissible sta-tionary policy (hence fixed Ri), the map L(Π) = δA ⊤ΠA + Ri is a contraction of modulus δ‖A‖2 in the spectral norm, with unique fixed point the convergent Neumann series Πi = ∑ 
+
+> k≥0
+
+δk(A⊤)kRiAk. If in addition the policy de-pendence Πi 7 → Ri(Ξ(Π i); Π i) is Lipschitz with constant L and δ‖A‖2 + δL < 1, the coupled map has a unique fixed point (Ξ ⋆, Π⋆), the stationary Markov BCE, and the iteration Π(k+1) = δA ⊤Π(k)A + Ri(Ξ(Π (k) ); Π (k)) converges to it geometrically. 
+
+9Markov Information Processes 
+
+Proof. For fixed Ri, ‖L (Π) − L (Π ′)‖ = δ‖A⊤(Π − Π′)A‖ ≤ δ‖A‖2‖Π − Π′‖, a contraction when δ‖A‖2 < 1;iterating from Π = 0 gives the Neumann series, convergent under the same bound. Letting Ri vary with Πi through the policy adds a Lipschitz-L term, so the composite map has modulus at most δ‖A‖2 + δL ; under δ‖A‖2 + δL < 1
+
+Banach’s fixed-point theorem gives existence, uniqueness, and geometric convergence of the stated iteration. 
+
+In the scalar symmetric example of Section 12, (19) reads Π = δA 2Π + R(Π) with contraction modulus δA 2 < 1; at a fixed policy Π = R/ (1 − δA 2), and the full coupling through ˜Φii = h0 − δB 2Π makes it a scalar algebraic Riccati equation whose stabilising root is the stationary continuation coefficient. The reduction also settles the computational status of Algorithm 1 in this class. 
+
+Proposition 8.4 (Complexity and convergence of Algorithm 1 in the LQG class) . Consider the LQG class of The-orem 8.2 with state dimension n. (i) In finite horizon, Algorithm 1 reduces to H stage problems solved backward: for given Πh+1 ,i , the stage-h designer problem is a semidefinite program in the O(n2) joint second moments of 
+
+(γh, s h, a h) (the objective is linear and each obedience condition (14) affine in these moments, over the positive-semidefinite cone with the marginals of (γh, s h) fixed), followed by the Riccati update (13) at cost O(n3). (ii) In the stationary case, value iteration on (19) converges geometrically with modulus q := δ‖A‖2 + δL < 1 of Proposi-tion 8.3, so an ε-accurate fixed point is reached in at most ⌈log( ε0/ε )/ log(1 /q )⌉ iterations, where ε0 is the initial error. Proof. (i) For fixed Πh+1 ,i the modified interaction matrix ˜Φh is constant, so each obedience condition (14) is an affine equality in the entries of the joint covariance of (γh, s h, a h); the designer’s stage objective E[vh] is linear in the same moments for quadratic vh; and the feasible moments form a spectrahedron. Substituting the optimal stage policy into (13) is one n × n update. (ii) is the contraction estimate of Proposition 8.3 applied to the sequence Π(k+1) = R(Π (k) ):
+
+‖Π(k) − Π⋆‖ ≤ qk‖Π(0) − Π⋆‖.
+
+# Part II: Markov Information Processes with Learning Agents 
+
+# 9 Agents Who Observe the State and Learn the Law of Motion 
+
+Part I assumed the transition Ph is common knowledge. We now let agents be uncertain about it and learn it from experience. Two modelling changes accompany this, and it is worth saying at the outset why they are introduced together. Under known dynamics, observing the persistent state is strategically inert: a far-sighted agent that knows 
+
+Ph already knows how its action propagates to sh+1 and can compute its continuation consequences from its posterior alone, so revealing the realisation of s changes the form of the obedience condition (it relocates the term cov( ai, s i)
+
+into a known intercept, as we show below) without changing what any agent does. Observability acquires strategic content only when the transition is unknown, since an agent can exploit a superior model of the dynamics only by steering a state it can see. We therefore introduce both changes at once: observability is the assumption that makes learning consequential, and learning is what makes observability matter. 
+
+Assumption 1 (Observed state and known payoffs in Part II) . Throughout Part II each agent observes the persistent state sh at the start of stage h, in addition to its recommendation, and knows its own stage payoff uh,i . Agents remain uncertain about the transient payoff state γh, about which the recommendation is informative, and about the transition kernel Ph.
+
+Observing sh turns the learning target, the conditional law Ph(· | s, γ, a ), into a fully observed estimation problem rather than latent-state inference, so an agent’s advantage is cleanly a model of the dynamics rather than an inference about a hidden state. Each agent i holds a model ˆP (i) 
+
+> h
+
+of the transition and best-responds under it. The single change from Part I is in the continuation differential of the dynamic obedience condition: in (5)–(6) the term that prices the future, ̂
+
+∆ ih(s, γ, a i, a −i; a′
+
+> i
+
+) := Es′ ∼ ˆP (i) 
+
+> h(·| s,γ,a i,a −i)
+
+[ ˆWh+1 ,i (s′)] − Es′ ∼ ˆP (i) 
+
+> h(·| s,γ,a ′
+> i,a −i)
+
+[ ˆWh+1 ,i (s′)],
+
+is computed under the agent’s model ˆP (i) 
+
+> h
+
+and its perceived continuation value ˆWh+1 ,i , rather than under the true Ph
+
+and Wh+1 ,i . The designer, committing against the true dynamics, builds a policy that is obedient under ∆ih; an agent evaluates the same recommendation under ̂ ∆ ih. The gap between the two is what a superior model of the dynamics is worth, which we now make precise in general and then in closed form for the LQG class. 
+
+10 Markov Information Processes 
+
+# 10 The Value of Knowing the Dynamics 
+
+Fix a stage h, an observed state s, a payoff state γ, and a recommendation a⋆i to agent i. Under its model ˆP (i) 
+
+> h
+
+the agent evaluates an action a′ 
+
+> i
+
+by the perceived stage-plus-continuation payoff ̂
+
+U (i) 
+
+> h
+
+(a′
+
+> i
+
+) := E
+
+[
+
+uh,i (s, γ, a ′
+
+> i
+
+, a −i) + δ Es′ ∼ ˆP (i) 
+
+> h(·| s,γ,a ′
+> i,a −i)
+
+[ ˆWh+1 ,i (s′)] ∣∣∣ a⋆i
+
+]
+
+, (20) the analogue of the deviation value Qh,i of (4) computed under the agent’s own model. We define the agent’s rent as the perceived gain from its best deviation from the recommendation, 
+
+Rent h,i := 
+
+[
+
+sup 
+
+> a′
+> i
+
+̂
+
+U (i) 
+
+> h
+
+(a′
+
+> i
+
+) −̂ U (i) 
+
+> h
+
+(a⋆i )
+
+]+
+
+. (21) This is a well-defined object for any stage payoff and any transition kernel; it requires no linear-quadratic-Gaussian structure. 
+
+Proposition 10.1 (Rent: non-negativity and zero at the benchmark) . For every model ˆP (i) 
+
+> h
+
+the rent (21) is non-negative. If the agent’s model agrees with the truth on the support reachable from (s, γ, a −i) and its perceived continuation value agrees there, ˆP (i) 
+
+> h
+
+= Ph and ˆWh+1 ,i = Wh+1 ,i (in particular at the known-dynamics benchmark of Part I), then 
+
+Rent h,i = 0 . Thus the rent is non-negative in general and vanishes exactly when the agent holds no advantage over the model the designer’s commitment is built on. Proof. Non-negativity follows from the [ · ]+ and the feasibility of a⋆i in the supremum. If ˆP (i) 
+
+> h
+
+= Ph and ˆWh+1 ,i =
+
+Wh+1 ,i on the reachable support, then ̂ U (i) 
+
+> h
+
+coincides with the true deviation value Qh,i (s, ·) of (4). The designer’s policy satisfies true-model dynamic obedience (Definition 6.1), i.e. a⋆i ∈ arg max a′ 
+
+> i
+
+Qh,i (s, a ⋆i , a ′
+
+> i
+
+), so the bracketed difference in (21) is non-positive and the rent is zero. 
+
+The rent is also controlled, in general, by how far the agent’s perceived objective sits from the truth, which yields monotonicity and a quantitative form of the zero-at-benchmark property. 
+
+Proposition 10.2 (Rent bound and monotonicity) . Write U (i) 
+
+> h
+
+(·) = Qh,i (s, a ⋆i , ·) for the agent’s true deviation value 
+
+(4) and ̂ U (i) 
+
+> h
+
+for its perceived counterpart (20) . Then 
+
+Rent h,i ≤ 2 ∥∥̂ U (i) 
+
+> h
+
+− U (i)
+
+> h
+
+∥∥∞, (22) 
+
+so the rent is Lipschitz in the agent’s misspecification: it vanishes as the perceived objective converges uniformly to the truth, refining Proposition 10.1. Consequently the worst-case rent over a class of models G, Rent h,i (G) := sup ˆP (i)  
+
+> h∈G
+
+Rent h,i , is non-decreasing in G and equals zero at G = {Ph}.Proof. True-model obedience gives sup a′ 
+
+> i
+
+U (i) 
+
+> h
+
+(a′
+
+> i
+
+) = U (i) 
+
+> h
+
+(a⋆i ). Writing η := ‖̂ U (i) 
+
+> h
+
+− U (i) 
+
+> h
+
+‖∞, sup a′
+
+> i
+
+̂ U (i) 
+
+> h
+
+(a′
+
+> i
+
+) ≤
+
+sup a′ 
+
+> i
+
+U (i) 
+
+> h
+
+(a′
+
+> i
+
+) + η = U (i) 
+
+> h
+
+(a⋆i ) + η and ̂ U (i) 
+
+> h
+
+(a⋆i ) ≥ U (i) 
+
+> h
+
+(a⋆i ) − η, so Rent h,i = [ sup a′
+
+> i
+
+̂ U (i) 
+
+> h
+
+(a′
+
+> i
+
+) −̂ U (i) 
+
+> h
+
+(a⋆i )]+ ≤ 2η,which is (22). Monotonicity of Rent h,i is a supremum over a larger set, and Rent h,i ({Ph}) = 0 by Proposition 10.1. 
+
+Proposition 10.1 states the qualitative content in full generality: knowledge of the dynamics is a source of rents, and the rent is zero exactly at the known-dynamics benchmark. Proposition 10.2 adds that its size is controlled by the agent’s misspecification and monotone in the class of models the designer must deter, the general form of the robustness margin made precise in the LQG case (Proposition 11.2). What general payoffs do not give is a tractable expression 
+
+for the rent. In the LQG class the perceived objective is concave quadratic, the model gap is finite-dimensional, and the rent collapses to a closed form quadratic in the agent’s model error, to which we now turn. 
+
+# 11 Knowing the Dynamics: the LQG Case 
+
+We now specialise to the LQG class of Section 8, where agent i’s model of the transition is a triple ( ˆA(i) 
+
+> h
+
+, ˆB(i) 
+
+> h
+
+, ˆC(i) 
+
+> h
+
+)
+
+and the rent of (21) acquires a closed form. 
+
+11 Markov Information Processes 
+
+With sh observed, the conditioning in the LQG obedience condition changes: si and Ahsh are constants, so the term 
+
+cov( ai, s i) of Theorem 8.2 is absorbed into the (known) intercept and the true-model obedience condition becomes, for each i, ∑
+
+> j∈N
+
+˜Φh,ij cov( ai, a j ) = cov( ai, γ i) + δ (B(i) 
+
+> h
+
+)⊤Πh+1 ,i Ch cov( ai, γ ), (23) covariances now taken conditional on sh. Equation (23) is the benchmark the designer commits to. It is not a new condition but the dynamic obedience condition of Theorem 8.2 evaluated under a finer information set: conditioning (14) on an observed sh makes si and Ahsh measurable, so cov( ai, s i) → 0 and the Ah cov( ai, s ) term drops, leaving exactly (23). Agent i’s model is the triple ( ˆA(i) 
+
+> h
+
+, ˆB(i) 
+
+> h
+
+, ˆC(i) 
+
+> h
+
+), which induces, through the recursion of Lemma 8.1, a perceived continuation value ˆWh+1 ,i with quadratic coefficient ̂ Πh+1 ,i and linear coefficient ̂ πh+1 ,i . The agent best-responds under its own model. We collect the discrepancy in the model gap 
+
+Gh,i := ( ˆA(i) 
+
+> h
+
+− Ah, ˆB(i) 
+
+> h
+
+− Bh, ˆC(i) 
+
+> h
+
+− Ch,̂ Πh+1 ,i − Πh+1 ,i ,̂ πh+1 ,i − πh+1 ,i 
+
+), (24) the finite-dimensional realisation of the general gap of Proposition 10.1, zero exactly when the agent’s model agrees with the truth. The designer commits to a policy satisfying the true-model condition (23), so under the true model every agent’s first-order gain from deviating at the recommended action is zero (Theorem 8.2). An agent evaluating the same recommendation under its own model perceives a residual. Writing the continuation gradient at the recommended action under a model as gh,i = 2( B(i) 
+
+> h
+
+)⊤Πh+1 ,i ¯s′ + ( B(i) 
+
+> h
+
+)⊤πh+1 ,i (true) and ˆgh,i (perceived, hats throughout), the agent’s perceived first-order gain at the recommended a⋆i is 
+
+rh,i := δ E[ˆgh,i − gh,i 
+
+∣∣ a⋆i , s h
+
+], (25) which is linear in the model gap Gh,i and vanishes when Gh,i = 0 .
+
+Proposition 11.1 (Rent from superior knowledge of the dynamics) . Let ̂ Φeff  
+
+> h,ii
+
+:= Φ ii − δ( ˆB(i) 
+
+> h
+
+)⊤̂ Πh+1 ,i ˆB(i) 
+
+> h
+
+> 0
+
+(perceived own-curvature). Then agent i’s perceived-optimal deviation from the recommendation is 
+
+ˆai − a⋆i = rh,i 
+
+2̂ Φeff 
+
+> h,ii
+
+, (26) 
+
+and the per-stage rent it perceives from this deviation is 
+
+Rent h,i = r2
+
+> h,i
+
+4̂ Φeff 
+
+> h,ii
+
+≥ 0. (27) 
+
+The rent is quadratic in the residual rh,i , hence quadratic in the model gap Gh,i , and equals zero if and only if 
+
+rh,i = 0 ; in particular it is zero at the known-dynamics benchmark of Part I. It is the closed form, in the LQG class, of the general rent (21) .Proof. Under Assumption 1 the agent’s perceived stage-plus-continuation objective is concave quadratic in its own action with curvature 2̂ Φeff  
+
+> h,ii
+
+> 0; its derivative at the recommended action a⋆i equals the true derivative (zero, by (23)) plus the model-induced residual (25), i.e. rh,i . For a concave quadratic with curvature κ := 2 ̂ Φeff  
+
+> h,ii
+
+and derivative rh,i 
+
+at a⋆i , the maximiser is a⋆i + rh,i /κ , giving (26), and the gain over a⋆i is r2
+
+> h,i
+
+/(2 κ) = r2
+
+> h,i
+
+/(4 ̂ Φeff 
+
+> h,ii
+
+), which is (27). The residual is linear in Gh,i by (25) and (24), so the rent is quadratic in Gh,i and vanishes iff rh,i = 0 .
+
+Proposition 11.1 isolates the channel: the rent lives entirely in the continuation term that the controlled transition created in Part I. An agent that knows the dynamics better than the designer’s committed policy accounts for converts that knowledge into a profitable, undeterred deviation; an agent whose model matches the truth has no such advantage. The designer can restore deterrence only by over-satisfying obedience. 
+
+Proposition 11.2 (Robust obedience) . Suppose the designer wishes to deter all agents whose model gap lies in a set G with sup Gh,i ∈G |rh,i | ≤ ¯rh,i (G). Then it suffices for the designer to commit to a policy that satisfies the true-model first-order condition with a margin: the recommended action a⋆i is chosen so that the true continuation-adjusted marginal payoff is non-positive over the deviation directions consistent with G, which tightens (23) to an inequality with slack of order ¯rh,i (G). The slack is monotone in the size of G and shrinks to zero as G → { 0}, recovering (23) .
+
+12 Markov Information Processes 
+
+Proof. Fix the stage h and agent i and suppress both indices. Let m(a⋆i ) be the true continuation-adjusted marginal payoff of the agent’s stage-plus-continuation objective at the recommended action; the true-model condition (23) is 
+
+m(a⋆i ) = 0 . An agent with model gap Gh,i ∈ G perceives instead the marginal m(a⋆i ) + rh,i , with rh,i the residual (25); by Proposition 11.1 its perceived-optimal deviation is rh,i /(2 ̂ Φeff 
+
+> h,ii
+
+), taken in the direction d = sign( rh,i ), with gain r2
+
+> h,i
+
+/(4 ̂ Φeff 
+
+> h,ii
+
+) increasing in |rh,i |.To deter the deviation in a direction d ∈ { +, −} that some model in G would take, it suffices that the perceived directional marginal be non-positive there for every such model, i.e. d (m(a⋆i ) + rh,i 
+
+) ≤ 0 for all Gh,i ∈ G with 
+
+sign( rh,i ) = d. Since |rh,i | ≤ ¯rh,i (G) by hypothesis, it is enough that d m (a⋆i ) ≤ − ¯rh,i (G): then d (m(a⋆i ) + rh,i ) ≤−¯rh,i (G) + |rh,i | ≤ 0. This replaces the equality (23), m(a⋆i ) = 0 , by a condition in which the true marginal carries a slack of magnitude ¯rh,i (G) on each deterred direction; equivalently, committing with this slack bounds the worst-case undeterred gain over G by ¯rh,i (G)2 /(4 ̂ Φeff 
+
+> h,ii
+
+) (Proposition 11.1). Finally ¯rh,i (G) = sup Gh,i ∈G |rh,i | is non-decreasing in G (a supremum over a larger set) and equals 0 when G = {0},since the residual (25) vanishes at a correct model. Hence the required slack is monotone in the size of G and shrinks to zero as G → { 0}, recovering (23). 
+
+We now show that the ˜O(log T ) rate is a theorem under Assumption 2, which comprises one regularity condition, (L1), and three conditions, (L2)–(L4), each assuming away one coupling of the fully general problem; we then state the unconditional version as the open conjecture. 
+
+Assumption 2 (Stationary learning environment) .
+
+(L1) (Stationary, contractive primitives.) The primitives are time-homogeneous and satisfy the contraction condi-tion δ‖A‖2 + δL < 1 of Proposition 8.3, so the Riccati map θ := ( A, B, C ) 7 → Π( θ) of (19) is well defined and, by the implicit-function theorem, locally Lipschitz with constant LΠ on a neighbourhood of the true θ.(L2) (On-path estimation.) Agents follow recommendations on path and estimate θ from the realised obedient transitions (sk, γ k, a k, s k+1 )k≤t by ridge least squares; the rent of Proposition 11.1 is the counterfactual one-shot deviation gain and is not realised, so the estimation data is independent of any agent’s deviation. (L3) (Exogenous persistent excitation.) The designer’s stationary policy injects exogenous excitation so that the regressor information matrix Λt = λI + ∑ 
+
+> k≤t
+
+zkz⊤ 
+
+> k
+
+, zk := ( sk, γ k, a k), satisfies λmin (Λ t) ≥ λ0t for all 
+
+t ≥ t0, some λ0, t 0 > 0.(L4) (Common environment; heterogeneous estimators; sub-Gaussian noise.) All agents estimate the same tran-sition θ = ( A, B, C ) from the common observed obedient transitions and treat it as fixed (they do not form beliefs about one another’s estimates), but may use different ridge regularizers λ(i) > 0 and prior means, so the estimators are heterogeneous across agents. The regressors are bounded ( ‖zk‖ ≤ zmax , from stability and bounded controls), and the transition noise εk is mean-zero, i.i.d., σε-sub-Gaussian. 
+
+Remark 5 (Homogeneous learners as a special case) . (L4) nests the homogeneous-learner setting: taking a common regularizer λ(i) ≡ λ and a common prior mean across agents makes the estimators identical on the common data, the per-agent constants C(i)1 in Theorem 11.3 coincide, and a single representative agent’s estimation bound covers all agents. Heterogeneity thus costs only the constant max i C(i)1 , never the rate. 
+
+Theorem 11.3 (Logarithmic rent under exogenous excitation) . Under Assumption 2, there is a constant c (depending on p, λ 0, L Π, σ ε, z max , the rent constants of Proposition 11.1, and the agents’ regularizers and priors) such that, with probability at least 1 − δ′, for all t ≥ t0 every agent’s per-stage rent satisfies 
+
+Rent t ≤ c log( t/δ ′)
+
+t , and hence 
+
+> T
+
+∑
+
+> t=t0
+
+Rent t ≤ c′ log 2(T /δ ′) = ˜O(log T ); (28) 
+
+summing over the finite set of agents preserves the ˜O(log T ) rate. Proof. Write the transition as the linear regression sk+1 = θz k + εk with θ := ( A, B, C ) and p := dim zk the regressor dimension, and write G(i) 
+
+> t
+
+:= ˆθ(i) 
+
+> t
+
+− θ for the estimated-parameter component of agent i’s model gap (24). 
+
+Step 1 (estimation). The self-normalised least-squares bound [20] applies to each agent’s ridge estimator separately. Agent i’s information matrix Λ(i) 
+
+> t
+
+= λ(i)I +∑ 
+
+> k≤t
+
+zkz⊤ 
+
+> k
+
+shares the common regressors zk, differing across agents only 
+
+13 Markov Information Processes 
+
+through the regularizer λ(i); under (L2),(L4) there is, with probability ≥ 1 − δ′, simultaneously for all t, a confidence width β(i) 
+
+> t
+
+= σε
+
+√
+
+2 log(det(Λ (i) 
+
+> t
+
+)1/2 det( λ(i) I)−1/2/δ ′) + ( λ(i) )1/2‖θ − θ(i)0 ‖ (the second term, the prior-induced bias, is a constant) with ‖ˆθ(i) 
+
+> t
+
+− θ‖Λ(i)
+
+> t
+
+≤ β(i) 
+
+> t
+
+. Bounded regressors give det Λ (i) 
+
+> t
+
+= O(tp), so β(i) 
+
+> t
+
+= O(√p log( t/δ ′)) ,and by (L3) the common data satisfies λmin (Λ (i) 
+
+> t
+
+) ≥ λ0t, whence 
+
+‖G(i) 
+
+> t
+
+‖ := ‖ˆθ(i) 
+
+> t
+
+− θ‖2 ≤ β(i)
+
+> t
+
+√
+
+λmin (Λ (i) 
+
+> t
+
+)
+
+≤ β(i)
+
+> t
+
+√λ0t ≤ C(i)1
+
+√
+
+p log( t/δ ′)
+
+λ0 t ,
+
+with C(i)1 depending on λ(i) and the prior bias. As there are finitely many agents, C1 := max i C(i)1 is finite and the bound holds uniformly in i; a union bound over the finitely many agents replaces δ′ by δ′/n , which only affects constants. 
+
+Step 2 (Riccati Lipschitz). By (L1), for t large enough that ‖G(i) 
+
+> t
+
+‖ lies in the Lipschitz neighbourhood, ‖̂ Π(i) 
+
+> t
+
+− Π‖ ≤ 
+
+LΠ‖G(i) 
+
+> t
+
+‖.
+
+Step 3 (rent). By Proposition 11.1 agent i’s residual r(i) 
+
+> t
+
+is linear in the continuation-gradient gap, |r(i) 
+
+> t
+
+| ≤
+
+C2LΠ‖G(i) 
+
+> t
+
+‖, and Rent (i) 
+
+> t
+
+= ( r(i) 
+
+> t
+
+)2/(4 ̂ Φeff ) ≤ C3‖G(i) 
+
+> t
+
+‖2. Combining with Step 1 and the uniform constant 
+
+C1 = max i C(i)1 , every agent’s rent obeys Rent t ≤ C3C21 p  
+
+> λ0
+> log( t/δ ′)
+> t
+
+=: c log( t/δ ′ ) 
+
+> t
+
+.
+
+Step 4 (sum). ∑Tt=t0 c log( t/δ ′) 
+
+> t
+
+≤ c∫ Tt0  
+
+> log( s/δ ′)
+> s
+
+ds = c
+
+> 2
+
+[ log 2(T /δ ′) − log 2(t0/δ ′)] = O(log 2(T /δ ′)) ; since the agent set is finite, summing this bound over agents preserves the ˜O(log T ) rate. 
+
+Of Assumption 2, (L1) is pure regularity: it makes the stationary Riccati map well defined and locally Lipschitz. As-sumptions (L2)–(L4) are exactly the three couplings that a fully general treatment must instead control: (L2) replaces the self-perturbed estimation data of a deviating agent with on-path data and a counterfactual rent; (L3) replaces the 
+
+endogenous excitation the designer’s own policy generates with an exogenous lower bound; and (L4), while allowing heterogeneous estimators, holds the environment common and exogenously fixed, ruling out the mutual learning in which each agent must also track the others’ evolving models, the entanglement whose asymmetric, co-evolving gaps make obedience bind unevenly and turn the design into a moving target. Removing (L2)–(L4) yields the open problem. 
+
+Conjecture 11.4 (Unconditional logarithmic rent) . The cumulative-rent bound of Theorem 11.3, ∑ 
+
+> t≤T
+
+Rent t =˜O(log T ), continues to hold when (L2)–(L4) are dropped: when the excitation is endogenous to the designer’s policy, agents learn from their own (possibly off-path) data, and agents’ learning is mutually entangled (each tracking the oth-ers’ evolving models), so that the policy, the estimators, and the obedience constraints co-evolve as an informational arms race. 
+
+A design tension. Persistent excitation (L3) is double-edged: the recommendation variance that keeps obedience comfortably satisfied is also what feeds the agents’ estimators, accelerating their learning and the rent. A designer who wished to slow learning would deliberately under-excite, trading present obedience slack for a slower-growing rent. This is the discrete-time, multi-agent face of the deliberate information-rate throttling that [26] leave open in continuous time, and it is the sense in which Part II’s frontier is a design problem and not merely an estimation one. 
+
+# 12 Two Worked Examples: Evacuation and Power Coordination 
+
+We close with two scalar, two-agent LQG Markov information processes that make Theorem 8.2 and Proposition 11.1 fully explicit. Each borrows its structure from a setting that can be modelled as a Markov information process (a congestion/evacuation setting and a power-coordination setting, studied as continuous time stochastic Stackelberg control problems by [25] and [24] respectively), but the examples below are self-contained illustrations of the present theory and use none of those papers’ results. We take symmetric agents with own-curvature Φii = h0 > 0 and cross-coupling Φij = h1 (i 6 = j), and a diagonal transition (11) with scalar gains Ah = A, Bh = B, Ch = C acting on each agent’s own coordinate, so each agent’s action moves only its own state. Writing Π for the (symmetric, scalar) continuation coefficient Πh+1 ,i of Lemma 8.1, Theorem 8.2 specialises to the per-agent obedience condition 
+
+(h0 − δB 2Π) 
+
+︸ ︷︷ ︸
+
+> ˜Φii
+
+var( ai) + h1
+
+︸︷︷︸ 
+
+> ˜Φij
+
+cov( ai, a j ) = cov( ai, γ i) + cov( ai, s i) + δB Π(A cov( ai, s i) + C cov( ai, γ i)),
+
+(29) with Π solving the backward recursion Πh,i = δA 2Πh+1 ,i + Rh,i . The own-curvature is renormalised to ˜Φii =
+
+h0 − δB 2Π (the controlled transition makes a unit of own action worth δB 2Π in continuation), the cross-coupling 
+
+14 Markov Information Processes 
+
+h1 is untouched because the channels are decoupled, and the bracketed term is the continuation coupling of the recommendation to the states. Setting δ = 0 or B = 0 erases both effects and returns the static condition h0 var( ai) + 
+
+h1 cov( ai, a j ) = cov( ai, γ i) + cov( ai, s i).
+
+Example 12.1 (Evacuation: a two-zone staggering example) . Two evacuation zones i ∈ { 1, 2} share a downstream corridor. Agent i’s action ai is its egress rate; γi is the believed local hazard (the storm advisory the designer shapes); 
+
+si is the zone’s at-risk backlog. The shared corridor makes simultaneous egress costly, so the cross-coupling is positive, 
+
+h1 > 0 (a congestion complementarity penalising co-movement of a1, a 2). Faster egress drains the backlog, so the own channel has B < 0 (action reduces next-period si), and a backlog persists, A ∈ (0 , 1) ; the advisory feeds the backlog with C > 0. Because B < 0 and (for an exposure-minimising continuation) Π > 0, the renormalised own-curvature ˜Φii = h0 − δB 2Π < h 0: a far-sighted zone is more willing to evacuate than its stage payoff alone implies, since draining the backlog today lowers its continuation exposure. The designer’s obedient recommendation must account for this: with the positive h1, the second moments solving (29) push cov( a1, a 2) down (anti-synchronised release), the one-period analogue of a staggered evacuation order. In Part II a zone that has learned the corridor dynamics (a sharper ̂ Π than the designer’s commitment) perceives a residual rh,i = 2 δB (̂Π − Π) ¯ si and earns 
+
+Rent h,i = δ2B2(̂Π − Π) 2 ¯s 2
+
+> i
+
+4 ( h0 − δB 2̂ Π) , (30) 
+
+i.e. a zone that better understands how its egress clears the corridor can profitably jump its slot, exactly the synchro-nisation the staggered order is meant to prevent; the rent grows with the backlog ¯si it is sitting on and vanishes when its model matches the designer’s. 
+
+Example 12.2 (Power coordination: a two-area reserve example) . Two interconnected areas i ∈ { 1, 2} are tied by an intertie. Agent i’s action ai is its reserve provision / inter-area export; γi is the believed local stress (the weather advisory the operator shapes); si is the area’s reserve-shortfall state. Mutual aid makes the actions substitutes across areas: when one area exports, it relieves the other, so the cross-coupling is negative, h1 < 0 (an effort the partner can free-ride). Providing reserve improves the own shortfall state, B > 0, the shortfall is persistent, A ∈ (0 , 1) , and stress worsens it, C > 0. Here ˜Φii = h0 − δB 2Π < h 0 again, but the economics differ: a far-sighted area values reserve more because today’s provision builds a continuation buffer. Under common (systemic) stress the advisory 
+
+γ1, γ 2 is correlated, so cov( ai, γ i) on the right of (29) is large and the continuation term δB ΠC cov( ai, γ i) amplifies 
+
+it, echoing the way disclosure and coupling can reinforce one another under common risk. In Part II an area whose model of the tie / reserve dynamics outruns the operator’s commitment earns the same rent (30) ; with h1 < 0 the binding incentive is reserve withholding : an area that has learned it can lean on its neighbour’s continuation buffer perceives rh,i = 2 δB (̂Π − Π)¯ si and under-provides, a form of strategic withholding that, absent a transfer, the designer here can deter only by the obedience slack of Proposition 11.2. 
+
+The two examples share one obedience condition (29) and one rent formula (30); only the signs of the primitives differ, 
+
+h1 > 0 (congestion complementarity) for evacuation versus h1 < 0 (mutual-aid substitutability) for power, and that single sign flip turns the binding Part II deviation from premature synchronisation into reserve withholding. 
+
+12.1 Numerical illustration: utilitarian and maximin design 
+
+We instantiate the congestion example ( h1 > 0) and run Algorithm 1 in its stationary LQG form (Proposition 8.4). Primitives: h0 = 1 , h1 = 0 .4, A = 0 .4, B = 0 .25 , C = 0 .3, δ = 0 .9, transition-noise variance σ2 
+
+> ε
+
+= 0 .05 , di ≡ 0,and asymmetric payoff-state variances σ2 
+
+> γ1
+
+= 1 .5, σ2 
+
+> γ2
+
+= 0 .5, so the two designer objectives we compare, utilitarian welfare ∑ 
+
+> i
+
+E[ui] and worst-case (maximin) welfare min i E[ui], pull in different directions. Recommendations are drawn from the linear-Gaussian class ai = αiγi + κisi + ηi with correlated randomisation (η1, η 2), and, consistent with the compactness maintained in Proposition 7.4, we impose the action bound E[a2 
+
+> i
+
+] ≤ 4 on every design (without it the unconstrained first best is unbounded: the designer would exploit unboundedly large anti-correlated randomisation near the stability boundary). Table 1 reports stationary per-stage welfare; obedience residuals at all reported optima are below 10 −12 .Three observations. First, the computed values realise the sandwich of Proposition 7.2, V bab = 0 ≤ J⋆ = 3 .428 ≤
+
+V fb = 3 .579 : in this instance the value of information design ( 3.428 ) is large while the price of obedience ( 0.151 ) is small; the designer loses little by having to respect incentives, but everything by staying silent. Second, the maximin design purchases +0 .157 for the worst agent at a cost of 0.578 in total welfare, and it does so by reallocating informa-tiveness toward the low-variance agent; notably, the first best treats the worst agent worse than either obedient design (0.922 < 1.042 ), so in this instance the obedience constraint itself partially protects the weaker agent. Third, Figure 1 (left) shows the value iteration of Proposition 8.4(ii) on the instance: the error decays geometrically with empirical 
+
+15 Markov Information Processes 
+
+Table 1: Stationary per-stage welfare across designs in the congestion instance. The no-disclosure and first-best rows are the benchmarks of Proposition 7.2. 
+
+Design E[u1] E[u2] Total Worst agent 
+
+No disclosure ( V bab ) 0 0 0 0
+
+Maximin optimum 1.652 1.198 2.850 1.198 
+
+Utilitarian optimum ( J⋆) 2.386 1.042 3.428 1.042 
+
+First best ( V fb ) 2.657 0.922 3.579 0.922                                     
+
+>                
+>    
+>   
+>   
+>   
+>   
+>  
+>  
+>  
+>  
+>  
+>  
+>    
+>           
+>           
+> 
+>  
+> 
+> 
+> 
+> 
+>       
+>    
+>  
+
+Figure 1: Left: geometric convergence of value iteration on the stationary fixed point (19) in the congestion instance (Proposition 8.4 (ii)). Right: cumulative squared estimation error of a learning agent under the utilitarian design against the c log 2 t envelope of Theorem 11.3 ( c fitted at the endpoint, T = 2 × 10 4). modulus ˆq ≈ 0.61 , reaching 10 −9 in 40 iterations. The right panel simulates a learning agent under the utilitarian pol-icy: the agent ridge-estimates θ = ( A, B, C ) from its own trajectory (regularizer λ = 1 ), and the cumulative squared estimation error ∑ 
+
+> k≤t
+
+‖ˆθk − θ‖2 (the driver of the rent bound in Theorem 11.3 through Rent t ≤ C‖Gt‖2) tracks the 
+
+c log 2 t envelope of the theorem. 
+
+# 13 Conclusion 
+
+We lifted the Bergemann–Morris obedience condition to a controlled-Markov environment with far-sighted agents. Part I established the known-dynamics benchmark: a dynamic obedience condition adding a continuation-value dif-ferential to the static one, a dynamic revelation principle justifying the recommendation-policy formulation, and a recursive designer problem with the agents’ promised utilities as state variables, solved by a set-valued backward-induction algorithm (Algorithm 1) whose optimum is attained and lies between the no-disclosure and first-best values. In the LQG class obedience is a covariance condition with a modified interaction matrix, continuation values are quadratic, and the stationary case is a discounted algebraic Riccati equation, all collapsing to the static case when actions cannot move the state. Part II showed that this benchmark is the reference point for an agent that learns the dynamics: knowledge of the transition is a source of rents (non-negative, bounded by the agent’s misspecification, and zero exactly at the bench-mark) that in the LQG class are quadratic in the model error and deterred only by satisfying obedience with slack. Under stationary primitives and persistent excitation the cumulative rent obeys a logarithmic bound (Theorem 11.3); the unconditional bound, under endogenous excitation, self-perturbed data, and mutually entangled learning, is the open problem we leave as Conjecture 11.4. 
+
+# References 
+
+[1] Emir Kamenica and Matthew Gentzkow. Bayesian persuasion. American Economic Review , 101(6):2590–2615, October 2011. doi: 10.1257/aer.101.6.2590. URL https://www.aeaweb.org/articles?id=10.1257/aer.101.6.2590 .
+
+16 Markov Information Processes 
+
+[2] Dirk Bergemann and Stephen Morris. Information design: A unified perspective. Journal of Economic Literature , 57(1):44– 95, March 2019. doi: 10.1257/jel.20181489. URL https://www.aeaweb.org/articles?id=10.1257/jel.20181489 .[3] Dirk Bergemann and Stephen Morris. Bayes correlated equilibrium and the comparison of informa-tion structures in games. Theoretical Economics , 11(2):487–522, 2016. doi: 10.3982/TE1808. URL 
+
+https://onlinelibrary.wiley.com/doi/abs/10.3982/TE1808 .[4] Dirk Bergemann and Stephen Morris. Robust predictions in games with incomplete information. Econometrica , 81(4):1251– 1308, 2013. doi: 10.3982/ECTA11105. URL https://onlinelibrary.wiley.com/doi/abs/10.3982/ECTA11105 .[5] Jibang Wu, Zixuan Zhang, Zhe Feng, Zhaoran Wang, Zhuoran Yang, Michael I. Jordan, and Haifeng Xu. Se-quential information design: Markov persuasion process and its efficient reinforcement learning, 2022. URL 
+
+https://arxiv.org/abs/2202.10678 .[6] Francesco Bacchiocchi, Francesco Emanuele Stradi, Matteo Castiglioni, Alberto Marchesi, and Nicola Gatti. Markov persuasion processes: Learning to persuade from scratch. In D. Belgrave, C. Zhang, H. Lin, R. Pascanu, P. Koniusz, M. Ghassemi, and N. Chen, editors, Advances in Neural Infor-mation Processing Systems , volume 38, pages 70123–70160. Curran Associates, Inc., 2025. URL 
+
+https://proceedings.neurips.cc/paper_files/paper/2025/file/65798a76cc176c29b6bfefe84b0a03ff-Paper-Conference.pd 
+
+[7] Krishnamurthy Iyer, Haifeng Xu Xu, and You Zu. Markov persuasion processes with endogenous agent be-liefs. Proceedings of The 19th Conference On Web And InterNet Economics (WINE 2023) , 2023. URL 
+
+https://par.nsf.gov/servlets/purl/10532237 .[8] David Pearce, Dilip Abreu, and Ennio Stacchetti. Toward a theory of discounted repeated games with imperfect monitoring. 
+
+Econometrica , 58(5):1041–1063, 1990. URL https://www.jstor.org/stable/2938299 .[9] Yuliy Sannikov. A continuous- time version of the principal: Agent problem. The Review of Economic Studies , 75(3): 957–984, 2008. ISSN 00346527, 1467937X. URL http://www.jstor.org/stable/20185061 .[10] Miltiadis Makris and Ludovic Renou. Information design in multistage games. Theoretical Economics , 18(4):1475–1509, 2023. doi: https://doi.org/10.3982/TE4769. URL https://onlinelibrary.wiley.com/doi/abs/10.3982/TE4769 .[11] Robert J. Aumann. Correlated equilibrium as an expression of bayesian rationality. Econometrica , 55(1):1–18, 1987. URL 
+
+https://www.jstor.org/stable/1911154 .[12] Laurent Mathevet, Jacopo Perego, and Ina Taneva. On information design in games. Journal of Political Economy , 128(4): 1370–1404, 2020. doi: 10.1086/705332. URL https://www.journals.uchicago.edu/doi/abs/10.1086/705332 .[13] Jeffrey C. Ely. Beeps. American Economic Review , 107(1):31–53, 2017. doi: 10.1257/aer.20150218. URL 
+
+https://www.aeaweb.org/articles?id=10.1257/aer.20150218 .[14] J´ erˆ ome Renault, Eilon Solan, and Nicolas Vieille. Optimal dynamic information provision. Games and Eco-nomic Behavior , 104:329–349, 2017. ISSN 0899-8256. doi: https://doi.org/10.1016/j.geb.2017.04.010. URL 
+
+https://www.sciencedirect.com/science/article/pii/S089982561730074X .[15] Jeffrey C. Ely and Martin Szydlowski. Moving the goalposts. Journal of Political Economy , 128(2):468–506, 2020. doi: 10.1086/704387. URL https://www.journals.uchicago.edu/doi/abs/10.1086/704387 .[16] Laura Doval and Jeffrey C. Ely. Sequential information design. Econometrica , 88(6):2575–2608, 2020. doi: https://doi.org/ 10.3982/ECTA17260. URL https://onlinelibrary.wiley.com/doi/abs/10.3982/ECTA17260 .[17] Stephen E. Spear and Sanjay Srivastava. On repeated moral hazard with discounting. The Review of Economic Studies , 54 (4):599–617, 10 1987. ISSN 0034-6527. doi: 10.2307/2297484. URL https://doi.org/10.2307/2297484 .[18] Alessandro Pavan, Ilya Segal, and Juuso Toikka. Dynamic mechanism design: A myersonian ap-proach. Econometrica , 82(2):601–653, 2014. doi: https://doi.org/10.3982/ECTA10269. URL 
+
+https://onlinelibrary.wiley.com/doi/abs/10.3982/ECTA10269 .[19] Ishak Hajjej, Caroline Hillairet, and Mohamed Mnif. The value of the information in the moral hazard setting. Stochastics , 0 (0):1–35, 2025. doi: 10.1080/17442508.2025.2587756. URL https://doi.org/10.1080/17442508.2025.2587756 .[20] Yasin Abbasi-yadkori, D´ avid P´ al, and Csaba Szepesv´ ari. Improved algorithms for linear stochas-tic bandits. In J. Shawe-Taylor, R. Zemel, P. Bartlett, F. Pereira, and K. Weinberger, editors, Ad-vances in Neural Information Processing Systems , volume 24. Curran Associates, Inc., 2011. URL 
+
+https://proceedings.neurips.cc/paper_files/paper/2011/file/e1d5be1c7f2f456670de3d53c7b54f4a-Paper.pdf .[21] Max Simchowitz, Horia Mania, Stephen Tu, Michael I. Jordan, and Benjamin Recht. Learning without mixing: Towards a sharp analysis of linear system identification. In S´ ebastien Bubeck, Vianney Perchet, and Philippe Rigollet, editors, Proceed-ings of the 31st Conference On Learning Theory , volume 75 of Proceedings of Machine Learning Research , pages 439–473. PMLR, 06–09 Jul 2018. URL https://proceedings.mlr.press/v75/simchowitz18a.html .[22] Sarah Dean, Horia Mania, Nikolai Matni, Benjamin Recht, and Stephen Tu. On the sample complexity of the linear quadratic regulator. Foundations of Computational Mathematics , 20(4):633–679, 2020. doi: 10.1007/s10208-019-09426-y. URL 
+
+https://link.springer.com/article/10.1007/s10208-019-09426-y .[23] D. Fudenberg and D.K. Levine. The Theory of Learning in Games . Economics Learn-ing and Social Evolution Series. MIT Press, 1998. ISBN 9780262061940. URL 
+
+https://mitpress.mit.edu/9780262529242/the-theory-of-learning-in-games/ .
+
+17 Markov Information Processes 
+
+[24] Furkan Sezer. Distributionally robust joint information and mechanism design for multi-area power system coordination, 2026. URL https://arxiv.org/abs/2606.24015 .[25] Furkan Sezer. Continuous-time information design for hurricane evacuation: Disclosure, congestion, and optimal phasing under model uncertainty, 2026. URL https://arxiv.org/abs/2606.30320 .[26] Ren´ e A¨ ıd, Ofelia Bonesini, Giorgia Callegaro, and Luciano Campi. Continuous-time persuasion by filter-ing. Journal of Economic Dynamics and Control , 176:105100, 2025. doi: 10.1016/j.jedc.2025.105100. URL 
+
+https://www.sciencedirect.com/science/article/pii/S0165188925000661 .[27] Kenneth L. Judd, Sevin Yeltekin, and James Conklin. Computing supergame equilibria. Econo-metrica , 71(4):1239–1254, 2003. doi: https://doi.org/10.1111/1468-0262.t01-1-00445. URL 
+
+https://onlinelibrary.wiley.com/doi/abs/10.1111/1468-0262.t01-1-00445 .
+
+18
