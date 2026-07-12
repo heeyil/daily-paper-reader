@@ -6,70 +6,47 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-11
-- 运行时间：2026-07-11 21:43:47 UTC
+- 最新运行日期：2026-07-12
+- 运行时间：2026-07-12 21:21:46 UTC
 - 运行状态：成功
-- 本次总论文数：16
-- 精读区：6
-- 速读区：10
+- 本次总论文数：8
+- 精读区：0
+- 速读区：8
 
 ### 今日简报（AI）
-今日精选6篇精读、10篇速读，重点聚焦Agentic应用的工作流感知层与生物启发性控制机制。  
-最值得关注的是《A Workflow-Aware Serving Layer for Agentic Applications》和《Biological Motifs for Agentic Control》两篇9分论文，分别探讨代理应用的部署架构与控制理论。  
-建议优先精读这两篇高分论文，同时可速读《ACE》等7分论文以了解零样本工作流推理的实证研究。
-- 详情：[/202607/11/README](/202607/11/README)
+今日聚焦3篇AI编程智能体研究：从脚手架演化到可靠评估，再到生产环境成本优化。  
+最值得关注：LLM本身并非瓶颈，脚手架设计决定智能体质量；面向软件工程的智能体评估应更贴合开发者实际。  
+建议关注这些工作如何将智能体从探索性实验转化为确定性、低成本的工程工具。
+- 详情：[/202607/12/README](/202607/12/README)
 
 ### 精读区论文标签
-1. [A Workflow-Aware Serving Layer for Agentic Applications](/202607/11/2607.02942v1-a-workflow-aware-serving-layer-for-agentic-applications)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：面向代理应用的工作流感知服务层，支持每节点模型路由
-2. [Biological Motifs for Agentic Control](/202607/11/2607.04240v1-biological-motifs-for-agentic-control)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：智能体软件控制的生物学控制模式
-3. [Latent Programming Horizons in Coding Agents](/202607/11/2607.05188v1-latent-programming-horizons-in-coding-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：研究编码智能体的潜在编程视界，直接涉及长视距操作
-4. [TypeGo: An OS Runtime for Embodied Agents](/202607/11/2607.05482v1-typego-an-os-runtime-for-embodied-agents)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：为具身代理提供类似操作系统的运行时，采用异步多时间尺度规划
-5. [DeepSearch-World: Self-Distillation for Deep Search Agents in a Verifiable Environment](/202607/11/2607.07820v1-deepsearch-world-self-distillation-for-deep-search-agents-in-a-verifiable-environment)  
-   标签：评分：9.0/10、query:agent-lsh
-   evidence：自蒸馏框架使web代理随时间从自身经验中改进
-6. [WebSwarm: Recursive Multi-Agent Orchestration for Deep-and-Wide Web Search](/202607/11/2607.08662v1-webswarm-recursive-multi-agent-orchestration-for-deep-and-wide-web-search)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：递归多代理编排实现跨长期时域的深度广度网页搜索
+- 本次无精读推荐。
 
 ### 速读区论文标签
-1. [ACE: Agentic Control for Embodied Manipulation via Zero-shot Workflow Reasoning](/202607/11/2607.04162v1-ace-agentic-control-for-embodied-manipulation-via-zero-shot-workflow-reasoning)  
+1. [Don't Blame the Large Language Model: How Scaffolding Evolution Shapes Coding Agent Quality](/202607/12/2607.03691v1-dont-blame-the-large-language-model-how-scaffolding-evolution-shapes-coding-agent-quality)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：零样本工作流推理实现动态环境中的代理控制
-2. [Beyond the Leaderboard: A Synthesis of Tool-Use, Planning, and Reasoning Failures in Large Language Model Agents](/202607/11/2607.05775v1-beyond-the-leaderboard-a-synthesis-of-tool-use-planning-and-reasoning-failures-in-large-language-model-agents)  
+   evidence：研究脚手架进化对编码代理长期质量的影响
+2. [Reliable and Developer-Aligned Evaluation of Agents for Software Engineering](/202607/12/2607.06713v1-reliable-and-developer-aligned-evaluation-of-agents-for-software-engineering)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：综合了长程推理、规划和多智能体协调中的失败模式
-3. [From Passive Retrieval to Active Memory Navigation: Learning to Use Memory as a Structured Action Space](/202607/11/2607.05794v1-from-passive-retrieval-to-active-memory-navigation-learning-to-use-memory-as-a-structured-action-space)  
+   evidence：对LLM agent在真实软件工程中的评估方法
+3. [Progressive Crystallization: Turning Agent Exploration into Deterministic, Lower-Cost Workflows in Production](/202607/12/2607.07052v1-progressive-crystallization-turning-agent-exploration-into-deterministic-lower-cost-workflows-in-production)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：面向对话代理的长期用户记忆
-4. [WebRetriever: A Large-Scale Comprehensive Benchmark for Efficient Web Agent Evaluation](/202607/11/2607.06118v1-webretriever-a-large-scale-comprehensive-benchmark-for-efficient-web-agent-evaluation)  
+   evidence：渐进结晶化将智能体探索转化为确定性工作流
+4. [Agentic Neural Architecture Search](/202607/12/2607.07984v1-agentic-neural-architecture-search)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：面向长期任务的Web智能体评估基准
-5. [ORCAID: Oblique Rule-Based Continuous-Action Interpretation for Deep RL Policies](/202607/11/2607.07235v1-orcaid-oblique-rule-based-continuous-action-interpretation-for-deep-rl-policies)  
-   标签：评分：7.0/10、query:agent-dist
-   evidence：从强化学习代理中蒸馏出可解释的规则策略
-6. [CellPilot: an agentic framework that pilots small language models through autonomous single-cell annotation](/202607/11/biorxiv-10-64898-2026-07-06-736807-v1-cellpilot-an-agentic-framework-that-pilots-small-language-models-through-autonomous-single-cell-annotation)  
-   标签：评分：7.0/10、query:agent-lsh
-   evidence：自主agent指导工作流程规划与修订
-7. [Don't Blame the Large Language Model: How Scaffolding Evolution Shapes Coding Agent Quality](/202607/11/2607.03691v1-dont-blame-the-large-language-model-how-scaffolding-evolution-shapes-coding-agent-quality)  
+   evidence：使用LLM代理自主生成种子架构并分解为搜索空间，实现自动化研究规划
+5. [Your Agent's Memories Are Not Its Own: Forged Reasoning Attacks on LLM Agent Memory and Defenses](/202607/12/2607.05029v1-your-agents-memories-are-not-its-own-forged-reasoning-attacks-on-llm-agent-memory-and-defenses)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：脚手架演化如何影响编码代理的长期质量
-8. [Markov Information Processes](/202607/11/2607.04308v1-markov-information-processes)  
+   evidence：针对LLM agent记忆的攻击与防御
+6. [SearchEyes: Towards Frontier Multimodal Deep Search Intelligence via Search World Simulation](/202607/12/2607.05943v1-searcheyes-towards-frontier-multimodal-deep-search-intelligence-via-search-world-simulation)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：研究马尔可夫信息设计中的远视智能体，与长期规划相关
-9. [Demonstrating TOFFEE: A Learned System for Synthesizing Data Agent Trajectories at Scale](/202607/11/2607.06233v1-demonstrating-toffee-a-learned-system-for-synthesizing-data-agent-trajectories-at-scale)  
+   evidence：模拟搜索世界用于训练具备多跳推理能力的多模态搜索智能体
+7. [Mining Workflow Graphs for Black-Box Boundary Testing of Conversational LLM Agents](/202607/12/2607.06873v1-mining-workflow-graphs-for-black-box-boundary-testing-of-conversational-llm-agents)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：合成数据代理轨迹以通过微调/上下文学习实现自我改进
-10. [Think Big, Search Small: Where Capacity Matters in Hierarchical Search Agents?](/202607/11/2607.07548v1-think-big-search-small-where-capacity-matters-in-hierarchical-search-agents)  
-   标签：评分：6.0/10、query:agent-mix
-   evidence：多智能体架构中不同角色的容量分配
+   evidence：提出对话LLM智能体黑盒测试框架，发现并测试状态边界，属于智能体控制技术
+8. [CellPilot: an agentic framework that pilots small language models through autonomous single-cell annotation](/202607/12/biorxiv-10-64898-2026-07-06-736807-v1-cellpilot-an-agentic-framework-that-pilots-small-language-models-through-autonomous-single-cell-annotation)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：引导小语言模型完成完整的单细胞分析工作流
 
 
 <div class="dpr-home-promo-card">
