@@ -1,0 +1,874 @@
+Title: When is Routing Meaningful? Diversity and Robustness in Language Model Societies
+
+URL Source: https://arxiv.org/pdf/2607.09197v1
+
+Published Time: Mon, 13 Jul 2026 01:09:05 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# When is Routing Meaningful? Diversity and Robustness in Language Model Societies 
+
+Fantine Huot Michael Kaisers Mirella Lapata 
+
+Google DeepMind 
+
+{fantinehuot,mkaisers,lapata}@google.com 
+
+Abstract 
+
+Routing policies for multi-model systems are evaluated almost exclusively on task accuracy and inference cost. We argue that two prop-erties, orthogonal to performance, determine whether routing is meaningful. First, the soci-ety of actors must be behaviourally differenti-ated: if all actors respond identically, routing is vacuous. Second, the routing policy must be stable: surface-form variants of a query should be assigned to the same actor. High task ac-curacy is compatible with violating both prop-erties, since a router can operate over a redun-dant society or assign queries inconsistently, preventing specialisation regardless of perfor-mance. We adapt Hierarchic Social Entropy (HSE) to language-model societies and intro-duce a perturbation-based robustness metric to diagnose these failure modes. Applied to Em-bedLLM and RouterBench, we find that HSE exhibits strong diminishing returns, suggesting that a curated subset of fewer than ten agents re-covers most available diversity in a large pool — a practical coreset heuristic for society design. We further find that KNN routers gain accu-racy from specialist societies but collapse in robustness under perturbation, while prompted routing remains stable across all perturbation types — illustrating that accuracy and mean-ingfulness can sharply diverge. 
+
+1 Introduction 
+
+Routing is becoming a central mechanism for coor-dinating systems composed of multiple language models, tools, or agents (Wu et al., 2024; Hong et al., 2024; Li et al., 2023; Yue et al., 2025). Exist-ing work on LLM routing largely evaluates routers by downstream utility: whether they improve task accuracy, reduce cost, or select the best-performing model for a query (Chen et al., 2024; Ong et al., 2025; Hu et al., 2024; Jiang et al., 2023). A router is not merely a predictor of task performance; it is also the coordination mechanism that determines how work is distributed across a society of actors. Its usefulness, therefore, depends on two struc-tural properties. First, the society must contain behaviourally differentiated actors: if all actors re-spond in the same way, routing is vacuous (Balch, 2000; Bettini et al., 2025). Second, the routing policy should be robust to superficial variation: semantically-equivalent variants should not be sent to different actors merely because of changes in spelling, syntax, or wording (Sclar et al., 2024). Without such stability, actors cannot reliably spe-cialise. To characterise the space of choices available to a router, we adapt Hierarchic Social Entropy (Balch, 2000) to language-model societies, mea-suring behavioural diversity from model outputs rather than parameters (Stanley et al., 2019). To characterise the stability of the router’s choices, we introduce a perturbation-based robustness metric that measures whether semantically related inputs are assigned to the same actor. We validate HSE on two benchmarks, Em-bedLLM (Zhuang et al., 2025) and RouterBench (Hu et al., 2024), comparing a default society of real-world language models against synthetic soci-eties of purpose-designed experts varying in role and expertise overlap. We find that specialist societies achieve substan-tially higher HSE than pools of real-world mod-els of equivalent size, suggesting that behavioural diversity in deployed model pools is lower than commonly assumed. We further observe strong diminishing returns: fewer than ten agents suf-fice to capture most available diversity in Em-bedLLM, and four agents in RouterBench, provid-ing a practical heuristic for society design. Interest-ingly, higher HSE does not imply higher robustness: KNN routers achieve their best accuracy on spe-cialist societies but their worst robustness, while prompted routing remains stable across all HSE levels and perturbation types. Our contributions 1arXiv:2607.09197v1 [cs.MA] 10 Jul 2026 are summarised as follows: • We introduce the first behavioural diversity met-ric for LM routing analysis, adapting Hierarchic Social Entropy to language-model societies to characterise when routing is meaningful. • We introduce a perturbation-based metric that quantifies how stably a routing policy assigns semantically-equivalent queries to the same actor, paired with a five-level perturbation taxonomy for fine-grained analysis by perturbation type. • We show that HSE exhibits strong diminishing returns with society size: a curated subset of fewer than ten agents recovers most available diversity in a large real-world pool, providing a practical coreset heuristic for society design. 
+
+2 Related Work 
+
+LLM Routing and Model Selection A growing body of work studies routing as a mechanism for selecting among language models with different ca-pabilities, costs, and latency profiles. In this setting, the router is typically evaluated by its ability to im-prove the trade-off between task performance and inference cost. FrugalGPT (Chen et al., 2024), for example, formulates LLM use as a cost-sensitive cascade, where cheaper models are queried be-fore more expensive ones in order to reduce infer-ence cost while maintaining task accuracy. Router-Bench (Hu et al., 2024) provides a benchmark for multi-LLM routing, evaluating how well routing policies choose among alternative models across tasks and model families. RouteLLM (Ong et al., 2025) learns routing policies from preference data, routing queries between stronger and weaker mod-els in order to preserve response quality while re-ducing the use of expensive models. More recently, MasRouter (Yue et al., 2025) ex-tends routing to multi-agent settings, jointly opti-mising collaboration mode, role allocation, and model selection, building on multi-agent LLM frameworks in which agent roles and interaction protocols are central design choices (Wu et al., 2024; Hong et al., 2024; Li et al., 2023). 
+
+Diversity Metrics for Agent Systems The mea-surement of behavioural diversity in multi-agent systems has been studied primarily in robotics. Balch (2000) introduces Hierarchic Social Entropy (HSE) as an information-theoretic measure of robot group diversity that captures both the number and relative size of behavioural clusters across all taxo-nomic scales. More recently, Bettini et al. (2025) propose System Neural Diversity (SND), which uses Wasserstein distance over multivariate robot-policy action distributions. SND requires all the agents to compute probabilities on the same action space and would not translate to heterogeneous LM agents with access to different tools. Our work adapts HSE to LM agent societies, replacing Eu-clidean inter-agent distance with cosine similarity over behavioural vectors, and is the first to apply such metrics to LM routing analysis. The ensemble learning literature has also studied diversity as a design objective (Krogh and Vedelsby, 1994), and quality-diversity optimisation (Mouret and Clune, 2015) explicitly searches for a diverse set of high-performing solutions. 
+
+Specialisation in Multi-Agent Systems A re-lated line of work studies how individual actors come to occupy stable, distinct roles within a group — a prerequisite for routing to be meaningful over time. In multi-robot systems, specialisation is typi-cally measured by the stability of roles rather than by task accuracy. Labella et al. (2006) introduces response threshold models in which an agent’s propensity to perform a task decreases each time it is performed by another agent; specialisation is said to emerge when an agent’s threshold for a given task remains persistently low. Nitschke et al. (2008) operationalises this differently via Collective Neuro-Evolution (CONE), defining a specialised agent as one that assumes a specific be-havioural role for more than 50% of its operational lifetime. Our routing robustness metric formalises this intuition for LM societies, measuring whether semantically-equivalent query variants are stably assigned to the same actor — the distributional con-sistency that these robotics accounts identify as the precondition for specialisation. 
+
+Robustness to Prompt Perturbations A sep-arate line of work studies the robustness of lan-guage models under input perturbations, including character-level noise, lexical substitutions, syntac-tic transformations, and paraphrases. A common finding is that meaning-preserving changes can cause large accuracy swings (Sclar et al., 2024) across model sizes and instruction tuning. Prior work typically responds by training models to pro-duce consistent outputs across clean and perturbed prompts (Qiang et al., 2024), or by recommending 2that evaluations report performance ranges rather than point estimates (Sclar et al., 2024). We study robustness at a different level: not whether the final answer is stable under perturbation, but whether the routing decision is. By measuring whether perturbed queries are routed to the same actor as the original, we evalu-ate whether the routing policy induces stable task distributions over actors. 
+
+3 Preliminaries 
+
+We introduce the notation used throughout the pa-per and state the two structural properties we study. Let R = {r1, r 2, . . . , r N } be a society of N ac-tors, where each actor may correspond to a dis-tinct model, prompt, tool-using agent, or role-specialised configuration. Actors may differ in architecture, scale, training data, or system prompt. Let Q = {q1, q 2, . . . , q n} be a set of queries. A 
+
+routing policy π : Q → R assigns each query to an actor; we write ai = π(qi) for the actor assigned to query qi. We denote by Qk = {qi ∈ Q | ai = rk}
+
+the set of queries assigned to actor rk.Because actors may differ in architecture and pa-rameterisation, we do not compare them in weight space. Instead, we evaluate each actor rk on an evaluation set E = {e1, . . . , e L}, producing a be-havioural vector ,
+
+bk =  s(rk, e 1), s (rk, e 2), . . . , s (rk, e L) ∈ RL
+
+where s(rk, e l) ∈ [0 , 1] is the score of actor rk
+
+on prompt el. Stacking these vectors gives a be-havioural matrix B ∈ RN ×L, from which pairwise inter-actor distances are computed via cosine simi-larity (Section 4.2). Differences in parameter space do not necessarily correspond to differences in be-havioural space (Stanley et al., 2019); measuring diversity from B rather than from model weights is therefore both more principled and more general, extending naturally to agent societies that share a model backbone but differ in system prompt or tool access. When a separate evaluation set is not available, E may be set equal to Q.Given a society R and a routing policy π, we study two properties that are orthogonal to task accuracy. Society diversity HSE( R) (Section 4) quantifies how behaviourally differentiated the ac-tors in R are, as measured over the behavioural matrix B. This property is defined over the soci-ety alone and is independent of any routing policy. If HSE( R) ≈ 0, all actors respond similarly and routing is vacuous regardless of the policy used. 
+
+Routing robustness ρ(π, Q) (Section 5) quantifies how stably π assigns semantically-equivalent query variants to the same actor. This property is defined over the policy and depends on R only through the routing decisions π induces. If ρ(π, Q) ≈ 0, actors receive inconsistent query distributions, which un-dermines the conditions under which specialisation can emerge. Together, these two properties characterise when routing is meaningful : diversity ensures there is something non-trivial to route to, and robustness ensures that routing decisions satisfy the necessary condition for specialisation. 
+
+4 Society Diversity 
+
+Given a society R and its behavioural matrix B
+
+(Section 3), we want a single scalar capturing how behaviourally differentiated the actors are. A use-ful measure should reflect both the number of dis-tinct behavioural groups and the degree to which those groups differ. Diversity is ubiquitous in nat-ural systems (Kellert, 1996), and ecologists have demonstrated the role of functional diversity in ecosystem survival (Cadotte et al., 2011). The chal-lenge of identifying clusters of elements distributed in a continuous multidimensional space is exactly the problem faced by biologists constructing taxo-nomic systems, where each dimension represents a morphological trait distinguishing one organism from another. We adopt the same hierarchical view of entropy, replacing biological traits with the com-ponents of bk.Specifically, we adapt Hierarchic Social Entropy (HSE; Balch 2000), an information-theoretic mea-sure originally proposed for robot swarms, to LM agent societies. We do not claim diversity is always desirable: for some tasks, homogeneous teams may outperform diverse ones. However, a quantitative metric enables controlled comparisons between so-cieties and informs the design of diverse teams. 
+
+4.1 Simple Social Entropy 
+
+Simple social entropy applies Shannon’s informa-tion entropy (Shannon, 1948) to a multi-agent soci-ety to quantify behavioural diversity based on how actors are distributed among behavioural subsets. Let C = {c1, c 2, . . . , c M } be a partition of R
+
+into M homogeneous subsets, and let pi denote the proportion of actors belonging to subset ci, with PMi=1 pi = 1 . The simple social entropy of society 30.00 0.41 0.82 1.00 1.59 2.00 
+
+> Figure 1: Simple social entropy computed on societies with different cluster structures. Entropy increases from left to right as agents are distributed across an increasing number of equal-sized behavioural groups.
+
+R under partition C is: 
+
+H(R) = −
+
+> M
+
+X
+
+> i=1
+
+pi log 2(pi) (1) This measure satisfies two basic properties: (i) homogeneity : H(R) = 0 if and only if all actors fall into a single subset; (ii) maximum diversity :
+
+H(R) is maximised when actors are distributed equally across all M subsets ( pi = 1 /M for all 
+
+i). Figure 1 illustrates simple social entropy on societies with varying cluster structure. 
+
+4.2 Inter-Agent Distance 
+
+To partition R into behavioural subsets, we re-quire a pairwise distance over actors. Given the behavioural vectors bk defined in Section 3, we measure the distance between actors rj and rk as one minus their cosine similarity: 
+
+d(rj , r k) = 1 − bj · bk
+
+∥bj ∥ ∥ bk∥ (2) We prefer cosine similarity over the Euclidean dis-tance used in the original HSE formulation (Balch, 2000) because behavioural vectors may differ sub-stantially in magnitude when agents vary in overall accuracy, and we wish to capture profile similarity rather than absolute performance level (Appendix E). We prefer it over the Wasserstein distance used in SND (Bettini et al., 2025) because that metric is defined over full action distributions, which are not directly available for language model outputs. 
+
+4.3 Hierarchic Social Entropy 
+
+Simple social entropy (Equation 1) captures two aspects of diversity: the number of behavioural groups and the distribution of actors across them. It does not, however, capture the degree of differ-ence between groups. Figure 2 illustrates the con-sequence: two societies each containing three iden-tical actors and one outlier receive the same score 
+
+H = 0 .811 , regardless of whether the outlier is close to or far from the main cluster ( d1 ≪ d2, yet      
+
+> d1
+> Close Outlier
+> d2
+> Far Outlier
+> Figure 2: Simple social entropy assigns the same value (H= 0 .811 ) to both societies, since it depends only on group proportions, not on inter-group distance. The outlier agent (star) is much farther from the cluster in the right panel ( d1≪d2), yet His blind to this difference. Hierarchic Social Entropy resolves this by integrating entropy across all taxonomic levels.
+
+H is identical). This limitation matters for routing. Suppose a router assigns queries to an outlier actor that barely differs from the rest of the society. Sim-ple entropy would record non-zero diversity, yet the routing decision is nearly vacuous: the outlier provides almost no complementary capability. A useful diversity measure should be sensitive to the 
+
+degree of behavioural separation between groups, not just to whether separation exists. To obtain a single society-level score, we ag-gregate pairwise inter-actor distances (defined in Section 4.2). Bettini et al. (2025) aggregate by tak-ing the mean over all pairwise distances. This is computationally simple but conflates societies with very different cluster structures: a society with two tight, well-separated clusters and a society with uniformly scattered actors can yield the same mean distance, yet the former is far more useful for rout-ing, since actors fall into stable, distinguishable groups. Balch (2000) instead cluster actors at every possible distance threshold and measure entropy at each scale. We adopt this approach for the same reason: it is sensitive to the hierarchic structure of the behavioural space, not just its average extent. Specifically, we use hierarchical clustering with single linkage (nearest-point algorithm), which merges two clusters as soon as their closest mem-bers fall within threshold h. This is appropriate for our setting, where even a single behaviourally distinct actor justifies a separate cluster. 1 As h
+
+varies, the partition C changes, so simple social entropy becomes a function of both the society and 
+
+h, written H(R, h ). We call h the taxonomic level ,borrowing the term from Balch (2000), who in turn draws on biological taxonomy: just as a biologist 
+
+> 1The original HSE formulation uses Euclidean distance and centroid linkage rather than cosine distance and single linkage; we compare both in Appendix E.
+
+4Prompt A B C
+
+p1 1 1 1p2 0 0 0p3 0 0 0   
+
+> (a) Three identical models
+> HSE: 0.0 Norm: 0.0
+
+Prompt A B C
+
+p1 1 0 0p2 0 1 0p3 0 0 1    
+
+> (b) Three orthogonal models
+> HSE: 1.585 Norm: 1.0
+> Table 1: HSE sanity checks. (a) Identical models pro-duce zero diversity. (b) Orthogonal models achieve maximum diversity (normalised HSE = 1.0 regardless of society size). p1–p3 represent different prompts.
+
+can classify organisms at the species level or the genus level depending on how finely they wish to distinguish, h controls the resolution at which we observe the society. At h = 0 , actors merge only if their distance is exactly zero; behaviourally dis-tinct actors each form a singleton cluster, giving 
+
+H(R, 0) = log 2 M where M ≤ N is the number of distinct behavioural profiles. As h increases, similar actors merge and the number of clusters falls, until at h → ∞ all actors collapse into one group with H(R, h ) = 0 .
+
+Hierarchic Social Entropy integrates simple en-tropy across all taxonomic levels: 
+
+HSE( R) = 
+
+Z ∞
+
+> 0
+
+H(R, h ) dh (3) We define d(rj , r k) = 1 (maximum distance) when either ∥bj ∥ = 0 or ∥bk∥ = 0 , i.e., when an actor fails every evaluation prompt. HSE is a continuous ratio measure with an absolute zero (when all ac-tors are identical), enabling statements of the form “Society A is twice as diverse as Society B” and total orderings across societies of different sizes when normalised by the maximum achievable HSE for that society size. 
+
+4.4 Validating HSE 
+
+We construct minimal societies that isolate specific properties of HSE, confirming that the metric be-haves as expected before applying it at scale (see Section 7). Table 1 verifies that when all actors produce identical outputs (a), the society is max-imally homogeneous: HSE is zero and routing is vacuous, regardless of how many actors are present. When actors are fully orthogonal, each succeeding on exactly the prompts the others fail (b), HSE is maximised and normalised HSE equals 1.0. Cru-cially, the normalised value is invariant to society size, enabling fair comparisons across societies of different scales.                                    
+
+> Prompt ABCD
+> p1 1000p2 0111p3 1011p4 101—
+> Case HSE Norm HSE
+> (a) Base: three different models 0.654 0.413 (b) +duplicate model (D = C) 0.607 0.405 (c) +duplicate prompt (p4 = p3) 0.610 0.385
+> Table 2: HSE on three related cases sharing a com-mon base matrix (unshaded 3×3block, case a). The shaded column extends the base with a duplicate model D = C (case b); the shaded row extends it with a duplicate prompt p4 = p3 (case c). Adding duplicates does not increase diversity.
+
+Table 2 verifies that adding redundant informa-tion does not artificially inflate HSE. Starting from a base society of three behaviourally distinct ac-tors (case a), we extend it in two ways: adding a fourth actor whose behavioural vector is identical to actor C (case b), and adding a fourth evaluation prompt that is a copy of p3 (case c). In both cases HSE decreases slightly rather than increasing, con-firming that the metric is not fooled by redundancy. This property matters in practice: a routing system should not appear more diverse simply because ac-tors are duplicated or because the evaluation set contains repeated queries. Finally, Figure 3 em-pirically confirms monotonicity: HSE increases as behaviourally distinct actors are added. 
+
+5 Robustness of Routing Policy 
+
+Society diversity (Section 4) characterises whether a society contains actors with sufficiently differen-tiated capabilities to make routing non-trivial. But diversity alone is not sufficient: as the specialisa-tion literature makes clear (Section 2), actors can only develop stable roles if they reliably receive the same type of queries over time. We now introduce a metric that captures this second structural property directly. The central intuition is that stable query assign-ment is a necessary condition for specialisation to be possible: a router that assigns query qi to ac-tor rk but assigns a surface-form variant to actor 
+
+rj̸ = rk violates this condition, regardless of what learning dynamics operate downstream. We do not claim that stable routing produces specialisation — whether actors develop specialised competence depends on factors outside the scope of this work 5Level Class Example           
+
+> 1Character-level Typos, spacing, punctuation 2Word-level Synonym substitution 3Syntax-level Passive voice, clause reordering 4Paraphrase Full rewrite, same meaning 5Rambling Added irrelevant context
+> Table 3: Perturbation taxonomy, ordered by increasing semantic distance from the original query.
+
+— but unstable routing makes it impossible by con-struction. We therefore measure routing robustness as the degree to which surface-form variants of a query are assigned to the same actor. 
+
+5.1 Perturbation Taxonomy 
+
+The robustness metric ρ is defined relative to a per-turbation regime: the same router may be stable under surface-level noise yet unstable under seman-tic reformulation. To support both aggregate and fine-grained analysis, we define five perturbation classes of increasing semantic distance from the original query, summarised in Table 3. Perturbations at levels 1–3 preserve surface prox-imity to the original query; levels 4–5 test whether the router is sensitive to meaning-preserving refor-mulations that substantially alter wording or add noise. Full methodology and prompt templates used to generate each class of perturbations are pro-vided in Appendix B.1. By computing ρ separately for each perturbation class, one can characterise 
+
+where a routing policy breaks down: a router that degrades only at level 4–5 is more robust in prac-tice than one that degrades at level 2, even if their aggregate ρ scores are similar. 
+
+5.2 Routing Robustness Metric 
+
+Given a routing policy π and a query qi ∈ Q , recall that ai = π(qi) denotes the actor assigned to the original query (Section 3). We generate p pertur-bations q1 
+
+> i
+
+, q 2 
+
+> i
+
+, . . . , q pi of qi (see Section 5.1 for the perturbation taxonomy). The per-query robust-ness is the fraction of perturbations routed to the same actor as the original: 
+
+ρi = 1
+
+p
+
+> p
+
+X
+
+> j=1
+
+1
+
+h
+
+π(qji ) = ai
+
+i
+
+(4) where 1[·] is the indicator function. ρi ∈ [0 , 1] ,with ρi = 1 if all perturbations are routed to the same actor, and ρi = 0 if none are. 
+
+Dataset-level robustness is obtained by averag-ing over all n = |Q| queries: 
+
+ρ(π, Q) = 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+ρi (5) This metric rests on the assumption that meaning-preserving perturbations do not change which actor is most accurate for a given query: if qi and qji are semantically equivalent, the optimal assignment should be the same for both. Under this assumption, any change in routing decision reflects instability in the policy rather than a legitimate response to a change in query difficulty or actor suitability. Two boundary cases anchor the metric: a fixed router that always assigns the same actor gives 
+
+ρi = 1 for all i and ρ = 1 , while a uniform random router gives E[ρ] = 1 /N . Beyond the dataset-level aggregate, we also compute a per-actor score over the query set Qk assigned to actor rk:
+
+ρ(k)(π, Q) = 1
+
+|Q k|
+
+X
+
+> qi∈Q k
+
+ρi (6) If no queries are assigned to actor rk under policy π
+
+(i.e., |Q k| = 0 ), we define ρ(k)(π, Q) = 0 . A low 
+
+ρ(k) indicates that queries nominally assigned to actor rk are unstably routed under perturbation, violating the necessary condition for specialisation to emerge for that actor’s role. 
+
+6 Experimental Setup 
+
+Datasets We evaluate on two routing bench-marks. EmbedLLM (Zhuang et al., 2025) pro-vides performance scores across 112 models on 10 reasoning and knowledge benchmarks (MMLU, GSM8K, GPQA, ASDiv, and others), comprising 36,054 questions in total. RouterBench (Hu et al., 2024) is a complementary routing benchmark with performance scores across 11 models on 36,497 queries drawn from 8 datasets (see Appendix A for details and train, validation, and test splits). 
+
+Societies The benchmarks described above consti-tute the default societies . On EmbedLLM, we com-pare the default society (HSE=1.62) against three synthetic societies in which models are replaced by synthetic experts with binary performance indica-tors encoding domain-specific expertise: • RD (Reasoning Depth): five non-overlapping ex-perts covering five tiers of cognitive complexity, ranging from direct lookup to complex multi-step reasoning (HSE = 2.32). 6• SA (Subject Area): 15 non-overlapping experts each specialising in a distinct academic or practi-cal domain, such as advanced mathematics, com-puter science, medicine, and commonsense rea-soning (HSE = 3.91). • RD+SA : the combined pool of 20 RD and SA experts with partially overlapping expertise (HSE = 3.19). Expert categorisation heuristics are detailed in Appendix A.3. Oracle accuracy over each synthetic society is 1.0 by construction, since each query falls within exactly one expert’s domain. We define a 
+
+max-HSE subset for each benchmark: the subset of the full society that maximises normalised HSE at a fixed society size, selected greedily; this subset serves as a high-diversity reference within real-world model pools. On RouterBench we compare the full society against its max-HSE subset. 
+
+Routing Policies We evaluate five routing poli-cies: random assigns each query to a uniformly sampled actor; prompted prompts an LLM with natural-language descriptions of actor roles and few-shot examples to select the most appropriate one (see Appendix C); KNN-k (k ∈ { 1, 3, 10 })retrieves the k nearest neighbours of the query in embedding space and assigns the actor that per-formed best on those neighbours (Appendix D). 
+
+Perturbations Routing robustness (Section 5.2) is measured over the five-level perturbation taxon-omy of Section 5.1. For each query we generate one perturbation per level, yielding p = 5 variants (Appendix B.1); we report dataset-level robustness 
+
+ρ(π, Q) (Equation 5) and per-level breakdowns. 
+
+7 Results and Analysis 
+
+Specialist societies are substantially more di-verse. Figure 3 shows normalised HSE as a func-tion of society size on EmbedLLM. At any fixed size, purpose-designed specialist societies achieve higher HSE than the default real-world model pool. The SA society (HSE = 3.91) is more than twice as diverse as the default (HSE = 1.62), and the RD+SA combined pool (HSE = 3.19) similarly outpaces it despite containing many fewer total actors. This indicates that a large number of real-world models occupy similar regions of behavioural space: size alone does not imply diversity. Across all societies, HSE exhibits strong dimin-ishing returns: the marginal gain from adding an      
+
+> 020 40 60 80 100
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Number of agents
+> Normalised HSE  default RD SA RD+SA
+
+Figure 3: Normalised HSE as a function of society size for the default (real-world) and synthetic societies on EmbedLLM, using cosine distance and single linkage (greedy agent selection). All societies exhibit strong diminishing returns; the default society plateaus after approximately nine agents.             
+
+> default (1.62) RD (2.32) RD+SA (3.19) SA (3.91)
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> HSE
+> Accuracy
+> (a) Task Accuracy
+> default (1.62) RD (2.32) RD+SA (3.19) SA (3.91)
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> HSE
+> Robustness  ρ
+> (b) Routing Robustness
+> oracle prompted KNN-1 KNN-3
+> KNN-10 random original perturbed
+
+Figure 4: Task accuracy (a) and robustness ρ (b) across EmbedLLM societies ordered by HSE. Solid lines show original queries; dashed lines in (a) show perturbations. KNN routers gain accuracy on specialist societies but lose robustness; the prompted router maintains both. 
+
+actor falls sharply after the first few. For the default society, the curve plateaus after approximately nine agents. Synthetic specialist societies plateau even faster, at around four to five agents for RD and SA, because their behavioural profiles are maxi-mally orthogonal by construction. Small, carefully curated societies can recover most of the diversity available in a much larger pool, and collecting addi-tional models offers little incremental benefit. HSE can also be combined with task accuracy as a joint selection criterion: Appendix F reports results for subsets selected by maximising HSE jointly with task accuracy, showing that the joint criterion leads to better routing while preserving diversity. 
+
+KNN routers gain accuracy from specialist so-cieties but collapse in robustness. Figure 4(a) shows task accuracy rising sharply and monoton-ically for KNN routers as HSE increases. How-ever, perturbed-query accuracy collapses at every specialist society, falling to near-random levels. Panel (b) confirms that robustness ρ remains low across the entire HSE range despite high clean-query accuracy. The sharp behavioural boundaries 7Default (0.24) Max-HSE (0.53)      
+
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Robustness  ρ
+> (a) EmbedLLM
+> Default (0.26) Max-HSE (0.44)
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Robustness  ρ
+> (b) RouterBench
+> random prompted KNN-1 KNN-3 KNN-10
+
+Figure 5: Routing robustness ρ on the default society vs. the max-HSE subset for EmbedLLM (a) and Router-Bench (b). Switching to the max-HSE subset improves the prompted router on both benchmarks, and substan-tially improves all KNN routers on RouterBench. On EmbedLLM, KNN-1 robustness decreases. 
+
+that make specialist societies easy to route correctly on clean queries make them equally easy to route in-correctly when a surface-level reformulation shifts the query embedding across a domain boundary. The prompted router shows the reverse pattern. Its clean accuracy on SA is lower than KNN-10, but perturbed accuracy remains close, a gap of less than five points. Crucially, robustness rises mono-tonically with HSE, tracking society diversity in a way no KNN router does. Prompted routing latches onto the semantic intent of the query rather than its embedding position, making it naturally stable under meaning-preserving reformulations. 
+
+Max-HSE subsets improve prompted robust-ness, but the effect depends on pool structure. 
+
+Figure 5 compares the full society against the max-HSE subset on EmbedLLM and RouterBench. The prompted router improves consistently, roughly doubling its robustness on EmbedLLM and im-proving more modestly on RouterBench. The KNN routers tell a more complex story. On RouterBench, switching to the max-HSE subset dramatically res-cues KNN robustness across all values of k. On EmbedLLM, however, KNN-1 robustness actually decreases while KNN-3 and KNN-10 improve only marginally. This contrast reflects the nature of the max-HSE subset in each case: the RouterBench subset selects from models with smooth, graded behavioural profiles, so higher diversity sharpens actor distinctions without producing hard domain boundaries; the EmbedLLM pool, even at maxi-mum HSE, has less structured behavioural separa-tion, leaving nearest-neighbour routing sensitive to small surface variations in the query. 
+
+Robustness is roughly flat across perturbation levels. Figure 6 shows per-level robustness on RouterBench. Every router produces approxi-    
+
+> char
+> word
+> syntax
+> para
+> rambling
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Perturbation level
+> Robustness  ρ
+> (a) Default society
+> char
+> word
+> syntax
+> para
+> rambling
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Perturbation level
+> Robustness  ρ
+> (b) Max-HSE subset
+> random prompted KNN-1 KNN-3 KNN-10
+
+Figure 6: Routing robustness ρ per perturbation level on RouterBench for the default, full society (a) and the max-HSE subset (b). All routers are approximately flat across the five levels, with no consistent degradation from character noise to full paraphrase or rambling. 
+
+mately the same ρ at all five levels: the prompted router ranges from 0.589 (paraphrase) to 0.617 (syntax) on the full society, and from 0.663 (para-phrase) to 0.744 (word) on the max-HSE subset. No router shows a consistent decline as perturba-tions become semantically deeper. Routing poli-cies are no more sensitive to a full paraphrase than to a character-level typo, implying that rout-ing decisions are not anchored to surface features that higher-level perturbations would selectively disrupt. The only hint of level-sensitivity is the prompted router’s paraphrase dip on the max-HSE subset (0.663 vs. ≈ 0.73 elsewhere), suggesting that full rewrites may destabilise an LLM-based policy when actor distinctions are sharper. 
+
+8 Conclusion 
+
+We have argued that routing in language-model societies should be evaluated along two structural dimensions beyond task accuracy: behavioural di-versity and routing stability under surface-form query variants. For diversity, we adapted Hierar-chic Social Entropy to language-model societies, using cosine similarity over behavioural vectors as the inter-actor distance. For robustness, we intro-duced a perturbation-based metric measuring the fraction of surface-form variants assigned to the same actor. Applied to EmbedLLM and RouterBench, our analysis finds that HSE exhibits strong diminishing returns: fewer than ten agents capture most avail-able diversity, providing a practical heuristic for society design. In addition, robustness and accu-racy trade off sharply: KNN routers achieve high accuracy on specialist societies but collapse under perturbation, whereas prompted routers are less ac-curate but more stable across perturbation types and society configurations. 8Together, HSE and routing robustness ask not only whether a router performs well, but whether routing is meaningful: whether the society is suf-ficiently differentiated to justify routing decisions, and whether the policy satisfies the necessary con-dition for specialisation. 
+
+9 Limitations 
+
+Measurement assumptions HSE is computed over a fixed evaluation set E; if this set is not representative of the actual query distribution, be-havioural vectors may not reflect deployment be-haviour and diversity estimates could be mislead-ing. The max-HSE subset is selected greedily, which does not guarantee the globally optimal sub-set at a given size; the true optimum requires an exponential search. Our synthetic societies fur-ther use binary performance indicators that produce maximally sharp behavioural boundaries and ora-cle accuracy of 1.0 by construction; real specialist agents will exhibit softer, overlapping profiles, and the KNN brittleness we observe may be attenuated in practice. 
+
+Scope of the robustness metric Routing robust-ness is measured at the assignment level over single-turn queries and does not capture whether actors actually develop specialised competence as a result of stable query distributions. Extending the metric to multi-step agentic settings, where pertur-bations propagate through state rather than through a single query, is a natural next step, as is using HSE as a training signal to bootstrap diverse soci-eties from a homogeneous initialisation. 
+
+References 
+
+Aida Amini, Saadia Gabriel, Shanchuan Lin, Rik Koncel-Kedziorski, Yejin Choi, and Hannaneh Ha-jishirzi. 2019. MathQA: Towards interpretable math word problem solving with operation-based for-malisms. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics (Human Language Tech-nologies, Volume 1) , pages 2357–2367. Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski, David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, and 1 others. 2021. Program synthesis with large language models. arXiv preprint arXiv:2108.07732 .Tucker Balch. 2000. Hierarchic social entropy: An in-formation theoretic measure of robot group diversity. 
+
+Autonomous robots , 8(3):209–238. Matteo Bettini, Ajay Shankar, and Amanda Prorok. 2025. System neural diversity: Measuring behav-ioral heterogeneity in multi-agent learning. Journal of Machine Learning Research , 26(163):1–27. Yonatan Bisk, Rowan Zellers, Ronan Le Bras, Jian-feng Gao, and Yejin Choi. 2020. PIQA: Reasoning about physical commonsense in natural language. In 
+
+Proceedings of the AAAI Conference on Artificial Intelligence , volume 34, pages 7432–7439. Marc W Cadotte, Kelly Carscadden, and Nicholas Mirotchnick. 2011. Beyond species: functional di-versity and the maintenance of ecological processes and services. Journal of applied ecology , 48(5):1079– 1087. Lingjiao Chen, Matei Zaharia, and James Zou. 2024. Frugalgpt: How to use large language models while reducing cost and improving performance. Transac-tions on Machine Learning Research .Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and Oyvind Tafjord. 2018. Think you have solved question an-swering? Try ARC, the AI2 reasoning challenge. 
+
+arXiv preprint arXiv:1803.05457 .Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, and 1 others. 2021. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 .Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. 2021. Measuring massive multitask language under-standing. In International Conference on Learning Representations .Sirui Hong, Mingchen Zhuge, Jonathan Chen, Xiawu Zheng, Yuheng Cheng, Jinlin Wang, Ceyao Zhang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, Liyang Zhou, Chenyu Ran, Lingfeng Xiao, Chenglin Wu, and Jürgen Schmidhuber. 2024. MetaGPT: Meta pro-gramming for a multi-agent collaborative framework. In The Twelfth International Conference on Learning Representations .Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. 2024. Router-bench: A benchmark for multi-llm routing system. In ICML 2024 Workshop on Agentic Markets .Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. 2023. LLM-Blender: Ensembling large language models with pairwise ranking and generative fusion. In Pro-ceedings of the 61st Annual Meeting of the Associ-ation for Computational Linguistics (ACL) , pages 14165–14178. Stephen R Kellert. 1996. The value of life: biological diversity and human society. 
+
+9Anders Krogh and Jesper Vedelsby. 1994. Neural net-work ensembles, cross validation, and active learning. In Advances in Neural Information Processing Sys-tems , volume 7. MIT Press. Thomas H Labella, Marco Dorigo, and Jean-Louis Deneubourg. 2006. Division of labor in a group of robots inspired by ants’ foraging behavior. ACM Transactions on Autonomous and Adaptive Systems (TAAS) , 1(1):4–25. Jinhyuk Lee, Feiyang Chen, Sahil Dua, Daniel Cer, Madhuri Shanbhogue, Iftekhar Naim, Gus-tavo Hernández Ábrego, Zhe Li, Kaifeng Chen, Hen-rique Schechter Vera, and 1 others. 2025. Gemini embedding: Generalizable embeddings from gemini. 
+
+arXiv preprint arXiv:2503.07891 .Guohao Li, Hasan Abed Al Kader Hammoud, Hani Itani, Dmitrii Khizbullin, and Bernard Ghanem. 2023. CAMEL: Communicative agents for “Mind” explo-ration of large language model society. In Ad-vances in Neural Information Processing Systems ,volume 36. Stephanie Lin, Jacob Hilton, and Owain Evans. 2022. TruthfulQA: Measuring how models mimic human falsehoods. In Proceedings of the 60th Annual Meet-ing of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 3214–3252. Jian Liu, Leyang Cui, Hanmeng Liu, Dandan Huang, Yile Wang, and Yue Zhang. 2020. LogiQA: A chal-lenge dataset for machine reading comprehension with logical reasoning. In Proceedings of the Twenty-Ninth International Joint Conference on Artificial Intelligence , pages 3622–3628. Jean-Baptiste Mouret and Jeff Clune. 2015. Illumi-nating search spaces by mapping elites. In arXiv preprint arXiv:1504.04909 .GS Nitschke, MC Schut, and AE Eiben. 2008. Emer-gent specialization in biologically inspired collective behavior systems. In Intelligent complex adaptive systems , pages 215–253. IGI Global Scientific Pub-lishing. Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chi-ang, Tianhao Wu, Joseph E. Gonzalez, M. Waleed Kadous, and Ion Stoica. 2025. RouteLLM: Learning to route LLMs from preference data. In The Thir-teenth International Conference on Learning Repre-sentations (ICLR) .Ankit Pal, Logesh Kumar Umapathi, and Malaikan-nan Sankarasubbu. 2022. MedMCQA: A large-scale multi-subject multi-choice dataset for medical do-main question answering. In Proceedings of the Con-ference on Health, Inference, and Learning , pages 248–260. Sundar Pichai, Demis Hassabis, and Koray Kavukcuoglu. 2025. A new era of intelligence with gemini 3. Mountain View, CA: Google .Yao Qiang, Subhrangshu Nandi, Ninareh Mehrabi, Greg Ver Steeg, Anoop Kumar, Anna Rumshisky, and Aram Galstyan. 2024. Prompt perturbation con-sistency learning for robust language models. In 
+
+Findings of the Association for Computational Lin-guistics: EACL 2024 , pages 1357–1370. David Rein, Betty Li Hou, Asa Cooper Stickland, Jack-son Petty, Richard Yuanzhe Pang, Julien Dirani, Ju-lian Michael, and Samuel R. Bowman. 2024. GPQA: A graduate-level google-proof Q&A benchmark. In 
+
+First Conference on Language Modeling .Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavat-ula, and Yejin Choi. 2021. WinoGrande: An adver-sarial winograd schema challenge at scale. Commu-nications of the ACM , 64(9):99–106. Maarten Sap, Hannah Rashkin, Derek Chen, Ronan Le Bras, and Yejin Choi. 2019. Social IQA: Common-sense reasoning about social interactions. In Proceed-ings of the 2019 Conference on Empirical Methods in Natural Language Processing , pages 4463–4473. Melanie Sclar, Yejin Choi, Yulia Tsvetkov, and Alane Suhr. 2024. Quantifying language models’ sensitiv-ity to spurious features in prompt design or: How I learned to start worrying about prompt formatting. In The Twelfth International Conference on Learning Representations (ICLR) .Claude Elwood Shannon. 1948. A mathematical theory of communication. The Bell system technical journal ,27(3):379–423. Kenneth O Stanley, Jeff Clune, Joel Lehman, and Risto Miikkulainen. 2019. Designing neural networks through neuroevolution. Nature Machine Intelli-gence , 1(1):24–35. Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang, Xiaoyun Zhang, Shaokun Zhang, Jiale Liu, Ahmed Hassan Awadallah, Ryen W. White, Doug Burger, and Chi Wang. 2024. AutoGen: Enabling next-gen LLM applications via multi-agent conversations. In Proceedings of the First Conference on Language Modeling .Yanwei Yue, Guibin Zhang, Boyang Liu, Guancheng Wan, Kun Wang, Dawei Cheng, and Yiyan Qi. 2025. MasRouter: Learning to route LLMs for multi-agent systems. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 15549–15572, Vienna, Austria. Association for Computational Linguistics. Shen yun Miao, Chao-Chun Liang, and Keh-Yih Su. 2020. A diverse corpus for evaluating and developing english math word problem solvers. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 975–984. Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. 2019. HellaSwag: Can a machine really finish your sentence? In Proceed-ings of the 57th Annual Meeting of the Association for Computational Linguistics , pages 4791–4800. 
+
+10 Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. 2023. Judging LLM-as-a-Judge with MT-Bench and chatbot arena. In Advances in Neural Information Processing Sys-tems , volume 36. Richard Zhuang, Tianhao Wu, Zhaojin Wen, Andrew Li, Jiantao Jiao, and Kannan Ramchandran. 2025. Em-bedLLM: Learning compact representations of large language models. In The Thirteenth International Conference on Learning Representations .
+
+11 Table 4: Source benchmarks in EmbedLLM with the corresponding domain.                
+
+> Benchmark Domain
+> MMLU (Hendrycks et al., 2021) General knowledge (57 subjects) TruthfulQA (Lin et al., 2022) Truthfulness / factuality SocialQA (Sap et al., 2019) Social commonsense rea-soning PIQA (Bisk et al., 2020) Physical commonsense reasoning MedMCQA (Pal et al., 2022) Medical knowledge MathQA (Amini et al., 2019) Mathematical word prob-lems LogiQA (Liu et al., 2020) Logical reasoning GSM8K (Cobbe et al., 2021) Grade-school math rea-soning GPQA (Rein et al., 2024) Graduate-level science (hard) ASDiV (yun Miao et al., 2020) Arithmetic word prob-lems
+
+A Description of Router Benchmarks 
+
+A.1 EmbedLLM 
+
+EmbedLLM (Zhuang et al., 2025) is a model rout-ing and correctness-forecasting benchmark built around a matrix of binary performance labels col-lected from 112 open-source language models span-ning a wide range of sizes and specialisations (general-purpose, coding, biomedical, physics). Each model was evaluated on 36,054 questions drawn from the test sets of ten established bench-marks, summarised in Table 4. For each model– question pair the label records whether the model answered correctly (1) or not (0), yielding a correct-ness matrix Y ∈ { 0, 1}112 ×36 ,054 . Some questions were duplicates or near-duplicates which differed only by the order in which the multiple choice answers were presented, so we filtered out about 3k prompts. The remaining questions were split 80%/10%/10% into train, validation, and test sets (approximately 26K/3.6K/3.6K questions). In our work, we treat each model as an actor rk ∈R and each row of Y as the actor’s behavioural vector bk (Section 3). The full set of 112 models constitutes the default society ; the max-HSE subset 
+
+is the 9-model subset selected greedily to maximise normalised HSE (Section 6). 
+
+A.2 RouterBench 
+
+RouterBench (Hu et al., 2024) is a comprehen-sive benchmark for evaluating multi-LLM rout-ing systems, designed to cover a broad spec-trum of tasks and domains. The dataset con-tains 405,467 pre-generated inference samples 
+
+Table 5: Datasets included in RouterBench, grouped by task category. MMLU accounts for 57 of the 64 tasks; the remaining seven datasets each contribute one task.          
+
+> Benchmark Domain
+> HellaSwag (Zellers et al., 2019) Commonsense Rea-soning Winogrande (Sakaguchi et al., 2021) Commonsense Rea-soning ARC Challenge (Clark et al., 2018) Commonsense Rea-soning MMLU (Hendrycks et al., 2021) Knowledge Under-standing MT-Bench (Zheng et al., 2023) Conversation GSM8K (Cobbe et al., 2021) Math MBPP (Austin et al., 2021) 1 Coding
+
+from 11 LLMs — six open-source (Llama-70B-chat, Mixtral-8x7B, Yi-34B-chat, Code Llama-34B, Mistral-7B-chat, WizardLM-13B) and five proprietary (GPT-4, GPT-3.5-turbo, Claude-instant-v1, Claude-v1, Claude-v2) — evaluated across 8 datasets spanning 64 tasks (Table 5). Each sample records the model response along-side a quality score and an inference cost in dol-lars, enabling joint evaluation of task performance and economic cost. For routing experiments, the dataset is partitioned 80%/10%/10% into train, vali-dation, and test sets (approximately 29K/3.6K/3.6K prompts). In our work, we treat each of the 11 models as an actor rk ∈ R , using binary correctness labels as the entries of the behavioural matrix B (Section 3). The full set of 11 models constitutes the default society ; the max-HSE subset is the 4-model subset that maximises normalised HSE, selected greedily (Section 6). 
+
+A.3 Synthetic Societies Subject-Area Clustering (SA) To construct the SA synthetic society we assign each of the 67 evalu-ation items in EmbedLLM, comprising 57 MMLU subjects and 10 additional benchmarks (GSM8K, MathQA, ASDiv, LogiQA, GPQA, MedMCQA, TruthfulQA, SocialQA, PIQA), to one of 15 mutu-ally exclusive subject-area clusters. The assign-ment criterion is academic domain: items are grouped by what they are about , independently of how much reasoning they require. The resulting clusters are shown in Table 6. Each synthetic SA agent is assigned a binary performance vector, scoring 1 on every item in its cluster and 0 on all others, modelling a spe-cialist with perfect but narrowly scoped expertise. 12 ID Cluster MMLU subjects EmbedLLM                                     
+
+> C01 Elementary & school arithmetic Elementary mathematics, HS statistics GSM8K, ASDiv C02 Advanced & university mathematics Abstract algebra, college mathematics, HS mathe-matics, econometrics MathQA C03 Logic, argumentation & formal reasoning Formal logic, logical fallacies LogiQA C04 Physics & astronomy Astronomy, college physics, conceptual physics, HS physics —C05 Chemistry & earth sciences College chemistry, HS chemistry GPQA C06 Biology, genetics & virology College biology, HS biology, medical genetics, virology —C07 Clinical medicine & healthcare Anatomy, clinical knowledge, college medicine, human aging, human sexuality, nutrition, pre-medical, professional medicine MedMCQA C08 Computer science, AI & cybersecurity College CS, computer security, electrical engineer-ing, HS CS, machine learning —C09 Economics, business & accounting HS macroeconomics, HS microeconomics, man-agement, marketing, professional accounting, pub-lic relations —C10 Law & legal reasoning Business ethics, international law, jurisprudence, pre-law, professional law —C11 Ethics, philosophy & religion Moral disputes, moral scenarios, philosophy, world religions —C12 Psychology & behavioural sciences HS psychology, professional psychology, sociol-ogy SocialQA, TruthfulQA C13 Politics, international relations & security HS government & politics, security studies, US foreign policy —C14 History, geography & world knowledge Global facts, HS European history, HS geography, HS US history, HS world history, miscellaneous —C15 Commonsense & physical intuition —PIQA
+
+Table 6: Subject-area clustering of the 67 EmbedLLM evaluation items into 15 groups. The MMLU subjects 
+
+column lists the 57 individual MMLU subjects assigned to each cluster; the EmbedLLM column lists the 10 additional benchmarks. Each synthetic SA expert scores 1 on every item in its cluster and 0 on all others. HS = High School; CS = Computer Science. 
+
+Several borderline assignments are worth noting. Econometrics is placed in Advanced Mathematics rather than Economics because its questions are dominated by statistical modelling and regression rather than economic theory. GPQA is placed in Chemistry & Earth Sciences because its hardest and most distinctive questions are in graduate-level chemistry and physical sciences. TruthfulQA is placed in Psychology & Behavioural Sciences be-cause its core demandm resisting socially transmit-ted false beliefs, is an epistemic and psychological phenomenon rather than a factual one. Business Ethics is placed in Law & Legal Reasoning because its MMLU questions predominantly test corporate governance and fiduciary duty rather than philo-sophical ethics. 
+
+Reasoning-Depth Clustering (RD) To construct the RD synthetic society we assign the same 67 EmbedLLM items to one of five reasoning-depth tiers that form a strictly ordered scale from surface recall to adversarial expert reasoning. The assign-ment criterion is the dominant cognitive operation required to answer correctly, independent of sub-ject matter. 
+
+R1 (Direct Lookup) covers items answerable by retrieving a single stored fact with no infer-ence, such as recalling a historical date or a viral property (13 items). 
+
+R2 (Concept Application) covers items requiring one inferential step — applying a rule, defi-nition, or principle to a specific case — in-cluding PIQA, SocialQA, and TruthfulQA (21 items). 
+
+R3 (Multi-Step Reasoning) covers items whose solution requires composing two or more de-pendent inference steps, including GSM8K, MathQA, and MedMCQA (21 items). 
+
+R4 (Formal Symbolic Reasoning) covers items solved by mechanically applying a formal sys-tem such as logic, algebra, or proof calculus, including LogiQA and ASDiv (7 items). 13 R5 (Adversarial & Expert-Level) covers items specifically designed to defeat shallow heuris-tics, requiring deep domain expertise and re-sistance to carefully crafted near-miss distrac-tors, including GPQA and the four MMLU Professional subjects (5 items). As with SA, each RD agent scores 1 on every item in its tier and 0 elsewhere. Key borderline decisions include: TruthfulQA is assigned to R2 rather than R3 because each individual question requires a single evaluative judgment, not a reason-ing chain; LogiQA is assigned to R4 rather than R3 because its civil-service puzzles require apply-ing formal inference rules rather than multi-step domain reasoning; ASDiv is assigned to R4 rather than R1 because its design goal is robustness across diverse arithmetic structures, probing rule applica-tion rather than recall; and GPQA is assigned to R5 because it is explicitly designed so that non-experts perform near chance and domain experts reach only around 65%, with distractors crafted to exploit common expert heuristics. 
+
+B Query perturbations 
+
+B.1 Perturbation generation 
+
+We generate the query perturbations by prompting an LM, using Gemini 3.1 Flash-Lite (Pichai et al., 2025) as backbone model. This section documents the five zero-shot prompts used to generate per-turbations of each query in the evaluation sets of EmbedLLM and RouterBench (Section 5.1). Each prompt instructs the model to produce 10 rewrites of an input query {prompt} according to specific perturbation instructions for each of the five levels: character, word, syntax, paraphrase, and rambling. We request more perturbations than needed since occasionally the model produces duplicates vari-ants. We then parse the outputs and select 5 unique variants per perturbation category. 
+
+> Level 1: Character-Level Perturbations
+> Please write 10 different rewrites (perturbations) of the prompt provided below by introducing character-level perturbations such as inserting typos, mimicking a user typing quickly on a keyboard, for instance hitting adjacent keys, or replacing a character with one adjacent to it (e.g., ‘gello’ instead of ‘hello’), adding or removing random characters (e.g., ‘thng’ instead of ‘thing’), swapping two adjacent letters (e.g., ‘ehllo’ instead of ‘hello’), or using characters that look similar (e.g., ‘b3st’ instead of ‘best’, or ‘fríend’ instead of ‘friend’).
+> Level 1 (cont.)
+> Output Format
+> Format your answer by numbering each rewrite as 1., 2., 3. etc.:
+> 1. first rewrite 2. second rewrite . . .
+> Prompt
+> {prompt}
+> Level 2: Word-Level Perturbations
+> Please write 10 different rewrites (perturbations) of the prompt provided below by introducing word-level perturbations, while trying to keep the original mean-ing (semantics) intact, such as replacing a keyword with a synonym (e.g., ‘closest friend’ instead of ‘best friend’), misspelling certain words or writing them phonetically, or deleting a non-keyword such as “the,” “is,” or “of.”
+> Output Format
+> Format your answer by numbering each rewrite as 1., 2., 3. etc.:
+> 1. first rewrite 2. second rewrite . . .
+> Prompt
+> {prompt}
+> Level 3: Syntax-Level Perturbations
+> Please write 10 different rewrites (perturbations) of the prompt provided below by introducing sentence-level perturbations, which alter the structure or gram-mar of the prompt without changing the core meaning.
+> Output Format
+> Format your answer by numbering each rewrite as 1., 2., 3. etc.:
+> 1. first rewrite 2. second rewrite . . .
+> Prompt
+> {prompt}
+
+14 Level 4: Paraphrase Perturbations 
+
+Please write 10 different rewrites (perturbations) of the prompt provided below by paraphrasing without changing the core meaning, for instance by re-writing the prompt in a different voice, style, or tone. 
+
+Output Format 
+
+Format your answer by numbering each rewrite as 1., 2., 3. etc.: 
+
+1. first rewrite 2. second rewrite . . . 
+
+Prompt 
+
+{prompt} 
+
+Level 5: Rambling Perturbations 
+
+Please write 10 different rewrites (perturbations) of the prompt provided below by re-writing the entire prompt but with some unrelated noise before or after the prompt, without changing the core meaning. 
+
+Output Format 
+
+Format your answer by numbering each rewrite as 1., 2., 3. etc.: 
+
+1. first rewrite 2. second rewrite . . . 
+
+Prompt 
+
+{prompt} 
+
+B.2 Query perturbation examples 
+
+This section presents some examples of the gener-ated prompt perturbations. 
+
+EmbedLLM Perturbation Example 1 
+
+Original Prompt 
+
+How to reduce the pain of a sore throat with a natural substance? 
+
+Perturbation Variants 
+
+Level 1 (Character): 
+
+How to reduce the pain of a sore throat wth a natural subtsance 
+
+Level 2 (Word): 
+
+Alleviate pain from a sore throat using a natural remedy 
+
+Level 3 (Syntax): 
+
+How can I use a natural substance to reduce the pain of a sore? 
+
+Level 4 (Paraphrase): 
+
+What are some natural remedies I can use to soothe a sore throat? 
+
+Level 5 (Rambling): 
+
+The sky is blue today. Question: How to reduce the pain of a sore throat with a natural substance? 
+
+EmbedLLM Perturbation Example 2 
+
+Original Prompt 
+
+How can I get something sweet even when I am not eating sugar? 
+
+Perturbation Variants 
+
+Level 1 (Character): 
+
+Hoq can I get somethin gswwet even when I am not eating suagr? 
+
+Level 2 (Word): 
+
+How can I satisfy a sweet tooth if I am not consuming sugar? 
+
+Level 3 (Syntax): 
+
+If I am abstaining from sugar, how can I still enjoy something sweet? 
+
+Level 4 (Paraphrase): 
+
+How can I satisfy a craving for sweetness without consuming any sugar? 
+
+Level 5 (Rambling): 
+
+System status: online. How can I get something sweet even when I am not eating sugar? 
+
+RouterBench Perturbation Example 1 
+
+Original Prompt 
+
+Write a function to find the n’th lucas number. 
+
+Perturbation Variants 
+
+Level 1 (Character): 
+
+Wrtie a function to find the n’th lucas number. 
+
+Level 2 (Word): 
+
+Create a function to find the n’th lucas number. 
+
+Category C (Syntax): 
+
+Create a function that calculates the nth Lucas number. 
+
+Level 4 (Paraphrase): 
+
+Please code a solution to determine the 
+
+15 Lucas number at index n.                     
+
+> Level 5 (Rambling):
+> It’s been a long day. Write a function to find the n’th lucas number.
+> RouterBench Perturbation Example 2
+> Original Prompt
+> Write afunction to check if adictionary is empty
+> Perturbation Variants
+> Level 1 (Character):
+> Writ a function to check if a dictionary is empty
+> Level 2 (Word):
+> Create a function to verify if a dict is empty
+> Level 3 (Syntax):
+> Create a function that verifies whether a dictionary is empty.
+> Level 4 (Paraphrase):
+> Create afunction that determines if adictionary contains no elements.
+> Level 5 (Rambling):
+> The weather is nice today. Please write afunction to check if adictionary is empty.
+
+C Prompted Router Policy 
+
+For the prompted router policy, we use a few-shot prompt template with Gemini 3.1 Flash-Lite (Pichai et al., 2025) as LM backbone. The prompt asks a language model to select the best-suited actor for a given query, conditioned on (i) a natural-language description of each available actor, and (ii) a set of few-shot exemplars drawn from the training split. Section C.1 presents the template itself; Sec-tion C.2 describes how few-shot exemplars are se-lected; and Section C.3 show how the template is instantiated for the EmbedLLM and RouterBench datasets. 
+
+C.1 Prompt Template   
+
+> Few-Shot Routing Prompt Template
+> Instructions
+> Given a prompt, select which model is best positioned to answer. Your answer should be one of: {actors} .
+> Prompt Template (cont.)
+> Context
+> The following models are available:
+> {actors_description}
+> Few-Shot Exemplars
+> {few_shot_examples}
+> Prompt
+> PROMPT: {prompt}
+> Best model for this prompt:
+
+C.2 Few-Shot Exemplar Selection 
+
+For each actor, k exemplars are randomly sampled from training prompts where that actor is the clear winner, i.e., its score exceeds all other actors by at least a margin δ. We use k=4 and δ=0 .4. In the rare instances in which there are less than k
+
+prompts that satisfy this criteria, we fall back to sampling from training prompts where that actor achieved the highest score among all actors in the society (possibly tied with other actors). Exemplars are formatted as below and shuffled together across all specialists: 
+
+> PROMPT: {exemplar_query} Best model for this prompt: {actor}
+
+C.3 Instantiation 
+
+For EmbedLLM and RouterBench we list all the names of the LLMs available in the dataset, e.g., huggingfaceh4_zephyr_7b_beta , in the 
+
+{actors_description} field. For the synthetic societies, each actor corre-sponds to a knowledge domain (subject area), a reasoning depth, or both, so we inject the de-scriptions below into the {actors_description} 
+
+placeholder.          
+
+> EmbedLLM Synthetic SA
+> •elementary_math : a specialist in foundational numerical operations and word problems at primary/middle-school level •advanced_math : a specialist in university-level pure and applied mathematics requiring symbolic manipulation, proof, or multi-domain quantitative reasoning •logic : a specialist in the application of formal logical rules, identification of valid/invalid argu-ment structures, and detection of informal falla-cies •physics : a specialist in principles of mechan-
+
+16 Subject Areas (cont.) 
+
+ics, electromagnetism, thermodynamics, quantum physics, and astrophysics at high-school to gradu-ate level • chemistry : a specialist in chemical principles from stoichiometry and bonding to organic reac-tions and physical chemistry, plus graduate-level natural science breadth • biology : a specialist in life sciences spanning molecular biology, genetics, evolutionary biology, ecology, and virology at school to university level • medicine : a specialist in clinical diagnosis, pa-tient management, pharmacology, and healthcare practice at the level of medical school and profes-sional licensing • computer_science : a specialist in algorithms, data structures, machine learning models, com-puter systems, and security—theoretical and ap-plied CS at school to graduate level • economics : a specialist in micro/macroeconomic theory, business management, marketing, public relations, and professional accounting • law : a specialist in legal theory, jurisprudence, international and domestic law at the level of law school entry and professional bar examination • philosophy : a specialist in normative ethics, ap-plied moral reasoning, philosophy of mind and knowledge, and comparative religion • psychology : a specialist in cognitive, develop-mental, clinical, and social psychology, plus pro-fessional assessment and therapy practice • politics : a specialist in political institutions, government, foreign policy, international security, and strategic studies • history : a specialist in historical events and movements (European, US, world), human and physical geography, and broad cross-national fac-tual knowledge • commonsense : a specialist in implicit everyday knowledge about how the physical world works and how people behave 
+
+EmbedLLM Synthetic RD 
+
+• direct_lookup : a model whose answers are stored facts retrievable in one step, with no in-ference, calculation, or reasoning chain needed • concept_application : a model that applies a concept, rule, or definition to a specific case in one inferential step, requiring understanding beyond rote recall but no chaining • multi_step : a model that reaches the answer by composing two or more distinct reasoning steps, each depending on the output of the previous • formal_symbolic : a model that derives the an-swer by applying a formal system (logic, algebra, proof) according to explicit syntactic rules • adversarial : a model tested on questions specif-ically designed to defeat shallow heuristics, requir-ing deep domain expertise, resistance to plausible distractors, and often meta-cognitive awareness 
+
+n HSE rand. KNN1 KNN3 KNN10 orac. default 112 0.24 0.43 0.52 0.57 0.65 0.97 HSE 9 0.53 0.30 0.34 0.40 0.46 0.87 12 0.49 0.30 0.35 0.41 0.46 0.89 25 0.41 0.35 0.48 0.50 0.52 0.94 HSE + acc. 9 0.48 0.33 0.52 0.59 0.65 0.92 12 0.47 0.34 0.52 0.58 0.65 0.93 25 0.41 0.35 0.46 0.55 0.63 0.96 
+
+Table 7: Task accuracy and society diversity (normalised HSE) for different routing policies over subsets of the EmbedLLM society selected under two criteria: max-imising HSE alone, and maximising HSE jointly with task accuracy. 
+
+D KNN Router Policy 
+
+The KNN-based router computes an embedding 
+
+e(q) of the query using Gemini Embedding 2 as model backbone (Lee et al., 2025) and retrieves the 
+
+k nearest neighbours Nk(x) from the training set using cosine similarity in the embedding space. It then assigns the actor with highest score over the 
+
+k nearest neighbours. 
+
+E Effect of Distance Metric and Linkage on HSE 
+
+Figure 7 reports normalised HSE as a function of society size across all twelve combinations of dis-tance metric (cosine, correlation, euclidean, man-hattan) and linkage method (single, complete, aver-age), using greedy agent selection on EmbedLLM. The qualitative pattern is consistent across configu-rations: specialist societies plateau rapidly at high HSE while the default real-world pool plateaus at a substantially lower level, confirming that the find-ing reported in Section 7 does not depend on the choice of distance or linkage. Cosine distance with single linkage, used throughout the main paper, pro-duces the most conservative estimates of diversity for the default society. 
+
+F Effect of Model Selection Criteria 
+
+Table 7 reports task accuracy and society diver-sity for subsets of the EmbedLLM society selected under two criteria: maximising HSE alone, and maximising HSE jointly with task accuracy. The results reveal a diversity-accuracy tradeoff. Subsets selected purely on HSE achieve higher normalised HSE at every size but lower routing task accuracy. Adding task accuracy to the selection criterion re-covers routing performance — at n= 9 , KNN-10 17 matches the full 112-model society exactly (0.65) and oracle reaches 0.92 — but at the cost of lower HSE (0.48 vs. 0.53). The HSE + acc. subset at 
+
+n= 9 achieves competitive routing accuracy using fewer that 10% of the available models, provid-ing a practical coreset that balances diversity and performance. 18 0 20 40 60 80 100 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+> Normalised HSE
+
+cosine / single 
+
+0 20 40 60 80 100 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+cosine / complete 
+
+0 20 40 60 80 100 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+cosine / average 
+
+0 20 40 60 80 100 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+> Normalised HSE
+
+correlation / single 
+
+0 20 40 60 80 100 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+correlation / complete 
+
+0 20 40 60 80 100 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+correlation / average 
+
+0 20 40 60 80 100 
+
+0
+
+5
+
+10 
+
+15 
+
+20 
+
+25 
+
+> HSE
+
+euclidean / single 
+
+0 20 40 60 80 100 
+
+0
+
+5
+
+10 
+
+15 
+
+20 
+
+25 
+
+euclidean / complete 
+
+0 20 40 60 80 100 
+
+0
+
+5
+
+10 
+
+15 
+
+20 
+
+25 
+
+euclidean / average 
+
+0 20 40 60 80 100 
+
+0
+
+100 
+
+200 
+
+300 
+
+400 
+
+500 
+
+Number of agents 
+
+> HSE
+
+manhattan / single 
+
+0 20 40 60 80 100 
+
+0
+
+100 
+
+200 
+
+300 
+
+400 
+
+500 
+
+600 
+
+Number of agents 
+
+manhattan / complete 
+
+0 20 40 60 80 100 
+
+0
+
+100 
+
+200 
+
+300 
+
+400 
+
+500 
+
+Number of agents 
+
+manhattan / average 
+
+default SA RD RD+SA 
+
+Figure 7: Normalised HSE as a function of society size across all combinations of distance metric (rows: cosine, correlation, euclidean, manhattan) and linkage method (columns: single, complete, average), using greedy agent selection on EmbedLLM. Cosine and correlation panels are normalised by the maximum achievable HSE; euclidean and manhattan panels show raw HSE values. The qualitative pattern — specialist societies plateau rapidly at high HSE while the default real-world pool plateaus at a substantially lower level — is consistent across all twelve configurations. 
+
+19

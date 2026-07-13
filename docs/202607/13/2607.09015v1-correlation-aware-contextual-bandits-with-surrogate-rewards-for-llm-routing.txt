@@ -1,0 +1,5822 @@
+Title: Correlation-Aware Contextual Bandits with Surrogate Rewards for LLM Routing
+
+URL Source: https://arxiv.org/pdf/2607.09015v1
+
+Published Time: Mon, 13 Jul 2026 00:22:38 GMT
+
+Number of Pages: 44
+
+Markdown Content:
+# Correlation-Aware Contextual Bandits with Surrogate Rewards for LLM Routing 
+
+## Ajay Narayanan Sridhar, Ronak Singh, Mehrdad Mahdavi, Vijaykrishnan Narayanan The Pennsylvania State University 
+
+## {afs6372,rjs7006,mzm616,vxn9}@psu.edu 
+
+Abstract 
+
+We study contextual bandit problems with correlated arms and access to surrogate reward signals produced by a machine learning model, motivated by applications such as large language model (LLM) routing. Unlike classical contextual bandits that rely solely on bandit feedback and assume conditional independence across arms, our setting allows context-dependent inter-arm correlations and auxiliary reward information that may be noisy or misspecified. We propose algorithms that leverage such surrogate rewards through two complementary designs. A coupled reward-mixing approach pools true and surrogate rewards to accelerate learning when surrogate signals are reliable, while a decoupled prediction-mixing approach maintains separate estimators for bandit feedback and surrogate rewards and adaptively combines their predictions. This decoupling yields robustness to surrogate misspecification, recovering regret guarantees comparable to reward-only bandit methods in the worst case, while achieving improved regret when surrogate predictions are sufficiently informative. We provide theoretical regret analyses for both approaches and evaluate them on LLM routing benchmarks under varying accuracy versus cost trade-offs. The results demonstrate improved sample efficiency and consistently better accuracy–cost trade-offs compared to standard contextual bandit baselines and strong static routing methods. 
+
+# 1 Introduction 
+
+The rapid proliferation of Large Language Models (LLMs) has made it increasingly challenging for end-users to keep track of advancements and optimally select models for their specific needs. Presently, numerous proprietary LLM providers exist [ 38 , 23 , 51 ], and thousands more are openly available through repositories such as Hugging Face [ 28 ]. This abundance creates a practical systems problem: for a given query, which model should be called? The answer is rarely the most accurate model, since inference incurs nontrivial cost (e.g., pricing, latency, compute). In many applications, the objective is an accuracy–cost trade-off : a slightly less accurate model may be preferable if it is significantly cheaper or faster, and the optimal choice varies with context. Existing unified interfaces address this challenge through model cascading [ 11 , 26 ], ensembling [ 30 ], and routing [ 36 , 37 , 55 , 42 , 33 ]. We focus on routing: selecting one model per query to maximize user-defined utility. A common reduction models LLM routing as a contextual multi-armed bandit , where each LLM is treated as a conditionally independent arm given the incoming query context, and only the selected arm’s reward is observed, requiring costly exploration. In the d-dimensional linear setting, where the context is represented by a d-dimensional embedding and each arm’s expected reward is assumed to be a linear function of this embedding, standard methods achieve regret RS = O(pdKT log( T /d )) [ 19 ] given K arms (LLMs) for T stream of queries, where regret is the cumulative loss relative to the best context-dependent action. However, this conditional-independence abstraction is often too coarse: models exhibit query-dependent correlations due to shared pretraining data, alignment pipelines, and architectures. Exploiting such correlations can reduce uncertainty about unplayed arms and lower the effective exploration burden. LLM routing also provides a source of side information largely absent from standard bandit settings: offline performance data. Benchmarks or historical logs can train machine learning (ML) predictors that map query 1arXiv:2607.09015v1 [cs.LG] 10 Jul 2026 contexts to per-arm reward estimates. During online routing, these estimates can serve as surrogate rewards for unplayed arms. Although surrogate rewards may be biased or noisy, they can still reveal relative arm quality. The key challenge is to exploit surrogate rewards when helpful without over-trusting them when misspecified. This motivates our central research question: 
+
+Can we design contextual bandit algorithms that systematically exploit both context-dependent inter-model correlations and auxiliary ML-predicted surrogate rewards to accelerate learning, while remaining robust to surrogate misspecification? 
+
+To address this question, we study contextual bandits with correlation-aware graph feedback and auxiliary 
+
+surrogate rewards . Each round, the learner observes the query context and context-dependent side information about inter-arm relationships, which are used to form a feedback graph that identifies a small set of additional arms whose feedback is most informative given the chosen arm. After selecting an arm and observing its realized reward, the learner additionally receives ML-predicted surrogate rewards for the arms in this graph-selected set, providing partial multi-arm side information beyond the chosen arm. We first propose a coupled reward-mixing 
+
+approach, Correlation-Aware Bandits with Surrogates Coupled (CABS-C), which builds on graph-feedback variants of SquareCB [ 54 , 53 ] by pooling de-biased true rewards with surrogate rewards to fit a single contextual model. This coupling effectively increases the number of informative observations per round, improving the exploration factor from K to K/ (m + 1) , where m is the number of additional arms for which surrogate rewards are revealed each round. The price of coupling these observations is an added sensitivity to surrogate error. For linear bandits, we show the regret scales as RC = eO
+
+pdKT log( T /d )/(m + 1) + εn
+
+pT K 2/(m + 1) 
+
+
+
+, where εn quantifies the worst-case magnitude of surrogate noise/misspecification (see Assumption 4.4). The preceding regret bound makes the trade-off explicit: accurate surrogates reduce the effective exploration burden, while large surrogate error can dominate and make tight coupling brittle. Motivated by this robustness issue, we propose a decoupled prediction-mixing strategy, Correlation-Aware Bandits with Surrogates Decoupled (CABS-D), that treats (i) a reward-only contextual bandit; and (ii) a correlation-aware (surrogates induced graph feedback) bandit (CABS-C) as two experts and combines them using an adaptive expert-aggregation master, in the spirit of adaptive Hedge methods [ 1, 17 ]. The resulting meta-bandit promises a best-of-both-worlds guarantee, RD = O(min {RS , R C }), allowing us to match the standard contextual bandit rate (plus mild overhead) in the worst case while inheriting correlation-driven gains when surrogate feedback is reliable. We evaluate our LLM routing approaches, observing improved sample efficiency and better accuracy–cost trade-offs compared to online bandit and static baselines. 
+
+Contributions In summary, our contributions are: 
+
+• We introduce correlation-aware contextual bandits with surrogate rewards , where context-dependent inter-arm relationship signals induce a graph-feedback structure and an auxiliary predictor provides surrogate rewards for graph-specified arms beyond the true reward observed for the chosen arm. 
+
+• We propose CABS-C (coupled reward mixing ) and CABS-D (decoupled prediction mixing ), clarifying when tight coupling is beneficial and when decoupling is necessary for robustness. 
+
+• We establish regret bounds that explicitly separate correlation-driven gains (reduced effective exploration) from surrogate noise/misspecification, including a best-of-both-worlds guarantee for CABS-D that matches standard contextual bandits in the worst case, while simultaneously achieving an improved regret that scales inversely with the number of surrogate rewards under mild conditions. 
+
+• We evaluate our methods on LLM routing benchmarks and demonstrate improved sample efficiency and stronger accuracy–cost trade-offs relative to online bandit baselines and static routing policies. Ultimately, these results demonstrate that leveraging predicted surrogate rewards offers a powerful framework for LLM routing, yielding substantial regret reductions. Specifically, our approach effectively interpolates between the full-information and bandit settings, with the performance gains smoothly scaling based on the quality of the surrogate rewards and correlation among LLMs. This finding may be of independent interest beyond the specific setting considered here. 2Figure 1: Overview of the LLM routing task and the proposed CABS-C/CABS-D online learning pipeline. The router selects an LLM under cost sensitivity parameter ρ, while AO , RO , and RS denote the affinity oracle, reward oracle, and regression solver used by the CABS-C/CABS-D algorithms. 
+
+# 2 Related Work 
+
+In this section, we discuss the works most directly related to our approach and highlight the key distinctions from our method. A more comprehensive overview of the multi-armed bandit and LLM routing literature, including detailed comparisons of regret bounds and theoretical guarantees, is deferred to Appendix A. 
+
+Contextual Bandits, Graph Feedback, and Expert Aggregation. Our work builds on contextual bandits such as SquareCB [ 19 ], LinearUCB [ 15 ], and NeuralUCB [ 56 ], and is closest to contextual bandits with graph feedback [ 53 , 54 ]. Unlike SquareCB-G [ 54 ], which observes true rewards for graph neighbors, and SquareCB-UG [ 53 ], which learns an unknown graph after action selection, we observe true reward only for the selected arm and receive surrogate rewards from a context-dependent graph known before action selection. CABS-D is related to Hedge/AdaHedge-style expert aggregation [ 22 , 17 ] and Corral-style bandit masters [ 1], but adapts specifically between standard bandit feedback and surrogate graph feedback. Auxiliary-feedback methods [ 13 , 46 , 29 ] use external signals mainly to improve estimates for the played arm, whereas we propagate surrogate feedback across multiple arms. See [31] and Appendix A for a broader overview. 
+
+LLM routing. LLM routing selects a model for each query under quality, cost, or latency constraints. Prior work includes offline routers trained from preference or performance data [ 37 , 55 , 42 , 12 , 18 , 41 ], benchmarks for cost–performance routing [ 25 , 41 ], and online routing methods based on contextual bandits or dueling bandits [ 36 , 33 , 48 , 50 , 16 , 14 ]. Existing online routing strategies largely do not explicitly model intrinsic correlations among LLMs (beyond implicit representation sharing), which can limit sample-efficiency when model behaviors are strongly related. Addressing this gap, our correlation-aware routing framework exploits context-dependent inter-arm relationships and integrates auxiliary surrogate signals while remaining robust to surrogate misspecification, yielding improved routing utility across cost regimes. 
+
+# 3 Problem Setting 
+
+We consider an online LLM routing problem setting operating over a finite horizon of T discrete rounds, indexed by t ∈ [T ] := {1, 2, . . . , T }. The router (learner) has access to a fixed pool of K distinct LLMs (arms), denoted by the set K = [ K] := {1, 2, . . . , K }. At each round t ∈ [T ], the learner observes a prompt and its context embedding vector xt ∈ X ⊆ Rd, where X is a bounded context space, and must select an LLM it ∈ [K] to process the prompt. 3The selected model, it, produces an outcome ot and incurs a cost-aware reward rt,i t (xt); when convenient, we write rt,i t and define the corresponding loss ℓt,i t = 1 − rt,i t . The reward typically captures generation quality (e.g., accuracy, helpfulness) and trades off it against operational constraints (e.g., latency, token cost). We explicitly bound the reward and loss to the [0 , 1] interval, which is standard and necessary for regret analysis. Figure 1 provides an overview of this LLM routing task and the proposed CABS-C/CABS-D online learning pipeline. To exploit query-dependent correlations among LLMs and auxiliary reward predictions from offline data, we formulate LLM routing as a correlation-aware contextual bandit with surrogate rewards. At each round t, in addition to xt, the learner observes inter-arm side information from an affinity oracle ( AO ), represented either as a correlation matrix Rt ∈ RK×K or as a time-varying, context-dependent directed feedback graph Gt over [K]
+
+with adjacency matrix At ∈ { 0, 1}K×K , where At, (i,j ) = 1 indicates an edge from arm i to arm j. By default, 
+
+At, (i,i ) = 1 for all i ∈ [K]. The side information among LLMs quantifies how performance scales across different models for a specific context. Upon selecting arm it, the learner observes the true realized reward only for the chosen arm it. However, for other arms j̸ = it specified by the feedback graph, the learner receives surrogate rewards st,j from a reward oracle (RO ). The surrogate rewards predicted by the RO act as a proxy estimate derived from offline data or cross-model evaluation functions. The conditional bias or variance of the surrogate reward st,j relative to the true underlying reward rt,j is assumed to be bounded. Similar to [ 19 , 54 ], we assume that the learner has access to a regression solver ( RS ) that is invoked at each round t to update arm models from historical input–output data. The RS serves as an abstract optimization primitive that handles the algorithmic complexity of empirical risk minimization and can efficiently compute a predictor from a predefined function class F (such as linear models or deep neural networks). Formally, given a sequence of context-dependent importance weights wτ,j ≥ 0, the RS processes the accumulated feedback history up to the previous round to solve a weighted empirical risk minimization problem for each arm i ∈ [K] to update its model: 
+
+ˆft,i = arg min  
+
+> f∈F
+> t−1
+
+X 
+
+> τ=1
+
+wτ,i (f (xτ , i ) − ˆrτ,i )2 + R(f )
+
+where ˆrτ,i represents the importance-weighted estimate at round τ computed based on true or surrogate rewards (equal to ˆrτ,i τ = rτ,i τ /p τ,i τ if i = iτ , and ˆrτ,j = ( sτ,j − ˆbτ,j )/(A⊤
+
+> τ, (: ,j )
+
+pt) if i is revealed by the feedback graph Gτ ), with rτ,i τ being the true observed reward, sτ,i being the proxy surrogate reward with estimated bias 
+
+ˆbτ,j , and pτ,i τ being the probability of selecting arm i at round τ . Here, R(f ) is an optional regularization term (e.g., ℓ2 penalty) used to prevent overfitting in high-dimensional context spaces. The learner’s objective is to minimize the cumulative regret over T rounds. The optimal arm at round t is defined as the arm that maximizes the true reward for the given context: i⋆t = arg max i∈[K] E [rt,i (xt)] . The cumulative regret Reg (T ) is given by 
+
+Reg (T ) = PTt=1 E rt,i ⋆t (xt) − E [rt,i t (xt)] , which we use to measure the performance of online routing algorithm. 
+
+# 4 The Proposed Algorithms 
+
+In this section, we propose two algorithms for contextual bandits with surrogate rewards and correlated arms. We first introduce a reward-mixing method, CABS-C, that learns from both true rewards and de-biased surrogate feedback. We then introduce a prediction-mixing method, CABS-D, that dynamically integrates predictions from CABS-C with those from a standard bandit-feedback method (SquareCB [ 19 ] or LinUCB [ 32 ]) to achieve best-of-both-worlds regret guarantees. 
+
+## 4.1 A coupled algorithm with provable regret bound 
+
+We first propose Correlation-Aware Bandits with Surrogates Coupled (CABS-C), detailed in Algorithm 1. CABS-C builds on graph-feedback variants [ 54 , 53 ] of SquareCB by using the feedback graph to guide exploration, but adapts this framework to the surrogate-feedback setting. Specifically, CABS-C de-biases surrogate rewards from correlated arms and pools them with the selected arm’s true reward to train a single reward model. Each arm is 4Algorithm 1 Correlation-Aware Bandits with Surrogates Coupled (CABS-C)  
+
+> 1:
+
+Input: Number of rounds T , regularization parameter γ. 
+
+> 2:
+
+Oracles: Reward oracle RO : X × [K] × R+ → RK 
+
+> +
+
+, affinity oracle AO : X → RK×K , regression solver 
+
+RS : X → RK×d 
+
+> 3:
+
+Initialize: n0,i = 0 and ˆb0,j = 0 for all i ∈ [K] 
+
+> 4:
+
+for t = 1 to T do  
+
+> 5:
+
+Receive context xt and corresponding correlation matrix Rt from AO (xt). 
+
+> 6:
+
+Generate affinity graph Gt with adjacency matrix At: At, (i,j ) = 1 w.p. σ((1 − Rt, (i,j ))/2)  
+
+> 7:
+
+Obtain an estimator ˆθt,i : Rd for all i ∈ [K] from RS (xt) 
+
+> 8:
+
+Set pt = arg min p∈∆([ K]) ϕ(p; ˆθt, xt, At), where ϕ(p; ˆθt, xt, At) is defined as follows, 
+
+:= sup 
+
+> i∗∈[K]
+> θ∗∈RK×d
+
+Ei∼p
+
+x⊤ 
+
+> t
+
+θ∗ 
+
+> i∗
+
+− x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+− γ
+
+4
+
+X
+
+> k:At, (i,k )=1
+
+E[At, (i,k )]( x⊤ 
+
+> t
+
+θ∗ 
+
+> k
+
+− x⊤ 
+
+> t
+
+ˆθt,k )2
+
+ 
+
+> 9:
+
+Sample action it ∼ pt and receive true reward rt,i t . 
+
+> 10:
+
+Observe surrogate rewards st,j from RO (xt, i t, r t,i t ) for all j ∈ N t(it), where Nt(it) is all arms in the neighborhood of arm it (including it) according to Gt 
+
+> 11:
+
+Construct de-biased surrogate rewards ˜st,j = st,j − ˆbt,j for all j ∈ N t(it) 
+
+> 12:
+
+Update the bias estimator for all j ∈ N t(it) by setting nt+1 ,j ← nt,j + 1 and 
+
+ˆbt+1 ,j ←
+
+
+
+1 − 1
+
+nt+1 ,j 
+
+
+
+ˆbt,j + 1
+
+nt+1 ,j 
+
+ st,j − x⊤ 
+
+> t
+
+ˆθt,j 
+
+. 
+
+> 13:
+
+Keep parameters the same for unobserved arms: nt+1 ,k = nt,k , ˆbt+1 ,k = ˆbt,k for k / ∈ N t(it). 
+
+> 14:
+
+Set importance-weighted estimate for chosen arm: ˆrt,i t = rt,i t /p t,i t . 
+
+> 15:
+
+Set importance-weighted estimates for surrogates: ˆrt,j = ˜ st,j /(A⊤
+
+> t, (: ,j )
+
+pt) ∀j ∈ N t(it) \ { it}. 
+
+> 16:
+
+Feed the tuples {(xt, ˆrt,j )}j∈N t(it) to the oracle RS  
+
+> 17:
+
+end for 
+
+modeled as a function f which could be linearly parametrized by ˆθi, i ∈ [K] or implemented as a neural net. At round t, the algorithm observes context xt and an affinity matrix Rt, samples a stochastic feedback graph Gt
+
+with adjacency matrix At, and obtains reward estimates from the regression solver RS . The action distribution 
+
+pt ∈ ∆([ K]) , where ∆([ K]) is (K − 1) -dimensional simplex, is then computed by solving a optimization problem (Line 8), which chooses an arm by balancing low immediate regret with high information gain from the feedback graph. Unlike a standard contextual bandit rule, which only trades off reward and uncertainty for the selected arm, this step explicitly accounts for additional side observations revealed through graph neighbors; thus, it may select an arm that is slightly suboptimal in immediate reward if it yields more informative feedback overall. The parameter γ controls this trade-off. After sampling an arm it according to pt, the learner observes its true reward and receives surrogate rewards 
+
+{st,j } for graph neighbors Nt(it) := {j ∈ [K] : At, (it,j ) = 1 }, where each st,j ∈ [0 , 1] is produced by the reward oracle RO . CABS-C then de-biases the surrogate feedback, constructs importance-weighted reward estimates, and updates RS . Thus, CABS-C interpolates between bandit and full-information learning by using context-dependent graph structure to propagate imperfect surrogate feedback beyond the selected arm. While graph-based side observations and surrogate feedback have each been studied independently in prior work, CABS-C jointly addresses both in a single correlation-aware bandit framework. We now turn to establishing the regret bound for the algorithm. Before, we state the assumptions in our setting below. 5Assumption 4.1 (Realizability) . Following [ 19 ], we assume the expected true rewards are realizable, i.e. there exists f ⋆ ∈ F such that, E[rt,i | xt] = f ⋆(xt, i ), ∀t ∈ [T ], i ∈ [K].
+
+When we work with losses, we use the convention ℓt,i = 1 − rt,i , in which case the same realizability condition holds for losses as well (up to an affine transformation of the function class). In our work, we consider parametric function classes of the form fθ (x, i ), where θ denotes model parameters. In the linear contextual bandit special case, fθ (x, i ) = x⊤θi, whereas more generally fθ may be a neural network or other nonlinear predictor. 
+
+Assumption 4.2 (Regression Oracle) . Following [ 54 ], we assume the regression oracle RS guarantees that for any sequence {(xt, ˆrt,j )}j∈O t,t ∈[T ] in which Ot ⊆ [K], the oracle produces a function ˆft such that 
+
+PTt=1 
+
+P
+
+> i∈O t
+
+ f ⋆(xt, i ) − ˆft(xt, i )2 ≤ Reg Sq (T ).Note that this assumption holds for any function class. In our analysis, we stick to linear functions, i.e, 
+
+ˆft(xt, i ) = x⊤ 
+
+> t
+
+ˆθt,i and f ⋆(xt, i ) = x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+.
+
+Assumption 4.3 (Strong Observability) . For a directed graph Gt = ([ K], E ), a node i is observable if {j ∈
+
+[K]; At, (j,i ) = 1 }̸ = ∅. An observable node, i is strongly observable if either i ∈ { j ∈ [K]; At, (j,i ) = 1 } or 
+
+{j ∈ [K]; At, (j,i ) = 1 } = [ K] \ { i}. If all nodes i ∈ [K] are strongly observable, then the graph Gt is strongly observable and has independence number α.Following [ 5], since we assume that pulling an arm always reveals its own loss, we satisfy i ∈ { j ∈ [K]; At, (j,i ) =1}, making the graph strongly observable. 
+
+Assumption 4.4 (ML Side Observation Model) . For every observed arm i ∈ N t(it), the surrogate reward is 
+
+st,i = f ⋆(xt, i ) + bi + ξt,i , where bi ∈ R is a fixed arm-dependent bias and ξt,i is a zero-mean noise term satisfying 
+
+E[ξt,i | F t−1, xt] = 0 and |ξt,i | ≤ εn.Here filtration Ft denotes the information available up to time t, and εn bounds the surrogate noise across rounds and observed arms. Intuitively, bi captures systematic surrogate over- or under-estimation for arm i, while larger εn corresponds to noisier and less informative side observations. 
+
+Assumption 4.5 (Minimum Probability) . Following [ 4], we make the assumption that pt,i ≥ ϵ for all (t, i ), where 
+
+pt,i indicates the probability of selecting arm i at round t. This can be achieved by mixing pt with a uniform mass. Note that this ϵ is distinct from the εn quantity from Assumption 4.4 Using the above assumptions, we introduce a lemma for concentrating the noise term of surrogate rewards, and then we introduce a theorem and accompanying corollary for bounding the expected regret of Algorithm 1. The proofs are deferred to Appendix F.2. 
+
+Lemma 4.6. Suppose the feedback graph Gt is deterministic with independence number no more than α. Then, for all δ > 0, with probability 1 − δ Algorithm 1 guarantees that 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ≤ εn
+
+s
+
+2αKT ln 
+
+ 2KT δ
+
+
+
+ln 
+
+ 4Kαϵ 
+
+
+
+(1 + ln T ). (1) 
+
+Theorem 4.7. Suppose that the feedback graph Gt is strongly observable, and has independence number no greater than α. Under Assumptions 4.1–4.2, with probability at least 1 − δ, Algorithm 1 guarantees that, E[ Reg T ] ≤
+
+eO
+
+q 
+
+αT Reg Sq (T ) + εn
+
+√αKT 
+
+
+
+.
+
+For an m-feedback graph, where each round reveals m surrogate rewards, Theorem 4.7 yields the following linear-oracle specialization. 
+
+Corollary 4.8 (Linear oracle with m-feedback) . Assume that we have a linear oracle and we observe surrogate rewards for m arms per round. Then with probability at least 1 − δ CABS-C guarantees 
+
+E[Reg T ] ≤ eO
+
+s
+
+d Km + 1 T log 
+
+ Td
+
+
+
++ εn
+
+r K2
+
+m + 1 T
+
+!
+
+6Brief discussion of bias and noise. If we ensure that εn = O(1 /√K), we recover the same asymptotic regret (up to polylogs) as the standard contextual bandit with graph feedback setting, eO
+
+pαT Reg Sq (T )
+
+
+
+. If the bias and noise are well-behaved (each arm’s respective bias bi remains relatively constant or changes gradually and noise is small and truly subgaussian), then CABS-C can utilize surrogate rewards to significantly improve the rate of learning (the additional information from the surrogate rewards reduces variance). However, if bias is difficult to estimate or if the magnitude of the subgaussian noise is large, then the surrogate rewards available to CABS-C may hinder its ability to learn (inconsistent surrogate rewards can potentially increase variance). 
+
+On bounding εn. We note that the ML reward predictor ( RO ), trained offline from a fixed mixture of LLMs, enjoys standard ERM generalization guarantees only with respect to the training distribution [ 45 , 39 ]. Generaliza-tion to unseen contexts reduces to a covariate shift problem [ 40 , 43 ], and fundamentally depends on support overlap or structural invariance assumptions on the underlying data-generating process. In the next section, we propose an algorithm that is robust to such noise, while retaining the aforementioned regret bound when εn is small. 
+
+Cost-informed utility. To capture the accuracy–cost trade-off inherent in practical LLM deployment, we define a cost-aware utility: rt,i t = yt,i t − ρ c t,i t , where yt,i t ∈ [0 , 1] denotes the accuracy score obtained by using LLM it
+
+to answer query xt, and ct,i t ≥ 0 is the associated inference cost. The parameter ρ ≥ 0 controls cost sensitivity: larger values favor cheaper models, while smaller values prioritize accuracy. We additionally clip the utility to 
+
+[0 , 1] to enforce bounded rewards. 
+
+From linear to neural bandits. While we focus on linear models for clarity of exposition and analysis, our approach extends naturally to nonlinear reward models. In particular, following the machinery (Neural Tangent Kernel matrix analysis) adapted in NeuralUCB [ 56 ], the linear predictor x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+can be replaced by a neural network with uncertainty estimated via its last-layer features. At this point, we empirically adapt our method to neural bandits based estimators and show their performance in Section 5, but note that our regret analysis can be extend to this setting be utilizing the machinery developed in [56]. 
+
+## 4.2 A decoupled method with optimal regret 
+
+Theorem 4.7 shows that surrogate rewards can substantially improve regret for CABS-C algorithm, but can also degrade performance when their bias or noise is poorly controlled. This is a consequence of reward mixing :CABS-C combines true and surrogate rewards at the observation level and trains a single model on the pooled feedback. To obtain robustness to unreliable surrogate rewards, we instead consider a prediction-mixing strategy, where different feedback mechanisms are handled by separate learners and combined only at the decision level. We introduce Correlation-Aware Bandits with Surrogates Decoupled (CABS-D), shown in Algorithm 2. CABS-D maintains two stateful experts: a standard bandit-feedback expert and the surrogate-aware graph-feedback expert CABS-C from Algorithm 1. In our theoretical analysis, the standard expert is SquareCB, described in Appendix F.1. At each round, the experts output policies pt, 1 and pt, 2, which are mixed into qt using adaptive exponential weights over meta-copies (m, g ), in the spirit of Hedge/AdaHedge-style aggregation [ 17 ]. After sampling it ∼ qt,SquareCB receives only the selected arm’s true reward, while CABS-C also receives surrogate rewards from the sampled feedback graph. The meta-weights are updated using importance-weighted loss estimates and an adaptive second-order learning rate, allowing CABS-D to track the better feedback mechanism without knowing whether surrogates are reliable. Thus, CABS-D retains standard bandit robustness while exploiting informative surrogate feedback. We now state its regret bound. 
+
+Theorem 4.9 (Meta guarantee, two-expert; constants explicit) . Let there be M = 2 experts: one bandit-feedback expert, SquareCB and one graph-feedback expert, CABS-C (tuned for known independence number α). Assume losses lie in [0 , 1] . Then Algorithm 2 satisfies, E[Reg T ] ≤ O(min {R1 + Γ 1, R 2 + Γ 2}) , where Γ1 =ln( KT ln T ) √KT ln M ln T and Γ2 = ln( αT ln( T /αϵ ) ln T ) pαT ln( T /αϵ ) ln M ln T . Here R1 is the regret of the bandit expert and R2 the regret of the graph expert. Using R1 = eO(pKT Reg Sq (T )) and R2 = eO(pαT Reg Sq (T ) +
+
+7Algorithm 2 Correlation-Aware Bandits with Surrogates Decoupled ( CABS-D)  
+
+> 1:
+
+Input: T Rounds; geometric grid Γ = {γ(1) , . . . , γ (L)} with γ(g+1) = 2 γ(g); set M = 2 L 
+
+> 2:
+
+Oracles: Reward oracle RO : X × [K] × R+ → RK 
+
+> +
+
+, affinity oracle AO : X → RK×K 
+
+> 3:
+
+Experts: m ∈ { 1, 2}: SquareCB bandit-feedback (m = 1) ; CABS-C graph-feedback (m = 2)  
+
+> 4:
+
+Initialize: For every meta-copy (m, g ) set weight w1,(m,g ) = 1 , and ∆0 = 0  
+
+> 5:
+
+for t = 1 to T do  
+
+> 6:
+
+Receive context xt and corresponding correlation matrix Rt from AO (xt). 
+
+> 7:
+
+Generate affinity graph Gt with adjacency matrix At: At, (i,j ) = 1 w.p. σ((1 − Rt, (i,j ))/2)  
+
+> 8:
+
+Receive policy pt, 1 ← SquareCB( xt), policy pt, 2 ← CABS -C( xt) 
+
+> 9:
+
+Compute meta-probabilities and the global mixture policy: 
+
+μt, (m,g ) = wt, (m,g )
+
+P2
+
+> m′=1
+
+PLg′=1 wt, (m′,g ′)
+
+, qt,i =
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g )pt,m,i , i ∈ [K]. 
+
+> 10:
+
+Sample action it ∼ qt and receive true reward rt,i t . 
+
+> 11:
+
+Observe surrogate rewards, {st,i } ← RO (xt, i t, r t,i t ) ∀i ∈ N t(it) = {j : At, (it,j ) = 1 }. 
+
+> 12:
+
+Send (xt, i t, r t,i t ) to SquareCB and (xt, i t, r t,i t , {st,i }) to CABS-C for policy updates.  
+
+> 13:
+
+Define losses ℓt,i t = 1 − rt,i t and ℓt,i = 1 − st,i for all i ∈ N t(it) 
+
+> 14:
+
+For each copy (m, g ) with parameter γ(g), compute 
+
+ˆℓt, (1 ,g ) = ℓt,i t pt, 1,i t
+
+qt,i t + γ(g) , ˆℓt, (2 ,g ) = X
+
+> i∈N t(it)
+
+ℓt,i pt, 2,i 
+
+P 
+
+> j:At, (j,i )=1
+
+qt,j + γ(g) . 
+
+> 15:
+
+Set γmin = min g∈[L] γ(g), ηt = min 
+
+n
+
+γmin ,
+
+q ln M
+
+> 1+∆ t−1
+
+o
+
+. 
+
+> 16:
+
+Compute the second-order term Vt and update ∆t:
+
+Vt =
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g )
+
+ˆℓt, (m,g )
+
+2
+
+, ∆t = ∆ t−1 + Vt. 
+
+> 17:
+
+Update each meta-copy weight: wt+1 ,(m,g ) = wt, (m,g ) exp 
+
+
+
+−ηt ˆℓt, (m,g )
+
+
+
+. 
+
+> 18:
+
+end for 
+
+√αKT ε n), we obtain the regret bound (absorbing polylogs) 
+
+E[Reg T ] = eO
+
+
+
+min {
+
+q
+
+KT Reg Sq (T ),
+
+q
+
+αT Reg Sq (T ) + εn
+
+√αKT }
+
+
+
+.
+
+The proof can be found in Appendix F.3. While the theorem establishes a general regret guarantee for the algorithm, the following corollary shows that surrogate rewards strictly improve the regret bound. 
+
+Corollary 4.10 (Linear oracle with m-feedback) . Assume that we have a linear oracle and we observe surrogate rewards for m arms per round. Then CABS-D guarantees 
+
+E[Reg T ] ≤ eO min 
+
+(s 
+
+d Km + 1 T log 
+
+ Td
+
+
+
++ εn
+
+r K2
+
+m + 1 T , 
+
+s
+
+dKT log 
+
+ Td
+
+)! 
+
+.
+
+In a standard linear contextual bandit setting (which corresponds to having no extra surrogate feedback, or 
+
+m = 0 ), the typical optimal expected regret bound over T rounds is E[Reg T ] ≤ eO
+
+√dKT 
+
+
+
+. This baseline matches the second term inside the min {·} operator of the regret in corollary. Because the overall bound is a minimum 8Table 1: Average utility (higher is better) and average regret (lower is better) across cost regimes on the SPROUT and RouterBench datasets.                                                             
+
+> SPROUT RouterBench Regime (Metric) CABS-C CABS-D CABS-C CABS-D Linear Neural Linear Neural Linear Neural Linear Neural Low (Utility) 0.7233 0.7558 0.7715 0.7432 0.6292 0.6421 0.6754 0.6638 Medium (Utility) 0.6015 0.6439 0.6632 0.6467 0.5308 0.5551 0.5817 0.5759 High (Utility) 0.5407 0.4007 0.6265 0.5876 0.4961 0.5110 0.5466 0.5372 Low (Regret) 0.2266 0.1941 0.1693 0.1887 0.3022 0.2779 0.2136 0.2264 Medium (Regret) 0.2982 0.2558 0.2139 0.2316 0.2985 0.2759 0.2512 0.2571 High (Regret) 0.3552 0.2807 0.2240 0.2431 0.2947 0.2733 0.2429 0.2537
+
+between two strategies, the algorithm guarantees performance that is at least as good as the vanilla baseline, but can be significantly better depending on the value of m and the noise εn. Specifically, for small enough εn and as long as m > 0, the first term inside the minimum takes effect where the second term in the sum vanishes. We note that the first term in summand remains the dominant factor, as long as εn satisfies the condition εn < ˜O(pd/K ),which can be easily satisfied by training the offline surrogate model with enough samples. In this case, the regret is entirely dominated by eO
+
+r 
+
+d
+
+ Km+1 
+
+
+
+T
+
+
+
+, yielding a significant improvement over the vanilla eO
+
+√dKT 
+
+
+
+bound as the effective action-space dependence drops from K to K/ (m + 1 ). This significantly shrinks both the primary exploration term and the noise propagation term, allowing the algorithm to learn the underlying linear reward structure much faster than standard bandit feedback would allow. 
+
+# 5 Experiments 
+
+In this section, we conduct experiments to answer four research questions: 
+
+(RQ1): How do coupled reward mixing (CABS-C) and decoupled prediction mixing (CABS-D) compare across cost sensitivities? 
+
+(RQ2): Which routing method achieves the highest utility across cost regimes and datasets? 
+
+(RQ3): Do correlation-aware surrogate-reward methods improve the accuracy–cost Pareto frontier relative to standard online bandit baselines? 
+
+(RQ4): Do surrogate rewards accelerate online learning, as measured by reduced cumulative regret over time? 
+
+## 5.1 Experimental Setup 
+
+Datasets. We evaluate on three LLM routing benchmarks: RouterBench [ 25 ], SPROUT [ 41 ], and Open LLM Leaderboard v2 [21]. Dataset details and splits are deferred to Appendix C. 
+
+Baselines. We compare against standard online contextual bandit algorithms, including LinUCB [ 15 ], LinTS [ 3], and ϵ-greedy. In the LLM routing setting, observing rewards for unplayed arms is generally unrealistic, as only the selected model is executed. Accordingly, we primarily evaluate methods under bandit feedback (single observed reward per round). For reference, we additionally report hypothetical full-feedback variants (LinUCB/NeuralUCB with full feedback) as information upper bounds. We also include strong supervised routing baselines, such as RoBERTa/CARROT [41] and kNN-based routers [25], as well as random selection and single-model baselines. 9(a) Open LLM Leaderboard v2 (b) RouterBench (c) SPROUT 
+
+Figure 2: Accuracy vs cost Pareto Frontier curves across datasets on Linear Online models. 
+
+Metrics. We report relative cumulative regret and average utility over time. Specifically, the relative cumulative regret of an online learner ‘ alg ’ is defined with respect to ‘ olg ’ as Ralg (t) − Rolg (t), where Ralg (t) denotes the cumulative regret at time t. In addition, we summarize test accuracy and average per-query cost, and characterize accuracy–cost trade-offs via the accuracy–cost Pareto frontier by sweeping the cost-sensitivity parameter for each method. 
+
+Setup. We study LLM routing under varying accuracy and cost trade-offs by sweeping the cost-sensitivity parameter over ρ ∈ { 0, 50 , . . . , 1000 }, which we group into three cost regimes: low cost sensitivity corresponds to small values of ρ (≤ 300 ) where accuracy dominates, medium cost sensitivity ( 300 < ρ < 800 ) represents a balanced trade-off, and high cost sensitivity ( ρ ≥ 800 ) corresponds to large values of ρ where cost dominates. For correlation-aware methods, the Reward Oracle ( RO ) imputes surrogate utilities for graph-neighbor arms, while the Affinity Oracle ( AO ) constructs the context-dependent feedback graph from predicted inter-arm similarity. Both are lightweight MLP heads on top of mDeBERTaV3-base query embeddings [ 24 ]. Refer to Appendix D for implementation details. 
+
+## 5.2 Reward Mixing vs Prediction Mixing (RQ1) 
+
+Table 1 compares the coupled (CABS-C) and decoupled (CABS-D) variants by reporting average utility (higher is better) and average regret (lower is better) across three cost regimes in SPROUT and RouterBench dataset (see Appendix E for Open LLM LB V2 dataset). Across all regimes, CABS-D, i.e, model mixing, consistently improves utility and reduces regret relative to CABS-C, indicating that decoupling reward learning from surrogate learning yields a more reliable use of surrogate signals. This is aligned with our theory: while coupling can amplify surrogate noise or bias, the decoupled construction can exploit informative surrogate predictions early while falling back to reward-based learning as data accumulates. Based on these results, we use CABS-D as the default instantiation in the remainder of our experiments. 
+
+## 5.3 Utility across cost regimes (RQ2) 
+
+Table 2 reports average utility (higher is better) across three routing benchmarks under Low/Mid/High cost-sensitivity regimes. Across all datasets and regimes, CABS-D is the strongest implementable method: either its linear or neural instantiation attains the best non-oracle utility across cost regimes. Relative to standard online bandit baselines, CABS-D yields consistent gains ( ≈ 8% on Open LLM Leaderboard v2, ≈ 3% on RouterBench, and ≈ 1% on SPROUT), with the largest improvements on the more heterogeneous Open LLM Leaderboard v2 ( ≈ 15% , 9% , 7% in the Low/Mid/High regimes). On RouterBench and SPROUT, CABS-D continues to 10 Figure 3: Relative Cumulative regrets with respect to LinUCB for other linear online learning methods on Open LLM Leaderboard V2 dataset across low, medium and high cost regimes. Table 2: Utilities across cost regimes and datasets                                                                                                               
+
+> Open LLM LB v2 RouterBench SPROUT Method Low Medium High Low Medium High Low Medium High CARROT [41] 0.5118 0.3101 0.1948 0.6457 0.4820 0.3960 0.7615 0.5692 0.4560 RouterBench [25] 0.4045 0.2192 0.1268 0.5920 0.5103 0.4704 0.7196 0.6034 0.5017 Random Selection 0.3822 0.2926 0.1889 0.4509 0.3431 0.2899 0.5872 0.4472 0.3863 Epsilon-Greedy 0.4544 0.2543 0.1153 0.6057 0.5169 0.4751 0.7194 0.6138 0.5655 LinTS [3] 0.5017 0.2973 0.1822 0.6514 0.5725 0.5381 0.7628 0.6548 0.6200 LinUCB [15] 0.4876 0.2846 0.1817 0.6276 0.5437 0.5082 0.7579 0.6561 0.6110 NeuralUCB [56] 0.4493 0.2471 0.1558 0.6344 0.5418 0.4950 0.7086 0.6266 0.5501 CABS-D (Linear) 0.5328 0.3229 0.1951 0.6754 0.5817 0.5466 0.7715 0.6632 0.6265
+> CABS-D (Neural) 0.5284 0.3289 0.1956 0.6638 0.5759 0.5372 0.7432 0.6467 0.5876 LinUCB + Full-Feedback 0.5630 0.3600 0.2345 0.6838 0.6024 0.5660 0.7957 0.7070 0.6643 NeuralUCB + Full-Feedback 0.5454 0.3620 0.2388 0.6704 0.6050 0.5588 0.7732 0.6842 0.6246
+
+dominate online baselines and remains competitive with strong static routers (CARROT/KNN), showing that online correlation-aware learning can match or exceed fixed routers while adapting to the target cost regime. Full-feedback variants provide an information upper bound, but CABS-D closes a substantial portion of this gap under realistic bandit feedback. 
+
+## 5.4 Accuracy vs Cost Trade-off (RQ3) 
+
+Figure 2 shows the trade-off between accuracy and average per-query cost on Open LLM Leaderboard v2, RouterBench, and SPROUT. Each curve traces a routing policy as the cost-sensitivity parameter ρ varies 
+
+∈ [0 , 1000] . Across all datasets, CABS-D consistently improve the accuracy versus cost Pareto frontier compared to standard online bandit baselines. In particular, CABS-D achieves higher accuracy at comparable cost levels (or equivalently lower cost for a given accuracy) relative to LinUCB, LinTS, and ϵ-greedy. While full-feedback variants provide an optimistic upper bound, CABS-D substantially narrows this gap under realistic bandit feedback, answering RQ3 affirmatively. 11 5.5 Learning dynamics (RQ4) 
+
+Figure 3 reports relative cumulative regret over time normalized with respect to LinUCB, across low, mid, and high cost-sensitivity regimes for Open LLM Leaderboard V2. Across all regimes, CABS-D consistently achieves lower cumulative regret than standard bandit baselines including LinUCB, LinTS, and ϵ-greedy. The improvement is most pronounced in the mid-cost regime, where the routing objective requires balancing accuracy and cost, and surrogate rewards provide the greatest benefit. Notably, the regret gap emerges early and persists throughout the horizon, indicating that surrogate rewards accelerate online learning rather than merely improving asymptotic performance. 
+
+# 6 Discussions 
+
+We discuss the main trade-offs between coupled and decoupled use of surrogate rewards, the computational cost of the proposed algorithms, and practical deployment considerations for LLM routing. 
+
+Comparison of Coupled and Decoupled Approaches: CABS-C and CABS-D differ primarily in how tightly they integrate surrogate feedback with true bandit feedback. CABS-C follows a coupled strategy: after debiasing surrogate rewards and applying importance weighting, it feeds both true and surrogate observations into a common regression oracle. This coupling can improve sample efficiency when the surrogate rewards are informative, since each round provides feedback for multiple correlated arms. However, because the two feedback sources update the same predictor, persistent surrogate bias or high surrogate noise can still affect the learned model, even when importance weighting partially controls the contribution of each observation. CABS-D addresses this limitation by maintaining separate learners for the standard bandit-feedback signal and the surrogate-aware feedback signal, and then adaptively mixing their induced policies. As a result, when surrogate rewards are useful, CABS-D can exploit them for faster learning; when they are uninformative or too noisy, it can fall back on the standard contextual bandit expert and retain the corresponding regret guarantee eO(
+
+q
+
+KT, Reg Sq (T )) .
+
+Computational Complexity: This robustness comes with only a modest additional computational cost. CABS-C has complexity O(K3 + RS ), while CABS-D has O(K3 + K ln T + RS ). The K3 term comes from the optimization in line 8 of Algorithm 1, and the extra K ln T term in CABS-D comes from the dyadic grid in Algorithm 2. For a linear oracle, O(RS ) = O(Kd + d2). In contrast, standard linear bandit methods such as LinUCB/LinTS are typically dominated by matrix operations cubic in the feature dimension d, O(Kd 3). Therefore, CABS-C and CABS-D may be preferable in settings with large d or more general nonlinear function classes, whereas their stronger dependence on K can make them less attractive when the number of actions is very large. 
+
+Surrogate Reward Prediction Overheads: Beyond the learner update, the additional cost of producing surrogate rewards is small in our implementation. The reward oracle is a 2-layer MLP that reuses the context embeddings already computed for the bandit, together with the chosen arm embedding and observed reward. In batch-size-1 measurements, embedding generation takes 12.32 ms on average, while surrogate prediction itself takes only 0.22 ms on average. Thus, the incremental overhead from surrogate prediction beyond the encoder is negligible. 
+
+Extending Utility: Our current utility objective can already capture latency when latency is embedded in the cost term, for example through a deployment-specific cost that combines monetary price, compute, and response time. More explicitly, one can extend the utility as rt,a = s(xt, a ) − ρ c (xt, a ) − ρ1 l(xt, a ), where s(xt, a ) is the accuracy score, c(xt, a ) is the monetary cost, and l(xt, a ) is the latency of arm a for context xt. Another promising direction is to combine our framework with delayed-feedback bandits [ 52 ], which could model latency more directly. 12 7 Conclusion 
+
+We introduce a framework for contextual bandits with correlated arms and noisy surrogate rewards, motivated by LLM routing settings where true rewards are expensive or stochastic but cheaper proxy signals are available. We propose two complementary algorithms for leveraging these signals: a coupled reward-mixing method that pools true and surrogate feedback, and a decoupled prediction-mixing method that maintains separate learners for bandit-only feedback and bandit-plus-surrogate feedback before adaptively combining their policies. Our regret analysis clarifies when tight coupling is beneficial and when decoupling is needed for robustness. Experiments on LLM routing benchmarks demonstrate that correlation-aware surrogate integration significantly improves sample efficiency and achieves superior accuracy–cost trade-offs compared to existing baselines, validating both the theoretical and practical benefits of the proposed framework. 
+
+# Acknowledgment 
+
+This material is based upon work supported by the National Science Foundation (NSF) under Grant Number 2318101. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation. 
+
+# References 
+
+[1] Alekh Agarwal, Haipeng Luo, Behnam Neyshabur, and Robert E Schapire. Corralling a band of bandit algorithms. In Conference on Learning Theory , pages 12–38. PMLR, 2017. [2] Shipra Agrawal and Navin Goyal. Analysis of thompson sampling for the multi-armed bandit problem. In 
+
+Conference on learning theory , pages 39–1. JMLR Workshop and Conference Proceedings, 2012. [3] Shipra Agrawal and Navin Goyal. Thompson sampling for contextual bandits with linear payoffs. In 30th International Conference on Machine Learning (ICML) , 2013. [4] Noga Alon, Nicolo Cesa-Bianchi, Ofer Dekel, and Tomer Koren. Online learning with feedback graphs: Beyond bandits. In Conference on Learning Theory , pages 23–35. PMLR, 2015. [5] Noga Alon, Nicolò Cesa-Bianchi, Claudio Gentile, Shie Mannor, Yishay Mansour, and Ohad Shamir. Non-stochastic multi-armed bandits with graph-structured feedback, 2014. [6] Peter Auer, Nicolo Cesa-Bianchi, and Paul Fischer. Finite-time analysis of the multiarmed bandit problem. 
+
+Machine learning , 47(2):235–256, 2002. [7] Peter Auer, Nicolo Cesa-Bianchi, Yoav Freund, and Robert E Schapire. The nonstochastic multiarmed bandit problem. SIAM journal on computing , 32(1):48–77, 2002. [8] Katy S Azoury and Manfred K Warmuth. Relative loss bounds for on-line density estimation with the exponential family of distributions. Machine learning , 43(3):211–246, 2001. [9] Yair Caro. New results on the independence number. Technical report, Technical Report, Tel-Aviv University, 1979. [10] Houshuang Chen, Shuai Li, Chihao Zhang, et al. Understanding bandits with graph feedback. Advances in Neural Information Processing Systems , 34:24659–24669, 2021. [11] Lingjiao Chen, Matei Zaharia, and James Zou. Frugalgpt: How to use large language models while reducing cost and improving performance. Transactions on Machine Learning Research , 2024. 13 [12] Shuhao Chen, Weisen Jiang, Baijiong Lin, James Kwok, and Yu Zhang. Routerdc: Query-based router by dual contrastive learning for assembling large language models. Advances in Neural Information Processing Systems , 37:66305–66328, 2024. [13] Wang Chi Cheung and Lixing Lyu. Leveraging (biased) information: Multi-armed bandits with offline data. In Forty-first International Conference on Machine Learning , 2024. [14] Chao-Kai Chiang, Takashi Ishida, and Masashi Sugiyama. Llm routing with dueling feedback. arXiv preprint arXiv:2510.00841 , 2025. [15] Wei Chu, Lihong Li, Lev Reyzin, and Robert Schapire. Contextual bandits with linear payoff functions. In 
+
+Proceedings of the fourteenth international conference on artificial intelligence and statistics , pages 208–214. JMLR Workshop and Conference Proceedings, 2011. [16] Xiangxiang Dai, Jin Li, Xutong Liu, Anqi Yu, and John Lui. Cost-effective online multi-llm selection with versatile reward models. arXiv preprint arXiv:2405.16587 , 2024. [17] Tim Erven, Wouter M Koolen, Steven Rooij, and Peter Grünwald. Adaptive hedge. Advances in Neural Information Processing Systems , 24, 2011. [18] Tao Feng, Yanzhen Shen, and Jiaxuan You. Graphrouter: A graph-based router for llm selections. arXiv preprint arXiv:2410.03834 , 2024. [19] Dylan Foster and Alexander Rakhlin. Beyond ucb: Optimal and efficient contextual bandits with regression oracles. In International conference on machine learning , pages 3199–3210. PMLR, 2020. [20] Dylan J Foster, Sham M Kakade, Jian Qian, and Alexander Rakhlin. The statistical complexity of interactive decision making. arXiv preprint arXiv:2112.13487 , 2021. [21] Clémentine Fourrier, Nathan Habib, Alina Lozovskaya, Konrad Szafer, and Thomas Wolf. Open llm leaderboard v2. https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard , 2024. [22] Yoav Freund and Robert E Schapire. A decision-theoretic generalization of on-line learning and an application to boosting. Journal of computer and system sciences , 55(1):119–139, 1997. [23] Google AI. Gemini 1.5 pro model overview. https://ai.google.dev/gemini-api/docs/models/gemini ,2024. Accessed: 2025-05-10. [24] Pengcheng He, Xiaodong Liu, Jianfeng Gao, and Weizhu Chen. Deberta: Decoding-enhanced bert with disentangled attention. In International Conference on Learning Representations , 2021. [25] Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. Routerbench: A benchmark for multi-llm routing system, 2024. [26] Keke Huang, Yimin Shi, Dujian Ding, Yifei Li, Yang Fei, Laks Lakshmanan, and Xiaokui Xiao. Thriftllm: On cost-effective selection of large language models for classification queries, 2025. [27] Hugging Face. all-MiniLM-L6-v2: Sentence transformer embedding model. https://huggingface.co/ sentence-transformers/all-MiniLM-L6-v2 , 2025. Accessed: 2026-02-15. [28] Hugging Face. Hugging face models. https://huggingface.co/models , 2025. Accessed: 2025-05-10. [29] Wenlong Ji, Yihan Pan, Ruihao Zhu, and Lihua Lei. Multi-armed bandits with machine learning-generated surrogate rewards. arXiv preprint arXiv:2506.16658 , 2025. [30] Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. Llm-blender: Ensembling large language models with pairwise ranking and generative fusion, 2023. 14 [31] Tor Lattimore and Csaba Szepesvári. Bandit algorithms . Cambridge University Press, 2020. [32] Lihong Li, Wei Chu, John Langford, and Robert E Schapire. A contextual-bandit approach to personalized news article recommendation. In Proceedings of the 19th international conference on World wide web , pages 661–670, 2010. [33] Yang Li. Llm bandit: Cost-efficient llm generation via preference-conditioned dynamic routing, 2025. [34] Shie Mannor and Ohad Shamir. From bandits to experts: On the value of side-observations. Advances in Neural Information Processing Systems , 24, 2011. [35] Gergely Neu and Julia Olkhovskaya. Efficient and robust algorithms for adversarial linear contextual bandits. In Conference on Learning Theory , pages 3049–3068. PMLR, 2020. [36] Quang H. Nguyen, Thinh Dao, Duy C. Hoang, Juliette Decugis, Saurav Manchanda, Nitesh V. Chawla, and Khoa D. Doan. Metallm: A high-performant and cost-efficient dynamic framework for wrapping llms, 2025. [37] Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E Gonzalez, M Waleed Kadous, and Ion Stoica. Routellm: Learning to route llms from preference data. In The Thirteenth International Conference on Learning Representations , 2025. [38] OpenAI. Chatgpt. https://chat.openai.com/chat , 2025. Accessed: 2025-05-10. [39] Shai Shalev-Shwartz and Shai Ben-David. Understanding machine learning: From theory to algorithms .Cambridge university press, 2014. [40] Hidetoshi Shimodaira. Improving predictive inference under covariate shift by weighting the log-likelihood function. Journal of statistical planning and inference , 90(2):227–244, 2000. [41] Seamus Somerstep, Felipe Maia Polo, Allysson Flavio Melo de Oliveira, Prattyush Mangal, Mírian Silva, Onkar Bhardwaj, Mikhail Yurochkin, and Subha Maity. Carrot: A cost aware rate optimal router. arXiv preprint arXiv:2502.03261 , 2025. [42] Dimitris Stripelis, Zijian Hu, Jipeng Zhang, Zhaozhuo Xu, Alay Dilipbhai Shah, Han Jin, Yuhang Yao, Salman Avestimehr, and Chaoyang He. Tensoropera router: A multi-model router for efficient llm inference, 2024. [43] Masashi Sugiyama and Motoaki Kawanabe. Machine learning in non-stationary environments: Introduction to covariate shift adaptation . MIT press, 2012. [44] Michal Valko, Nathaniel Korda, Rémi Munos, Ilias Flaounas, and Nelo Cristianini. Finite-time analysis of kernelised contextual bandits. arXiv preprint arXiv:1309.6869 , 2013. [45] Vladimir Vapnik. The nature of statistical learning theory . Springer science & business media, 2013. [46] Arun Verma, Zhongxiang Dai, Yao Shu, and Bryan Kian Hsiang Low. Exploiting correlated auxiliary feedback in parameterized bandits. Advances in Neural Information Processing Systems , 36:4430–4451, 2023. [47] Volodya Vovk. Competitive on-line linear regression. Advances in Neural Information Processing Systems , 10, 1997. [48] Xinyuan Wang, Yanchi Liu, Wei Cheng, Xujiang Zhao, Zhengzhang Chen, Wenchao Yu, Yanjie Fu, and Haifeng Chen. Mixllm: Dynamic routing in mixed large language models, 2025. [49] Victor K Wei. A lower bound on the stability number of a simple graph, 1981. [50] Wang Wei, Tiankai Yang, Hongjie Chen, Yue Zhao, Franck Dernoncourt, Ryan A Rossi, and Hoda Eldardiry. Learning to route llms from bandit feedback: One policy, many trade-offs. arXiv preprint arXiv:2510.07429 ,2025. 15 [51] xAI. Open release of grok-1. https://x.ai/blog/grok-os , 2024. Accessed: 2025-05-10. [52] Mengxiao Zhang, Yingfei Wang, and Haipeng Luo. Contextual linear bandits with delay as payoff, 2025. [53] Mengxiao Zhang, Yuheng Zhang, Haipeng Luo, and Paul Mineiro. Efficient contextual bandits with uninformed feedback graphs. arXiv preprint arXiv:2402.08127 , 2024. [54] Mengxiao Zhang, Yuheng Zhang, Olga Vrousgou, Haipeng Luo, and Paul Mineiro. Practical contextual bandits with feedback graphs. Advances in Neural Information Processing Systems , 36:30592–30617, 2023. [55] Zesen Zhao, Shuowei Jin, and Z. Morley Mao. Eagle: Efficient training-free router for multi-llm inference, 2024. [56] Dongruo Zhou, Lihong Li, and Quanquan Gu. Neural contextual bandits with ucb-based exploration. In 
+
+International conference on machine learning , pages 11492–11502. PMLR, 2020. 16 Appendix 
+
+The appendix is organized as follows, 
+
+• In Appendix A we discuss additional related works 
+
+• In Appendix B we expand on the baselines that are used in our experiments. 
+
+• In Appendix C, we expand on the LLM routing datasets. 
+
+• In Appendix D, implementation details are discussed. 
+
+• In Appendix E, we present additional experiments and results. 
+
+• In Appendix F, we present the proofs for CABS-C and CABS-D algorithms. 
+
+# A Additional Related Works 
+
+## A.1 Multi-Armed Bandits (MAB) 
+
+Classical stochastic bandits study decision-making with partial feedback and no context. UCB-type methods [ 6]use optimism under uncertainty, while Thompson sampling [ 2 ] samples actions from a posterior distribution. Adversarial algorithms such as Exp3 [ 7] provide guarantees without stochastic reward assumptions. These methods form the basis for exploration–exploitation trade-offs but do not capture query-dependent model selection. Contextual bandits incorporate side information into the decision rule. Linear methods such as LinUCB [ 32 , 15 ]assume rewards are linear in context features, while KernelUCB [ 44 ] and NeuralUCB [ 56 ] model nonlinear reward functions. More generally, SquareCB [ 19 ] reduces contextual bandit learning to online regression by using a reward predictor to construct exploration probabilities, providing a flexible oracle-based template beyond linear models. These methods are natural baselines for LLM routing, but typically observe feedback only for the selected arm and do not explicitly exploit inter-arm relationships. Bandits with graph feedback study settings where playing one arm reveals additional observations from neighboring arms. Earlier work considers non-contextual graph-feedback models [ 34 , 10 ], while SquareCB-G [ 54 ]and SquareCB-UG [ 53 ] extend this idea to contextual settings. SquareCB-G assumes graph-structured observations of true rewards, whereas SquareCB-UG handles graphs that are not known before action selection. Our setting differs because the graph is context-dependent and available before action selection, while additional observations are potentially noisy/misspecified surrogate rewards rather than true rewards. Auxiliary-feedback bandits use external predictors or side observations to improve learning. MIN-UCB [ 13 ], OFUL-AF [ 46 ], and MLA-UCB [ 29 ] are representative examples. These methods typically use auxiliary information to improve reward estimation for the played arm or to regularize learning. Our setting instead uses context-dependent graph structure to decide which unplayed arms receive surrogate feedback, requiring robustness to surrogate noise and bias. Expert-aggregation methods provide another relevant perspective for our decoupled algorithm. Hedge and multiplicative-weight algorithms aggregate expert predictions with regret guarantees against the best fixed expert in hindsight [ 22 ], while adaptive variants such as AdaHedge tune the learning rate online based on observed losses [ 17 ]. Related master algorithms, such as Corral [ 1 ], combine multiple bandit algorithms and compete with the best base learner under partial feedback. CABS-D follows this meta-algorithmic view, but the experts correspond to different feedback mechanisms: standard bandit feedback and correlation-aware surrogate graph feedback. Table 3 summarizes representative bandit settings, feedback models, and regret rates. We report worst-case order bounds, hiding polylogarithmic factors in eO(·), under standard assumptions; some algorithms admit sharper gap-dependent bounds, which we omit for brevity. 17 Table 3: Representative bandit settings, feedback models, and regret bounds. 
+
+Algorithm(s) Classification Feedback Regret Bound Non-Contextual Setting 
+
+UCB1 [6] Stochastic Non-Contextual Partial O √KT log T 
+
+Thompson Sampling [2] Stochastic Non-Contextual Partial O
+
+P 
+
+> i:μi<μ ∗1∆2
+> i
+
+2
+
+log T
+
+
+
+*problem-dependent bound 
+
+Exp3 [7] Adversarial Non-Contextual Partial O(√KT log K)
+
+E2D [20] Stochastic Non-Contextual Partial O(√KT log K)
+
+ELP [34] Graph Feedback Partial/Full eO(
+
+q
+
+log( k) PTt=1 αt)Stochastic Non-Contextual OSMD [10] Graph Feedback Partial/Full O
+
+
+
+(δ∗ log( k)) 13 T 23
+
+
+
+Stochastic Non-Contextual 
+
+δ∗ is packing number 
+
+Contextual Setting 
+
+LinUCB [32] & SquareCB [19] Stochastic Contextual (Linear) Partial eO
+
+√KdT 
+
+
+
+KernelUCB [44] Stochastic Contextual (Non-Linear) Partial eO( ed√T )
+
+( ˜d be the effective dimension) NeuralUCB [56] Stochastic Contextual (Non-Linear) Partial eO( ed√T )
+
+( ˜d be the effective dimension) RealLinExp3 [35] Adversarial Contextual (Linear) Partial eO(√KdT )
+
+Square-CB [54] Informed Graph Feedback Partial/Full 
+
+eO(pαT Reg sq )
+
+Stochastic Contextual (Non-Linear) (Reg sq = bound of regression oracle) (α = independence number) SquareCB-UG [53] Uninformed Graph Feedback Partial/Full 
+
+eO(pαT max ( Reg sq , Reg log )) 
+
+Stochastic Contextual (Non-Linear) (Reg sq = bound of regression oracle) (Reg log = bound of graph oracle) (α = independence number) 
+
+## A.2 LLM Routing 
+
+Here we give a high level overview of selected LLM routing methods, 
+
+• RouterBench [ 25 ] introduces a standardized benchmark/dataset and evaluation protocol for multi-LLM routers under explicit cost–performance trade-offs, enabling apples-to-apples comparison across routing strategies. 
+
+• RouterDC [12 ] proposes a query-based router trained via dual contrastive learning, aligning query embeddings with top-performing LLM embeddings (and separating from poorly performing ones) using sample–LLM and sample–sample contrastive losses to improve routing stability and robustness. 
+
+• CARROT / SPROUT [41 ] propose a cost-aware router based on estimating model cost/performance, and introduce the SPROUT dataset to evaluate routing over a wide query distribution and modern model pools. 
+
+• RouteLLM [37 ] trains a router from preference supervision to decide between cheaper and stronger LLMs, targeting cost savings at fixed quality levels and demonstrating transfer across model pairs. 
+
+• Eagle [ 55 ] proposes a training-free router that uses ELO-style ranking (global and local) to efficiently update routing decisions, aiming at scalable online serving without heavy retraining. 
+
+• TensorOpera / TO-Router [42 ] studies multi-model orchestration as a system problem and routes queries to expert LLMs to improve the throughput–cost–quality “trilemma” in practical deployments. 18 • GraphRouter [18 ] models query–task–LLM interactions as a heterogeneous graph and performs edge/attribute prediction to recommend an LLM, emphasizing generalization to new LLMs via relational inductive bias. 
+
+• MetaLLM [36 ] frames routing as a contextual bandit and learns an online selection policy from partial feedback to improve cost-efficiency on targeted tasks (e.g., classification / MCQ). 
+
+• LLM Bandit [33 ] formulates LLM selection as a bandit problem with preference-conditioned routing, allowing users to specify trade-offs at inference while learning under partial-feedback constraints. 
+
+• MixLLM [48 ] extends contextual-bandit routing to dynamic objectives (quality/cost/latency) with continual learning and changing model pools, using lightweight predictors plus a meta decision module. 
+
+• BaRP [50 ] trains routers to align with the deployment partial-feedback setting while conditioning on a user preference vector, enabling a single learned policy to realize multiple cost–quality trade-offs at test time. 
+
+• LLM Routing with Dueling Feedback [14 ] treats routing as contextual dueling bandits and learns from pairwise preferences between two candidate model outputs, using CCFT representations and FGTS.CDB for online learning. 
+
+# B Baselines 
+
+• LinUCB [ 15 ] / MetaLLM [ 36 ]: the standard linear upper-confidence bound algorithm, which selects the arm with the highest optimistic estimate of the linear reward. 
+
+• LinUCB [ 15 ] + Full Feedback : an oracle variant of LinUCB that observes the full reward vector for all arms at every round, rather than only the reward of the chosen arm. This baseline is not implementable in practice but provides a strong upper bound on what is achievable with linear models. 
+
+• LinTS [3] : Linear Thompson sampling with a Gaussian posterior over the regression parameters. 
+
+• Epsilon Greedy : a linear regression model updated online together with an ϵ-greedy exploration policy. 
+
+• NeuralUCB [ 56 ]: a neural contextual bandit algorithm that uses a neural network reward predictor and an upper-confidence bonus based on the network’s linearized features (e.g., via the last-layer/NTK approximation), selecting the arm with the highest optimistic predicted reward. 
+
+• NeuralUCB [ 56 ] + Full-Feedback : an oracle variant of NeuralUCB that observes the full reward vector for all arms at each round and updates the neural predictor using all arms’ rewards, providing an upper bound on what is achievable with neural reward models under full information. All online learning baselines use exactly the same feature representation as CABS-C/CABS-D and differ only in their exploration strategy and feedback model. We additionally compare against static routers that do not adapt during test time: 
+
+• CARROT [ 41 ] (RoBERTa) : we adapt the current SOTA CARROT router to our utility objective. Instead of predicting the probability of success, we fine-tune a RoBERTa encoder as a regressor to predict, for each (query, model) pair, both the correctness reward and the cost. At test time, the router selects the model with the largest predicted utility, ˆrt,i t = ˆ yt,i t − ρ · ˆct,i t .
+
+• KNN (RouterBench [ 25 ]) : a non-parametric router operating on text embeddings. For each test query, we retrieve the k = 3 nearest training queries (in embedding space) for each candidate model and estimate reward and cost by averaging over their observed outcomes. The chosen model maximizes the estimated utility ˆrt,i t .
+
+• Random Selection : For each query, this method randomly selects an arm from the K possible arms. 19 • Finally, we report the performance of individual LLMs used by the benchmarks as static baselines that always route to a single model. This highlights the benefit of routing compared to selecting a single fixed model. 
+
+# C Dataset Details 
+
+• RouterBench [25 ] contains roughly 35k text queries spanning 8 reasoning, coding, and commonsense datasets, with responses from 11 LLMs annotated using GPT-4 LLM-as-judge binary correctness and token-based cost. We randomly split the dataset into 70% train, 10% validation, and 20% test. 
+
+• SPROUT [41 ] contains roughly 44k queries drawn from six reasoning datasets, with responses from 15 LLMs annotated with cost and numeric correctness scores using LLama 3.1 70B LLM-as-judge. We use the default train/val/test split. 
+
+• Open LLM Leaderboard v2 [ 21 ] provides responses from 18 contemporary LLMs for routing evaluation. The scores are generated using exact match-based accuracy. We randomly split the dataset into 70% train, 10% validation, and 20% test. We also show the average performance of each LLMs in the three LLM Routing datasets (Table 4, Table 5 and Table 6). Table 4: Average performance and cost for models in OpenLLM Leaderboard V2 dataset Model Performance Cost ( ×10 −4)Yi-34B-Chat 0.421 6.375 Nous-Hermes-2-Mixtral-8x7B-DPO 0.401 4.926 QwQ-32B-Preview 0.552 8.904 Qwen2-72B-Instruct 0.559 6.678 Qwen2.5-72B-Instruct 0.557 8.904 Qwen2.5-7B-Instruct 0.423 2.226 WizardLM-2-8x22B 0.488 9.852 deepseek-llm-67b-chat 0.408 7.049 gemma-2-27b-it 0.466 6.132 gemma-2-9b-it 0.420 2.300 gemma-2b-it 0.191 0.767 Llama-2-13b-chat-hf 0.228 2.472 Meta-Llama-3.1-70B-Instruct 0.547 6.442 Mistral-7B-Instruct-v0.1 0.258 1.642 Mistral-7B-Instruct-v0.2 0.308 1.642 Mistral-7B-Instruct-v0.3 0.335 1.642 Mixtral-8x7B-Instruct-v0.1 0.383 4.927 Llama-3.1-Nemotron-70B-Instruct-HF 0.500 6.442 
+
+# D Implementation Details 
+
+All experiments are conducted on a machine equipped with 1xNVIDIA H100 GPU (80 GB). For all linear online learning methods, we set the regularization parameter to λ = 10 and γ = 4 whenever applicable. For neural online learning methods, we set regularization parameter to λ = 0 .001 and the hidden dimension to 64, with learning rate of 0.001 . Reported results for all online learning methods are averaged over 10 independent trials 20 Table 5: Average performance and cost for models in SPROUT dataset Model Performance Cost ( ×10 −4)claude-3-5-sonnet-v1 0.829 76.614 titan-text-premier-v1 0.581 5.659 openai-gpt-4o 0.845 49.355 openai-gpt-4o-mini 0.808 3.406 granite-3-2b-instruct 0.555 0.848 granite-3-8b-instruct 0.660 1.502 llama-3-1-70b-instruct 0.810 7.205 llama-3-1-8b-instruct 0.690 2.438 llama-3-2-1b-instruct 0.462 0.662 llama-3-2-3b-instruct 0.632 0.644 llama-3-3-70b-instruct 0.806 5.524 llama-3-405b-instruct 0.776 20.180 mixtral-8x7b-instruct 0.618 3.743 Table 6: Average performance and cost for models in RouterBench dataset Model Performance Cost ( ×10 −4)gpt-3.5-turbo-1106 0.619 2.420 claude-instant-v1 0.598 2.311 claude-v1 0.630 21.233 claude-v2 0.636 24.009 gpt-4-1106-preview 0.781 32.495 meta_llama-2-70b-chat 0.328 2.016 mistralai_mixtral-8x7b-chat 0.547 1.340 zero-one-ai_Yi-34B-Chat 0.647 1.846 WizardLM_WizardLM-13B-V1.2 0.431 0.726 meta_code-llama-instruct-34b-chat 0.202 1.714 mistralai_mistral-7b-chat 0.306 0.456 to account for randomness in data ordering. For ε-greedy, we use the decay schedule, ϵt = max 
+
+
+
+ϵmin , ϵ0
+
+> 1+ decay ·t
+
+
+
+,tune ϵ0 ∈ { 1.0, 0.5, 0.2, 0.1} per dataset, and fix decay = 0 .001 and ϵmin = 0 .01 . For LinUCB/NeuralUCB with full feedback, we update using the ground-truth rewards of all arms at each round; since all rewards are observed, we set the exploration parameter to zero. 
+
+Affinity and Reward Oracles. We implement the Reward Oracle (RO ) and Affinity Oracle (AO ) using a lightweight multi-head network on top of query embeddings xt. Each query is encoded once, using mDeBERTaV3-base [ 24 ] in our experiments, and passed to small MLP-style heads (using Tanh/GELU/ReLU nonlinearities with normalization/dropout). The framework is otherwise encoder-agnostic. The RO predicts the accuracy and cost components separately and combines them into the cost-informed utility 
+
+rt,j = yt,j − ρc t,j . For query embedding xt and anchor arm it, we define the accuracy delta δt,j (it) = yt,j − yt,i t for all j ∈ [K]. A correlation-aware propagation head predicts bδt,j (it) = g(xt, i t, y t,i t ), yielding surrogate accuracies 
+
+˜yt,j = yt,i t + bδt,j (it) after observing yt,i t . In parallel, a cost head predicts bct,j = h(xt, j ) (trained with MSE on 
+
+z-scored costs), and the two are combined as st,j = ˜yt,j − ρbct,j . These surrogate utilities are then filtered to generate additional feedback for correlation-aware updates. The AO is constructed from a context-only accuracy prediction head, which outputs per-arm scores ¯yt,j for 21 all j ∈ [K]. Since estimating a true context-conditional arm correlation matrix would require repeated joint observations for the same query, we instead use the proxy Rt, (i,j ) = 1 −2|¯yt,i − ¯yt,j |, which is high for arms predicted to behave similarly and low, possibly negative, for arms predicted to differ sharply. This proxy defines the feedback graph used by our correlation-aware methods, although our algorithms and theory allow any context-dependent choice of Rt. To enforce self loops, we set Rt, (i,i ) = −∞ .In addition to the cost, propagation, and context-only accuracy heads, the network includes a bandit feature head that maps xt to a 128-dimensional representation for downstream bandit algorithms. The heads are trained offline using Adam with learning rate 10 −4, MSE for cost prediction, and L1/Huber-style losses for accuracy prediction and propagation. Since we sweep large cost sensitivities up to ρ = 1000 , we feed the learner a bounded utility signal ¯rt,i t = clip (rt,i t , 0, 1) for numerical stability. Finally, although RO can produce surrogate utilities for all graph-neighbor arms, we only incorporate pseudo-observations for a pruned subset selected by an IQR rule on predicted delta magnitudes, retaining arm j only if |bδt,j | > Q 3 + κ IQR with κ = 1 .5. This acts as a conservative sparsification guard without changing the underlying feedback model. 
+
+Efficient Computation of pt (Line 8 of Algorithm 1): Line 8 of Algorithm 1 requires solving for the sampling distribution pt ∈ ∆( K) that minimizes the objective ϕ(p; ˆθt, xt, At). Rather than optimizing this objective in its original form, we follow the convex reformulation of [ 54 ], which converts the problem into an equivalent convex program over (p, z ) that can be solved efficiently with standard solvers at each round, as stated in the following theorem. 
+
+Theorem D.1 (Theorem 3.6 [ 54 ]) . Solving arg min p∈∆( K) dec γ (p; ˆf , x, G) is equivalent to solving the following convex optimization problem: 
+
+min  
+
+> p∈∆( K), z
+
+p⊤ ˆf + z
+
+s.t. ∀a ∈ [K] : 1
+
+γ ∥p − ea∥2diag( G⊤p)−1 ≤ ˆf (x, a ) + z, 
+
+G⊤p ≻ 0,
+
+(5) 
+
+where ˆf is shorthand for ˆf (x, ·) ∈ RK , ea is the a-th standard basis vector, ≻ denotes element-wise strict positivity, and z ∈ R is an auxiliary slack variable. 
+
+We refer readers to [ 54 ] for the proof. Although Theorem D.1 is stated in terms of loss scores ˆf (xt, j ), our bandit models produce reward predictions ˆrt,j ∈ [0 , 1] . We therefore apply the theorem with the transformation, 
+
+ˆf (xt, j ) = 1 − ˆrt,j . In particular, in the linear case ˆrt,j = x⊤ 
+
+> t
+
+ˆθt,j , while in the neural case ˆrt,j = f ˆθt (xt, j ) denotes the prediction of the corresponding neural reward model. Thus, ˆf (xt, ·) ∈ RK is obtained component-wise from 
+
+ˆrt(xt, ·) ∈ RK via ˆft = 1 − ˆrt. Since p ∈ ∆( K) implies p⊤1 = 1 , this substitution only changes the objective by an additive constant (absorbed into the slack variable z) and leaves the optimizer pt unchanged. We use Theorem D.1 to compute pt = arg min p∈∆( K) ϕ(p; ˆθt, xt, At) in Algorithm 1. 
+
+# E Additional Graphs and Results 
+
+## E.1 Reward Mixing vs Prediction Mixing (CABS-C vs CABS-D) 
+
+Table 7 presents the same ablation study on Open LLM LB V2 [ 21 ]. The overall pattern is consistent with the findings on RouterBench [ 25 ] and SPROUT [ 41 ] as shown in Section 5.2. Across most cost regimes, the decoupled variant (CABS-D) achieves comparable or improved utility relative to the coupled variant (CABS-C), and generally attains lower regret in the linear setting. On Open LLM LB V2, the differences are smaller but remain directionally similar, with CABS-D typically matching or slightly outperforming CABS-C. Overall, these results support the conclusion drawn in the main text that decoupling reward learning from surrogate prediction provides a stable and effective alternative to direct reward mixing. 22 Table 7: Average utility (higher the better) and Average Regret (lower the better) across cost regimes on Open LLM LB V2 dataset                              
+
+> Regime (Metric) CABS-C CABS-D
+> Linear Neural Linear Neural Low (Utility) 0.5047 0.5147 0.5328 0.5284 Medium (Utility) 0.2886 0.3197 0.3229 0.3289
+> High (Utility) 0.1753 0.1776 0.1951 0.1956
+> Low (Regret) 0.3846 0.4080 0.3620 0.3924 Medium (Regret) 0.3844 0.3940 0.3718 0.3696
+> High (Regret) 0.4056 0.4162 0.3930 0.3893
+
+Table 8: Utilities across cost regimes and datasets using all-MiniLM-L6-v2 [27] embeddings. 
+
+Open LLM LB v2 RouterBench SPROUT Method Low Medium High Low Medium High Low Medium High Epsilon-Greedy 0.4331 0.2403 0.1189 0.5795 0.4803 0.3431 0.7235 0.6230 0.5654 LinTS [3] 0.4662 0.2718 0.1908 0.6280 0.4994 0.3653 0.7641 0.6574 0.6167 LinUCB [15] 0.4522 0.2510 0.1903 0.6104 0.4991 0.3560 0.7612 0.6580 0.6031 NeuralUCB [56] 0.4323 0.2417 0.1759 0.6011 0.5030 0.3763 0.7131 0.5031 0.4693 CABS-D (Linear) 0.4990 0.2823 0.1925 0.6539 0.5266 0.3981 0.7738 0.6730 0.6226 
+
+CABS-D (Neural) 0.4920 0.2899 0.1937 0.6421 0.5127 0.4125 0.7494 0.5932 0.4925 LinUCB + Full-Feedback 0.5293 0.3280 0.2293 0.6701 0.5412 0.4244 0.8024 0.7105 0.6672 NeuralUCB + Full-Feedback 0.5213 0.3421 0.2374 0.6613 0.5527 0.4634 0.7789 0.6282 0.5467 
+
+## E.2 Encoder Robustness 
+
+We repeat our experiments with a second, widely used text embedding model (all-MiniLM-L6-v2 [ 27 ]) in addition to mDeBERTaV3-base [ 24 ]. Across datasets, method rankings and improvements over bandit baselines with respect to utility is consistent (see Table 8), indicating that our conclusions do not depend on a specific encoder choice. Absolute utilities shift slightly, with the largest change on RouterBench in the high-cost regime; notably, the full-feedback upper bound decreases similarly, suggesting the shift is driven by representation-limited separability rather than algorithmic instability. 
+
+## E.3 Learning Dynamics & Accuracy vs Cost Trade-offs 
+
+Figure 4 extends the learning-dynamics analysis of Section 5.5 to RouterBench and SPROUT, reporting relative cumulative regret normalized by LinUCB across low ( ρ ≤ 300 ), mid ( 300 < ρ < 800 ), and high ( ρ ≥ 800 ) cost regimes. Consistent with the Open LLM Leaderboard v2 results in the main text, CABS-D achieves uniformly lower relative cumulative regret than standard bandit baselines in most regimes, and the separation typically appears early in the horizon, indicating faster learning from surrogate feedback rather than solely an asymptotic gain. The trends are especially stable in the mid-cost regime, where the objective most strongly couples accuracy and cost and thus benefits from exploiting inter-arm correlations. As expected, full-feedback variants remain an optimistic upper bound and provide a reference for the achievable regret reduction under complete feedback. Further, Figure 6 shows relative cumulative regret graphs for Neural variants where we observe similar trends as that of linear variants. Figure 5 provides the analogous accuracy–cost Pareto frontiers for neural online-learning variants. The qualitative behavior mirrors the linear case: correlation-aware surrogate methods shift the frontier outward, achieving higher accuracy at comparable cost or reducing cost for a fixed accuracy, with the largest advantages occurring in regimes where cost sensitivity meaningfully constrains the policy. 23 (a) RouterBench 
+
+(b) SPROUT 
+
+Figure 4: Relative Cumulative regrets with respect to LinUCB for other linear online learning methods on RouterBench (top) and SPROUT (bottom) dataset.   
+
+> (a) Open LLM Leaderboard v2 (b) RouterBench (c) SPROUT
+
+Figure 5: Accuracy vs cost Pareto Frontier curves across datasets on Neural Online Learning models. 24 (a) Open LLM Leaderboard v2 
+
+(b) RouterBench 
+
+(c) SPROUT 
+
+Figure 6: Relative Cumulative regrets with respect to NeuralUCB for other neural online learning methods on Open LLM Leaderboard V2 dataset (top), RouterBench (middle) and SPROUT (bottom). 25 F The Technical Proofs 
+
+For clarity, we decompose the analysis of regret of proposed algorithms into three components, which progressively build toward our final guarantee. In particular, for the ease of reading, we split our algorithmic analysis into three parts as follows: 1. Baseline: Contextual Bandit In Subsection F.1, we first present a classical contextual bandit with regret bound eO
+
+q 
+
+KT Reg Sq (T )
+
+
+
+. In particular for the linear case, we get eO
+
+q 
+
+dKT log   Td
+
+
+
+.2. Correlation-Aware Bandits with Surrogates — Coupled (CABS-C). We next analyze our proposed graph-feedback algorithm with noisy surrogate rewards in Subsection F.2. When feedback graph Gt has independence number no greater than α, the regret satisfies 
+
+eO
+
+q 
+
+αT Reg Sq (T ) + εn
+
+√αKT 
+
+
+
+.
+
+In particular, for the linear case, when exactly m surrogate rewards are observed each round, this becomes 
+
+eO
+
+s
+
+d Km + 1 T log 
+
+ Td
+
+
+
++ εn
+
+r K2
+
+m + 1 T
+
+!
+
+.
+
+demonstrating a significant improvement by scale of roughly 1/m as long as the noise from ML-predicted rewards εn is well-bounded. 3. Correlation-Aware Bandits with Surrogates — Decoupled (CABS-D) Finally, in Subsection F.3 we establish the regret bound for the proposed prediction-mixing algorithm, a meta-bandit algorithm with two arms ((1) and (2) above) with regret bounded by min of them, 
+
+eO
+
+
+
+min 
+
+nq 
+
+KT Reg Sq (T ),
+
+q
+
+αT Reg Sq (T ) + εn
+
+√αKT 
+
+o 
+
+For the linear case, when exactly m surrogate rewards are observed each round, this becomes 
+
+eO min 
+
+(s 
+
+dKT log 
+
+ Td
+
+
+
+,
+
+s
+
+d Km + 1 T log 
+
+ Td
+
+
+
++ εn
+
+r K2
+
+m + 1 T
+
+)! 
+
+## F.1 Contextual bandits Regret Bounds 
+
+We begin with the SquareCB [ 19 ] algorithm, which reduces contextual bandits to online regression. We state the modified algorithm that works on rewards instead of losses in Algorithm 3. We provide its regret guarantee for completeness and refer the reader to [19] for the proof. 
+
+Theorem F.1 (Theorem 1 [ 19 ]) . Suppose Assumption 4.2 holds. Then for any δ > 0, by setting μ = K and 
+
+γ =
+
+q
+
+KT /  Reg Sq (T ) + log(2 δ−1), SquareCB guarantees that with probability at least 1 − δ,
+
+Reg CB (T ) ≤ 4
+
+q
+
+KT · Reg Sq (T ) + 8 pKT log(2 δ−1) = eO
+
+q 
+
+KT Reg Sq (T )
+
+
+
+. (8) 
+
+Corollary F.2 (Linear Regression Oracle) . Suppose the regression oracle is linear, i.e., ˆf (xt, i t) = x⊤ 
+
+> t
+
+θit ,where xt ∈ Rd with ∥x∥2 ≤ 1 and θit ∈ Rd with ∥θit ∥2 ≤ 1. Choosing SqAlg as the Vovk–Azoury–Warmuth forecaster [47, 8], which satisfies Reg Sq (T ) ≤ d log   Td
+
+, Theorem F.1 implies 
+
+Reg CB (T ) ≤ 4
+
+s
+
+dKT log 
+
+ Td
+
+
+
++ 8 pKT log(2 δ−1) = eO
+
+s
+
+dKT log 
+
+ Td
+
+!
+
+.
+
+26 Algorithm 3 SquareCB (Reward Form; adapted from [19])  
+
+> 1:
+
+Parameters: learning rate γ > 0, exploration parameter μ > 0 
+
+> 2:
+
+Input: online regression oracle RS producing predictors ˆft 
+
+> 3:
+
+for t = 1 , . . . , T do  
+
+> 4:
+
+Receive context xt 
+
+> 5:
+
+// Compute oracle’s reward predictions  
+
+> 6:
+
+for each arm i ∈ [K] do  
+
+> 7:
+
+ˆrt,i ← ˆft(xt, i ) 
+
+> 8:
+
+end for  
+
+> 9:
+
+bt ← arg max i∈[K] ˆrt,i  
+
+> 10:
+
+for each arm i ∈ [K] \ { bt} do  
+
+> 11:
+
+pt,i ← 1
+
+> μ+γ
+
+ ˆrt,b t −ˆrt,i 
+
+ 
+
+> 12:
+
+end for  
+
+> 13:
+
+pt,b t ← 1 − P 
+
+> i̸=bt
+
+pt,i  
+
+> 14:
+
+Sample it ∼ pt and observe reward rt,i t 
+
+> 15:
+
+Update RS with example (xt, r t,i t ) 
+
+> 16:
+
+end for 
+
+## F.2 Correlation Aware Bandits with Surrogates Coupled (CABS-C) 
+
+In this section, we present algorithmic analysis for Contextual Bandits with Noisy Graph Feedback with regret bound depending on a noise factor, eO
+
+q 
+
+αT Reg Sq (T ) + εn
+
+√αKT 
+
+
+
+. In our main paper, we present this as Correlation Aware Bandits with Surrogates Coupled (CABS-C), Algorithm 1. We include here all intermediate lemmas and derivations to ensure completeness and reproducibility of the analysis. 
+
+F.2.1 High Level Proof Sketch 
+
+The proof of Theorem 4.7 proceeds in three main steps. First, we decompose the total expected regret into an algorithmic optimization term (sometimes referred to as the non-bias term ), the cumulative regret of the regression oracle Reg Sq (T ), and an expected bias term E[BT ] that accounts for the misspecification of the surrogate rewards. Next, we further decompose this expected bias term into two distinct components: a regression-propagation error and an observation noise term. We continue by systematically bounding each piece of this decomposition: the optimization term is bounded using a minimax argument over the action probabilities, the regression-propagation error is bounded using the Cauchy-Schwarz inequality and properties of harmonic sums, and the observation noise is bounded using the Azuma-Hoeffding inequality applied to the bounded martingale difference sequence. Combining these individual bounds and tuning the learning rate parameter γ = pαT /Reg Sq (T ) to balance the components yields the final stated regret bound of ˜O(pαT Reg Sq (T ) + ϵn
+
+√αKT ).
+
+Regret Bound for Algorithm 1 ( CABS-C )Notation Let nt,j be the number of times arm j has been observed up to (and including) round t, and 
+
+Tt(j) = {τ ≤ t : Aτ, (iτ ,j ) = 1 }. Finally denote ∆τ,j := |x⊤ 
+
+> τ
+
+ˆθτ,k − x⊤ 
+
+> τ
+
+θ∗
+
+> k
+
+|.To prove Theorem 4.7, we first introduce the following auxiliary lemmas regarding the regret and bias decomposition. We continue by introducing lemmas to individually bound each term of the decomposition. Finally, we combine the results of all these lemmas in the final proof of Theorem 4.7. 
+
+Lemma F.3 (Regret Decomposition) . For any γ > 0, we may decompose the regret of Algorithm 1 as the following: 
+
+E[Reg T ] ≤ T · ϕ(p; ˆθt, xt, At) + γ
+
+4 Reg Sq (T ) + E[BT ]. (2) 27 Proof. This follows from the decomposition in Theorem 3.3 of [ 20 ], plus an additive bias term to account for potential misspecification of surrogate rewards 
+
+Lemma F.4 (Bias Decomposition) . Given the regret decomposition provided in Equation 2, we may decompose the expected bias term E[BT ] of Algorithm 1 as 
+
+E[BT ] = 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ +
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ,
+
+where wt,j = pt,j  
+
+> A⊤
+> t, (: ,j )pt
+
+. The first term corresponds to what we term the regression-propagation error, and the second term captures the contribution of observation noise. Proof. The term E[BT ] captures the expected cumulative regret induced by bias in the surrogate reward estimates. Let us begin by defining et,j := |bj − ˆbt,j |, where bj is the true bias of arm j, and ˆbt,j is the estimated bias of arm 
+
+j at round t. We may state the cumulative regret as 
+
+E[BT ] = 
+
+> T
+
+X
+
+> t=1
+
+E
+
+ X
+
+> j:At, (it,j )=1
+
+et,j 
+
+
+
+At round t, the instantaneous contribution of bias to the regret is 
+
+ X
+
+> j:At, (it,j )=1
+
+et,j 
+
+ =
+
+> K
+
+X
+
+> j=1
+
+pt,j 
+
+A⊤
+
+> t, (: ,j )
+
+pt
+
+et,j 
+
+We use the definition of wt,j to rewrite this as 
+
+E[BT ] := 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j et,j .
+
+We now make explicit the structure of et,j . Recall that the bias estimate ˆbt,j is maintained as a running average over past observations of arm j. By definition of the running average from Algorithm 1, 
+
+ˆbt,j = 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+
+
+sτ,j − x⊤ 
+
+> τ
+
+ˆθτ,j 
+
+
+
+.
+
+Substituting the reward model 
+
+sτ,j = x⊤ 
+
+> τ
+
+θ∗ 
+
+> j
+
++ bj + ξτ,j ,
+
+we obtain 
+
+ˆbt,j = bj + 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+
+
+x⊤ 
+
+> t
+
+ˆθτ,j − x⊤ 
+
+> τ
+
+θ∗
+
+> j
+
+
+
++ 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j .
+
+Plugging this into the definition of et,j yields 
+
+et,j = 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+
+
+x⊤ 
+
+> t
+
+ˆθτ,j − x⊤ 
+
+> τ
+
+θ∗
+
+> j
+
+
+
++ 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j 
+
+≤ 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+
+
+x⊤ 
+
+> t
+
+ˆθτ,j − x⊤ 
+
+> τ
+
+θ∗
+
+> j
+
+
+
++ 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j 
+
+28 Recall, 
+
+∆τ,j := |x⊤ 
+
+> t
+
+ˆθτ,j − x⊤ 
+
+> τ
+
+θ∗ 
+
+> j
+
+|,
+
+After plugging this into our previous equation and summing over all rounds T , this can be written compactly as 
+
+E[BT ] ≤
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ +
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ,
+
+Lemma F.5 (Bounding the Non-Bias Terms) . Suppose the feedback graph Gt is deterministic with independence number no more than α. Then Algorithm 1 guarantees that 
+
+ϕ(p; ˆθt, xt, At) ≤ O
+
+ α log( Kγ )
+
+γ
+
+
+
+Proof. The following proof primarily follows from [ 54 ] (Theorem 3.2). We include a summarized version below for completeness. Let us first rewrite ϕ(p; ˆθt, xt, At) in terms of losses: 
+
+ϕ(p; ˆθt, xt, At) := sup 
+
+> i∗∈[K]
+> θ∗∈RK×d
+> +
+
+Ei∼p
+
+x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+− x⊤ 
+
+> t
+
+θ∗ 
+
+> i∗
+
+− γ
+
+4
+
+X
+
+> k:At, (i,k )=1
+
+E[At, (i,k )]( x⊤ 
+
+> t
+
+ˆθt,k − x⊤ 
+
+> t
+
+θ∗
+
+> k
+
+)2
+
+
+
+Direct calculation shows that for all i∗ ∈ [K],
+
+Ei∼p
+
+x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+− x⊤ 
+
+> t
+
+θ∗ 
+
+> i∗
+
+− γ
+
+4
+
+X
+
+> k:At, (i,k )=1
+
+E[At, (i,k )]( x⊤ 
+
+> t
+
+ˆθt,k − x⊤ 
+
+> t
+
+θ∗
+
+> k
+
+)2
+
+
+
+=
+
+> K
+
+X
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+− x⊤ 
+
+> t
+
+θ∗ 
+
+> i∗
+
+− γ
+
+4
+
+> K
+
+X
+
+> i=1
+
+X
+
+> k:At, (k,i )=1
+
+pt,k (x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+)2
+
+We can take the gradient over f ∗(xt, ·) = x⊤ 
+
+> t
+
+θ∗· to get 
+
+sup  
+
+> f∗∈(X × [K]→R)
+
+
+
+> K
+
+X
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+− x⊤ 
+
+> t
+
+θ∗ 
+
+> i∗
+
+− γ
+
+4
+
+> K
+
+X
+
+> i=1
+
+X
+
+> k:At, (k,i )=1
+
+pt,k (x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+θ∗ 
+
+> i
+
+)2
+
+
+
+=
+
+> K
+
+X
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+ˆθt,i ∗ + 1
+
+γ ∥pt − ei∗ ∥2diag( Wt)−1
+
+Where Wt,i = P 
+
+> k:At, (k,i )=1
+
+pt,k . Next, let us consider the following minimax form over pt ∈ ∆([ K]) and i∗ ∈ [K]:
+
+inf  
+
+> pt∈∆([ K])
+
+sup 
+
+> i∗∈[K]
+
+( KX
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+ˆθt,i ∗ + 1
+
+γ ∥pt − ei∗ ∥2diag( Wt)−1
+
+)
+
+= min  
+
+> pt∈∆([ K])
+
+max 
+
+> i∗∈[K]
+
+
+
+> K
+
+X
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+ˆθt,i ∗ + 1
+
+γ
+
+X
+
+> i̸=i∗
+
+p2
+
+> t,i
+
+Wt,i 
+
++ 1
+
+γ
+
+(1 − pt,i ∗ )2
+
+γ W t,i 
+
+ (3) 
+
+= max 
+
+> qt∈∆K
+
+min 
+
+> pt∈∆K
+
+( KX
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+ˆθt,i ∗ + 1
+
+γ
+
+> K
+
+X
+
+> i=1
+
+p2
+
+> t,i
+
+(1 − qt,i )
+
+Wt,i 
+
++
+
+> K
+
+X
+
+> i=1
+
+qt,i (1 − pt,i )2
+
+γ W t,i 
+
+)
+
+29 where the last inequality is due to the fact that Equation (3) is convex in p ∈ ∆([ K]) and Sion’s minimax theorem. Choose pt,i = (1 − 1 
+
+> γ
+
+)qt,i + 1 
+
+> γK
+
+for all i ∈ [K]. Due to Assumption 4.3, all nodes in the feedback graph Gt have a self-loop. This allows us to upper bound the quantity as 
+
+= max  
+
+> qt∈∆([ K])
+
+min 
+
+> pt∈∆K
+
+( KX
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+ˆθt,i ∗ + 1
+
+γ
+
+> K
+
+X
+
+> i=1
+
+p2
+
+> t,i
+
+(1 − qt,i )
+
+Wt,i 
+
++
+
+> K
+
+X
+
+> i=1
+
+qt,i (1 − pt,i )2
+
+γ W t,i 
+
+)
+
+≤ max 
+
+> qt∈∆([ K])
+
+
+
+2
+
+γ + 1
+
+γ
+
+> K
+
+X
+
+> i=1
+
+
+
+(1 − 1 
+
+> γ
+
+qt,i + 1
+
+> γK
+
+2
+
+(1 − qt,i ) + qt,i 
+
+
+
+1 − (1 − 1 
+
+> γ
+
+)qt,i − 1
+
+> γK
+
+2
+
+Wt,i 
+
+
+
+≤ max 
+
+> qt∈∆([ K])
+
+
+
+2
+
+γ + 1
+
+γ
+
+> K
+
+X
+
+> i=1
+
+2
+
+
+
+(1 − 1 
+
+> γ
+
+)2q2 
+
+> t,i
+
++ 1
+
+> γ2K2
+
+
+
+(1 − qt,i ) + qt,i 
+
+
+
+1 − (1 − 1 
+
+> γ
+
+)qt,i 
+
+2
+
+Wt,i 
+
+
+
+≤ max 
+
+> qt∈∆([ K])
+
+
+
+2
+
+γ + 2
+
+γ2 + 1
+
+γ
+
+> K
+
+X
+
+> i=1
+
+2q2
+
+> t,i
+
+(1 − qt,i ) + 2 qt,i (1 − qt,i )2 + 2q3
+
+> t,i
+> γ2
+
+Wt,i 
+
+
+
+Since Wt,i = P 
+
+> k:At, (k,i )=1
+
+pt,k ≥ 1 
+
+> γK
+
+for all i ∈ [K] We can further bound this by saying 
+
+≤ max 
+
+> qt∈∆([ K])
+
+
+
+2
+
+γ + 2
+
+γ2 + 1
+
+γ
+
+> K
+
+X
+
+> i=1
+
+2q2
+
+> t,i
+
+(1 − qt,i ) + 2 qt,i (1 − qt,i )2 + 2q3
+
+> t,i
+> γ2
+
+Wt,i 
+
+
+
+≤ max 
+
+> qt∈∆([ K])
+
+(
+
+2
+
+γ + 2
+
+γ2 + 2
+
+γ
+
+> K
+
+X
+
+> i=1
+
+qt,i (1 − qt,i )
+
+Wt,i 
+
++ 2
+
+γ3
+
+> K
+
+X
+
+> i=1
+
+q3
+
+> t,i
+
+Wt,i 
+
+)
+
+≤ max 
+
+> qt∈∆([ K])
+
+(
+
+2
+
+γ + 2
+
+γ2 + 2
+
+γ
+
+> K
+
+X
+
+> i=1
+
+qt,i (1 − qt,i )
+
+Wt,i 
+
++ 2
+
+γ3
+
+> K
+
+X
+
+> i=1
+
+q2
+
+> t,i
+
+)
+
+≤ max 
+
+> qt∈∆K
+
+(
+
+8
+
+γ + 2
+
+γ
+
+> K
+
+X
+
+> i=1
+
+qt,i (1 − qt,i )
+
+Wt,i 
+
+)
+
+Next, we will bound 2qt,i (1 −qt,i ) 
+
+> Wt,i
+
+for each i ∈ [K]. Since we know that all nodes have self-loops in our feedback graph,we know that 
+
+> K
+
+X
+
+> i=1
+
+2qt,i (1 − qt,i )
+
+Wt,i 
+
+≤
+
+> K
+
+X
+
+> i=1
+
+2qt,i (1 − qt,i )
+
+P 
+
+> j:At, (j,i )
+
+((1 − 1 
+
+> γ
+
+)qt,j + 1 
+
+> γK
+
+)
+
+≤ γγ − 1
+
+> K
+
+X
+
+> i=1
+
+2((1 − 1 
+
+> γ
+
+)qt,i + 1 
+
+> γK
+
+)(1 − qt,i )
+
+P 
+
+> j:At, (j,i )
+
+((1 − 1 
+
+> γ
+
+)qt,j + 1 
+
+> γK
+
+)
+
+≤ 4
+
+> K
+
+X
+
+> i=1
+
+((1 − 1 
+
+> γ
+
+)qt,i + 1 
+
+> γK
+
+)
+
+P 
+
+> j:At, (j,i )
+
+((1 − 1 
+
+> γ
+
+)qt,j + 1 
+
+> γK
+
+) ≤ O(α log( Kγ )) 
+
+30 The last inequality is due to Lemma 5 from [4]. Combining all of the above inequalities, we get 
+
+inf  
+
+> pt∈∆([ K])
+
+sup 
+
+> i∗∈[K]
+
+( KX
+
+> i=1
+
+pt,i x⊤ 
+
+> t
+
+ˆθt,i − x⊤ 
+
+> t
+
+ˆθt,i ∗ + 1
+
+γ ∥pt − ei∗ ∥2diag( Wt)−1
+
+)
+
+≤ max 
+
+> qt∈∆K
+
+(
+
+8
+
+γ + 2
+
+γ
+
+> K
+
+X
+
+> i=1
+
+qt,i (1 − qt,i )
+
+Wt,i 
+
+)
+
+≤ O
+
+ α log( Kγ )
+
+γ
+
+
+
+Before introducing the lemmas to bound the noise terms of our regret decomposition, we introduce the following useful graph-theoretic result, which follows from [4]. 
+
+Lemma F.6 (A Useful Graph-Theoretic Property) . Let Gt be a directed graph with vertices i ∈ [K], in which 
+
+At, (i,i ) = 1 for all vertices. Assign each i ∈ [K] a positive weight pt,i such that P 
+
+> i∈[K]
+
+pt,i ≤ 1 and pt,i ≥ ϵ for all 
+
+i ∈ [K]. Then KX
+
+> i=1
+
+pt,i 
+
+A⊤
+
+> t, (: ,i )
+
+pt
+
+≤ α · ln 
+
+ 4Kαϵ 
+
+
+
+,
+
+where α is the independence number of Gt.Proof. This follows from Lemma 5 of [4]. 
+
+Lemma F.7 (Bounding the Regression-Propagation Error) . Suppose the feedback graph Gt is deterministic with independence number no more than α. Then Algorithm 1 guarantees that the regression-propagation error term of the bias may be bounded as 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ ≤
+
+q
+
+α ln(4 K/αϵ ) (1 + ln T ) T Reg Sq (T )
+
+Proof. We begin by applying the Cauchy–Schwarz inequality to the regression-propagation error term and performing algebraic manipulation: 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ ≤
+
+vuut TX
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j ·
+
+vuut
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆2
+
+> τ,j
+
+≤
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+vuut
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆2 
+
+> τ,j
+
+(4) where Equation 4 is due to applying Lemma F.6 to the first term and assuming pt,i ≥ ϵ for all i (Assumption 4.5). Next we swap sums in the second term to group by the regression error ∆2 
+
+> τ,j
+
+. To do so, we must re-index the summations. We temporarily define tj,m as the round in which the learner observes arm j for the m-th 31 time. After re-indexing we get 
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+vuut KX
+
+> j=1
+> nT ,j
+
+X
+
+> m=2
+
+wtj,m ,j 
+
+m − 1
+
+> m−1
+
+X
+
+> u=1
+
+∆2
+
+> tj,u ,j
+
+=
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+vuut KX 
+
+> j=1
+> nT ,j −1
+
+X
+
+> u=1
+
+∆2
+
+> tj,u ,j nT ,j
+
+X
+
+> m=u+1
+
+wtj,m ,j 
+
+m − 1 (5) 
+
+≤
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+vuut KX 
+
+> j=1
+> nT ,j −1
+
+X
+
+> u=1
+
+∆2
+
+> tj,u ,j nT ,j
+
+X
+
+> m=1
+
+1
+
+m
+
+≤
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+vuut KX 
+
+> j=1
+> nT ,j −1
+
+X
+
+> u=1
+
+∆2 
+
+> tj,u ,j
+
+· (1 + ln T ) (6) 
+
+≤
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+vuut KX
+
+> j=1
+> T
+
+X
+
+> t=1
+
+∆2 
+
+> t,j
+
+· (1 + ln T )
+
+≤
+
+s
+
+α T ln 
+
+ 4Kαϵ 
+
+
+
+·
+
+q
+
+Reg Sq (T ) · (1 + ln T ), (7) where Equation 5 is due to swapping sums, and Equation 6 is due to the following fact about harmonic sums: For any arm j, the sum, over its observation indices m = 1 , . . . , n T,j , of 1/m satisfies 
+
+> nT ,j
+
+X
+
+> m=1
+
+1
+
+m ≤ 1 + ln nT,j ≤ 1 + ln T. 
+
+We can combine the terms in Equation 7 to finally get 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ ≤
+
+q
+
+αT ln(4 K/αϵ ) (1 + ln T ) Reg Sq (T )
+
+Lemma F.8 (Bounding the Observation Noise) . Suppose the feedback graph Gt is deterministic with independence number no more than α. Then, for all δ > 0, with probability 1 − δ Algorithm 1 guarantees that the observation noise term of the bias may be bounded as 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ≤ εn
+
+s
+
+2αKT ln 
+
+ 2KT δ
+
+
+
+ln 
+
+ 4Kαϵ 
+
+
+
+(1 + ln T )
+
+Proof. We begin by bounding the term 
+
+1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j 
+
+We do so by fixing a specific arm j and considering the sequence of noise terms observed for this arm. Let k
+
+index the observations of arm j, such that ζk is the noise of the k-th observation. The sequence of partial sums 
+
+Sm = Pmk=1 ζk forms a martingale with respect to the filtration of observation events, satisfying the bounded difference property: 
+
+|Sm − Sm−1| = |ζm| ≤ εn.
+
+32 We apply the Azuma-Hoeffding inequality. For any m ≥ 1 and any λ > 0:
+
+P (|Sm| ≥ λ) ≤ 2 exp 
+
+
+
+− λ2
+
+2 Pmk=1 (εn)2
+
+
+
+= 2 exp 
+
+
+
+− λ2
+
+2mε 2
+
+> n
+
+
+
+.
+
+We seek a bound that holds with high probability 1 − δ′. Setting the right-hand side to δ′ and solving for λ:
+
+2 exp 
+
+
+
+− λ2
+
+2mε 2
+
+> n
+
+
+
+= δ′
+
+− λ2
+
+2mε 2
+
+> n
+
+= ln( δ′/2) 
+
+λ = p2mε 2 
+
+> n
+
+ln(2 /δ ′).
+
+Substituting Sm = nt,j · 1
+
+> nt,j
+
+P  
+
+> τ∈T t(j)
+
+ξτ,j (where m = nt,j ) and dividing by nt,j :
+
+P
+
+ 1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ≥ εn
+
+s
+
+2 ln(2 /δ ′)
+
+nt,j 
+
+ ≤ δ′.
+
+To ensure this bound holds simultaneously for all rounds t ∈ [T ] and all arms j ∈ [K], we apply a Union Bound over the KT possible events. We set the individual failure probability to δ′ = δ/ (KT ). Substituting δ′ into the bound: 
+
+1
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ≤ εn
+
+s
+
+2 ln(2 KT /δ )
+
+nt,j 
+
+.
+
+We may plug this quantity back into the observation noise term to get 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ≤ εn
+
+s
+
+2 ln 
+
+ 2KT δ
+
+ TX
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+√nt,j 
+
+≤ εn
+
+s
+
+2 ln 
+
+ 2KT δ
+
+vuuut
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+vuuut
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+ (8) 
+
+≤ εn
+
+s
+
+2 ln 
+
+ 2KT δ
+
+s
+
+αT ln 
+
+ 4Kαϵ 
+
+vuuut
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+ (9) 
+
+≤ εn
+
+s
+
+2 ln 
+
+ 2KT δ
+
+s
+
+αT ln 
+
+ 4Kαϵ 
+
+vuut KX
+
+> j=1
+
+(1 + ln T ) (10) 
+
+≤ εn
+
+s
+
+2 ln 
+
+ 2KT δ
+
+s
+
+αT ln 
+
+ 4Kαϵ 
+
+pK(1 + ln T ),
+
+where Equation 8 is due to applying the Cauchy-Shwarz inequality, Equation 9 is due to the same application of Lemma F.6 as Equation 4, and Equation 10 is due to applying the same fact about harmonic sums used in Equation 6. Combining these terms yields (with probability at least 1 − δ): 
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j ≤ εn
+
+s
+
+2αKT ln 
+
+ 2KT δ
+
+
+
+ln 
+
+ 4Kαϵ 
+
+
+
+(1 + ln T ).
+
+33 Proof of Theorem 4.7. We now utilize the preceding lemmas to prove that under the assumptions outlined in Section 4.1, if the feedback graph Gt is deterministic with independence number no more than α. Then, with probability 1 − δ, Algorithm 1 with choice γ = max 
+
+n
+
+4, pαT / Reg Sq (T )
+
+o
+
+guarantees that 
+
+E[Reg T ] ≤ eO
+
+q 
+
+αT Reg Sq (T ) + εn
+
+√αKT 
+
+
+
+.
+
+Proof. Combining the results of Lemmas F.3 and F.4, we get the full regret decomposition of Algorithm 1: 
+
+E[Reg T ] ≤ T · ϕ(p; ˆθt, xt, At) + γ
+
+4 Reg Sq (T )+
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ +
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j 
+
+We may plug in the result of Lemma F.5 into ϕ(p; ˆθt, xt, At) to get 
+
+E[Reg T ] ≤ O
+
+ αT log( Kγ )
+
+γ
+
+
+
++ γ
+
+4 Reg Sq (T )+
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ +
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j 
+
+We select γ = pαT / Reg Sq (T ) (for stability we must ensure that γ ≥ 4) and combine the first two terms of the decomposition to get (absorbing polylog factors) 
+
+E[Reg T ] ≤ eO
+
+q 
+
+αT Reg Sq (T )
+
+
+
++
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+ wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+∆τ,j 
+
+ +
+
+> T
+
+X
+
+> t=1
+> K
+
+X
+
+> j=1
+
+wt,j 
+
+nt,j 
+
+X 
+
+> τ∈T t(j)
+
+ξτ,j 
+
+Applying the results of Lemmas F.7 and F.8 we get 
+
+E[Reg T ] ≤ eO
+
+q 
+
+αT Reg Sq (T )
+
+
+
++
+
+q
+
+αT ln(4 K/αϵ ) (1 + ln T ) Reg Sq (T )+ εn
+
+s
+
+2αKT ln 
+
+ 2KT δ
+
+
+
+ln 
+
+ 4Kαϵ 
+
+
+
+(1 + ln T ).
+
+combining the final two terms and once again absorbing polylog factors, we get 
+
+E[Reg T ] ≤ eO
+
+q 
+
+αT Reg Sq (T ) + εn
+
+√αKT 
+
+
+
+.
+
+F.2.2 Bounds for m-Transitive Feedback Graphs 
+
+For completeness, we now state a theorem relating the independence number α of the feedback graph Gt with a constant number of additional arms m observed at each round. This result enables us to tighten existing regret bounds for both standard and contextual bandits by a factor of roughly 1/√m, quantifying the direct benefit of the auxiliary feedback. 
+
+Theorem F.9 (Independence Number for Transitive m-Regular Feedback) . Consider a bandit setting with K
+
+arms where the feedback graph Gt is transitive and m-regular (i.e., each vertex has out-degree m). Under these conditions, Gt decomposes into K/ (m + 1) disjoint cliques of size m + 1 , and its independence number is: 
+
+α(Gt) = Km + 1 
+
+34 Proof. Let Gt = ( V, E ) be the feedback graph. By the assumption of transitivity, if (u, v ) ∈ E and (v, w ) ∈ E,then (u, w ) ∈ E. In the context of an undirected or bi-directed feedback graph, transitivity implies that the graph is a disjoint union of cliques. Since Gt is m-regular, each vertex belongs to a clique of size exactly m + 1 .Consequently, the vertex set V is partitioned into N disjoint cliques {C1, C 2, . . . , C N }, where: 
+
+N = |V |
+
+m + 1 = Km + 1 
+
+To determine the independence number α(Gt), we observe the following: 1. Lower Bound: By the Caro-Wei Theorem [ 9, 49 ], for any graph with vertex degrees d(k), the independence number is bounded by: 
+
+α(Gt) ≥ X
+
+> k∈V
+
+1
+
+d(k) + 1 =
+
+> K
+
+X
+
+> k=1
+
+1
+
+m + 1 = Km + 1 (11) 2. Upper Bound: An independent set can contain at most one vertex from any clique. Since V is partitioned into exactly Km+1 disjoint cliques, the size of the maximum independent set is bounded by the number of cliques: 
+
+α(Gt) ≤ Km + 1 (12) Combining inequalities in Equations 11 and 12, we conclude that α(Gt) = Km+1 .
+
+Deriving Corollary 4.8. Corollary 4.8 follows by substituting α = Km+1 from Theorem F.9 into the general regret bound of Theorem 4.7, and applying the standard square-loss regret bound for linear regression oracles [ 19 ], 
+
+Reg Sq (T ) = O(d log   Td
+
+).
+
+## F.3 Correlation Aware Bandits with Surrogates Decoupled (CABS-D) 
+
+We now present a meta bandit algorithm that achieves the minimum regret of the above two sections, i.e, 
+
+eO
+
+
+
+min {
+
+q
+
+dKT log   Td
+
+,
+
+q
+
+d Km+1 T log   Td
+
+ + εn
+
+q K2 
+
+> m+1
+
+T
+
+
+
+. In our main section, we present this as CABS-D (Al-gorithm 2). We start by presenting the Algorithm 2 for Correlation-Aware Bandits with Surrogates Decoupled (CABS-D) and then prove the regret bound of it. 
+
+F.3.1 High Level Proof Sketch 
+
+The proof of Theorem 2 establishes a best-of-both-worlds guarantee by analyzing CABS-D as an aggregation of two base experts: a bandit-feedback expert, SquareCB (Algorithm 3) and a graph-feedback expert, CABS-C (Algorithm 1), each instantiated over a geometric grid of learning rates to form M = 2 L meta-copies. The analysis proceeds by first establishing the optimistic bias, uniform boundedness, and second-moment properties of the Implicit eXploration (IX) loss estimators utilized by both experts. Next, we decompose the total expected regret into the regret of the best-performing base expert ( Rm), an additive bias term, and a meta-learning overhead term. By bounding the second-order variance terms independently for the regimes where either the bandit or graph expert dominates, and demonstrating that the geometric grid contains an optimal scaling parameter γ(g) for each respective regime, we show that the aggregation overhead is tightly controlled. Consequently, the total expected regret asymptotically matches the minimum regret of either the pure bandit or correlation-aware surrogate expert, yielding ˜O
+
+
+
+min {
+
+q
+
+KT Reg Sq (T ),
+
+q
+
+αT Reg Sq (T ) + ϵn
+
+√αKT }
+
+
+
+.
+
+Regret Bound for Algorithm 2 ( CABS-D )Overview and setup. We follow the same algorithmic structure as in Algorithm 2 (geometric gridded γ per base expert). For clarity we restate the essential components and set the notation used throughout the proof. Note that 35 we utilize losses in the following analysis. There are 2 base experts (bandit-style ( m = 1 ) and graph-style ( m = 2 )). Each base expert m ∈ { 1, 2} is instantiated with a geometric grid of L parameter values Γ = {γ(1) , . . . , γ (L)}, with dyadic spacing γ(g+1) = 2 γ(g) (or any constant ratio > 1). Each pair (m, g ) is a distinct meta-copy . The total number of meta-copies is M = 2 L.To prove Theorem 4.9, we first introduce the following auxiliary lemma regarding the properties of the Implicit eXploration (IX) estimators. We continue by introducing auxiliary lemmas regarding the regret decomposition and bounding second-order terms. We combine and utilize the results of these lemmas in the final proof of Theorem 4.9. 
+
+Lemma F.10 (Properties of IX Estimators) . Let ˆℓt, (1 ,g ) and ˆℓt, (2 ,g ) be the IX estimators defined in Algorithm 2. Then, the following properties are true: 1. (Optimistic Bias) For every meta expert (m, g ) in round t and conditioned on Ft−1, we have 
+
+E
+
+hˆℓt, (m,g ) | F t−1
+
+i
+
+≤ X
+
+> i
+
+pt,m,i ℓt,i 
+
+Proof. We begin by showing this is true for ˆℓt, (1 ,g ) (bandit experts): 
+
+E
+
+hˆℓt, (1 ,g ) | F t−1
+
+i
+
+= X
+
+> i
+
+qt,i 
+
+qt,i + γ(g) pt,m,i ℓt,i ≤ X
+
+> i
+
+pt, 1,i ℓt,i .
+
+We proceed similarly for ˆℓt, (2 ,g ) (graph experts). We begin by rewriting the estimator as: 
+
+E
+
+hˆℓt, (2 ,g ) | F t−1
+
+i
+
+=
+
+> K
+
+X
+
+> k=1
+
+qt,k 
+
+" KX
+
+> i=1
+
+ℓt,i pt, 2,i 
+
+PKj=1 qt,j I{At, (j,i ) = 1 } + γ(g) · IAt, (k,i ) = 1 
+
+#
+
+=
+
+> K
+
+X
+
+> i=1
+
+ℓt,i pt, 2,i 
+
+PKj=1 qt,j I{At, (j,i ) = 1 } + γ(g) ·
+
+> K
+
+X
+
+> k=1
+
+qt,k IAt, (k,i ) = 1 
+
+≤
+
+> K
+
+X
+
+> i=1
+
+ℓt,i pt, 2,i ,
+
+where the last step is due to      
+
+> PKk=1 qt,k I{At, (k,i )=1 }
+> PKj=1 qt,j I{At, (j,i )=1 }+γ(g)
+
+≤ 1.
+
+2. (Uniform Bound) For every meta expert (m, g ) in round t, we may bound the value of ˆℓt, (m,g ) as 
+
+ˆℓt, (m,g ) ≤ 1
+
+γ(g)
+
+Proof. For both ˆℓt, (1 ,g ) and ˆℓt, (2 ,g ), the numerators are at most 1 and denominators are at least γ(g).
+
+3. (Second Moment Bounds) For every bandit meta expert (1 , g ) in round t and conditioned on Ft−1, we may say 
+
+E
+
+hˆℓ2 
+
+> t, (1 ,g )
+
+| F t−1
+
+i
+
+≤
+
+> K
+
+X
+
+> i=1
+
+pt, 1,i 
+
+qt,i + γ(g) .
+
+Likewise, for every graph meta expert (2 , g ) in round t and conditioned on Ft−1, we may say 
+
+E
+
+hˆℓ2 
+
+> t, (2 ,g )
+
+| F t−1
+
+i
+
+≤
+
+> K
+
+X
+
+> i=1
+
+pt, 2,i 
+
+P 
+
+> j:At, (j,i )=1
+
+qt,j + γ(g)
+
+36 Proof. We begin by showing this is true for ˆℓt, (1 ,g ) (bandit experts): 
+
+E
+
+hˆℓ2 
+
+> t, (1 ,g )
+
+| F t−1
+
+i
+
+=
+
+> K
+
+X
+
+> i=1
+
+qt,i 
+
+ ℓt,i pt, 1,i 
+
+q(a) + γ(g)
+
+2
+
+≤
+
+> K
+
+X
+
+> i=1
+
+(pt, 1,i )2
+
+qt,i + γ(g) ≤
+
+> K
+
+X
+
+> i=1
+
+pt, 1,i 
+
+qt,i + γ(g)
+
+We proceed similarly for ˆℓt, (2 ,g ) (graph experts). We once again rewrite the estimator as: 
+
+E
+
+hˆℓ2 
+
+> t, (2 ,g )
+
+| F t−1
+
+i
+
+=
+
+> K
+
+X
+
+> k=1
+
+qt,k 
+
+> K
+
+X
+
+> i=1
+
+ℓt,i pt, 2,i 
+
+PKj=1 qt,j I{At, (j,i ) = 1 } + γ(g) · I{At, (k,i ) = 1 }
+
+!2
+
+≤
+
+> K
+
+X
+
+> k=1
+
+qt,k KX
+
+> i=1
+
+(pt, 2,i )2 ℓt,i I{At, (k,i ) = 1 }
+
+PKj=1 qt,j I{At, (j,i ) = 1 } + γ(g)
+
+!2
+
+≤
+
+> K
+
+X
+
+> i=1
+
+ℓ2 
+
+> t,i
+
+p2
+
+> t, 2,i
+
+(PKj=1 qt,j I{At, (j,i ) = 1 } + γ(g))2
+
+> K
+
+X
+
+> k=1
+
+qt,k IAt, (k,i ) = 1 
+
+≤
+
+> K
+
+X
+
+> i=1
+
+ℓ2 
+
+> t,i
+
+p2
+
+> t, 2,i
+
+PKj=1 qt,j IAt, (j,i ) = 1 + γ(g)
+
+≤
+
+> K
+
+X
+
+> i=1
+
+pt, 2,i 
+
+P 
+
+> j:At, (j,i )=1
+
+qt,j + γ(g)
+
+Lemma F.11 (Regret Decomposition) . We may decompose the regret of Algorithm 2 as the following: 
+
+E [Reg T ] ≤ min  
+
+> m∈{ 1,2}
+
+Rm + E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
++ E[BT ],
+
+where Rm indicates the expected regret of expert m, BT is an additive term to account for estimation bias. Proof. We begin by defining the weights wt, (m,g ) for each meta expert (m, g ). We additionally recall: 
+
+wt+1 ,(m,g ) = wt, (m,g ) e−ηt ˆℓt, (m,g ) , Wt+1 =
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+wt, (m,g )e−ηt ˆℓt, (m,g ) .
+
+Thus 
+
+Wt+1 
+
+Wt
+
+=
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) e−ηt ˆℓt, (m,g )
+
+We take logs on both sides of the inequality and sum over all t = 1 , . . . , T . Simplifying the resulting telescoping series we get 
+
+ln WT +1 
+
+W1
+
+=
+
+> T
+
+X
+
+> t=1
+
+ln 
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g )e−ηt ˆℓt, (m,g )
+
+!
+
+ln W1
+
+WT +1 
+
+=
+
+> T
+
+X
+
+> t=1
+
+− ln 
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g )e−ηt ˆℓt, (m,g )
+
+!
+
+(13) 37 Applying e−x ≤ 1 − x + x2/2, we may say 
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g )e−ηt ˆℓt, (m,g ) ≤ 1 − ηt
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) + η2
+
+> t
+
+2
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓ2
+
+> t, (m,g )
+
+.
+
+Applying the inequality − ln(1 + x) ≥ − x, we get 
+
+− ln 
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g )e−ηt ˆℓt, (m,g )
+
+!
+
+≥ ηt
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) + η2
+
+> t
+
+2 Vt. (14) We may upper bound the quantity ln W1  
+
+> WT+1
+
+using the knowledge that W1 = M and 
+
+WT +1 ≥ exp 
+
+
+
+− min m,g 
+
+PTs=1 ηs ˆℓs, (m,g )
+
+
+
+:
+
+ln W1
+
+WT +1 
+
+≤ ln M + min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ηs ˆℓs, (m,g ) (15) Plugging Equations 14 and 15 into Equation 13 yields 
+
+> T
+
+X
+
+> t=1
+
+ηt
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) +
+
+> T
+
+X
+
+> t=1
+
+η2
+
+> t
+
+2 Vt ≤ ln M + min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ηs ˆℓs, (m,g )
+
+> T
+
+X
+
+> t=1
+
+ηt
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) − min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ηs ˆℓs, (m,g ) ≤ ln M +
+
+> T
+
+X
+
+> t=1
+
+η2
+
+> t
+
+2 Vt (16) Since we choose nt to be non-increasing in t (since ∆t from Algorithm 2 is non-decreasing), we have ηt ≥ ηT .Therefore, we can say 
+
+> T
+
+X
+
+> t=1
+
+ηt
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) − min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ηs ˆℓt, (m,g )
+
+≤ ηT
+
+
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) − min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ˆℓt, (m,g )
+
+ (17) Combining Equation 17 with Equation 16 and dividing by ηT gives us the master inequality :
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g ) − min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ˆℓt, (m,g ) ≤ ln MηT
+
++ 12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt (18) We may take expectation over the master inequality to obtain 
+
+E
+
+" TX
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g )
+
+#
+
+− E
+
+ min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ˆℓt, (m,g )
+
+ ≤ E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
+. (19) The first term on the left-hand side of the inequality is the weighted sum of loss estimators . We relate this weighted sum to the actual observed loss by decomposing the expected cumulative observed loss E
+
+hPTt=1 ℓt,i t
+
+i
+
+38 into E
+
+hPTt=1 
+
+P2
+
+> m=1
+
+PLg=1 μt, (m,g ) ˆℓt, (m,g )
+
+i
+
+and an additive expected bias term E[BT ]:
+
+E
+
+" TX
+
+> t=1
+
+ℓt,i t
+
+#
+
+= E
+
+" TX
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (m,g ) ˆℓt, (m,g )
+
+#
+
++ E[BT ] (20) Substituting Equation 20 into Equation 19, 
+
+E
+
+" TX
+
+> t=1
+
+ℓt,i t
+
+#
+
+− E[BT ] − E
+
+ min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ˆℓt, (m,g )
+
+ ≤ E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
+E
+
+" TX
+
+> t=1
+
+ℓt,i t
+
+#
+
+− L∗ − E[BT ] −
+
+E
+
+ min 
+
+> m∈{ 1,2}
+> g∈[L]
+> T
+
+X
+
+> s=1
+
+ˆℓt, (m,g )
+
+ − L∗
+
+ ≤ E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
+E
+
+" TX
+
+> t=1
+
+ℓt,i t
+
+#
+
+− L∗ − E[BT ] − E
+
+"
+
+min 
+
+> m∈{ 1,2}
+> T
+
+X
+
+> s=1
+> K
+
+X
+
+> i=1
+
+pt,m,i ℓt,i 
+
+#
+
+− L∗
+
+!
+
+≤ E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
+(21) 
+
+E [Reg T ] − E[BT ] − min  
+
+> m∈{ 1,2}
+
+Rm ≤ E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
+.
+
+Where L∗ is the loss from following the optimal policy. Equation 21 is due to applying the optimistic bias property from Lemma F.10. Rearranging terms gives us the final regret decomposition 
+
+E [Reg T ] ≤ min  
+
+> m∈{ 1,2}
+
+Rm + E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt
+
+#
+
++ E[BT ].
+
+Lemma F.12 (Bounding Second-Order Terms) . Suppose that the feedback graph Gt associated with the graph feedback expert ( m = 1 ) is strongly observable, and has independence number no greater than α. If we assume the geometric grid of γ-values is of size L = ln T and that qt,i ≥ ϵ, we may bound Vt independently for each expert such that 
+
+E [Vt] ≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt,m,i + γ(g)
+
+
+
+≤
+
+(
+
+2K ln T, if m = 1 dominates 2α ln   4Tαϵ 
+
+ ln( T ) , if m = 2 dominates , (22) 
+
+where 
+
+Qt,m,i =
+
+(
+
+qt,i , if m = 1 
+
+PKj=1 qt,j · I{At, (j,i ) = 1 }, if m = 2 .
+
+Proof. We begin by proving the statement for when m = 1 (bandit feedback expert) dominates. Specifically, in this case we assume the regret of expert m = 1 consistently out-performs that of expert m = 2 , thus the E[Vt]
+
+39 term associated with m = 1 dominates. We begin with the definition of Vt with fixed m = 1 
+
+E [Vt] = 
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (1 ,g )E
+
+hˆℓ2
+
+> t, (1 ,g )
+
+i
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (1 ,g )
+
+> K
+
+X
+
+> i=1
+
+pt, 1,i 
+
+qt,i + γ(g)
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+> K
+
+X
+
+> i=1
+
+qt,i 
+
+qt,i + γ(g) (23) 
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+> K
+
+X
+
+> i=1
+
+1
+
+≤ 2K ln T, 
+
+where Equation 23 is a result of applying the definition of qt,i . We continue by proving the statement for when 
+
+m = 2 (graph feedback dominates). Using a similar line of reasoning to the case when m = 1 dominates, we begin with the definition of Vt with fixed m = 2 
+
+E [Vt] = 
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (2 ,g )E
+
+hˆℓ2
+
+> t, (2 ,g )
+
+i
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+μt, (2 ,g )
+
+> K
+
+X
+
+> i=1
+
+pt, 2,i 
+
+P 
+
+> j:At, (j,i )=1
+
+qt,j + γ(g)
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+> K
+
+X
+
+> i=1
+
+qt,i 
+
+P 
+
+> j:At, (j,i )=1
+
+qt,j + γ(g) (24) 
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+> K
+
+X
+
+> i=1
+
+qt,i 
+
+P 
+
+> j:At, (j,i )=1
+
+qt,j 
+
+≤
+
+> 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+> K
+
+X
+
+> i=1
+
+α ln 
+
+ 4Tαϵ 
+
+
+
+(25) 
+
+≤ 2α ln 
+
+ 4Tαϵ 
+
+
+
+ln( T ) ,
+
+where Equation 24 is a result of applying the definition of qt,i , and Equation 25 is due to Lemma F.6. 
+
+Proof of Theorem 4.9. We now use the preceding lemmas to prove that if there are M = 2 experts: one bandit-feedback expert and one graph-feedback expert (tuned for known independence number α), then Algorithm 2 satisfies 
+
+E [Reg Sq (T )] 
+
+≤ O
+
+
+
+min 
+
+n
+
+R1 + ln( KT ln T ) √KT ln M ln T , R2 + ln( αT ln( T /αϵ ) ln T ) pαT ln( T /αϵ ) ln M ln T
+
+o 
+
+Using R1 = eO(pKT Reg Sq (T )) from Theorem F.1 and R2 = eO(pαT Reg Sq (T ) +√αKT ε n) from Theorem 4.7, we obtain the regret bound 
+
+eO
+
+
+
+min {
+
+q
+
+KT Reg Sq (T ),
+
+q
+
+αT Reg Sq (T ) + √αKT ε n}
+
+
+
+.
+
+40 Proof. We restate the decomposition derived in Lemma F.11, 
+
+E [Reg T ] ≤ min 
+
+m∈{ 1,2} Rm + E
+
+ ln MηT
+
+
+
++ E
+
+"
+
+12ηTTX
+
+t=1 
+
+η2
+
+t Vt
+
+#
+
++ E[BT ]. (26) We begin by bounding E[BT ]. Rearranging Equation 20 we get 
+
+E[BT ] = E
+
+" TX
+
+t=1 
+
+ℓt,i t
+
+#
+
+− E
+
+" TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g ) ˆℓt, (m,g )
+
+#
+
+=
+
+TX
+
+t=1 
+
+KX
+
+i=1 
+
+qt,i ℓt,i −
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g )
+
+KX
+
+i=1 
+
+pt,m,i ℓt,i 
+
+Qt,m,i 
+
+Qt,m,i + γ(g) (27) We may further expand Equation 27: 
+
+TX
+
+t=1 
+
+KX
+
+i=1 
+
+qt,i ℓt,i −
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g )
+
+KX
+
+i=1 
+
+pt,m,i ℓt,i 
+
+Qt,m,i 
+
+Qt,m,i + γ(g)
+
+=
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g )
+
+KX
+
+i=1 
+
+pt,m,i ℓt,i −
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g )
+
+KX
+
+i=1 
+
+pt,m,i ℓt,i 
+
+Qt,m,i 
+
+Qt,m,i + γ(g)
+
+=
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g )
+
+KX
+
+i=1 
+
+pt,m,i ℓt,i 
+
+
+
+1 − Qt,m,i 
+
+Qt,m,i + γ(g)
+
+
+
+=
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g )
+
+KX
+
+i=1 
+
+pt,m,i ℓt,i 
+
+ γ(g)
+
+Qt,m,i + γ(g)
+
+
+
+≤
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+μt, (m,g ) γ(g)
+
+KX
+
+i=1 
+
+ pt,m,i 
+
+Qt,m,i + γ(g)
+
+
+
+≤
+
+TX
+
+t=1 2X
+
+m=1 
+
+LX
+
+g=1 
+
+γ(g)
+
+KX
+
+i=1 
+
+ qt,i 
+
+Qt,m,i + γ(g)
+
+
+
+(28) 41 Next, we bound E
+
+h ln MηT
+
+i
+
++ E
+
+h 12ηT
+
+PTt=1 η2 
+
+> t
+
+Vt
+
+i
+
+.
+
+ln MηT
+
++ 12ηTTX
+
+> t=1
+
+η2 
+
+> t
+
+Vt = ln MηT
+
++ 12ηTTX
+
+> t=1
+
+ln M
+
+1 + ∆ t−1
+
+Vt
+
+= ln MηT
+
+1 + 12
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+1 + ∆ t−1
+
+!
+
+= √ln M p1 + ∆ T −1 1 + 12
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+1 + ∆ t−1
+
+!
+
+≤ √ln M p1 + ∆ T −1 1 + 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+∆t
+
+!
+
+(29) 
+
+≤ √ln M p1 + ∆ T −1 1 + 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+Pts=1 Vs
+
+!
+
+≤ √ln M p1 + ∆ T −1 2 + ln 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+!! 
+
+(30) 
+
+≤ √ln M p1 + ∆ T −1 (2 + ln(∆ T )) 
+
+≤ ln(∆ T )√ln M + 2 √ln M + ln(∆ T )p∆T −1 ln M + 2 p∆T −1 ln M
+
+≤ ln(∆ T )p∆T −1 ln M + c1, (31) where Equation 29 is due to ∆t = Vt + ∆ t−1 ≤ 1 + ∆ t−1, and Equation 30 is due to the following fact: 
+
+PTt=1   
+
+> xtPts=1 xs
+
+≤ 1 + ln 
+
+PTt=1 xt
+
+
+
+. For cleaner notation, in the Equation 31 we absorb all dominated terms into the constant c1. We continue by plugging Equation 31 and Equation 28 into Equation 26 to get 
+
+E [Reg T ]
+
+≤ min  
+
+> m∈{ 1,2}
+
+Rm + E[ln(∆ T )] pE[∆ T −1] ln M +
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+γ(g)
+
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt,m,i + γ(g)
+
+
+
++ c1
+
+≤ min  
+
+> m∈{ 1,2}
+
+Rm + ln 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+! vuut T −1X
+
+> t=1
+
+Vt
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+γ(g)
+
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt,m,i + γ(g)
+
+
+
++ c1
+
+| {z }
+
+> CABS-D overhead
+
+(32) Since the regret contributions of both experts cannot be simultaneously large, according to the first term if 
+
+R1 ≤ R2 then the analysis ensures that terms associated with R2 do not accumulate (the same applies if R1 ≥ R2). This allows us to divide the analysis of the CABS-D overhead into two cases: 1) where m = 1 (bandit feedback) is the best expert, and 2) where m = 2 (graph feedback) is the best expert. We begin by examining the first case: 42 When m = 1 :
+
+ln 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+! vuut T −1X
+
+> t=1
+
+Vt
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+γ(g)
+
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt, 1,i + γ(g)
+
+
+
++ c1
+
+≤ ln 
+
+> T
+
+X
+
+> t=1
+
+2K ln T
+
+! vuut T −1X
+
+> t=1
+
+2K ln T
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1
+
+2K
+
+> L
+
+X
+
+> g=1
+
+γ(g) + c1 (33) 
+
+≤ ln(2 KT ln T ) p2K(T − 1) ln M ln T + 2 KT 
+
+> L
+
+X
+
+> g=1
+
+γ(g) + c1,
+
+where Equation 33 is due to Lemma F.12. Recall that the algorithm aggregates a set of experts parameterized by a geometric grid Γ. By the properties of CABS-D (Lemma F.11), the total regret is bounded by the regret of the best fixed expert in the grid, plus an additive expert-dependent overhead. Therefore, we bound the regret by choosing the specific γ(g) ∈ Γ that minimizes the bound for the specific feedback structure. Because Γ is a dyadic grid of size L = ln T , for any optimal tuning parameter γ∗, there exists a grid point γ(g) such that γ(g) ≈ γ∗ up to a small constant factor. When γ(g) = 1√KT , we get 
+
+ln 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+! vuut T −1X
+
+> t=1
+
+Vt
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+γ(g)
+
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt, 1,i + γ(g)
+
+
+
++ c1
+
+≤ ln(2 KT ln T ) p2K(T − 1) ln M ln T + 2 ln T √KT + c1
+
+≤ O
+
+
+
+ln( KT ln T ) √KT ln M ln T
+
+
+
+, (34) Similarly, when m = 2 :
+
+ln 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+! vuut T −1X
+
+> t=1
+
+Vt
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+γ(g)
+
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt, 2,i + γ(g)
+
+
+
++ c1
+
+≤ ln 
+
+> T
+
+X
+
+> t=1
+
+2α ln 
+
+ 4Tαϵ 
+
+
+
+ln T
+
+! vuut T −1X
+
+> t=1
+
+2α ln 
+
+ 4Tαϵ 
+
+
+
+ln T
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1
+
+2α ln 
+
+ 4Tαϵ 
+
+ LX
+
+> g=1
+
+γ(g) + c1
+
+≤ ln 
+
+
+
+2αT ln 
+
+ 4Tαϵ 
+
+
+
+ln T
+
+ s
+
+2α(T − 1) ln 
+
+ 4Tαϵ 
+
+
+
+ln T ln M
+
+
+
++ 2 αT ln 
+
+ 4Tαϵ 
+
+ LX
+
+> g=1
+
+γ(g) + c1.
+
+By setting γ(g) = 1√αT , we get 
+
+ln 
+
+> T
+
+X
+
+> t=1
+
+Vt
+
+! vuut T −1X
+
+> t=1
+
+Vt
+
+!
+
+ln M +
+
+> T
+
+X
+
+> t=1 2
+
+X
+
+> m=1
+> L
+
+X
+
+> g=1
+
+γ(g)
+
+> K
+
+X
+
+> i=1
+
+ qt,i 
+
+Qt, 2,i + γ(g)
+
+
+
++ c1
+
+≤ ln 
+
+
+
+2αT ln 
+
+ 4Tαϵ 
+
+
+
+ln T
+
+ s
+
+2α(T − 1) ln 
+
+ 4Tαϵ 
+
+
+
+ln M ln T
+
+
+
++ 2 √αT ln 
+
+ 4Tαϵ 
+
+
+
+ln T + c1
+
+≤ O
+
+
+
+ln( αT ln( T /αϵ ) ln T ) pαT ln( T /αϵ ) ln M ln T
+
+
+
+. (35) Combining the two cases (from Equations 34 and 35) and plugging them into Equation 32 yields 43 E [Reg Sq (T )] 
+
+≤ O
+
+
+
+min 
+
+n
+
+R1 + ln( KT ln T ) √KT ln M ln T , R2 + ln( αT ln( T /αϵ ) ln T ) pαT ln( T /αϵ ) ln M ln T
+
+o 
+
+If we use Theorem F.1 to obtain R1 (the regret of the bandit feedback expert) and we use Theorem 4.7 to obtain 
+
+R2 (the regret of the graph feedback expert), we may plug them in to obtain (after absorbing polylogs) 
+
+E[Reg T ] ≤ eO
+
+
+
+min 
+
+q 
+
+KT Reg Sq (T ) + √KT , 
+
+q
+
+αT Reg Sq (T ) + √αKT ε n + √αT 
+
+ 
+
+≤ eO
+
+
+
+min {
+
+q
+
+KT Reg Sq (T ),
+
+q
+
+αT Reg Sq (T ) + √αKT ε n}
+
+
+
+. (36) 
+
+Deriving Corollary 4.10. Corollary 4.10 follows by substituting α = Km+1 from Theorem F.9 into the general regret bound of Theorem 4.9, and applying the standard square-loss regret bound for linear regression oracles [ 19 ], 
+
+Reg Sq (T ) = O(d log   Td
+
+).44
