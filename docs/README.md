@@ -6,91 +6,77 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-14
-- 运行时间：2026-07-14 22:06:05 UTC
+- 最新运行日期：2026-07-15
+- 运行时间：2026-07-15 21:59:45 UTC
 - 运行状态：成功
-- 本次总论文数：23
-- 精读区：9
-- 速读区：14
+- 本次总论文数：19
+- 精读区：8
+- 速读区：11
 
 ### 今日简报（AI）
-1) 今日23篇论文精读9篇，聚焦智能体操作系统与多模态记忆、专家轨迹优化两大前沿方向。
-2) 最值得看：ABot-AgentOS构建机器人终身记忆架构，Agentic-DPO实现从模仿到自主策略优化的跃升。
-3) 建议读者优先研读这两篇高评分论文，并关注速读列表中面向真实危害的CLI智能体对齐审计。
-- 详情：[/202607/14/README](/202607/14/README)
+今日日报精读8篇、速读11篇，重点推荐两篇9.0分论文：《Dynamic Agent Skills》系统梳理智能体技能库演化的生命周期与分类，《LOGOS》提出一种与人类共同进化的AI团队逻辑框架。建议优先精读这两篇，理解智能体技能管理与团队协作的前沿方法论。
+- 详情：[/202607/15/README](/202607/15/README)
 
 ### 精读区论文标签
-1. [ABot-AgentOS: A General Robotic Agent OS with Lifelong Multi-modal Memory](/202607/14/2607.10350v1-abot-agentos-a-general-robotic-agent-os-with-lifelong-multi-modal-memory)  
-   标签：评分：10.0/10、query:agent-lsh
-   evidence：长时程具身代理
-2. [Agentic-DPO: From Imitation to Agentic Policy Optimization on Expert Trajectories](/202607/14/2607.10601v1-agentic-dpo-from-imitation-to-agentic-policy-optimization-on-expert-trajectories)  
+1. [Dynamic Agent Skills: A Lifecycle Survey and Taxonomy of Evolving Skill Libraries](/202607/15/2607.10113v1-dynamic-agent-skills-a-lifecycle-survey-and-taxonomy-of-evolving-skill-libraries)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：通过轨迹偏好优化实现代理自我改进
-3. [Route, Communicate, and Reason: Gated Routing and Adaptive Depth for Efficient Multi-Agent Reasoning](/202607/14/2607.10836v1-route-communicate-and-reason-gated-routing-and-adaptive-depth-for-efficient-multi-agent-reasoning)  
-   标签：评分：9.0/10、query:agent-mix
-   evidence：门控路由与自适应深度作为混合代理方法用于多代理推理
-4. [Agentic Routing: The Harness-Native Data Flywheel](/202607/14/2607.11399v1-agentic-routing-the-harness-native-data-flywheel)  
-   标签：评分：9.0/10、query:moe-routing
-   evidence：提出面向智能体内部模型选择的原生路由方法，直接针对LLM推理路由
-5. [Norm Enforcement for AI Agents: Robustly Shaping Behavior in Multi-Agent Systems](/202607/14/2607.09766v1-norm-enforcement-for-ai-agents-robustly-shaping-behavior-in-multi-agent-systems)  
+   evidence：关于agent技能库随时间演化的综述
+2. [LOGOS: A Living Logic for AI Agent Teams That Evolve With Humans](/202607/15/2607.10878v1-logos-a-living-logic-for-ai-agent-teams-that-evolve-with-humans)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：智能体团队的自我进化与治理
+3. [How to Realize Recursively Self-Improving Agents and Personal Singularity: A Goal-, Scope-, Tool-, and Benchmark-Driven Multi-Agent Architecture](/202607/15/2607.12254v1-how-to-realize-recursively-self-improving-agents-and-personal-singularity-a-goal--scope--tool--and-benchmark-driven-multi-agent-architecture)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：递归自我改进agent与长时任务
+4. [Track, Rank, Crack: Epistemic Working Memory Scales Multi-Hop Reasoning in Language Agents](/202607/15/2607.12267v1-track-rank-crack-epistemic-working-memory-scales-multi-hop-reasoning-in-language-agents)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：认识论工作记忆增强长程agent推理能力
+5. [PM-Bench: Evaluating Prospective Memory in LLM Agents](/202607/15/2607.12385v1-pm-bench-evaluating-prospective-memory-in-llm-agents)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：评估模拟一周中的前瞻记忆
+6. [ReflectVLN: Training Vision-Language Navigation Agents with Reflective Reasoning](/202607/15/2607.12680v1-reflectvln-training-vision-language-navigation-agents-with-reflective-reasoning)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：具备反思推理的长周期导航
+7. [Who Grades the Grader? Co-Evolving Evaluation Metrics and Skills for Self-Improving LLM Agents](/202607/15/2607.12790v1-who-grades-the-grader-co-evolving-evaluation-metrics-and-skills-for-self-improving-llm-agents)  
+   标签：评分：9.0/10、query:agent-lsh
+   evidence：用于自改进代理的评估指标与技能共同进化
+8. [Hy-Embodied-VLM-1.0: Efficient Physical-World Agents](/202607/15/2607.12894v1-hy-embodied-vlm-10-efficient-physical-world-agents)  
    标签：评分：8.0/10、query:agent-lsh
-   evidence：研究规范执行机制以鲁棒地塑造语言模型智能体行为
-6. [Verification of Adaptive Agentic Controllers through Finite Rule Revision](/202607/14/2607.09770v1-verification-of-adaptive-agentic-controllers-through-finite-rule-revision)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：自适应代理控制器的验证与控制技术
-7. [RouteRec: Strict Evaluation of Recommender-Agent Selection and Aggregation](/202607/14/2607.09908v1-routerec-strict-evaluation-of-recommender-agent-selection-and-aggregation)  
-   标签：评分：8.0/10、query:moe-routing
-   evidence：框架实现异构推荐智能体之间的任务感知智能体排名和选择
-8. [Dynamic Agent Skills: A Lifecycle Survey and Taxonomy of Evolving Skill Libraries](/202607/14/2607.10113v1-dynamic-agent-skills-a-lifecycle-survey-and-taxonomy-of-evolving-skill-libraries)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：关于智能体长期技能库演化的综述
-9. [LOGOS: A Living Logic for AI Agent Teams That Evolve With Humans](/202607/14/2607.10878v1-logos-a-living-logic-for-ai-agent-teams-that-evolve-with-humans)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：具有治理能力的自进化智能体团队
+   evidence：具身智能体具有序列自适应推理能力，适用于长时间跨度任务
 
 ### 速读区论文标签
-1. [Exploring Agentic Workflows for Generating High Quality Math Visual Aids](/202607/14/2607.09839v1-exploring-agentic-workflows-for-generating-high-quality-math-visual-aids)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：具有自我改进循环的智能体工作流用于生成数学图示
-2. [ANCHOR: Automated Alignment Auditing for CLI Agents on Real-World Harm](/202607/14/2607.10455v1-anchor-automated-alignment-auditing-for-cli-agents-on-real-world-harm)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：自动审计框架对CLI智能体进行非法任务压力测试
-3. [GRASP: GRanularity-Aware Search Policy for Agentic RAG](/202607/14/2607.10463v1-grasp-granularity-aware-search-policy-for-agentic-rag)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：强化学习框架赋予代理长步骤推理中自适应检索能力
-4. [UNIBROWSE: A Data-to-Agent Framework for Multimodal BrowseComp](/202607/14/2607.10557v1-unibrowse-a-data-to-agent-framework-for-multimodal-browsecomp)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：统一数据管道面向需要长视距推理的多模态浏览智能体
-5. [The Compliance Trap: Diagnosing How AI Agents Consume Conflicting Memory](/202607/14/2607.10608v1-the-compliance-trap-diagnosing-how-ai-agents-consume-conflicting-memory)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：分析长期AI agent的记忆消费过程
-6. [EcoXAI: Autonomous Agentic Ecosystem for Explainable Artificial Intelligence and Biomedical Discovery](/202607/14/biorxiv-10-64898-2026-07-08-737358-v1-ecoxai-autonomous-agentic-ecosystem-for-explainable-artificial-intelligence-and-biomedical-discovery)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：代理利用与循环工程
-7. [Out of Sight: Compression-Aware Content Protection against Agentic Crawlers](/202607/14/2607.08180v1-out-of-sight-compression-aware-content-protection-against-agentic-crawlers)  
+1. [MemDecay: Region-Aware KV Cache Eviction for Efficient LLM Agent Inference](/202607/15/2607.10582v1-memdecay-region-aware-kv-cache-eviction-for-efficient-llm-agent-inference)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：通过压缩感知防御控制代理爬虫的技术
-8. [AgentAbstain: Do LLM Agents Know When Not to Act?](/202607/14/2607.10059v1-agentabstain-do-llm-agents-know-when-not-to-act)  
+   evidence：面向LLM agent长时推理的区域感知KV缓存淘汰
+2. [World Models as Adversaries: Multi-Agent Self-Play Fine-Tuning for Robust Motion Planning](/202607/15/2607.10630v1-world-models-as-adversaries-multi-agent-self-play-fine-tuning-for-robust-motion-planning)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：作为控制机制的智能体放弃行动的评估框架
-9. [Distributed Agent System: Fault-Tolerant Collaboration Among Embodied Agents](/202607/14/2607.10811v1-distributed-agent-system-fault-tolerant-collaboration-among-embodied-agents)  
+   evidence：用于鲁棒运动规划的多智能体自博弈微调
+3. [Rethinking the Evaluation of Harness Evolution for Agents](/202607/15/2607.12227v1-rethinking-the-evaluation-of-harness-evolution-for-agents)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：提出面向长时程任务的容错框架，解决资源限制下的长程可靠性问题
-10. [A Formal Hierarchical Architecture for Agentic Orchestration with Stack-Based Execution and Lazy Discovery](/202607/14/2607.11138v1-a-formal-hierarchical-architecture-for-agentic-orchestration-with-stack-based-execution-and-lazy-discovery)  
+   evidence：LLM智能体的驾驭进化评估
+4. [Internet of Agentic Things: Networked AI Agents for Closed-Loop IoT Orchestration](/202607/15/2607.12662v1-internet-of-agentic-things-networked-ai-agents-for-closed-loop-iot-orchestration)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：层次化编排实现代理控制
-11. [CoDiMAD: Diffusion-Based Privileged Distillation for Communication-Free Multi-Robot Coordination](/202607/14/2607.09587v1-codimad-diffusion-based-privileged-distillation-for-communication-free-multi-robot-coordination)  
+   evidence：利用自主AI智能体对物理系统进行闭环编排的驾驭框架
+5. [Do AI Agents Know When a Task Is Simple? Toward Complexity-Aware Reasoning and Execution](/202607/15/2607.13034v1-do-ai-agents-know-when-a-task-is-simple-toward-complexity-aware-reasoning-and-execution)  
+   标签：评分：7.0/10、query:agent-lsh
+   evidence：复杂度感知的agent，通过估计任务难度实现自适应规划
+6. [[AAFLOW+] Stateful Operator Abstraction with Zero-Copy Distributed KV Cache Orchestration for Multi-Agent Workflows](/202607/15/2607.10987v1-aaflow-stateful-operator-abstraction-with-zero-copy-distributed-kv-cache-orchestration-for-multi-agent-workflows)  
+   标签：评分：6.0/10、query:moe-routing
+   evidence：多智能体工作流中实现高效状态重用的KV缓存编排
+7. [Ontology-Amplified Distillation and Contextuality Auditing for Sovereign Enterprise Language Models: A Combined Proof-of-Mechanism and Negative-Results Method Study](/202607/15/2607.11948v1-ontology-amplified-distillation-and-contextuality-auditing-for-sovereign-enterprise-language-models-a-combined-proof-of-mechanism-and-negative-results-method-study)  
    标签：评分：6.0/10、query:agent-dist
-   evidence：基于扩散的特权蒸馏用于无通信多机器人协调智能体
-12. [Mosaic: Runtime-Efficient Multi-Agent Embodied Planning](/202607/14/2607.09603v1-mosaic-runtime-efficient-multi-agent-embodied-planning)  
+   evidence：本体增强的蒸馏技术，将语言模型适应代理系统
+8. [Continual Learning with Elastic Regularization and Synthetic Replay for Federated MLLM Fine-Tuning](/202607/15/2607.12112v1-continual-learning-with-elastic-regularization-and-synthetic-replay-for-federated-mllm-fine-tuning)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：运行时高效的多智能体协调框架
-13. [Who&When Pro: Can LLMs Really Attribute Failures in AI Agents?](/202607/14/2607.09996v1-whowhen-pro-can-llms-really-attribute-failures-in-ai-agents)  
+   evidence：持续学习防止遗忘，实现随时间自我改进
+9. [TRAIL: A Platform for Configurable Human--AI Teaming Experiments](/202607/15/2607.12180v1-trail-a-platform-for-configurable-human--ai-teaming-experiments)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：智能体系统自动化故障归因基准
-14. [Multi-Agent LLMs Fail to Explore Each Other](/202607/14/2607.11250v1-multi-agent-llms-fail-to-explore-each-other)  
+   evidence：可配置AI队友平台，用于可控的人机协作实验
+10. [Agentic Service-Oriented Computing: A Manifesto for the Next Frontier of Service-Oriented Computing](/202607/15/2607.12619v1-agentic-service-oriented-computing-a-manifesto-for-the-next-frontier-of-service-oriented-computing)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：控制和驾驭多智能体大语言模型的技术
+   evidence：面向服务的计算框架用于agent编排与治理
+11. [PalmClaw: A Native On-Device Agent Framework for Mobile Phones](/202607/15/2607.13027v1-palmclaw-a-native-on-device-agent-framework-for-mobile-phones)  
+   标签：评分：6.0/10、query:agent-lsh
+   evidence：一种在手机上驾驭智能体的设备端框架
 
 
 <div class="dpr-home-promo-card">
