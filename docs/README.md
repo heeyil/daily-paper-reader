@@ -6,77 +6,89 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-15
-- 运行时间：2026-07-15 21:59:45 UTC
+- 最新运行日期：2026-07-16
+- 运行时间：2026-07-16 21:03:23 UTC
 - 运行状态：成功
-- 本次总论文数：19
-- 精读区：8
-- 速读区：11
+- 本次总论文数：23
+- 精读区：9
+- 速读区：14
 
 ### 今日简报（AI）
-今日日报精读8篇、速读11篇，重点推荐两篇9.0分论文：《Dynamic Agent Skills》系统梳理智能体技能库演化的生命周期与分类，《LOGOS》提出一种与人类共同进化的AI团队逻辑框架。建议优先精读这两篇，理解智能体技能管理与团队协作的前沿方法论。
-- 详情：[/202607/15/README](/202607/15/README)
+今日精选23篇AI智能体研究，重点精读两篇满分论文：自我改进编码智能体框架与行为规则闭环。最值得关注的方向是智能体自我改进机制与记忆自适应管理，其中“Self-Improving AI Coding Agents”和“Memory as Controlled Process”分别给出闭环优化与动态记忆控制的具体路径。建议优先阅读两篇满分精读论文，再结合速读中可扩展护栏与行为测试的实验设计，可快速掌握前沿智能体迭代方法。
+- 详情：[/202607/16/README](/202607/16/README)
 
 ### 精读区论文标签
-1. [Dynamic Agent Skills: A Lifecycle Survey and Taxonomy of Evolving Skill Libraries](/202607/15/2607.10113v1-dynamic-agent-skills-a-lifecycle-survey-and-taxonomy-of-evolving-skill-libraries)  
+1. [Self-Improving AI Coding Agents Through Accumulated Behavioral Rules: A Closed-Loop Framework](/202607/16/2607.13091v1-self-improving-ai-coding-agents-through-accumulated-behavioral-rules-a-closed-loop-framework)  
+   标签：评分：10.0/10、query:agent-lsh
+   evidence：通过累积行为规则实现编码智能体自我改进的闭环框架
+2. [Self-Improvements in Modern Agentic Systems: A Survey](/202607/16/2607.13104v1-self-improvements-in-modern-agentic-systems-a-survey)  
+   标签：评分：10.0/10、query:agent-lsh
+   evidence：关于自我改进自主智能体及其框架的综述
+3. [Falsifiable Release Gates for Self-Improving Systems](/202607/16/2607.13070v1-falsifiable-release-gates-for-self-improving-systems)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：关于agent技能库随时间演化的综述
-2. [LOGOS: A Living Logic for AI Agent Teams That Evolve With Humans](/202607/15/2607.10878v1-logos-a-living-logic-for-ai-agent-teams-that-evolve-with-humans)  
+   evidence：面向自我改进系统的可证伪发布门控
+4. [Phantom Guardrails: When Self-Improving Agent Harnesses Fix Failures That Never Happened](/202607/16/2607.13083v1-phantom-guardrails-when-self-improving-agent-harnesses-fix-failures-that-never-happened)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：智能体团队的自我进化与治理
-3. [How to Realize Recursively Self-Improving Agents and Personal Singularity: A Goal-, Scope-, Tool-, and Benchmark-Driven Multi-Agent Architecture](/202607/15/2607.12254v1-how-to-realize-recursively-self-improving-agents-and-personal-singularity-a-goal--scope--tool--and-benchmark-driven-multi-agent-architecture)  
+   evidence：自我改进的Agent可能幻觉出错误并修复从未发生的失败
+5. [Oracle Agent Memory as an Enterprise Memory Substrate for Long-Horizon AI Agents](/202607/16/2607.13157v1-oracle-agent-memory-as-an-enterprise-memory-substrate-for-long-horizon-ai-agents)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：递归自我改进agent与长时任务
-4. [Track, Rank, Crack: Epistemic Working Memory Scales Multi-Hop Reasoning in Language Agents](/202607/15/2607.12267v1-track-rank-crack-epistemic-working-memory-scales-multi-hop-reasoning-in-language-agents)  
+   evidence：直接针对长程Agent的内存系统问题
+6. [Self-Evolving Agent Harnesses via Gated Semantic Quality-Diversity](/202607/16/2607.13683v1-self-evolving-agent-harnesses-via-gated-semantic-quality-diversity)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：认识论工作记忆增强长程agent推理能力
-5. [PM-Bench: Evaluating Prospective Memory in LLM Agents](/202607/15/2607.12385v1-pm-bench-evaluating-prospective-memory-in-llm-agents)  
+   evidence：自我演进的智能体框架无需修改权重即可提升性能
+7. [SPyCE: Skill-Policy Co-evolution for Multimodal Agents](/202607/16/2607.13854v1-spyce-skill-policy-co-evolution-for-multimodal-agents)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：评估模拟一周中的前瞻记忆
-6. [ReflectVLN: Training Vision-Language Navigation Agents with Reflective Reasoning](/202607/15/2607.12680v1-reflectvln-training-vision-language-navigation-agents-with-reflective-reasoning)  
+   evidence：技能-策略共进化使代理通过将轨迹蒸馏为可重用技能随时间改进。
+8. [TRACE: Turn-level Reward Assignment via Credit Estimation for Long-Horizon Agents](/202607/16/2607.13988v1-trace-turn-level-reward-assignment-via-credit-estimation-for-long-horizon-agents)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：具备反思推理的长周期导航
-7. [Who Grades the Grader? Co-Evolving Evaluation Metrics and Skills for Self-Improving LLM Agents](/202607/15/2607.12790v1-who-grades-the-grader-co-evolving-evaluation-metrics-and-skills-for-self-improving-llm-agents)  
+   evidence：为长时程代理设计的密集信用分配方法
+9. [Do Agent Optimizers Compound? A Continual-Learning Evaluation on Terminal-Bench 2.0](/202607/16/2607.14004v1-do-agent-optimizers-compound-a-continual-learning-evaluation-on-terminal-bench-20)  
    标签：评分：9.0/10、query:agent-lsh
-   evidence：用于自改进代理的评估指标与技能共同进化
-8. [Hy-Embodied-VLM-1.0: Efficient Physical-World Agents](/202607/15/2607.12894v1-hy-embodied-vlm-10-efficient-physical-world-agents)  
-   标签：评分：8.0/10、query:agent-lsh
-   evidence：具身智能体具有序列自适应推理能力，适用于长时间跨度任务
+   evidence：研究智能体优化器增益在持续学习中是否可累积
 
 ### 速读区论文标签
-1. [MemDecay: Region-Aware KV Cache Eviction for Efficient LLM Agent Inference](/202607/15/2607.10582v1-memdecay-region-aware-kv-cache-eviction-for-efficient-llm-agent-inference)  
+1. [SingGuard-NSFA: Extensible Guardrails for Agentic AI via Generative Reasoning and Real-Time Classification](/202607/16/2607.13081v1-singguard-nsfa-extensible-guardrails-for-agentic-ai-via-generative-reasoning-and-real-time-classification)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：通过分类和推理为智能体AI提供可扩展护栏
+2. [Set-shifting Behavioral Test for Harnessed Agents](/202607/16/2607.13396v1-set-shifting-behavioral-test-for-harnessed-agents)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：针对被驾驭智能体的转换测试
+3. [Memory as a Controlled Process: Learned Adaptive Memory Management for LLM Agents](/202607/16/2607.13591v1-memory-as-a-controlled-process-learned-adaptive-memory-management-for-llm-agents)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：针对长时间任务流的学习自适应内存管理
+4. [SAFETY SENTRY: Context-Aware Human Intervention via EXECUTE-ASK-REFUSE Routing](/202607/16/2607.13594v1-safety-sentry-context-aware-human-intervention-via-execute-ask-refuse-routing)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：三种路由决策用于安全代理行动，实现上下文感知的人类干预。
+5. [AgentCompass: A Unified Evaluation Infrastructure for Agent Capabilities](/202607/16/2607.13705v1-agentcompass-a-unified-evaluation-infrastructure-for-agent-capabilities)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：用于控制和评估智能体能力的统一基础设施
+6. [Learning Robust Execution in Robotic Manipulation with Agentic Reinforcement Learning](/202607/16/2607.13818v1-learning-robust-execution-in-robotic-manipulation-with-agentic-reinforcement-learning)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：针对长时域执行的智能体强化学习方法
+7. [PhysClaw-0: A Symbiotic Agentic System for Robot Autonomy via Language Corrections](/202607/16/2607.14047v1-physclaw-0-a-symbiotic-agentic-system-for-robot-autonomy-via-language-corrections)  
+   标签：评分：8.0/10、query:agent-lsh
+   evidence：系统跨轮次保留并重用修正，实现随时间自我改进
+8. [Harness Handbook: Making Evolving Agent Harnesses Readable,Navigable, and Editable](/202607/16/2607.13285v1-harness-handbook-making-evolving-agent-harnesses-readablenavigable-and-editable)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：面向LLM agent长时推理的区域感知KV缓存淘汰
-2. [World Models as Adversaries: Multi-Agent Self-Play Fine-Tuning for Robust Motion Planning](/202607/15/2607.10630v1-world-models-as-adversaries-multi-agent-self-play-fine-tuning-for-robust-motion-planning)  
+   evidence：用于演化智能体驾驭程序的手册工具
+9. [Exploratory, Communicative, and Deployable: Vision-Driven Embodied Agents for Open-World Mobile Manipulation](/202607/16/2607.13653v1-exploratory-communicative-and-deployable-vision-driven-embodied-agents-for-open-world-mobile-manipulation)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：用于鲁棒运动规划的多智能体自博弈微调
-3. [Rethinking the Evaluation of Harness Evolution for Agents](/202607/15/2607.12227v1-rethinking-the-evaluation-of-harness-evolution-for-agents)  
+   evidence：面向开放世界移动操作的主动探索与在线强化学习
+10. [Experience Memory Graph: One-Shot Error Correction for Agents](/202607/16/2607.13884v1-experience-memory-graph-one-shot-error-correction-for-agents)  
    标签：评分：7.0/10、query:agent-lsh
-   evidence：LLM智能体的驾驭进化评估
-4. [Internet of Agentic Things: Networked AI Agents for Closed-Loop IoT Orchestration](/202607/15/2607.12662v1-internet-of-agentic-things-networked-ai-agents-for-closed-loop-iot-orchestration)  
-   标签：评分：7.0/10、query:agent-lsh
-   evidence：利用自主AI智能体对物理系统进行闭环编排的驾驭框架
-5. [Do AI Agents Know When a Task Is Simple? Toward Complexity-Aware Reasoning and Execution](/202607/15/2607.13034v1-do-ai-agents-know-when-a-task-is-simple-toward-complexity-aware-reasoning-and-execution)  
-   标签：评分：7.0/10、query:agent-lsh
-   evidence：复杂度感知的agent，通过估计任务难度实现自适应规划
-6. [[AAFLOW+] Stateful Operator Abstraction with Zero-Copy Distributed KV Cache Orchestration for Multi-Agent Workflows](/202607/15/2607.10987v1-aaflow-stateful-operator-abstraction-with-zero-copy-distributed-kv-cache-orchestration-for-multi-agent-workflows)  
-   标签：评分：6.0/10、query:moe-routing
-   evidence：多智能体工作流中实现高效状态重用的KV缓存编排
-7. [Ontology-Amplified Distillation and Contextuality Auditing for Sovereign Enterprise Language Models: A Combined Proof-of-Mechanism and Negative-Results Method Study](/202607/15/2607.11948v1-ontology-amplified-distillation-and-contextuality-auditing-for-sovereign-enterprise-language-models-a-combined-proof-of-mechanism-and-negative-results-method-study)  
-   标签：评分：6.0/10、query:agent-dist
-   evidence：本体增强的蒸馏技术，将语言模型适应代理系统
-8. [Continual Learning with Elastic Regularization and Synthetic Replay for Federated MLLM Fine-Tuning](/202607/15/2607.12112v1-continual-learning-with-elastic-regularization-and-synthetic-replay-for-federated-mllm-fine-tuning)  
+   evidence：通过图匹配实现单次错误纠正以改进代理
+11. [PrismAD: Decoupled Planning via Semantic Mixture-of-Planners for End-to-End Autonomous Driving](/202607/16/2607.10336v1-prismad-decoupled-planning-via-semantic-mixture-of-planners-for-end-to-end-autonomous-driving)  
+   标签：评分：6.0/10、query:agent-mix
+   evidence：语义混合规划器带路由，类比于混合代理方法。
+12. [Tool-Adaptive LLM Reranker](/202607/16/2607.10555v1-tool-adaptive-llm-reranker)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：持续学习防止遗忘，实现随时间自我改进
-9. [TRAIL: A Platform for Configurable Human--AI Teaming Experiments](/202607/15/2607.12180v1-trail-a-platform-for-configurable-human--ai-teaming-experiments)  
+   evidence：用于工具自适应重排序的智能马尔可夫决策过程
+13. [MemDecay: Region-Aware KV Cache Eviction for Efficient LLM Agent Inference](/202607/16/2607.10582v1-memdecay-region-aware-kv-cache-eviction-for-efficient-llm-agent-inference)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：可配置AI队友平台，用于可控的人机协作实验
-10. [Agentic Service-Oriented Computing: A Manifesto for the Next Frontier of Service-Oriented Computing](/202607/15/2607.12619v1-agentic-service-oriented-computing-a-manifesto-for-the-next-frontier-of-service-oriented-computing)  
+   evidence：通过缓存驱逐提高LLM智能体推理效率
+14. [Learning Latency-Aware Orchestration for Multi-Agent Systems](/202607/16/2607.13359v1-learning-latency-aware-orchestration-for-multi-agent-systems)  
    标签：评分：6.0/10、query:agent-lsh
-   evidence：面向服务的计算框架用于agent编排与治理
-11. [PalmClaw: A Native On-Device Agent Framework for Mobile Phones](/202607/15/2607.13027v1-palmclaw-a-native-on-device-agent-framework-for-mobile-phones)  
-   标签：评分：6.0/10、query:agent-lsh
-   evidence：一种在手机上驾驭智能体的设备端框架
+   evidence：面向多Agent系统的延迟感知编排，提升自主Agent的规划与效率
 
 
 <div class="dpr-home-promo-card">
