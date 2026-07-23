@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-14 ~ 2026-07-23</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-23</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 23 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-23 02:47:39 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-23 21:44:33 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>日报精读两篇满分论文，聚焦递归自改进与长周期LLM智能体技能协同进化。最值得关注递归框架的自我优化能力和证据驱动的长周期任务技能迁移机制。建议优先精读这两篇满分论文，深入理解智能体自我改进与技能学习的核心方法。</p>
+<p>今日共收录23篇论文，其中精读9篇，速读14篇，重点关注智能体推理与自主决策方向。</p>
+<p>精读最值得看的是《RECON: Benchmarking Agent Memory for Compositional Reasoning over Long Contexts》与《Reward-Driven LLM Agent Workflows》，均获9.0分，分别聚焦长上下文组合推理和奖励驱动的自治决策。</p>
+<p>建议优先阅读这两篇精读论文，了解如何提升智能体的记忆与自纠错能力，并关注速读中的CAVA、SearchOS-V1及Retriever相关协作与验证方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +76,9 @@
     <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Recursive Harness Self-Improvement">Recursive Harness Self-Improvement</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Memory to Skills: Evidence-Grounded Co-Evolution Governance for Long-Horizon LLM Agents">From Memory to Skills: Evidence-Grounded Co-Evolution Governance for Long-Horizon LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Cura 1T: Specialized Model for Agentic Healthcare">Cura 1T: Specialized Model for Agentic Healthcare</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="RECON: Benchmarking Agent Memory for Compositional Reasoning over Long Contexts">RECON: Benchmarking Agent Memory for Compositional Reasoning over Long Contexts</span></li><li><span class="dpr-home-dashboard-paper-title" title="Reward-Driven LLM Agent Workflows: Synthesizing POMDP Routing and Self-Correction for Autonomous Decision-Making">Reward-Driven LLM Agent Workflows: Synthesizing POMDP Routing and Self-Correction for Autonomous Decision-Making</span></li><li><span class="dpr-home-dashboard-paper-title" title="Exploratory and Assimilating Reflection: Reflective Recall Cycle for Long-term Memory">Exploratory and Assimilating Reflection: Reflective Recall Cycle for Long-term Memory</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>8</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +89,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="ToolVerse: Unlocking Massive Environments and Long-Horizon Tasks for Agentic Reinforcement Learning">ToolVerse: Unlocking Massive Environments and Long-Horizon Tasks for Agentic Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Behavioral Controllability of Agentic Models for Information Extraction: From Fixed Workflows to Reflective Agents">Behavioral Controllability of Agentic Models for Information Extraction: From Fixed Workflows to Reflective Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Just A Rather Very Intelligent Spoken Agent">Just A Rather Very Intelligent Spoken Agent</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CAVA: Canonical Action Verification and Attestation for Runtime Governance of Agentic AI Systems">CAVA: Canonical Action Verification and Attestation for Runtime Governance of Agentic AI Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="SearchOS-V1: Towards Robust Open-Domain Information-Seeking Agent Collaboration">SearchOS-V1: Towards Robust Open-Domain Information-Seeking Agent Collaboration</span></li><li><span class="dpr-home-dashboard-paper-title" title="Retriever: Composing Closed-Loop Asynchronous Robot Programs">Retriever: Composing Closed-Loop Asynchronous Robot Programs</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">agent-mix <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>14</strong></span></div>
 </section>
 </div>
 

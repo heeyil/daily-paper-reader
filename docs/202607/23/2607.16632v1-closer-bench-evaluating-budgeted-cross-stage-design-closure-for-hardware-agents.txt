@@ -1,0 +1,206 @@
+Title: CLOSER-Bench: Evaluating Budgeted Cross-Stage Design Closure for Hardware Agents
+
+URL Source: https://arxiv.org/pdf/2607.16632v1
+
+Published Time: Tue, 21 Jul 2026 00:25:04 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# CLOSER-Bench: Evaluating Budgeted Cross-Stage Design Closure for Hardware Agents 
+
+# Peilong Zhou 1,2,3 , Zhirong Chen 1,2 , Cangyuan Li 1,2 , Haoyu Gao 1,2,3 ,Kaiyan Chang 1,2 , Ziming Qu 1,2 , Ying Wang 1,2 ∗
+
+> 1
+
+SKLP, Institute of Computing Technology, Chinese Academy of Sciences 
+
+> 2
+
+University of the Chinese Academy of Sciences 
+
+> 3
+
+School of Advanced Interdisciplinary Sciences wangying2009@ict.ac.cn 
+
+Abstract 
+
+Hardware engineering exposes coding agents to a form of long-horizon work that is difficult to capture with pass-at-k:progress is continuous, tool feedback is delayed and hetero-geneous, and a backend failure may require revising RTL rather than tuning another physical-design parameter. Ex-isting benchmarks measure RTL generation, repository re-pair, verification, PPA evolution, or physical implementation, but their different designs and oracles make it hard to de-termine where an agent succeeds or fails across abstraction boundaries. We introduce Closer-Bench , a controlled eval-uation protocol for budgeted cross-stage design closure. For one design and one hidden objective, it pairs spec →RTL, RTL →GDS, and spec →GDS tasks, records every simula-tor, synthesis, STA, and place-and-route invocation, and mea-sures final quality, anytime progress, tool cost, and cross-stage recovery. The benchmark is built on open-source Verilator, Yosys, OpenROAD, KLayout, Sky130, and the Harbor agent harness. A ten-task pilot spanning RTL repair, mutation-based verification, coverage, PPA optimization, design-space explo-ration, cross-model debugging, and security establishes the executable harness and exposes a sharp completion–closure gap: three agents solve a localized AXI repair task, while the matched verification-closure task separates a frontier agent from two otherwise successful baselines. We further vali-date a full RTL-to-GDS flow and construct a macro-based AXI/DMA streaming accelerator for the stage-paired evalu-ation. These results motivate treating hardware closure as a budgeted sequential decision problem rather than a collection of independent code generation tasks. 
+
+# 1 Introduction 
+
+Recent hardware benchmarks show that large language mod-els can generate RTL, repair repository-level bugs, write verification artifacts, and interact with electronic-design-automation (EDA) tools (Liu et al. 2023; Lu et al. 2024; Pinckney et al. 2025; Cui et al. 2026; Zou et al. 2026). The frontier is consequently moving from one-shot func-tional correctness to closure : repeatedly improving a design until functional, timing, physical, and resource constraints hold together. Closure is naturally long-horizon. A simula-tion takes seconds, synthesis and static timing analysis (STA) take minutes, and a place-and-route (PnR) attempt can take tens of minutes. Worse, feedback is only partially localizing. 
+
+> ∗
+
+Corresponding author. 
+
+Negative slack after routing may be caused by RTL microar-chitecture, an incorrect constraint, macro placement, or flow parameters. A capable agent must decide both what to change and which abstraction layer to revisit. Current evaluations do not isolate this ability. Verilo-gEval and RTLLM begin from specifications and largely stop at simulation or synthesis (Liu et al. 2023; Lu et al. 2024). CVDP, ChipBench, HWE-Bench, and Phoenix-bench broaden front-end and repository-level evaluation (Pinckney et al. 2025; Yu et al. 2026b; Cui et al. 2026; Zou et al. 2026), while CktEvo studies function-preserving RTL PPA evolution (Shi et al. 2026). At the backend, ChatEDA, ORFS-agent, ASIC-Agent, and PDAGENT-BENCH execute or opti-mize physical-design workflows (He et al. 2024; Ghose et al. 2025; Allam, Mansour, and Shalan 2025; Li et al. 2026). De-sign Conductor goes further and demonstrates autonomous specification-to-GDSII CPU design (The Verkor Team et al. 2026). These are substantial advances, but they do not pro-vide a controlled answer to a basic question: if the same agent is successful at the front end and backend separately, will it allocate feedback and recovery actions correctly when the boundary is removed? We propose Closer-Bench (Cross-Layer Objective-driven Stage-paired Evaluation under Resource constraints). Its central experimental control is to derive three tasks from the same design specification and hidden objective: spec →RTL measures front-end completion, RTL →GDS measures backend closure from a functionally correct but physically weak implementation, and spec →GDS exposes the full cross-stage action space. Shared workloads, con-straints, and signoff checks make performance differences attributable to stage boundaries rather than unrelated task content. 
+
+Research questions. RQ1: Do explicit stage boundaries improve reliability and efficiency? RQ2: When downstream feedback invalidates the current approach, can an agent re-cover at the correct abstraction layer? RQ3: How do final quality and failure modes change as expensive-tool and wall-clock budgets scale? 
+
+Contributions. This paper makes three contributions. First, it defines a stage-paired, budgeted protocol for cross-stage hardware closure, including unified trajectory and any-time metrics. Second, it implements the protocol with open-arXiv:2607.16632v1 [cs.SE] 18 Jul 2026 source EDA tools and a shared AXI/DMA streaming de-sign with an SRAM macro and executable functional oracle. Third, a ten-task pilot and physical-flow audit identify which existing tasks measure sustained closure and which merely add expensive runtime to a locally solvable problem. We report the completed pilot evidence and treat the full three-way agent matrix as future evaluation rather than estimating unobserved results. 
+
+# 2 Related Work 
+
+RTL generation, verification, and repair. VerilogEval and RTLLM established executable evaluation for natural-language RTL generation (Liu et al. 2023; Lu et al. 2024); OpenLLM-RTL and CVDP expanded task scale and diver-sity (Liu et al. 2025; Pinckney et al. 2025). ChipBench in-cludes hierarchical generation, debugging, and reference-model construction (Yu et al. 2026b). Repository repair is now directly tested by HWE-Bench’s 417 pull-request-derived tasks and Phoenix-bench’s 511 Verilator instances (Cui et al. 2026; Zou et al. 2026). HORIZON frames hard-ware work as repository-level code evolution and evaluates a hands-free loop across several of these suites (Yu et al. 2026a). Our goal is not another claim of first repository-scale hardware repair. Instead, repair and verification are useful matched controls: closing an open-ended objective can be much harder than recovering a known completion target on the same IP. 
+
+PPA and physical-design agents. ChatEDA executes RTL-to-GDSII task decompositions (He et al. 2024); ASIC-Agent connects RTL generation, verification, OpenLane hardening, and chip integration (Allam, Mansour, and Shalan 2025). CktEvo evaluates repository-level, function-preserving PPA improvements at RTL (Shi et al. 2026). ORFS-agent tunes OpenROAD-flow-scripts parameters and reports resource-efficient optimization trajectories (Ghose et al. 2025). PDAGENT-BENCH provides 353 tasks and full-flow implementation cases across the physical-design stack (Li et al. 2026), while Design Conductor demonstrates that a frontier agent can autonomously produce a timing-clean CPU layout from a short specification (The Verkor Team et al. 2026). HighTide supplies open, maintainable RTL-to-GDS benchmark infrastructure (Goldblatt et al. 2026). Closer-Bench is complementary: it keeps the RTL edit door open, controls the starting boundary, and scores the allocation of a limited tool budget rather than only task completion or final PPA. 
+
+End-to-end evaluation. HSCO-Bench evaluates agent-driven hardware–software co-design through FPGA deploy-ment (Tsai et al. 2026). This reinforces a broader lesson: concatenating stages creates qualitatively different failure modes. Our stage pairing turns that observation into a con-trolled comparison, using identical design intent and signoff conditions across task boundaries. 
+
+# 3 Benchmark Design 
+
+Design Principles 
+
+First feasible is not finished. Each task exposes a graded objective after validity gates. An agent can obtain an early feasible design, then trade area, delay, power, or verification strength under a remaining budget. Delay must carry in-formation. Expensive tools reveal different facts from fast proxies; merely sleeping or rebuilding a large repository does not make a task long-horizon. Public feedback is not the final oracle. Hidden workloads, configurations, corners, and floorplan seeds test whether a strategy generalizes. Every result has provenance. Agent failure, agent timeout with a valid patch, verifier failure, and infrastructure failure are distinct run states. 
+
+Stage-Paired Tasks 
+
+Let s denote a common design specification and Ω a set of hidden conditions (workload, interface configuration, PVT corner, and floorplan seed). Task A begins from s and ends at a verified, synthesizable RTL checkpoint. Task B begins from a canonical implementation xB that is functionally correct but intentionally misses one or more physical targets. Task C begins from s and allows the union of A and B’s edit surfaces. The functional subset of Ω is shared by all tasks; B and C are evaluated by the identical signoff oracle. A is evaluated by the oracle projected through synthesis. The comparison is deliberately not “three unrelated scores.” We compare (i) A against C at the verified-RTL checkpoint, (ii) B against C after the first feasible layout, and (iii) the sequential composition of independently solved A and B against C under an equal aggregate budget. This reveals error propagation and the cost of deciding when to cross or revisit a stage boundary. 
+
+Validity and Quality 
+
+The evaluator computes a validity gate 
+
+G(x, ω ) = Gfunc Glec Ggls Gsta Groute Gdrc Glvs , (1) where each factor is binary and stage-inapplicable factors equal one. A physically feasible candidate is scored against pre-registered targets m∗ 
+
+> j
+
+(e.g., area, delay, power, and cy-cles): 
+
+ℓj (x, ω ) = max 
+
+(
+
+0, log mj (x, ω )
+
+m∗
+
+> j
+
+)
+
+,R(x, ω ) = G(x, ω ) exp 
+
+− X
+
+> j
+
+wj ℓj (x, ω )
+
+ .
+
+(2) Thus invalid shortcuts receive zero, improvements toward any unmet target are continuous, and meeting all targets yields one. Raw metrics and the Pareto set are always re-ported to expose saturation or an ill-chosen target. 
+
+Budget and Trajectory Protocol 
+
+The wrapper, rather than the agent, counts calls to four tool classes: simulation, synthesis/STA, full PnR, and fi-nal verifier. It also records wall-clock time, model to-kens when available, modified files, inferred edit layer A. spec →RTL 
+
+specification → verified RTL edit: RTL, basic constraints 
+
+B. RTL →GDS 
+
+weak-but-correct RTL → GDS edit: RTL, SDC, floorplan, flow 
+
+C. spec →GDS 
+
+specification → GDS edit: all cross-stage artifacts 
+
+⇓ shared specification, workloads, target constraints, and hidden perturbations ⇓
+
+Pristine evaluator: RTL simulation → synthesis/LEC → gate simulation → multi-corner STA → route →
+
+DRC/LVS. 
+
+Trajectory wrapper: timestamps, changed layer, tool inputs, cost, result, and best-so-far reward. Figure 1: The controlled stage-paired design of Closer-Bench . Task A’s oracle is the front-end projection of the final signoff oracle; Tasks B and C share the full oracle. Comparing A+B with C separates stage competence from cross-stage coordination.                
+
+> Resource Low Medium High Simulation calls 40 100 uncapped Synthesis/STA calls 10 25 60 Full PnR calls 3820 Wall-clock limit 4 h 10 h 24 h
+
+Table 1: Provisional budget tiers for the paired AXI/DMA tasks. 
+
+-6
+
+r∗
+
+cost sim synth PnR feasible stagnation rollback 
+
+Figure 2: A best-so-far trajectory over measured cost. Final reward alone cannot distinguish early progress, stagnation, and a useful cross-stage rollback after an expensive PnR call. (RTL/constraint/floorplan/flow), tool outcome, and best-so-far reward. Provisional budgets derived from Phase-0 mea-surements are shown in Table 1; every call remains recorded even when nominally unlimited. For cumulative cost c ∈ [0 , B ], let r∗(c) be the best reward observed by cost c. We report the normalized area under the progress curve 
+
+AUC B = 1
+
+B
+
+Z B
+
+> 0
+
+r∗(c) dc, (3) alongside final reward, time-to-first-feasible, time-to-threshold, number and fraction of expensive calls, public– private gap, and run-to-run variance. A stagnation episode 
+
+is a pre-registered window with no best-so-far improvement. Recovery records whether reward subsequently improves and which layer is edited first. A cross-stage rollback is an edit to an earlier layer after later-stage feedback; correctness is evaluated by information gain and subsequent reward, not by the mere presence of rollback. 
+
+Hidden Evaluation and Anti-Gaming 
+
+The final evaluator rebuilds from agent-modified source us-ing pristine scripts. It varies legal AXI widths, bursts, back-pressure, operands, PVT corners, and floorplan seeds; pub-lic and private conditions are disjoint. RTL and gate-level simulation prevent simulation–synthesis divergence, LEC catches logic-changing optimization, an unconstrained-path audit prevents timing evasion, and DRC/LVS reject physi-cally invalid layouts. Source manifests lock testbenches, ref-erence models, tool scripts, and prebuilt binaries outside the allowed edit surface. Mutant build failures do not silently reduce a scoring denominator. 
+
+# 4 Implementation 
+
+Open Toolchain and Harness 
+
+Tasks use Harbor’s isolated agent/workspace/verifier lay-out. The open toolchain contains Verilator for sim-ulation, Yosys for synthesis, OpenSTA and Open-ROAD flow scripts for timing and physical implemen-tation, KLayout for layout checks, and the Sky130HD PDK (Ajayi et al. 2019). The pinned Phase-0 image is openroad/orfs:26Q3-52-gc90beac09 (Yosys 0.64 and KLayout 0.30.7). Each task ships an agent-visible public loop and a hidden verifier that rebuilds from a pristine flow and writes structured rewards. ORFS per-stage JSON is consumed directly by the trajectory layer. 
+
+Paired AXI/DMA Vertical Slice 
+
+The shared design, firdma , is a streaming FIR accelerator with an AXI-Lite control plane, DMA-style read/write en-gines, configurable bursts and backpressure, FIFO buffering, interrupts, status and error handling, and an SRAM macro. A single specification defines register behavior, FIR arithmetic, DMA ordering, abort semantics, and performance targets. The current golden implementation comprises seven Sys-temVerilog modules plus a macro wrapper. It passes Verilator lint and ten public randomized seeds. Yosys/slang synthesis of the initial flop-FIFO version produced 23,789 cells; a 512-entry Sky130 SRAM macro replacement and physical-flow configuration are present in the current vertical slice. At the time of this draft, the macro-based flow has reached global routing; signoff and task packaging remain pending. 
+
+Pilot Suite 
+
+Before committing to the vertical slice, we built ten exe-cutable tasks spanning four repositories and seven capability types (Table 2). They are not presented as a statistically com-plete leaderboard. They validate the harness, reveal reward-design failure modes, and provide completion–closure con-trols that inform the paired protocol. 
+
+# 5 Experiments 
+
+Experimental Protocol 
+
+Pilot trials use the task-specific wall-clock limits encoded in Harbor and network-disabled task containers. We report a score only when the agent starts and the verifier produces a result. API, authentication, setup, and network failures are infrastructure errors. A timed-out agent is retained when it leaves a scoreable patch, with the timeout state reported. Or-acle runs validate score ceilings but are not agent baselines. The current evidence contains unequal trial counts and is therefore diagnostic rather than a model ranking. The central experiment will run the same model/scaffold pairs on Tasks A–C at all three budgets with three indepen-dent trials. It will report final reward, AUC, first-feasible time, PnR calls, public–private gap, rollback precision, and run validity. This matrix is outside the scope of the present pilot report; a future benchmark release will freeze model versions, scaffolds, seeds, hardware allocation, task check-sums, and the final signoff oracle before running it. 
+
+Physical-Flow Feasibility 
+
+We first tested the full ORFS path on a 96-core host. Table 3 shows that a 27.6k-instance PicoRV32 design completes in 18.3 minutes and a 492.7k-instance, six-macro design in 22.3 minutes. Global placement and detailed routing account for 90% of the PicoRV32 runtime, supporting separate budgets for cheap synthesis and expensive PnR. All three flows report zero route DRC violations; the PicoRV32 flow closes with 
+
++5 .44 ns WNS at a 12 ns clock. These measurements validate the proposed 4/10/24-hour tiers, but do not yet establish the final firdma difficulty. 
+
+A Completion–Closure Control 
+
+The most informative pilot is a matched pair on the PULP AXI data-width converter. In axi-dwc-repair , the agent repairs two byte-lane defects in a fixed 64-to-128-bit upsizer. In axi-dwc-verify , the agent may edit only a Verilator testbench and is scored by the fraction of 17 hidden converter faults it kills, conditional on no false alarm on golden RTL. The same three agent/model configurations were run once on verification and twice on repair. All agents solve the localized repair, so additional seeds would not make that instance a meaningful long-horizon test. The open-ended verification task separates them sharply: Codex kills all faults in 10.6 minutes of agent execution, Big-Pickle kills one in 28.7 minutes, and DeepSeek false-alarms on golden behavior after 26.7 minutes. This controlled con-trast supports the benchmark’s completion–closure premise, although single verification trials do not support general model-ranking claims. 
+
+What the Remaining Pilots Reveal 
+
+The fmax task shows why raw metrics must accompany nor-malized reward: Codex reaches 181.7 MHz against a 120 MHz full-score target, while the oracle reaches 99.0 MHz and Big-Pickle 110.1 MHz. The reward cap therefore dis-cards meaningful variation. Likewise, Codex reaches 88.7% line coverage against an 85% cap; line coverage alone does not establish checker strength. Vortex SIMT and dual-model debugging are solved by multiple agents, whereas the three-fault Vortex task yields a graded 2/3 on its valid Haiku run. These cases motivate four requirements adopted by Closer-Bench : hidden condition changes rather than only new seeds, graded independent objectives, target calibration above cur-rent frontier performance, and run-status provenance. 
+
+Scope of the Current Evaluation 
+
+The current evidence establishes the executable harness, physical-flow feasibility, and the completion–closure con-trast; it does not yet rank models on the full stage-paired protocol. That evaluation requires paired A +B versus C runs at equal aggregate budget (RQ1), recovery confusion matrices over RTL/SDC/floorplan/flow layers (RQ2), and low/medium/high progress curves with bootstrap confidence intervals (RQ3). We defer these analyses until the final sig-noff oracle and repeated-trial matrix are frozen. 
+
+# 6 Discussion and Limitations 
+
+What Closer-Bench measures. The intended object is not chip-design knowledge in isolation. It is a policy for allocating expensive experiments under delayed, cross-layer feedback. A model may know how to fix RTL and tune Open-ROAD separately yet fail end-to-end because it overuses PnR, trusts a misleading proxy, or never revisits an RTL decision. Stage pairing exposes that gap without claiming to be the first RTL-to-GDS or specification-to-GDS system. 
+
+Current limitations. The stage-paired vertical slice cur-rently contains one primary design, one PDK, and an incom-plete final signoff package. The pilot suite is heterogeneous and has unequal model coverage; many tasks have only one valid trial and several are saturated. Manually injected faults do not substitute for real historical bug clusters. Open-source Sky130 flows improve reproducibility but do not represent commercial signoff. Token counts are not directly compa-rable across agent scaffolds, and wall-clock measurements depend on host contention. A complete stage-paired model comparison additionally requires the macro-based firdma flow to close through DRC/LVS and multi-corner STA, Tasks A–C and the trajec-tory schema to be frozen, and every model/task/budget cell to contain repeated valid trials. The corresponding artifact should include task checksums, containers, raw trajectories, and an explicit invalid-run manifest. 
+
+# 7 Conclusion 
+
+Closer-Bench reframes hardware-agent evaluation around a controlled question: given the same design objective, does an agent benefit from explicit stage boundaries, and can it spend Task(s) Capability Score/oracle Current evidence and role PicoRV32 fmax RTL timing optimization hidden RTL+GLS, pristine STA continuous pilot; target is saturated PicoRV32 coverage verification closure Verilator line coverage iterative pilot; needs mutation/formal upgrade PicoRV32 debug RTL repair 6 hidden tests smoke task; saturated by a frontier agent Vortex SimX DSE constrained DSE kernel speedup under area cap continuous pilot; current cap is satu-rated Vortex SIMT debug model debugging 6 scored kernels smoke task; several models solve it Vortex dual-model RTL/reference differen-tial 3 hidden kernels validates cross-model oracle; locally solvable Vortex multifault graded RTL repair 3 independent faults one valid Haiku run repairs 2/3 faults AXI DWC repair protocol/datapath repair hidden byte scoreboard matched completion control; saturated AXI DWC verify mutation-kill closure 17 hidden faults + golden gate matched closure control; discriminative Ibex secure abort security/non-interference hidden RVFI traces real upstream defect; agent runs pending 
+
+Table 2: The current pilot suite. “Saturated” describes the present instance and reward cap, not the broader capability.                       
+
+> Design Instances Macros Time Final status GCD 751 02.9 m WNS −1.46 ns PicoRV32 27,590 018.3 m WNS +5 .44 ns Chameleon 492,693 622.3 m WNS −0.04 ns
+
+Table 3: Phase-0 ORFS runs on Sky130HD. All three gener-ate GDS with zero route DRC violations.          
+
+> Agent/model Repair Verify Codex/GPT-5.6 1.000 (2/2) 1.000 (17/17) OpenCode/Big-Pickle 1.000 (2/2) 0.0588 (1/17) OpenCode/DeepSeek-V4 1.000 (2/2) 0.000 (golden alarm)
+
+Table 4: Matched AXI completion and verification-closure tasks. Parentheses are successful repair trials or killed hidden faults. limited EDA calls and recover across those boundaries when they are removed? Its paired spec →RTL, RTL →GDS, and spec →GDS tasks share intent and hidden conditions, while its trajectory protocol makes final quality, anytime progress, cost, and rollback observable. The completed pilot suite and AXI completion–closure contrast show why final pass/fail and runtime alone are insufficient. The remaining central experiment will determine whether the proposed protocol yields stable, model-discriminative evidence at full physical-design depth. 
+
+# References 
+
+Ajayi, T.; Chhabria, V. A.; Fogaça, M.; Hashemi, S.; Hosny, A.; Kahng, A. B.; Kim, M.; Lee, J.; Mallappa, U.; Neseem, M.; Pradipta, G.; Reda, S.; Saligane, M.; Sapatnekar, S. S.; Sechen, C.; Shalan, M.; Swartz, W.; Wang, L.; Woo, M.; and Xu, B. 2019. Toward an Open-Source Digital Flow: First Learnings from the OpenROAD Project. In Proceedings of the 56th Annual Design Automation Conference .Allam, A.; Mansour, Y.; and Shalan, M. 2025. ASIC-Agent: An Autonomous Multi-Agent System for ASIC Design with Benchmark Evaluation. In IEEE International Conference on LLM-Aided Design .Cui, F.; Hou, H.; Luo, Z.; Yin, C.; and Liang, Y. 2026. HWE-Bench: Benchmarking LLM Agents on Real-World Hardware Bug Repair Tasks. arXiv:2604.14709. Ghose, A.; Kahng, A. B.; Kundu, S.; and Wang, Z. 2025. ORFS-agent: Tool-Using Agents for Chip Design Optimiza-tion. arXiv:2506.08332. Goldblatt, B.; Pedroso, P.; Modaresi, F.; Sifferman, E.; and Guthaus, M. R. 2026. HighTide: An Agent-Curated Open-Source VLSI Benchmark Suite. arXiv:2606.04126. He, Z.; Wu, H.; Zhang, X.; Yao, X.; Zheng, S.; Zheng, H.; and Yu, B. 2024. ChatEDA: A Large Language Model Pow-ered Autonomous Agent for EDA. IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems .Li, Q.; Chen, R.; Cheng, Q.; Wang, C.; Tang, S.; Li, W.; Ding, D.; Ho, C.-T.; Ren, H.; Pan, D. Z.; Lan, T.; and Cao, W. 2026. PDAGENT-BENCH: Characterizing, Grounding, and Architecting LLM Agents for VLSI Physical Design. arXiv:2606.17253. Liu, M.; Pinckney, N.; Khailany, B.; and Ren, H. 2023. Ver-ilogEval: Evaluating Large Language Models for Verilog Code Generation. arXiv:2309.07544. Liu, S.; Lu, Y.; Fang, W.; Li, M.; and Xie, Z. 2025. OpenLLM-RTL: Open Dataset and Benchmark for LLM-Aided Design RTL Generation. arXiv:2503.15112. Lu, Y.; Liu, S.; Zhang, Q.; and Xie, Z. 2024. RTLLM: An Open-Source Benchmark for Design RTL Generation with Large Language Models. In Proceedings of the Asia and South Pacific Design Automation Conference .Pinckney, N.; Deng, C.; Ho, C.-T.; Tsai, Y.-D.; Liu, M.; Zhou, W.; Khailany, B.; and Ren, H. 2025. Comprehensive Verilog Design Problems: A Next-Generation Benchmark Dataset for Evaluating Large Language Models and Agents on RTL Design and Verification. arXiv:2506.14074. Shi, Z.; Wang, J.; Cheng, T.; Xu, C.; Qian, W.; and Xu, Q. 2026. CktEvo: Repository-Level RTL Code Benchmark for Design Evolution. arXiv:2603.08718. The Verkor Team; Krishna, R.; Krishna, S.; and Chin, D. 2026. Design Conductor: An Agent Autonomously Builds a 1.5 GHz Linux-Capable RISC-V CPU. arXiv:2603.08716. Tsai, P.-H.; Chiu, K.-L.; Baisi, W.; Chen, P.-Y.; and Carloni, L. P. 2026. HSCO-Bench: An Agent-Driven End-to-End Hardware-Software Co-design Benchmark for Systems-on-Chip. arXiv:2605.19399. Yu, C.; Deng, C.; Pinckney, N.; and Khailany, B. 2026a. Agentic Hardware Design as Repository-Level Code Evolu-tion. arXiv:2606.28279. Yu, Z.; Zhou, C.; Lin, Y.; Zhang, H.; Ye, H.; Cui, J.; Pan, Z.; Zhao, J.; and Ding, Y. 2026b. ChipBench: A Next-Step Benchmark for Evaluating LLM Performance in AI-Aided Chip Design. arXiv:2601.21448. Zou, Q.; Yu, F.; Tan, H.; He, B.; and Wong, W. 2026. Is Agentic AI Ready for Real-World Hardware Engineering? A Deep Dive with Phoenix-bench. arXiv:2605.15226.

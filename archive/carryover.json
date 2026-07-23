@@ -1,20 +1,108 @@
 {
-  "generated_at": "2026-07-23T02:30:38.224980+00:00",
-  "updated_date": "20260714-20260723",
+  "generated_at": "2026-07-23T21:27:10.839082+00:00",
+  "updated_date": "20260723",
   "carryover_days": 9,
   "tag_states": {
     "agent-LSH": {
-      "updated_date": "20260714-20260723",
+      "updated_date": "20260723",
       "carryover_days": 9,
       "items": []
     },
     "moe-routing": {
-      "updated_date": "20260714-20260723",
+      "updated_date": "20260723",
       "carryover_days": 9,
-      "items": []
+      "items": [
+        {
+          "id": "2607.17674v1",
+          "source": "arxiv",
+          "title": "Uncovering Latent Reasoning Strategies in Language Models",
+          "abstract": "A language model $p_θ(y \\mid x)$ trained on reasoning tasks learns to solve problems via multiple distinct strategies, yet these strategies are implicit and entangled within the model's response distribution. We study the problem of decomposing the response distribution of a given pretrained language model into a structured, strategy-conditioned representation. Specifically, we learn a latent-variable factorization $p_θ(y \\mid x) \\leadsto (r_φ(z \\mid x), g_φ(y \\mid x,z))$, where a router $r$ maps each input to a distribution over latent strategies $z$ and a generator $g$ produces the response conditioned on that strategy. A key challenge is that the generator, initialized from the base model, already represents $p_θ(y \\mid x)$ without using $z$. Standard variational inference therefore gives the model no incentive to route information through $z$ and can yield a severe form of posterior collapse. To address this, we propose a variational objective that measures fractional information gain relative to the base model's response loss and concentrates reconstruction pressure on tokens with high base model surprisal, encouraging $z$ to encode strategy-relevant response variation. We introduce a benchmark of multi-strategy algorithmic tasks and show that this objective recovers latent codes aligned with distinct reference strategies while preserving the base model's response distribution.",
+          "authors": [
+            "Awni Altabaa",
+            "John Lafferty"
+          ],
+          "primary_category": "cs.LG",
+          "categories": [
+            "cs.LG",
+            "cs.AI"
+          ],
+          "published": "2026-07-20T08:27:02+00:00",
+          "link": "https://arxiv.org/pdf/2607.17674v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:agent-LSH",
+            "query:agent-mix",
+            "query:moe-routing"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "Learns a router to select latent reasoning strategies in language models",
+          "llm_evidence_cn": "学习一个路由器以选择语言模型中的潜在推理策略",
+          "llm_evidence": "学习一个路由器以选择语言模型中的潜在推理策略",
+          "canonical_evidence": "学习一个路由器以选择语言模型中的潜在推理策略",
+          "llm_tldr_en": "Introduces a latent-variable factorization where a router maps inputs to reasoning strategies and a generator produces responses conditioned on the strategy, enabling structured strategy decomposition.",
+          "llm_tldr_cn": "语言模型学习多种推理策略，但策略隐式纠缠在响应分布中。本文提出一种潜在变量分解方法：路由器将输入映射到潜在策略分布，生成器基于所选策略生成响应。实验表明该方法能有效分解策略，并提升对模型推理行为的理解。该方法直接涉及推理时的路由机制。",
+          "llm_tldr": "语言模型学习多种推理策略，但策略隐式纠缠在响应分布中。本文提出一种潜在变量分解方法：路由器将输入映射到潜在策略分布，生成器基于所选策略生成响应。实验表明该方法能有效分解策略，并提升对模型推理行为的理解。该方法直接涉及推理时的路由机制。",
+          "llm_tags": [
+            "query:moe-routing"
+          ],
+          "matched_query_tag": "query:moe-routing",
+          "matched_query_text": "model routing in LLM inference",
+          "matched_requirement_id": "req-10",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.17674v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.20327v1",
+          "source": "arxiv",
+          "title": "PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference",
+          "abstract": "Large language models (LLMs) provide strong reasoning capabilities but are expensive to serve at scale, whereas small language models (SLMs) are cheaper but less reliable on difficult problems. We introduce PyroDash, a cost-aware framework for token-level SLM-LLM collaborative inference. During generation, the SLM decides whether to request assistance by emitting a control token. A Collaborate Engine then sends the query and partial reasoning trace to a frozen LLM for completion through a single handoff. The policy is internalized in the SLM, requiring neither a separate router, LLM retraining, nor access to LLM logits. PyroDash trains the SLM in three stages: control-token embedding learning, offloading-oriented supervised fine-tuning, and cost-aware alignment with Group Relative Policy Optimization. Its reward balances answer accuracy against inference cost normalized by LLM-only inference. Across five mathematical reasoning benchmarks, PyroDash supports different accuracy-cost operating points. With $λ=0.05$, it achieves 64.04 percent average accuracy, 6.36 percentage points above the LLM-only baseline, while reducing cost by 20.4 percent. With $λ=0.6$, it achieves 54.55 percent accuracy with a 1.90 percent LLM token ratio and 0.012 LLM calls per example, reducing total cost from USD 49.36 to USD 1.78. These results show that learned token-level handoffs can reduce LLM use while preserving strong reasoning performance.",
+          "authors": [
+            "Niqi Lyu",
+            "Pengtao Shi",
+            "Wei Qiu",
+            "Jianlin Zhong",
+            "Sicong Xia",
+            "Jianyao Ma",
+            "Yicheng Ding"
+          ],
+          "primary_category": "cs.CL",
+          "categories": [
+            "cs.CL"
+          ],
+          "published": "2026-07-22T16:14:26+00:00",
+          "link": "https://arxiv.org/pdf/2607.20327v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:agent-LSH",
+            "query:moe-routing"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "Token-level SLM-LLM collaborative inference for dynamic routing",
+          "llm_evidence_cn": "令牌级小大模型协作推理实现动态路由",
+          "llm_evidence": "令牌级小大模型协作推理实现动态路由",
+          "canonical_evidence": "令牌级小大模型协作推理实现动态路由",
+          "llm_tldr_en": "PyroDash proposes token-level SLM-LLM collaborative inference where the small model decides when to offload to a large model via a control token, enabling cost-efficient routing without a separate router.",
+          "llm_tldr_cn": "PyroDash提出了一种令牌级的小模型与大模型协作推理框架。在生成过程中，小模型通过发射控制令牌决定何时向大模型请求帮助，实现单次交接。该策略内化于小模型，无需独立的路由器、大模型重新训练或访问大模型logits。PyroDash通过三个阶段训练小模型：控制令牌嵌入学习、卸载导向的监督微调。该工作为大规模LLM服务提供了低成本的动态模型选择方案。",
+          "llm_tldr": "PyroDash提出了一种令牌级的小模型与大模型协作推理框架。在生成过程中，小模型通过发射控制令牌决定何时向大模型请求帮助，实现单次交接。该策略内化于小模型，无需独立的路由器、大模型重新训练或访问大模型logits。PyroDash通过三个阶段训练小模型：控制令牌嵌入学习、卸载导向的监督微调。该工作为大规模LLM服务提供了低成本的动态模型选择方案。",
+          "llm_tags": [
+            "query:moe-routing"
+          ],
+          "matched_query_tag": "query:moe-routing",
+          "matched_query_text": "model routing in LLM inference",
+          "matched_requirement_id": "req-10",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.20327v1",
+          "carry_days": 1
+        }
+      ]
     },
     "agent-dist": {
-      "updated_date": "20260714-20260723",
+      "updated_date": "20260723",
       "carryover_days": 9,
       "items": [
         {
@@ -44,13 +132,13 @@
             "query:moe-routing"
           ],
           "llm_score": 8.0,
-          "llm_evidence_en": "studies feedback-augmented self-distillation for agentic search tasks",
-          "llm_evidence_cn": "研究针对agent搜索任务的反馈增强自蒸馏",
-          "llm_evidence": "研究针对agent搜索任务的反馈增强自蒸馏",
-          "canonical_evidence": "研究针对agent搜索任务的反馈增强自蒸馏",
-          "llm_tldr_en": "Investigates on-policy self-distillation for retrieval-interleaved search agents, identifying decoding collapse where models produce input-agnostic templates, rendering KL-based self-distillation ineffective.",
-          "llm_tldr_cn": "自我蒸馏在复杂agent任务中效果未知。本文实例化反馈增强自蒸馏，发现模型容易陷入'解码崩溃'——输出与输入无关的重复模板，使KL散度信号失效。实验表明该问题普遍存在，揭示了自蒸馏在agent场景中的关键失败模式。",
-          "llm_tldr": "自我蒸馏在复杂agent任务中效果未知。本文实例化反馈增强自蒸馏，发现模型容易陷入'解码崩溃'——输出与输入无关的重复模板，使KL散度信号失效。实验表明该问题普遍存在，揭示了自蒸馏在agent场景中的关键失败模式。",
+          "llm_evidence_en": "Investigates self-distillation for agentic search tasks, identifies decoding collapse",
+          "llm_evidence_cn": "研究代理搜索任务中的自蒸馏，发现解码坍塌问题",
+          "llm_evidence": "研究代理搜索任务中的自蒸馏，发现解码坍塌问题",
+          "canonical_evidence": "研究代理搜索任务中的自蒸馏，发现解码坍塌问题",
+          "llm_tldr_en": "Examines Feedback-Augmented Self-Distillation for agentic search, revealing decoding collapse where models rely on templated trajectories, making KL-based self-distillation uninformative.",
+          "llm_tldr_cn": "自蒸馏在复杂代理任务中的有效性尚不明确。本文在检索式中介搜索任务上实现反馈增强自蒸馏，发现模型倾向于使用重复的推理-搜索模板产生外观多样但输入无关的轨迹，导致KL散度信号无效，这种现象称为解码坍塌。该发现对代理蒸馏方法的设计具有重要警示。",
+          "llm_tldr": "自蒸馏在复杂代理任务中的有效性尚不明确。本文在检索式中介搜索任务上实现反馈增强自蒸馏，发现模型倾向于使用重复的推理-搜索模板产生外观多样但输入无关的轨迹，导致KL散度信号无效，这种现象称为解码坍塌。该发现对代理蒸馏方法的设计具有重要警示。",
           "llm_tags": [
             "query:agent-dist"
           ],
@@ -64,9 +152,54 @@
       ]
     },
     "agent-mix": {
-      "updated_date": "20260714-20260723",
+      "updated_date": "20260723",
       "carryover_days": 9,
-      "items": []
+      "items": [
+        {
+          "id": "2607.20268v1",
+          "source": "arxiv",
+          "title": "PoTRE: Test-Time Reasoning inspired by Cognitive Heterogeneity",
+          "abstract": "While Large Language Models (LLMs) excel at many tasks, they frequently struggle with complex reasoning that requires long-horizon planning and iterative error correction. Furthermore, standard single-stream prompting proves brittle when models encounter novel abstractions or rigorous domain constraints. We introduce PoTRE (Poly-Topological Reasoning Ensembles), a heterogeneous framework that decouples inference into four agents: (1) Adversarial Refinement Agent, (2) Hierarchical strategic Planning Agent, (3) Spectrum Search Agent, and (4) Direct Chain Agent. A final Task-Adaptive Aggregation Layer dynamically reconciles these perspectives -- via final candidate selection, semantic synthesis, or neuro-symbolic verification -- to produce a robust global solution. We evaluate PoTRE on three frontier benchmarks: ARC-AGI-2, Humanity's Last Exam (HLE), and PRBench Finance. PoTRE achieves state-of-the-art accuracy of 49.92% on HLE, surpassing the previous best official score. We demonstrate that this architectural heterogeneity achieves improved reasoning performance using similar or fewer inference tokens compared to heavily scaled homogeneous baselines.",
+          "authors": [
+            "Anmol Kankariya",
+            "Sercan Ö. Arık"
+          ],
+          "primary_category": "cs.AI",
+          "categories": [
+            "cs.AI",
+            "cs.CL"
+          ],
+          "published": "2026-07-22T15:20:53+00:00",
+          "link": "https://arxiv.org/pdf/2607.20268v1",
+          "tags": [
+            "keyword:agent-LSH",
+            "keyword:agent-dist",
+            "keyword:agent-mix",
+            "keyword:moe-routing",
+            "query:agent-LSH",
+            "query:agent-dist",
+            "query:agent-mix",
+            "query:moe-routing"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "mixture of agents (PoTRE uses multiple agents for reasoning)",
+          "llm_evidence_cn": "多代理混合（PoTRE使用多个代理进行推理）",
+          "llm_evidence": "多代理混合（PoTRE使用多个代理进行推理）",
+          "canonical_evidence": "多代理混合（PoTRE使用多个代理进行推理）",
+          "llm_tldr_en": "PoTRE decouples LLM inference into four specialized agents (adversarial, strategic, spectrum, direct) and aggregates them adaptively, enabling long-horizon reasoning.",
+          "llm_tldr_cn": "针对大模型在需要长期规划和迭代纠错的复杂推理中表现不足的问题，提出PoTRE框架，将推理过程解耦为四个专用代理（对抗精炼、分层规划、频谱搜索、直接链），并通过任务自适应聚合层动态融合结果。实验表明该方法在需要长期规划的任务上显著优于单流prompt。",
+          "llm_tldr": "针对大模型在需要长期规划和迭代纠错的复杂推理中表现不足的问题，提出PoTRE框架，将推理过程解耦为四个专用代理（对抗精炼、分层规划、频谱搜索、直接链），并通过任务自适应聚合层动态融合结果。实验表明该方法在需要长期规划的任务上显著优于单流prompt。",
+          "llm_tags": [
+            "query:agent-mix"
+          ],
+          "matched_query_tag": "query:agent-mix",
+          "matched_query_text": "mixture of agents method",
+          "matched_requirement_id": "req-17",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.20268v1",
+          "carry_days": 1
+        }
+      ]
     }
   }
 }
