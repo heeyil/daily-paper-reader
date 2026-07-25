@@ -1,0 +1,120 @@
+Title: Toward Continuous Assurance for the Democratization of AI Agent Creation in Industry
+
+URL Source: https://arxiv.org/pdf/2607.21495v1
+
+Published Time: Fri, 24 Jul 2026 01:11:23 GMT
+
+Number of Pages: 4
+
+Markdown Content:
+# Toward Continuous Assurance for the Democratization of AI Agent Creation in Industry 
+
+1st Natan Levy 
+
+School of Computer Science and Engineering The Hebrew University of Jerusalem (HUJI) 
+
+Jerusalem, Israel Natan.Levy1@mail.huji.ac.il 
+
+2nd Harel Berger 
+
+The Department of Computer and Software Engineering Ariel University 
+
+Ariel, Israel HarelB@ariel.ac.il 
+
+Abstract —AI agents are increasingly created inside organiza-tions by non-engineering users through low-code, no-code, and conversational development environments. This democratization enables rapid local innovation, but it also creates a reliability gap: agents that appear to users as simple productivity artifacts may depend on changing models, tools, retrieval sources, permissions, prompts, schedules, and external services. These dependencies can cause silent degradation long after deployment, even when no user directly modifies the agent. This paper identifies the reliability challenge created by democratized AI agent creation and proposes a lightweight continuous-assurance framework for citizen-created organizational agents. The framework combines dependency mapping, readiness contracts, scheduled checks, diagnostics, and lifecycle governance to assess whether an agent remains operationally ready under expected conditions. We also present an initial prototype auditor and scenario-based assess-ment showing how the proposed taxonomy can be translated into practical checks and actionable remediation guidance. 
+
+Index Terms —AI agents, continuous assurance, software reli-ability, democratized agent creation 
+
+I. I NTRODUCTION 
+
+AI agents are moving from experimental tools into everyday organizational workflows [1]. In low-code, no-code, and con-versational development environments, non-engineering orga-nizational users can rapidly build task-specific agents by cou-pling large language models (LLMs) with custom instructions, retrieval sources, tools, and APIs [2]. While this democratiza-tion fosters local innovation, it introduces a severe reliability mismatch: to a user, an agent looks like a static productivity artifact (e.g., a spreadsheet); operationally, however, it behaves like a live microservice dependent on a fragile, changing ecosystem [3]. Consequently, an agent can silently degrade or fail without any direct user modification due to updated model weights, stale retrieval indices, shifted API schemas, or expired per-missions [1]. Traditional DevOps, MLOps, and AgentOps offer robust monitoring [4], [5], but they assume engineering expertise and dedicated infrastructure. They cannot simply be offloaded to the non-engineering organizational users who create and rely on these agents. This operational gap is illustrated by a real deployment inside the legal department of a major aerospace company. When a citizen-built agent began handling sensitive workflows, a single question exposed the systemic vulnerability: if this agent stops working correctly, how will it be detected, and who will be alerted? No one could answer. There was no mechanism to detect what had changed, which dependency had broken, or who was responsible for fixing it. The agent’s creators were capable domain experts, but they had no training in reliability engineering and no reason to acquire it. Legal was merely where the question surfaced first. This same pattern is repeating across logistics, transportation, HR, procurement, and finance departments worldwide. Low-code platforms have put agent creation in the hands of thousands of domain experts, yet the reliability practices that tradi-tionally accompany deployed software have not followed. Consequently, industry is accumulating a growing inventory of business-critical agents that no one is watching. Specifically, this paper makes the following contributions:  
+
+> •
+
+Taxonomy: We define the industrial reliability gap and provide a failure taxonomy for long-lived, democratized AI agents.  
+
+> •
+
+Framework: We propose a continuous-assurance frame-work driven by dependency mapping, readiness contracts, and scheduled diagnostics.  
+
+> •
+
+Evaluation: We evaluate a prototype auditor via scenario-based assessment, demonstrating repeatable readiness checks and automated remediation guidance. II. F AILURE TAXONOMY FOR LONG -L IVED AI A GENTS 
+
+Long-lived AI agents created in democratized organizational environments may fail for reasons that differ from both static documents and traditional software components. Their behav-ior depends on a changing composition of models, tools, data sources, permissions, prompts, workflows, and organizational ownership. Table I presents the failure classes used in this work to structure readiness checks for organizational agent deployments. The taxonomy is not intended to be exhaustive; rather, it captures the dependency-related failure modes that motivated the proposed continuous-assurance framework. The failure classes were derived from the dependency categories reported in the DevOps literature [5], extended with organizational classes (ownership, governance) motivated by the industrial observation in Section I. This structured categorization is conceptually rooted in our prior work [6], [7], which demonstrated that technical modifications should arXiv:2607.21495v1 [cs.AI] 23 Jul 2026 TABLE I FAILURE TAXONOMY AND READINESS CHECKS                          
+
+> Failure class Readiness check
+> Model dependency Verify model availability, supported configu-ration, and sensitivity to model changes. Tool invocation Execute tool or API smoke tests and validate status, returned fields, and error handling. Retrieval Check access to required sources and test representative queries against expected ma-terial. Permission and creden-tial Validate that required permissions, tokens, connectors, and access scopes remain active. Output contract Validate required schema, fields, format, completeness, language, and downstream compatibility. Workflow and schedul-ing Verify workflow sequence, scheduled execu-tion, last successful run, and notification path. Semantic degradation Run representative prompts and compare out-puts against expected task-level properties. Ownership Verify valid owner, maintainer, escalation path, and responsibility after role or team changes. Governance Check inventory status, criticality, version history, audit trail, lifecycle state, and retire-ment rules.
+
+be evaluated based on their structure and human perceptibility rather than just their immediate execution success. By translat-ing this visibility principle into an architectural framework for democratized AI creation, we shift our diagnostic lens away from basic binary execution errors. Instead, our taxonomy targets the operational level shifts that occur beneath the user’s interface, mapping how minor, isolated changes to an agent’s technical dependencies aggregate into larger vulnerabilities. The most challenging failures are not necessarily those that produce explicit execution errors. Silent degradation, reduced data access, stale retrieval, and ownership gaps may allow an agent to continue producing outputs while becoming unreli-able. These failures are especially important in democratized agent creation, because the users who create or rely on an agent may not have access to logs, dependency traces, permission histories, or platform-level diagnostics. As a result, failures can remain undetected until after the recoverability window has closed. This taxonomy motivates the need for continuous assurance. Each failure class requires a corresponding readiness check, monitoring signal, or lifecycle control. Model and tool failures require dependency checks. Retrieval and permission failures require access and freshness validation. Output contract fail-ures require structural tests. Semantic degradation requires representative behavioral checks. Ownership and governance failures require organizational controls. These checks provide the basis for the continuous-assurance framework. III. C ONTINUOUS ASSURANCE FRAMEWORK 
+
+The taxonomy in Table I motivates a lightweight assurance process that repeatedly verifies whether an agent remains ready for use. We define continuous assurance as a recurring process that collects evidence about an agent’s operational readiness, detects failures or degradation, and routes actionable information to the responsible owner or administrator. The goal is not to prove full semantic correctness of open-ended agents. Rather, it is to detect operational failures early, within the recovery window, before users rely on degraded outputs. The framework, illustrated in Figure 1, consists of five elements. First, a dependency map identifies the resources required for operation, including models, prompts, tools, APIs, retrieval sources, files, permissions, schedules, and down-stream consumers. Second, a readiness contract defines the minimum observable conditions under which the agent is considered operational, such as source access, tool invoca-tion, retrieval freshness, output format, and representative behavioral checks. Third, scheduled assurance checks execute this contract periodically or after relevant changes, such as model updates, source changes, permission changes, or tool-interface updates. Fourth, diagnostics classify detected failures according to the taxonomy and estimate their operational im-pact. Fifth, lifecycle governance assigns ownership, escalation paths, criticality, auditability, and retirement rules. The key design principle is expertise translation. In de-mocratized agent creation, organizational users may be ca-pable agent creators who define behavior, sources, outputs, and success criteria in task-level terms. The assurance layer translates these inputs into reliability artifacts, including de-pendency maps, readiness checks, diagnostics, escalation rules, and lifecycle controls. This enables organizations to scale agent creation without requiring every agent creator to master DevOps, MLOps, or AgentOps practices. 
+
+A. Illustrative Readiness Contract 
+
+As an example, consider a document-analysis agent created by an organizational user to extract structured information from controlled technical documents. A readiness contract for this agent may include five observable conditions: (1) the declared source documents and retrieval index are reachable, (2) representative queries return current and relevant source material, (3) required tools or APIs execute and return the expected fields, (4) the agent output satisfies the required structure and mandatory fields, and (5) the agent has a valid owner and escalation path. Failure of any condition does not imply that every future answer will be incorrect, but it provides evidence that the agent should not be treated as fully ready for operational use. This illustrates the purpose of the contract: to translate task-level expectations into repeatable readiness checks executable by the assurance layer. 
+
+B. Operational Assurance Workflow 
+
+In an organizational deployment, continuous assurance can be implemented as a lightweight workflow around the agent lifecycle. When an organizational user creates or shares an agent, the agent is registered with an owner, intended task, crit-icality level, declared dependencies, and representative success examples. The assurance layer then converts this information into a readiness contract and executes periodic or change-triggered checks. Each check produces an assurance record Non-Expert-Created AI Agent   
+
+> Agent Registry
+> Owner, purpose,
+> critica lity, lifecyc le
+> status
+> Dependency Map
+> Mode ls, too ls, APIs,
+> data sources,
+> permissions,
+> schedu les
+> Readiness Contract
+> Avai labi lity, access,
+> output format,
+> behaviora lchecks
+> Schedu led
+> Assurance
+> Checks
+> Dependency checks
+> and representative
+> task tests
+> Diagnostics
+> and A lerts
+> Fai lure
+> classification,
+> severity, actionab le
+> notification
+> Responsib le
+> Owner /
+> Administrator
+> Remediation
+> Actions
+> Restore, rebui ld,
+> renew, update,
+> ro ll back, retire
+> Created by
+> Domain Expert
+
+Fig. 1. The continuous-assurance workflow: agent registration produces a dependency map and readiness contract; scheduled checks feed diagnostics and lifecycle governance, routing findings to the responsible owner. 
+
+containing the readiness status, failed contract item, evidence level, failure class, severity, and recommended remediation. For low-criticality agents, this record may only inform the owner. For agents used in recurring operational workflows, failures should trigger escalation to an administrator and may temporarily restrict use until readiness is restored. This workflow makes agent assurance actionable without requiring the agent creator to manage monitoring infrastructure, logs, or reliability engineering practices. IV. P ROTOTYPE AUDITOR AND SCENARIO -B ASED 
+
+ASSESSMENT 
+
+To assess whether the proposed framework can be opera-tionalized, we implemented a prototype auditor as a hosted custom GPT. The auditor translates the failure taxonomy and readiness-contract concept into a practical assessment procedure. Given an agent description, configuration evidence, task examples, and optional execution transcripts, it identi-fies declared and implicit dependencies, derives a readiness contract, classifies failures or risks, and produces remediation guidance for the responsible owner or administrator. The prototype is an assurance artifact rather than a complete monitoring platform. It does not prove full semantic correct-ness and does not execute continuously unless connected to an external scheduler. In addition, the hosted GPT artifact cannot be distributed as a conventional source-code package, since the platform does not provide a complete inspectable export of all hosted configuration and runtime properties [8], [9]. To support transparency and reproducibility, we provide the inspectable components in a public GitHub repository 1:the auditor instructions, declared properties, readiness-contract template, anonymized assessment scenarios, expected findings, and redacted execution results. A key design requirement is evidence discipline. The au-ditor distinguishes between confirmed findings , reproducible risks , unknowns , and not-applicable checks . This prevents it from claiming access to private settings, hidden dependencies, permissions, or retrieval indexes that were not provided as evidence. 
+
+> 1
+
+https://github.com/NatanLevy/continuous-agent-assurance TABLE II SCENARIO -B ASED ASSESSMENT OF THE PROTOTYPE AUDITOR                             
+
+> Scenario Failure class Evidence status Readiness decision
+> Required source doc-ument is unavailable Retrieval Confirmed finding Not ready: restore the source or rebuild the in-dex. Expected output field is missing Output contract Confirmed finding Not ready: enforce schema-level validation. Tool or API error ap-pears in transcript Tool invocation Confirmed finding Not ready: check the action schema and re-turned fields. Agent has no valid owner Ownership Confirmed finding Not ready for opera-tional use until owner-ship is reassigned. Source freshness can-not be verified Retrieval / gov-ernance Unknown Readiness unknown: perform owner-side freshness tests. Private GPT configuration is not inspectable Governance Not externally verifiable Do not claim verifica-tion; list evidence re-quired for confirmation.
+
+We evaluated the prototype using scenario-based fault as-sessment [10]. Each scenario represents a realistic readiness problem for an organizational agent created or maintained in a democratized agent-creation environment. The goal was not to benchmark model accuracy, but to determine whether the auditor could translate observable symptoms into actionable readiness findings without overclaiming unavailable evidence. For each scenario, we defined an expected readiness find-ing before running the auditor. A scenario was considered successful when the auditor: (1) assigned the issue to the appropriate taxonomy class, (2) distinguished confirmed ev-idence from risks or unknowns, (3) avoided claims about unavailable private configuration, and (4) produced a concrete remediation action that could be executed by an owner or administrator. We recorded the supplied evidence, the expected finding, the auditor output, and whether the result satisfied these criteria. This protocol evaluates the practical usefulness of the readiness-contract approach rather than the language model’s general accuracy. Across the six evaluated scenarios, the auditor produced readiness decisions consistent with the expected failure class and available evidence. The scenarios provide an initial feasi-bility assessment rather than a measurement of coverage, false-positive rate, or operational effectiveness. More importantly, the assessment shows that the readiness-contract approach can support evidence-grounded decisions rather than binary pass/fail judgments. Confirmed operational failures were clas-sified as not ready, while unverifiable properties were reported as unknown or not externally verifiable. This distinction is essential for democratized agent creation, where some readi-ness properties cannot be confirmed without platform access, owner-provided evidence, or administrative privileges. V. D ISCUSSION AND LIMITATIONS 
+
+The prototype assessment reinforces the central claim of this paper: reliability in democratized AI agent creation is not only a model-evaluation problem. Many practical failures arise from the surrounding operational composition, including missing sources, stale retrieval, expired permissions, changed tool schemas, broken schedules, and unclear ownership. Con-tinuous assurance therefore shifts the question from whether an agent is always correct to whether it remains operationally ready under expected conditions and available evidence. The proposed approach introduces practical trade-offs. Fre-quent checks reduce detection delay but increase cost, latency, and operational noise. Stronger readiness contracts improve confidence but require more effort from owners or administra-tors. Assurance policies should therefore be criticality-based: lightweight checks may be sufficient for informal productivity agents, while agents used in recurring operational, engineering, legal, financial, or customer-facing workflows require stricter contracts, audit trails, and escalation paths. This work is an initial assessment. The prototype evaluation is scenario-based and does not yet estimate detection coverage, false positives, or time-to-recovery. Moreover, the scenarios and expected findings were author-defined; validation against independently reported agent failures is left to future work. In addition, hosted agent configurations, permissions, and retrieval indexes may not always be externally inspectable. In such cases, the auditor should not infer readiness. Instead, it should mark the relevant property as unknown or not externally verifiable and prescribe additional validation. An additional limitation is the assurance of the auditor itself. If an LLM-based agent is used to assess other agents, it becomes part of the assurance chain and is vulnerable to the same drifts, API changes, and tool failures it is meant to detect. In this work, we start making the auditor’s instruc-tions and evaluation logic transparent and independently re-runnable, allowing human operators to manually verify their execution logs. However, the prototype lacks an independent, automated assurance mechanism. Future work will investigate meta-assurance techniques, such as fixed regression test suites, multi-agent cross-checking, and platform-level telemetry for the auditor itself. Finally, we plan to explore human-in-the-loop feedback for useful assurance for non-engineering users. VI. C ONCLUSION 
+
+The rapid democratization of AI agents is changing how organizations build, adapt, and deploy intelligent systems. Or-ganizational users can now create agents that quickly become part of everyday operational workflows, yet these agents are often managed as productivity artifacts rather than long-lived software assets. This creates a new reliability gap: agents may silently degrade as models, tools, retrieval sources, permis-sions, workflows, and organizational dependencies evolve. This paper argued that democratized AI agent creation requires democratized assurance. We presented a lightweight continuous-assurance framework based on a failure taxonomy, dependency mapping, readiness contracts, scheduled checks, diagnostics, and lifecycle governance. A prototype auditor and scenario-based assessment demonstrated that these concepts can be translated into evidence-based readiness decisions and practical remediation guidance. The broader implication is that organizational adoption of AI agents cannot scale through ad hoc troubleshooting or individual user vigilance alone. As agent creation becomes accessible to organizational users, assurance must become equally accessible, continuously executable, and evidence-driven. Continuous assurance provides a practical foundation for making democratized AI agent creation reliable, govern-able, and sustainable at organizational scale. REFERENCES 
+
+[1] J. Yang, N. Yonack, K. Zyskowski, D. Yarats, J. Ho, and J. Ma, “The adoption and usage of ai agents: Early evidence from perplexity,” arXiv preprint arXiv:2512.07828 , 2025. [2] Y. Wang et al., “Internet of agents: Fundamentals, applications, and challenges,” IEEE Transactions on Cognitive Communications and Networking , 2025. [3] F. Khan, Agentic AI applications in software develop-ment: a systematic mapping study , 2026. [4] L. Dong, Q. Lu, and L. Zhu, “Agentops: En-abling observability of llm agents,” arXiv preprint arXiv:2411.05285 , 2024. [5] R. Amaro, R. Pereira, and M. M. da Silva, “Map-ping devops capabilities to the software life cycle: A systematic literature review,” Information and Software Technology , vol. 177, p. 107 583, 2025. [6] D. Soi, D. Maiorca, G. Giacinto, and H. Berger, “Can you see me? on the visibility of nops against android malware detectors,” arXiv preprint arXiv:2312.17356 ,2023. [7] H. Berger, C. Hajaj, and A. Dvir, “Problem-space evasion attacks in the android os: A survey,” arXiv preprint arXiv:2205.14576 , 2022. [8] OpenAI, Introducing gpts , https : / / openai . com / index / introducing-gpts/, Accessed: 2026-06-27, 2023. [9] S. O. Ogundoyin, M. Ikram, H. J. Asghar, B. Z. H. Zhao, and D. Kaafar, “A large-scale empirical analysis of custom gpts’ vulnerabilities in the openai ecosystem,” 
+
+arXiv preprint arXiv:2505.08148 , 2025. [10] S. Riedmaier, T. Ponn, D. Ludwig, B. Schick, and F. Diermeyer, “Survey on scenario-based safety as-sessment of automated vehicles,” IEEE access , vol. 8, pp. 87 456–87 477, 2020.

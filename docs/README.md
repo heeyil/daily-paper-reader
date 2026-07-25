@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-24</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-25</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 23 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-24 21:50:02 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-25 20:59:18 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日聚焦两大精读突破：递归自我改进研究智能体《AREX》与语言模型隐藏推理策略《Uncovering Latent Reasoning Strategies》，同时速读关注文档操作、协作推理及智能体失败策略。最值得关注的是自我改进智能体在深度研究中的应用，以及模型未显式呈现的推理模式。建议普通读者优先精读这两篇高评分文献，再结合速读中《从智能体失败到文本策略》一文，理解当前智能体系统的局限性与改进方向。</p>
+<p>今日23篇论文，聚焦AI Agent的高效学习、EDA自动化及医疗推理三大方向，其中Agent经验采样学习与RTL-to-GDS基准测试最值得深读。建议优先阅读《Sample-Efficient Learning from Agent Experience》（10/10），并跟进《Medea》的医疗推理边界，后续可关注EdgeCoInfer的端侧部署测试。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="AREX: Towards a Recursively Self-Improving Agent for Deep Research">AREX: Towards a Recursively Self-Improving Agent for Deep Research</span></li><li><span class="dpr-home-dashboard-paper-title" title="Uncovering Latent Reasoning Strategies in Language Models">Uncovering Latent Reasoning Strategies in Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Strategy-Following Multi-Agent Deep Reinforcement Learning Considering Control Strategies Provided to Other Agents">Strategy-Following Multi-Agent Deep Reinforcement Learning Considering Control Strategies Provided to Other Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Sample-Efficient Learning from Agent Experience">Sample-Efficient Learning from Agent Experience</span></li><li><span class="dpr-home-dashboard-paper-title" title="Can AI Agents Really Complete RTL-to-GDS? Lessons from Benchmarking Tool-Interactive EDA Workflows">Can AI Agents Really Complete RTL-to-GDS? Lessons from Benchmarking Tool-Interactive EDA Workflows</span></li><li><span class="dpr-home-dashboard-paper-title" title="C$^2$KV: Compressed and Composable KV Cache Reuse for Efficient LLM Inference">C$^2$KV: Compressed and Composable KV Cache Reuse for Efficient LLM Inference</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">agent-mix <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>6</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>2</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DocOps: A Verifiable Benchmark for Autonomous Agents in Complex Document Operations">DocOps: A Verifiable Benchmark for Autonomous Agents in Complex Document Operations</span></li><li><span class="dpr-home-dashboard-paper-title" title="PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference">PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Agent Failures to Text Policies: What Works and What Breaks">From Agent Failures to Text Policies: What Works and What Breaks</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Medea: An AI agent for therapeutic reasoning across biological contexts">Medea: An AI agent for therapeutic reasoning across biological contexts</span></li><li><span class="dpr-home-dashboard-paper-title" title="AEVAL: From Anecdotal to Deterministic Testing for Agentic Skill Workflows">AEVAL: From Anecdotal to Deterministic Testing for Agentic Skill Workflows</span></li><li><span class="dpr-home-dashboard-paper-title" title="EdgeCoInfer: Hierarchical Collaborative Inference for On-Device Multimodal Large Models">EdgeCoInfer: Hierarchical Collaborative Inference for On-Device Multimodal Large Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>11</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>13</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 </div>
 
