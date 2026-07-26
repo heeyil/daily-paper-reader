@@ -1,0 +1,688 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-26T21:24:15.466051+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 4,
+    "deep_divecandidates": 3,
+    "deep_cap": 9,
+    "deep_selected": 3,
+    "quick_candidates": 11,
+    "quick_skim_target": 14,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2607.18046v1",
+      "source": "arxiv",
+      "title": "SEE: Structure-aware Exploring \\& Exploiting for Long-horizon GUI Agent Trajectory Synthesis",
+      "abstract": "Graphical User Interface (GUI) agents powered by vision-language models hold promise for automating real-world mobile tasks. However, progress is limited by the lack of high-coverage, long-horizon interaction trajectories collected from element-rich and rapidly evolving apps. Existing pipelines often rely on costly human demonstrations or on-policy framework, which tends to over-sample common flows while missing rare transitions and complex multi-step procedures. To address this problem, we propose SEE, a two-stage data synthesis framework consisting of (i) an efficient exploration stage that builds an explicit UI transition graph over screens and elements, and (ii) a graph-based synthesis stage that composes diverse multi-step trajectories via planning and controlled sampling. This design yields reproducible and explainable data generation, while explicitly preventing spurious cycles and enabling long-horizon composition. Across multiple real-world apps, SEE produces trajectories with an average length of 14.8 steps while avoiding spurious loops, and agents fine-tuned on SEE achieve improved task success and generalization to unseen screens. We will publicly release our synthesis code and dataset.",
+      "authors": [
+        "Zhuohang Fan",
+        "Beichen Zhang",
+        "Yuanfa Li",
+        "Changqiao Wu",
+        "Wei Liu",
+        "Jian Luan",
+        "Weigang Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-07-20T15:16:59+00:00",
+      "link": "https://arxiv.org/pdf/2607.18046v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "focuses on long-horizon GUI agent trajectory synthesis",
+      "llm_evidence_cn": "专注于长视界GUI智能体轨迹合成",
+      "llm_evidence": "专注于长视界GUI智能体轨迹合成",
+      "canonical_evidence": "专注于长视界GUI智能体轨迹合成",
+      "llm_tldr_en": "Proposes SEE, a two-stage framework that builds UI transition graphs and synthesizes diverse long-horizon trajectories for GUI agents, addressing data scarcity.",
+      "llm_tldr_cn": "针对GUI智能体长视界交互轨迹数据稀缺的问题，提出SEE框架，包含高效探索阶段构建UI转移图，以及基于图的合成阶段生成多样化多步轨迹。实验表明该方法能有效覆盖长尾转换和复杂多步流程，为长视界智能体训练提供高质量数据。",
+      "llm_tldr": "针对GUI智能体长视界交互轨迹数据稀缺的问题，提出SEE框架，包含高效探索阶段构建UI转移图，以及基于图的合成阶段生成多样化多步轨迹。实验表明该方法能有效覆盖长尾转换和复杂多步流程，为长视界智能体训练提供高质量数据。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.20062v1",
+      "source": "arxiv",
+      "title": "Solar Open 2 Technical Report",
+      "abstract": "We present Solar Open 2, a 250B-A15B Mixture-of-Experts language model built for long-horizon agentic tasks, scaled up from Solar Open 1 (Solar Open 100B). To hold entire agent trajectories in a single context, Solar Open 2 reaches a 1M-token window through a hybrid attention stack that interleaves one softmax layer among every three linear-attention layers, using no positional encoding and a gated delta rule extended to negative eigenvalues. To train at this scale under a fixed compute budget, we make training efficient in two ways: a stronger starting point, and higher-value data. For the starting point, we initialize Solar Open 2 from Solar Open 1, transferring the 5.69B-parameter shared skeleton that survives the architectural change and learning everything else through full pre-training. For the data, we curate for value per token: quality- and rarity-aware data curation and mixture-ratio optimization refine a 20T pool into a 10T mixture that, at equal token budget, outperforms the Solar Open 1 recipe. To build its agent skills, we train twelve domain specialists across purpose-built scenarios, then consolidate them into a single model by Multi-teacher On-Policy Distillation (MOPD). Against comparably sized open-weight models on English benchmarks, Solar Open 2 leads on MMLU-Pro, LiveCodeBench, and the APEX-Agents agentic suite, and stays competitive with the strongest (DeepSeek-V4-Flash and MiMo-V2.5) elsewhere. On Korean benchmarks, Solar Open 2 records the highest average of any model compared, including fast-tier closed APIs, and on Ko-GDPval, an in-house Korean officework-agent benchmark, it is competitive with DeepSeek-V4-Pro (1.6T) at less than a sixth of its size.",
+      "authors": [
+        "Sungrae Park",
+        "Sanghoon Kim",
+        "Gyoungjin Gim",
+        "Jungho Cho",
+        "Hyunwoong Ko",
+        "Minbyul Jeong",
+        "Minjeong Kim",
+        "Keunwoo Choi",
+        "Chaehun Shin",
+        "Chanwoong Yoon",
+        "Dongjun Kim",
+        "Eunwon Kim",
+        "Gyungin Shin",
+        "Hyeonju Lee",
+        "Hyungkyu Kang",
+        "Inseo Song",
+        "Jisu Bae",
+        "Jiyoon Han",
+        "Jiyun Lee",
+        "Joonkee Kim",
+        "Junyeop Lee",
+        "Mikyoung Cha",
+        "Sangwon Yu",
+        "Sehwan Joo",
+        "Seokyoon Kang",
+        "Seonghoon Yang",
+        "Seung Shin",
+        "Seunghyun Lee",
+        "Seungseop Lim",
+        "Seungyoun Shin",
+        "Sukyung Lee",
+        "Taegyeong Eo",
+        "Taehwan Oh",
+        "Taewhoo Lee",
+        "Wonho Song",
+        "Wonjun Oh",
+        "Wonseok Hwang",
+        "Yunsu Kim",
+        "Yura Shim",
+        "Hwalsuk Lee",
+        "Sunghun Kim",
+        "Du-Seong Chang",
+        "Kyunghyun Cho",
+        "Seungju Han",
+        "Yejin Choi",
+        "Junsuk Choe",
+        "Hwaran Lee",
+        "Minjeong Ban",
+        "Yun Taewon",
+        "Hwanjun Song",
+        "Jae-Gil Lee",
+        "KyungTae Lim",
+        "Alice Oh"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-22T12:08:41+00:00",
+      "link": "https://arxiv.org/pdf/2607.20062v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "MoE language model built for long-horizon agentic tasks",
+      "llm_evidence_cn": "专为长周期智能体任务构建的MoE语言模型",
+      "llm_evidence": "专为长周期智能体任务构建的MoE语言模型",
+      "canonical_evidence": "专为长周期智能体任务构建的MoE语言模型",
+      "llm_tldr_en": "Solar Open 2 is a 250B MoE language model with 1M-token context window, designed for long-horizon agentic tasks.",
+      "llm_tldr_cn": "长周期智能体任务需要模型能处理整个轨迹。Solar Open 2采用250B参数MoE架构，通过混合注意力栈（每三层线性注意力插入一层softmax）实现1M token窗口，并从Solar Open 1迁移参数高效训练，为长期规划和自适应提供了强大基础模型。",
+      "llm_tldr": "长周期智能体任务需要模型能处理整个轨迹。Solar Open 2采用250B参数MoE架构，通过混合注意力栈（每三层线性注意力插入一层softmax）实现1M token窗口，并从Solar Open 1迁移参数高效训练，为长期规划和自适应提供了强大基础模型。",
+      "llm_tags": [
+        "query:agent-lsh:composite"
+      ],
+      "matched_query_tag": "query:agent-lsh:composite",
+      "matched_query_text": "Papers central to 请帮我找agent相关的论文，方向侧重为Long-Horizon、self-improving、Harness, especially work that connects or combines: agent that operates over long horizons; agent that improves itself over time; techniques for harnessing and controlling agents; autonomous agent research planning and improvement; agent capable of long term planning and adaptation; AI systems that learn and improve through self supervision; Research papers on autonomous agents with long horizon planning capabilities; Self improving agents that evolve their strategies over extended time scales; Techniques for harnessing large language model agents in complex environments.",
+      "matched_requirement_id": "req-composite-agent-lsh",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.20771v1",
+      "source": "arxiv",
+      "title": "Emergent Compositional Skills in Mixture-of-Experts VLAs",
+      "abstract": "We consider the problem of learning compositional robot policies end-to-end from expert demonstrations, without any pre-specified notion of task decomposition or hierarchy. We ask whether a VLA trained with a simplified Mixture-of-Experts (MoE) action head can emergently learn to decompose tasks into reusable, interpretable primitives. We find that learned experts are heavily reused across tasks and consistently correspond to qualitatively distinct low-level behaviors, suggesting that the router implicitly learns to perform high-level sequencing while experts serve as compositional primitives. Our MoE matches the task performance of a monolithic baseline while demonstrating meaningful expert specialization, a step toward modular, interpretable robot policies that emerge from data alone.",
+      "authors": [
+        "Shlok Shah",
+        "Rhiaan Jhaveri",
+        "Tharun Kumar Tiruppali Kalidoss",
+        "Chirayu Nimonkar",
+        "Ishaan Javali"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-22T22:36:52+00:00",
+      "link": "https://arxiv.org/pdf/2607.20771v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Mixture-of-Experts action head with emergent routing for compositional robot policies",
+      "llm_evidence_cn": "混合专家动作头的涌现路由用于组合机器人策略",
+      "llm_evidence": "混合专家动作头的涌现路由用于组合机器人策略",
+      "canonical_evidence": "混合专家动作头的涌现路由用于组合机器人策略",
+      "llm_tldr_en": "Shows that a VLA with a simplified MoE action head emergently learns to decompose tasks into reusable primitives via routing, matching monolithic baseline performance.",
+      "llm_tldr_cn": "本文研究从专家演示中端到端学习组合机器人策略。使用简化的混合专家（MoE）动作头，发现专家被重用且对应于不同行为，路由器隐式学习高级排序。MoE在性能与基线相当的同时展示了专家特化，向模块化、可解释的机器人策略迈进一步。",
+      "llm_tldr": "本文研究从专家演示中端到端学习组合机器人策略。使用简化的混合专家（MoE）动作头，发现专家被重用且对应于不同行为，路由器隐式学习高级排序。MoE在性能与基线相当的同时展示了专家特化，向模块化、可解释的机器人策略迈进一步。",
+      "llm_tags": [
+        "query:moe-routing"
+      ],
+      "matched_query_tag": "query:moe-routing",
+      "matched_query_text": "papers on routing during inference of large language models",
+      "matched_requirement_id": "req-13",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.17535v1",
+      "source": "arxiv",
+      "title": "Salience Induction against Multi-Hop RAG Agents: Threat and Defense",
+      "abstract": "Agentic retrieval-augmented generation (RAG) systems increasingly retrieve external evidence and orchestrate tools for knowledge-intensive applications. In Multi-Hop question answering, agents chain facts across documents. Existing defenses focus on content poisoning, which injects false facts, and prompt injection, which embeds directives. We identify a third attack surface: the salience channel, through which fact position, emphasis, framing, and semantic proximity can redirect reasoning even when all retrieved claims are true and no instructions are present. We formalize Salience Induction as truth-preserving edits that redirect Multi-Hop attribute binding while leaving the retrieval trace semantically intact. We define six Salience-Editing operator classes and build an iterative proposer-verifier pipeline under factual and stealth constraints. We also introduce SalientWiki-MH, a decoy-annotated Multi-Hop benchmark. Evaluations across five frontier model families (GPT, Claude, Gemini, DeepSeek, and Qwen) and three agent architectures (ReAct, Reflexion, and tool-calling) show broad generalization. Under a 30% edit budget, Salience Induction achieves an 83.3% attack success rate; the strongest evaluated baseline defense leaves 75.7% post-defense ASR. Untargeted rewriting further reduces attacks only by degrading neutral task success. Our lightweight input-side defense, Salience Normalization, reduces attack success to 15.3% under standard attacks and 23.6% under an adaptive attack. These results show that truthfulness and instruction filtering alone are insufficient: robust agentic RAG also requires defenses against salience-relevance decoupling.",
+      "authors": [
+        "Xingfu Zhou",
+        "Pengfei Wang",
+        "Yuan Zhou",
+        "Wei Xie",
+        "Xu Zhou"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.CL"
+      ],
+      "published": "2026-07-20T04:27:50+00:00",
+      "link": "https://arxiv.org/pdf/2607.17535v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "threat and defense for controlling multi-hop RAG agents",
+      "llm_evidence_cn": "多跳RAG智能体的控制威胁与防御",
+      "llm_evidence": "多跳RAG智能体的控制威胁与防御",
+      "canonical_evidence": "多跳RAG智能体的控制威胁与防御",
+      "llm_tldr_en": "Identifies salience induction as a new attack surface on multi-hop RAG agents that redirects reasoning via truth-preserving edits, and proposes defense strategies.",
+      "llm_tldr_cn": "现有对多跳RAG智能体的防御主要关注内容注入和提示注入，本文发现一种新的攻击面：显著性诱导（Salience Induction），通过编辑事实的位置、强调等语义属性来重定向智能体的推理，即使所有检索内容均为真。形式化了六种显著性编辑算子，并展示了其有效性。",
+      "llm_tldr": "现有对多跳RAG智能体的防御主要关注内容注入和提示注入，本文发现一种新的攻击面：显著性诱导（Salience Induction），通过编辑事实的位置、强调等语义属性来重定向智能体的推理，即使所有检索内容均为真。形式化了六种显著性编辑算子，并展示了其有效性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.16727v1",
+      "source": "arxiv",
+      "title": "Constraint-Anchored Reasoning Traces",
+      "abstract": "Autoregressive multimodal large language models (MLLMs) suffer from error snowballing: a single incorrect inference early in a chainof-thought (CoT) trace corrupts all downstream reasoning. We find that in state-of-the-art open-source MLLMs, once the first error occurs, the reasoning cascades into failure across all remaining steps in 65% of such cases (a metric we term the snowball rate). Existing mitigations-sampling multiple chains, post-hoc self-verification, or full program synthesis-either lack symbolic grounding, catch errors too late, or sacrifice the flexibility of natural language reasoning. We propose Constraint-Anchored Reasoning Traces (CART), a neuro-symbolic framework that trains MLLMs to interleave natural language reasoning steps with symbolic constraint assertions: lightweight, machine-checkable statements about visual content (e.g., count(red_objects) = 3). A dual-pronged Constraint Propagation Module-combining a learned neural grounding head with Boolean Constraint Propagation-continuously verifies these anchors against extracted visual features and checks their mutual logical consistency. When a contradiction is detected, a backtrack controller halts generation and reverts to the last consistent checkpoint, preventing error propagation. A variable-frequency emission mechanism allows the model to adaptively control anchor density, avoiding trace bloat. We construct 218K training instances by augmenting GQA, CLEVR-CoGenT, and VCR with ground-truth constraint annotations derived from scene graphs, and fine-tune open-source MLLMs (LLaVA-NeXT, Qwen2-VL) via LoRA. On five benchmarks, CART reduces the snowball rate from 0.65 to 0.14, improves GQA accuracy by +4.6 percentage points over trainingonly baselines, and achieves 89.1 F1 on POPE-all with at most 18% inference overhead.",
+      "authors": [
+        "Zehua Cheng",
+        "Wei Dai",
+        "Jiahao Sun"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CV"
+      ],
+      "published": "2026-07-18T09:24:45+00:00",
+      "link": "https://arxiv.org/pdf/2607.16727v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:moe-routing"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "reduces error snowballing in long reasoning chains, enabling reliable long-horizon agent planning",
+      "llm_evidence_cn": "减少长推理链中的错误级联，支持可靠的长时域智能体规划",
+      "llm_evidence": "减少长推理链中的错误级联，支持可靠的长时域智能体规划",
+      "canonical_evidence": "减少长推理链中的错误级联，支持可靠的长时域智能体规划",
+      "llm_tldr_en": "Proposes Constraint-Anchored Reasoning Traces (CART) to mitigate error snowballing in MLLM reasoning by interleaving symbolic constraints, reducing failure rate from 65% to lower.",
+      "llm_tldr_cn": "自回归多模态大模型在链式推理中易出现错误级联，一旦早期推理错误，后续步骤在65%的情况下完全失败。本文提出约束锚定推理轨迹（CART），一种神经符号框架，训练模型在自然语言推理步骤中穿插符号约束断言，从而在早期捕获错误并阻断传播。实验表明该方法显著降低了错误级联率。",
+      "llm_tldr": "自回归多模态大模型在链式推理中易出现错误级联，一旦早期推理错误，后续步骤在65%的情况下完全失败。本文提出约束锚定推理轨迹（CART），一种神经符号框架，训练模型在自然语言推理步骤中穿插符号约束断言，从而在早期捕获错误并阻断传播。实验表明该方法显著降低了错误级联率。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.18039v1",
+      "source": "arxiv",
+      "title": "Evidence-in-the-Loop: Trace-Driven Optimization for Customer-Service LLM Agents",
+      "abstract": "Production customer-service bots must improve answer quality across iterative releases, yet large language models must not bypass evidence boundaries, policy rules, or human-handoff safeguards. We present an \\textbf{Evidence-Grounded Customer-Service Agent Workflow} deployed in a real-world customer-service setting. BM25 recall, issue-title-vector recall, issue-description-vector recall, weighted RRF fusion, and cross-encoder reranking construct grounded FAQ evidence for controlled LLM decisions. Policy-guided orchestration then combines this RAG evidence with scenario-specific rule evidence, conversation memory, and clarification state inside a fixed LangGraph DAG~\\cite{langgraph2024}. The paper contributes three reusable deployment patterns: \\textbf{hybrid RAG evidence construction}, where multi-channel retrieval and reranking produce auditable FAQ candidates; \\textbf{evidence-grounded issue/action decision}, where an Evidence-Grounded Decision Module selects an issue/action from typed FAQ evidence and scenario-specific rule evidence; and \\textbf{trace-driven RAG and reranker improvement}, where traces diagnose whether failures come from recall, ranking, final candidate selection, clarification, rule-derived evidence, or action policy, and where reranker fine-tuning is evaluated not only for in-domain gain but also for forgetting risk.",
+      "authors": [
+        "Chunming Wu",
+        "Dafei Qiu",
+        "Congde Yuan",
+        "Charles Quan",
+        "Jun Wu",
+        "Suipeng Li",
+        "Mo Wu",
+        "Gavin Xie",
+        "Hope Chen",
+        "Max Yao"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-20T15:07:58+00:00",
+      "link": "https://arxiv.org/pdf/2607.18039v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "techniques for harnessing LLM agents in customer service",
+      "llm_evidence_cn": "在客服场景中利用LLM智能体的技术",
+      "llm_evidence": "在客服场景中利用LLM智能体的技术",
+      "canonical_evidence": "在客服场景中利用LLM智能体的技术",
+      "llm_tldr_en": "Presents an evidence-grounded customer-service agent workflow with policy-guided orchestration, combining RAG, rule evidence, and memory in a fixed DAG for controlled LLM decisions.",
+      "llm_tldr_cn": "生产环境客服机器人需在迭代中提升质量，同时保证不越界。本文提出证据驱动的客服智能体工作流，使用多条召回路径和重排构成FAQ证据，并通过策略引导编排结合规则证据和记忆，在固定图结构中控制LLM决策。部署于真实场景，贡献了三个可复用模式。",
+      "llm_tldr": "生产环境客服机器人需在迭代中提升质量，同时保证不越界。本文提出证据驱动的客服智能体工作流，使用多条召回路径和重排构成FAQ证据，并通过策略引导编排结合规则证据和记忆，在固定图结构中控制LLM决策。部署于真实场景，贡献了三个可复用模式。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.17890v1",
+      "source": "arxiv",
+      "title": "Stress Testing Concept Erasure with Large Language Model Agents",
+      "abstract": "Concept erasure aims to remove semantic concepts from a trained generative model and is increasingly important for responsible AI deployment. However, verifying whether a model has robustly removed targeted concepts remains a critical challenge. Existing evaluation methods are typically pre-defined and static, failing to expose vulnerabilities under diverse natural-language probes and challenging conditions. Moreover, manually designed evaluation strategies can be biased and difficult to scale. We posit that concept erasure evaluation is best formulated as an adaptive hypothesis search, operationalised by agents that iteratively propose, critique, and verify tests to systematically expand coverage of failure modes. To this end, we propose Stress Testing Agents for Concept Erasure (STACE), a framework that autonomously stress-tests concept-erased models using multiple Large Language Model (LLM) agents, by iteratively generating and verifying stress-testing hypotheses grounded by external knowledge. We also introduce a suite of metrics for assessing the performance and efficiency of LLM-agent-powered stress-testing frameworks. Our extensive experiments show that STACE outperforms five LLM-based evaluation baselines on four concept categories. Further analysis across two T2I models, six concept erasure approaches, and various erasure strengths show that STACE is robust for different settings. We also show that STACE can be adapted beyond concept erasure evaluation to other problem domains, such as LLM jailbreaking. Our code is available anonymously.",
+      "authors": [
+        "Yuyang Xue",
+        "Feng Chen",
+        "Zhihua Liu",
+        "Edward Moroshko",
+        "Jingyu Sun",
+        "Steven McDonagh",
+        "Sotirios A. Tsaftaris"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-20T12:38:50+00:00",
+      "link": "https://arxiv.org/pdf/2607.17890v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "adaptive self-supervision for concept erasure evaluation using agents",
+      "llm_evidence_cn": "使用智能体进行概念擦除的自适应自监督评估",
+      "llm_evidence": "使用智能体进行概念擦除的自适应自监督评估",
+      "canonical_evidence": "使用智能体进行概念擦除的自适应自监督评估",
+      "llm_tldr_en": "Proposes stress-testing agents that iteratively propose, critique, and verify tests to systematically evaluate concept erasure in generative models.",
+      "llm_tldr_cn": "概念擦除评估通常依赖静态预定义测试，难以覆盖所有漏洞。本文提出压力测试智能体（Stress Testing Agent），将评估建模为自适应假设搜索，智能体迭代生成、批判和验证测试，动态扩展失败模式覆盖。该方法比手工测试更全面且可扩展。",
+      "llm_tldr": "概念擦除评估通常依赖静态预定义测试，难以覆盖所有漏洞。本文提出压力测试智能体（Stress Testing Agent），将评估建模为自适应假设搜索，智能体迭代生成、批判和验证测试，动态扩展失败模式覆盖。该方法比手工测试更全面且可扩展。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "AI systems that learn and improve through self supervision",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.19096v1",
+      "source": "arxiv",
+      "title": "Supra Cognitive Modes: A Routed Architecture for Agent Memory",
+      "abstract": "Agent-memory workloads mix direct factual lookup, relation-chain and current-state reasoning, and broad synthesis over long histories. We describe Supra Cognitive Modes (SCM), an architecture that maps explicit or automatically selected per-query modes to retrieval and synthesis payloads over one shared ingest substrate. A frozen semantic classifier and runtime gates dispatch queries among fused lexical and dense lookup, graph or iterative multi-hop handling, and stratified long-form synthesis. The substrate combines multi-granularity embeddings, extracted triples, fact-version metadata, and optional asynchronous enrichments. We characterize the deployed configuration on three benchmarks: Long-term Conversational Memory (LoCoMo; n = 1,986), MemoryAgentBench (MAB; n = 3,671), and LongMemEval (n = 500). The reference run records 84.87% on LoCoMo factoid categories and 68.61% on adversarial abstention, 61.49% on MAB across two repetitions, and 86.00% on LongMemEval. A repository-backed reproduction produces similar aggregate scores and supports task- and mode-conditioned failure analysis. Raw baseline outputs, aligned end-to-end timing for LoCoMo and LongMemEval, and complete token ledgers are unavailable; stored rows also omit some final runtime decisions. The results characterize one implemented routed configuration and its diagnostic failure patterns, while source inspection verifies the per-query control interface and shared-substrate design. Causal routing effects, efficiency gains, and statistical significance remain outside the available evidence.",
+      "authors": [
+        "Joshua Tobkin",
+        "David Yang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-07-21T13:37:17+00:00",
+      "link": "https://arxiv.org/pdf/2607.19096v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "proposes a routed architecture for agent memory, relevant to long-horizon agent tasks and agent control",
+      "llm_evidence_cn": "提出了用于智能体记忆的路由架构，与长视界智能体任务和智能体控制相关",
+      "llm_evidence": "提出了用于智能体记忆的路由架构，与长视界智能体任务和智能体控制相关",
+      "canonical_evidence": "提出了用于智能体记忆的路由架构，与长视界智能体任务和智能体控制相关",
+      "llm_tldr_en": "Proposes Supra Cognitive Modes, a routed architecture that dispatches queries to specialized retrieval/synthesis modes for agent memory, improving long-term conversational memory handling.",
+      "llm_tldr_cn": "针对智能体记忆处理长期对话历史时模式单一的问题，提出超认知模式（SCM）路由架构，通过冻结语义分类器和运行时门控将查询路由至不同处理模式（如查找、推理、综合）。在LoCoMo等基准上验证了其对长时间跨度的记忆任务的有效性。",
+      "llm_tldr": "针对智能体记忆处理长期对话历史时模式单一的问题，提出超认知模式（SCM）路由架构，通过冻结语义分类器和运行时门控将查询路由至不同处理模式（如查找、推理、综合）。在LoCoMo等基准上验证了其对长时间跨度的记忆任务的有效性。",
+      "llm_tags": [
+        "query:agent-lsh:composite"
+      ],
+      "matched_query_tag": "query:agent-lsh:composite",
+      "matched_query_text": "Papers central to 请帮我找agent相关的论文，方向侧重为Long-Horizon、self-improving、Harness, especially work that connects or combines: agent that operates over long horizons; agent that improves itself over time; techniques for harnessing and controlling agents; autonomous agent research planning and improvement; agent capable of long term planning and adaptation; AI systems that learn and improve through self supervision; Research papers on autonomous agents with long horizon planning capabilities; Self improving agents that evolve their strategies over extended time scales; Techniques for harnessing large language model agents in complex environments.",
+      "matched_requirement_id": "req-composite-agent-lsh",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.18006v1",
+      "source": "arxiv",
+      "title": "MADA-RL: Multi-Agent Debate-Aware Reinforcement Learning for Parameter-Efficient Reasoning in Compact Models",
+      "abstract": "Large language models achieve strong reasoning performance, but often at prohibitive training cost - a challenge that is especially acute for compact models ($\\leq 4 \\, \\mathrm{B}$ parameters) trained under limited budgets. We introduce MADA-RL, a post-training framework that specializes compact models into generator and critic roles and trains them with a debate-aware learning signal, fine-tuning only a small subset of parameters via LoRA adapters. Our central contribution is a counterfactual critic advantage: a dynamic, role-conditioned baseline that redefines the critic's advantage as its reward minus the generator ensemble's per-instance accuracy. This explicitly optimizes critics to improve over generator consensus rather than to merely reproduce a correct answer, yielding more targeted credit assignment than static mean-reward normalization. At deployment, the specialized agents are composed in a lightweight multi-round protocol. Across five mathematical reasoning benchmarks, MADA-RL raises the accuracy of the DeepSeek-R1-Distill-Qwen-1.5B model from $39.9 \\, \\%$ to $41.9 \\, \\%$ ($+2.0$ points, $p < 0.001$) using $16$ times fewer trainable parameters than fully fine-tuned baselines, placing it on the accuracy-trainable-parameter Pareto front. It approaches, but does not surpass, the strongest baselines (DeepScaleR, STILL-3), which are trained on substantially larger datasets; we analyse this gap and the associated inference-time cost directly. A controlled study isolates the source of MADA-RL's gains: the counterfactual advantage produces the highest critic improvement rate of any model evaluated, indicating that trained critics learn to correct generator errors rather than to imitate them.",
+      "authors": [
+        "Martino M. L. Pulici",
+        "Cuong Xuan Chu",
+        "Evgeny Kharlamov",
+        "Zifeng Ding",
+        "Volker Tresp",
+        "Yunpu Ma"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL",
+        "cs.MA"
+      ],
+      "published": "2026-07-20T14:38:00+00:00",
+      "link": "https://arxiv.org/pdf/2607.18006v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "involves mixture of multiple agents (generator and critic) in a debate-aware learning framework",
+      "llm_evidence_cn": "涉及多种智能体（生成器和评论家）在辩论感知学习框架中的混合",
+      "llm_evidence": "涉及多种智能体（生成器和评论家）在辩论感知学习框架中的混合",
+      "canonical_evidence": "涉及多种智能体（生成器和评论家）在辩论感知学习框架中的混合",
+      "llm_tldr_en": "Proposes MADA-RL, which trains compact models as generator and critic agents with debate-aware signals, achieving parameter-efficient reasoning through a multi-agent mixture approach.",
+      "llm_tldr_cn": "针对紧凑模型推理性能受限且训练成本高的问题，提出MADA-RL框架，将模型专门化为生成器和评论家两种智能体角色，通过辩论感知学习信号和LoRA微调，实现参数高效推理。核心贡献是反事实评论家优势，动态优化评论家以改进生成器。实验表明该方法在紧凑模型上以少量参数取得显著推理提升。",
+      "llm_tldr": "针对紧凑模型推理性能受限且训练成本高的问题，提出MADA-RL框架，将模型专门化为生成器和评论家两种智能体角色，通过辩论感知学习信号和LoRA微调，实现参数高效推理。核心贡献是反事实评论家优势，动态优化评论家以改进生成器。实验表明该方法在紧凑模型上以少量参数取得显著推理提升。",
+      "llm_tags": [
+        "query:agent-mix"
+      ],
+      "matched_query_tag": "query:agent-mix",
+      "matched_query_text": "mixture of agents method",
+      "matched_requirement_id": "req-17",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.19321v1",
+      "source": "arxiv",
+      "title": "ResearchArena: Evaluating Sabotage and Monitoring in Automated AI R&D",
+      "abstract": "As AI agents begin to automate AI R&D, we need ways to assess whether their outputs are safe to deploy, even when the agents themselves may be untrusted. AI control offers one such approach: rather than trusting the agent, it treats it as a potential adversary and uses a monitor to detect covert sabotage before deployment. We evaluate AI control for automated AI R&D with ResearchArena, a framework spanning four long-horizon tasks: safety post-training, capabilities post-training, CUDA-kernel optimization, and inference-server optimization. Because the deliverable in AI R&D is an artifact that will be deployed and run, we pair each main task with two kinds of hidden side task: an embedded side task that sabotages the submitted model, adapter, kernel, or server itself, and an independent side task that takes a covert out-of-scope action in the sandbox while leaving the artifact honest. We evaluate frontier agents at both sabotage and monitoring, across four monitor types that vary along two axes: whether the monitor may execute and probe the produced artifact, and whether it sees the agent's chain-of-thought. We find that sabotage hidden in the training data is the hardest to catch, flagged fewer than half the time. Letting the monitor run experiments on the artifact, rather than only read the trajectory, helps, but it is not enough: monitors still miss embedded sabotage by inspecting only the surface, by noticing the anomaly but explaining it away, or by probing the artifact with the wrong test. We release ResearchArena as a modular framework for evaluating sabotage and control in automated AI R&D.",
+      "authors": [
+        "Lena Libon",
+        "Ben Rank",
+        "Jehyeok Yeon",
+        "David Schmotz",
+        "Jeremy Qin",
+        "Daniel Donnelly",
+        "Derck Prinzhorn",
+        "Maksym Andriushchenko"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CR",
+        "cs.LG"
+      ],
+      "published": "2026-07-21T17:41:12+00:00",
+      "link": "https://arxiv.org/pdf/2607.19321v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "framework for evaluating AI control in long-horizon automated R&D tasks",
+      "llm_evidence_cn": "用于评估长期自动化研发任务中AI控制的框架",
+      "llm_evidence": "用于评估长期自动化研发任务中AI控制的框架",
+      "canonical_evidence": "用于评估长期自动化研发任务中AI控制的框架",
+      "llm_tldr_en": "ResearchArena evaluates AI control over long-horizon tasks with hidden side tasks to detect covert sabotage in automated R&D.",
+      "llm_tldr_cn": "AI代理开始自动化AI研发，需要评估其安全性。本文提出ResearchArena框架，涵盖四个长期任务（安全后训练、能力后训练等），并嵌入隐藏破坏任务。实验表明监控可以检测隐蔽破坏，为AI控制提供评估基准。",
+      "llm_tldr": "AI代理开始自动化AI研发，需要评估其安全性。本文提出ResearchArena框架，涵盖四个长期任务（安全后训练、能力后训练等），并嵌入隐藏破坏任务。实验表明监控可以检测隐蔽破坏，为AI控制提供评估基准。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.19199v1",
+      "source": "arxiv",
+      "title": "Conservative Query and Adaptive Regularization for Offline RL Under Uncertainty Estimation",
+      "abstract": "Offline reinforcement learning (RL) aims to learn an effective policy from a static dataset, but its performance is fundamentally limited by dataset coverage. Action preference queries leverage expert feedback without additional environment interaction, enabling policy improvement during offline training. However, existing methods still face two key challenges: selecting informative preference queries and effectively exploiting the collected feedback. Current approaches typically rely only on the distance between policy actions and dataset actions for query selection, while enforcing fixed constraints that keep the policy close to queried preferences. Such strategies often lead to unstable policy updates and integrate poorly with value regularization. To address these limitations, we propose Conservative Query and Adaptive Regularization under Uncertainty Estimation, a lightweight framework that jointly improves preference querying and preference exploitation. Specifically, we employ a Morse network to estimate the uncertainty of policy actions with respect to the offline dataset. Based on this uncertainty, we introduce a conservative query strategy that selectively queries actions near the dataset to preserve Bellman-update stability, together with an uncertainty-aware adaptive regularization scheme that dynamically adjusts data-level constraints during policy optimization. We integrate our framework with CQL and evaluate it extensively on the D4RL benchmark. Experimental results demonstrate superior or competitive performance across a wide range of tasks.",
+      "authors": [
+        "Li-Rong Zhou",
+        "Qin-Wen Luo",
+        "Sheng-Jun Huang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-07-21T15:34:06+00:00",
+      "link": "https://arxiv.org/pdf/2607.19199v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "action preference queries for offline RL policy improvement enabling agent self-improvement",
+      "llm_evidence_cn": "动作偏好查询用于离线RL策略改进，使代理能够自我改进",
+      "llm_evidence": "动作偏好查询用于离线RL策略改进，使代理能够自我改进",
+      "canonical_evidence": "动作偏好查询用于离线RL策略改进，使代理能够自我改进",
+      "llm_tldr_en": "Proposes conservative query selection and adaptive regularization to effectively use preference feedback for offline RL policy improvement.",
+      "llm_tldr_cn": "离线强化学习受限于数据集覆盖，利用专家偏好查询可以改进策略。现有方法存在查询选择信息不足和约束固定的问题。本文提出保守查询选择（基于不确定性估计）和自适应正则化，实现更稳定的策略更新并有效利用反馈。实验验证了方法有效性。",
+      "llm_tldr": "离线强化学习受限于数据集覆盖，利用专家偏好查询可以改进策略。现有方法存在查询选择信息不足和约束固定的问题。本文提出保守查询选择（基于不确定性估计）和自适应正则化，实现更稳定的策略更新并有效利用反馈。实验验证了方法有效性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.21503v1",
+      "source": "arxiv",
+      "title": "Agentic Context Management: Solving Agent Memory and Cost by Treating Them as Lifecycle and Architecture Problems",
+      "abstract": "Production AI agents' failures are less often due to an inability to reason well and more often because they cannot manage what is in their reasoning context: conversation histories, large prompts, large tool definitions, and ballooning tool outputs. Agents drown in their own accumulating history while paying a token cost that grows every turn, producing missing recalls within and across conversations. The incumbent response treats this as a storage-and-retrieval problem. We argue that framing is too narrow. Actively managing what an agent holds in mind is a lifecycle, not merely a store: it spans deciding what to remember, extracting and structuring it, choosing the right store per data type, consolidating and forgetting while preserving provenance, deciding what is relevant now, anticipating what is needed next, and compacting context to a budget without losing what matters. In serious production this operates not over a single user but across an organizational scope hierarchy. We name this discipline Agentic Context Management (ACM) and decompose it into five primitives: architecting, ingesting, scoping, anticipating, and compacting & consolidation. We then make the economic case: naive context accumulation grows token cost quadratically in conversation length, crude summarization buys linear cost at the price of an accuracy cliff, and only validated compaction achieves linear cost with preserved fidelity. We describe a reference implementation, Maximem Synap, that realizes the five primitives as a multi-tenant service and reports 92% on LongMemEval and 93.2% on LoCoMo under the configuration detailed in Section 6. We close with dimensions existing benchmarks do not yet capture, latency, token efficiency, and context-rot resistance, and the frontier of decision-level and organization-level context the category points toward.",
+      "authors": [
+        "Gaurav Dadhich"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.IR"
+      ],
+      "published": "2026-07-23T16:51:31+00:00",
+      "link": "https://arxiv.org/pdf/2607.21503v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "solving agent memory and cost for production agents",
+      "llm_evidence_cn": "解决生产环境中智能体的记忆与成本问题",
+      "llm_evidence": "解决生产环境中智能体的记忆与成本问题",
+      "canonical_evidence": "解决生产环境中智能体的记忆与成本问题",
+      "llm_tldr_en": "This paper treats agent context management as a lifecycle problem, proposing architecture-level solutions for managing conversation history and tools.",
+      "llm_tldr_cn": "生产AI智能体常因上下文管理不当而失败，现有方法仅视为存储检索问题。本文提出生命周期视角，涵盖记忆决策、提取、存储选择、整合与遗忘，通过架构设计降低token成本并提升召回率，为控制智能体行为提供了基础设施方案。",
+      "llm_tldr": "生产AI智能体常因上下文管理不当而失败，现有方法仅视为存储检索问题。本文提出生命周期视角，涵盖记忆决策、提取、存储选择、整合与遗忘，通过架构设计降低token成本并提升召回率，为控制智能体行为提供了基础设施方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.19284v1",
+      "source": "arxiv",
+      "title": "Stochastic Multi-Objective Kinodynamic Planning Against Adversaries",
+      "abstract": "This paper addresses multi-objective kinodynamic planning in environments with stochastic hybrid adversaries that probabilistically transition to adversarial modes based on the ego state. The goal is to construct the Pareto-front of paths that trade off execution cost and the probability of safety constraint violation (risk). Existing chance-constrained planners evaluate risk over open-loop trajectories, yielding overly conservative solutions that fail to account for ego-agent reactivity. To address this limitation, we shift the planning space to sequences of closed-loop policies, and integrate sample-based risk evaluation directly into tree construction via Monte-Carlo particle rollouts. We first introduce Stochastic Multi-Objective RRT (SMO-RRT), for which we prove probabilistic completeness, followed by Stochastic Multi-Objective Stable Sparse RRT (SMO-SST), which leverages selective pruning to improve numerical performance at the cost of completeness. For both algorithms, we derive a finite-sample bound on the probability of chance constraint violation for systems with non-Gaussian, state-dependent uncertainty, enabling probabilistically safe planning in a broad class of environments applicable to multi-agent systems, social navigation, and autonomous driving.",
+      "authors": [
+        "Thomas Marshall Vielmetti",
+        "Daniel Cherenson",
+        "Dimitra Panagou"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-07-21T16:56:34+00:00",
+      "link": "https://arxiv.org/pdf/2607.19284v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "multi-objective kinodynamic planning with closed-loop policies over long horizons",
+      "llm_evidence_cn": "多目标运动学规划，使用闭环策略进行长时域规划",
+      "llm_evidence": "多目标运动学规划，使用闭环策略进行长时域规划",
+      "canonical_evidence": "多目标运动学规划，使用闭环策略进行长时域规划",
+      "llm_tldr_en": "Proposes SMO-RRT for multi-objective kinodynamic planning against stochastic adversaries, using closed-loop policy sequences and Monte-Carlo rollouts to construct Pareto-optimal paths that trade off cost and risk.",
+      "llm_tldr_cn": "本文针对存在随机对抗者的环境中的多目标运动学规划问题，提出SMO-RRT算法。现有方法仅评估开环轨迹的风险，过于保守。通过将规划空间扩展到闭环策略序列，并利用蒙特卡洛粒子滚动在树构建中直接集成基于样本的风险评估，算法能够构建权衡执行成本与安全违规概率的帕累托前沿路径。实验验证了该方法在反应性规划中的有效性。",
+      "llm_tldr": "本文针对存在随机对抗者的环境中的多目标运动学规划问题，提出SMO-RRT算法。现有方法仅评估开环轨迹的风险，过于保守。通过将规划空间扩展到闭环策略序列，并利用蒙特卡洛粒子滚动在树构建中直接集成基于样本的风险评估，算法能够构建权衡执行成本与安全违规概率的帕累托前沿路径。实验验证了该方法在反应性规划中的有效性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.20926v1",
+      "source": "arxiv",
+      "title": "SciExplore: Evaluating Autonomous Agents from Scientific Navigation to Information Integration",
+      "abstract": "Scientific research involves complex information-seeking and reasoning workflows across heterogeneous sources. However, existing benchmarks primarily emphasize general-domain retrieval or static scientific question answering, and therefore fail to assess key capabilities required in realistic scientific research workflows. We introduce SciExplore, a benchmark designed to evaluate scientific information-seeking and reasoning capabilities of LLMs and agents. SciExplore comprises four task types covering 103 expert-curated tasks across more than ten scientific disciplines: scientific database navigation, ambiguous literature retrieval, missing reference completion, and cross-source structured knowledge synthesis, which probe progressively higher-level abilities from entity-level reasoning and document-level identification to evidence-level grounding and domain-level synthesis. We evaluate over ten state-of-the-art LLMs and autonomous agents on SciExplore, revealing substantial performance gaps with performance degrading sharply as task complexity increases and extremely low accuracy on the most challenging structured synthesis tasks. These results highlight significant limitations of current models and agents in realistic scientific information-seeking scenarios.",
+      "authors": [
+        "Yinhao Tang",
+        "Youqing Fang",
+        "Yanan Sun",
+        "Wenran Liu",
+        "Weiming Zhang",
+        "Bin Liu",
+        "Kuikun Liu",
+        "Wenwei Zhang",
+        "Kai Chen"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-23T05:17:00+00:00",
+      "link": "https://arxiv.org/pdf/2607.20926v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "benchmark for evaluating autonomous agents in scientific tasks",
+      "llm_evidence_cn": "评估自主智能体完成科学任务的基准",
+      "llm_evidence": "评估自主智能体完成科学任务的基准",
+      "canonical_evidence": "评估自主智能体完成科学任务的基准",
+      "llm_tldr_en": "Introduces SciExplore, a benchmark for evaluating LLMs and agents on scientific information-seeking and reasoning tasks across multiple disciplines.",
+      "llm_tldr_cn": "现有基准侧重通用检索或静态问答，无法评估科学研究中的复杂信息寻求与推理。本文提出SciExplore基准，包含四个任务类型共103个专家设计任务，涵盖科学数据库导航、模糊文献检索、缺失引用补全和跨源知识综合。该基准可用于评估自主智能体在科学规划与信息整合方面的能力，直接关联智能体研究规划与改进需求。",
+      "llm_tldr": "现有基准侧重通用检索或静态问答，无法评估科学研究中的复杂信息寻求与推理。本文提出SciExplore基准，包含四个任务类型共103个专家设计任务，涵盖科学数据库导航、模糊文献检索、缺失引用补全和跨源知识综合。该基准可用于评估自主智能体在科学规划与信息整合方面的能力，直接关联智能体研究规划与改进需求。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "autonomous agent research planning and improvement",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
