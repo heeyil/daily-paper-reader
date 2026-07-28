@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-27</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-28</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 14 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-27 21:53:10 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-28 22:13:53 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精选14篇论文，重点聚焦大模型自进化与开源技术报告，两篇9.0高分论文值得关注。</p>
-<p>最值得看的方向是LLM元技能强化学习自进化方法，以及Solar Open 2技术细节中的开源模型进展。</p>
-<p>建议优先阅读这两篇高分享受，并关注强化学习在模型自我改进中的实际应用效果。</p>
+<p>今日成果：23篇论文中9篇精读，聚焦MoE与LoRA融合及计算机代理强化学习框架。</p>
+<p>最值得看：MoE²-LoRA（9.0）探索MoE风格的低秩适应创新；SeekJudge（9.0）为计算机使用代理提供实用奖励框架。</p>
+<p>建议：关注混合专家模型与微调方法的结合趋势，以及强化学习在具身代理中的奖励设计。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -76,9 +76,9 @@
     <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Solar Open 2 Technical Report">Solar Open 2 Technical Report</span></li><li><span class="dpr-home-dashboard-paper-title" title="Teaching LLMs to Self-Evolve: Cultivating Core Meta-Skills with Reinforcement Learning">Teaching LLMs to Self-Evolve: Cultivating Core Meta-Skills with Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning on the Job: Continual Learning from Deployment Feedback for Frozen-Weights Agents">Learning on the Job: Continual Learning from Deployment Feedback for Frozen-Weights Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MoE$^2$-LoRA: When MoE Models Meet MoE-style Low-Rank Adaptation">MoE$^2$-LoRA: When MoE Models Meet MoE-style Low-Rank Adaptation</span></li><li><span class="dpr-home-dashboard-paper-title" title="SeekJudge: A Practical Reward Framework for Reinforcement Learning in Computer-Use Agents">SeekJudge: A Practical Reward Framework for Reinforcement Learning in Computer-Use Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="WISERouter: LLM Routing with Workload Budget Constraint">WISERouter: LLM Routing with Workload Budget Constraint</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>7</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>6</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MemTools: A Unified Research Framework for Interoperable Agent Memory">MemTools: A Unified Research Framework for Interoperable Agent Memory</span></li><li><span class="dpr-home-dashboard-paper-title" title="SoundscapeAgent: Agentic Soundscape Construction for Controllable Synthesis and Scalable Audio-Language Supervision">SoundscapeAgent: Agentic Soundscape Construction for Controllable Synthesis and Scalable Audio-Language Supervision</span></li><li><span class="dpr-home-dashboard-paper-title" title="Adapting Embedding Models for Agent Capability Retrieval">Adapting Embedding Models for Agent Capability Retrieval</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CORVUS: Context Optimization and Reduction Via Underlying Synchronization for LLM Coding Agents">CORVUS: Context Optimization and Reduction Via Underlying Synchronization for LLM Coding Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="ConsistencyGate: Preventing Memory Contamination in LLM Agents via Self-Consistency Admission Control">ConsistencyGate: Preventing Memory Contamination in LLM Agents via Self-Consistency Admission Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="Are You Still the Agent I Authorized? Earned Authority under a Fixed Ceiling for Evolving Agents">Are You Still the Agent I Authorized? Earned Authority under a Fixed Ceiling for Evolving Agents</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>14</strong></span></div>
 </section>
 </div>
 

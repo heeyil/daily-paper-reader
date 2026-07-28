@@ -1,0 +1,1354 @@
+Title: WISERouter: LLM Routing with Workload Budget Constraint
+
+URL Source: https://arxiv.org/pdf/2607.23765v1
+
+Published Time: Tue, 28 Jul 2026 01:15:21 GMT
+
+Number of Pages: 26
+
+Markdown Content:
+# WISERouter: LLM Routing with Workload Budget Constraint 
+
+Yifei Li ∗ Zihui Gao Laks V.S. Lakshmanan 
+
+The University of British Columbia 
+
+## Abstract 
+
+Large language models (LLMs) achieve impressive performance across multiple domains, but using the most capable model for every query is prohibitive at scale. LLM routing exploits diversity in model capability and cost by assigning each query to a suitable model to balance utility and budget. Current methods have two limitations: (i) they either use heuristics that do not always enforce the budget constraint or impose a fixed per-query budget that cannot adapt across the workload and leads to suboptimal performance; (ii) they require supervised learning on a dense dataset with statistics for every query–model pair, which is expensive to collect. To address these challenges, we formulate LLM routing as a constrained contextual multi-armed bandit problem and introduce WISERouter (WR for short), a framework that supports offline learning from historical interactions as well as online learning with exploration. We further prove that WR-Online achieves a sublinear regret bound of O(√T ) over a time horizon T . Empirical results on RouterBench and SWE-Bench demonstrate that (i) WR-Offline surpasses existing baselines in performance under a fixed budget and adheres more closely to budget constraints, and (ii) WR-Online achieves comparable performance to the baselines, while using substantially less exploration data. 
+
+## 1 Introduction 
+
+While state-of-the-art large language models (LLMs) continue to advance their remarkable capabili-ties, their token-wise inference cost often makes them prohibitively expensive for high-throughput workloads. Leading AI services can charge $100 per user per month [ 1] under business subscription; at the API billing level, frontier models like GPT-5.5 cost up to 6.7 × more per token than smaller models like GPT-5.4-mini [ 31 ], pushing organizations or businesses that process high-throughput workload queries – such as customer support ticket resolution or document summarization – to inference bills exceeding thousands of dollars per month. It has been found that smaller models can often serve as effective proxies, delivering comparable performance at a fraction of cost [ 9, 30 ]. Furthermore, various benchmark leaderboards [ 7, 39 ] and empirical studies reveal that different LLMs exhibit varying strengths across different query types [ 38 , 25 ], making inference-time model selection attractive for both cost saving and quality improvement. Inference-time model selection has emerged as a practical approach to this challenge. The two dominant paradigms are LLM routing [ 9, 30 ], which assigns each query directly to the most suitable model, and cascading [ 6, 41 ], which queries models sequentially and may invoke multiple models per query until a quality threshold is met. Recent work has validated inference-time LLM selection across diverse benchmarks [ 15 , 38 , 26 , 6 ], demonstrating consistent performance-cost trade-offs. Despite this promise, current inference-time model selection methods still share two limitations. First, they do not directly enforce a workload-level budget constraint. Majority of prior works either enforce no hard budget (e.g., [ 9, 30 , 26 ]) or constrain cost only per-query (e.g., [ 6, 8, 29 ]). However,  
+
+> ∗Corresponding author: yfli@cs.ubc.ca
+> Preprint. arXiv:2607.23765v1 [cs.LG] 26 Jul 2026
+
+real-world deployments operate under workload-level resource constraints: API token quotas or monthly subscription fees apply across an entire set of queries, not individually. LLM selection algorithms that directly reason at the workload-level can prioritize complex or high utility queries for larger and expensive models while being conservative on easier queries, something that per-query constrained algorithms cannot do by construction. Second, most algorithms need expensive supervision signals. Existing inference-time LLM selection methods typically follow a train-deploy paradigm which requires dense supervision: outputs and costs must be collected for every query-model pair before training a routing policy [ 9, 30 ], which becomes prohibitively expensive as the number of model candidates or training queries increases. We focus on LLM routing because routing each query to exactly one model avoids the redundant inference costs of cascading, enabling tighter budget constraint. LLM Routing maps naturally to the multi-armed bandit setting (Section 3.1). These limitations lead to two central questions: (1) How can we perform LLM routing w.r.t. a workload-level budget constraint? (2) How can routing be learned when query-model interactions are sparse or are gradually being observed? Existing Methods  WISERouter (Ours)                   
+
+> maximize 𝔼 [Yt]
+> subject to 𝔼 [St]≤b
+> per-query budget constraint
+> Objective
+> maximize 𝔼 [
+> T
+> ∑
+> t=1
+> Yt]
+> subject to 𝔼 [
+> T
+> ∑
+> t=1
+> St]≤bT
+> workload-level budget constraint
+> Objective Supervised Learning
+> M1M2M3M4M5
+> Q1
+> Q2
+> Q3
+> Q4
+> Router
+> Responses from all models per query
+> (expensive)
+> QT-1
+> QT
+> …
+> Online Learning
+> M1M2M3M4M5
+> Q1
+> Q2
+> Q3
+> Q4
+> Router
+> Subset of model responses per query
+> (cheap)
+> QT-1
+> QT
+> …
+
+Figure 1: Comparison of WISERouter with previous LLM selection methods. We introduce WISERouter (Workload-Informed Sequential Efficient Router , WR for short), a unified framework that addresses both limitations by formulating LLM routing as a Constrained Contextual Bandit (CCB) [ 3] problem, where each query embedding is the context, the selected LLM is the action, and the observed response quality is the reward. The goal is to maximize cumulative expected reward while satisfying a workload-level expected cost budget over the horizon. WISERouter addresses the first limitation of enforcing a workload-level budget via Adaptive Linear Programming (ALP) [ 40 ], which translates the remaining budget into a per-round constraint at each query step, enabling dynamic budget allocation across queries by resolving a lightweight linear program without retraining. To address the second limitation and learn from sparse supervision signal, we propose WR-Online, which jointly learns reward and cost statistics online via an ϵ-first exploration before the ALP-based exploitation, all under a single shared budget. We prove the end-to-end regret bound for WR-Online, covering both phases under a workload level budget constraint. Figure 1 illustrates how WISERouter differs from prior methods along these two dimensions. Concretely, WISERouter operates in two stages: query embedding discretization followed by ALP-based model selection, with WR-Offline for data-rich settings (e.g., responses from all candidate models collected per query) and WR-Online for data-scarce settings (e.g., responses from only a subset of candidate models per query). On datasets RouterBench [ 15 ] and SWE-Bench [ 20 ], WR-Offline consistently matches or outperforms the baselines. WR-Offline improves average quality by 14% 
+
+over the best baseline on SWE-Bench at the tightest budget. WR-Offline terminates with the lowest unspent budget across most budget levels without overspending, training over 5, 900 × faster than neural-network based baselines for each new budget setting. In the data-scarce setting, WR-Online matches offline methods while reducing the required training data by 90% on RouterBench. Our contributions are: (i) To the best of our knowledge, we are the first to formulate workload-constrained LLM routing as a CCB problem and develop WR-Offline, which enforces a global budget via solving ALP and adapts to new budget constraints without retraining. (ii) We propose WR-Online, an online variant that jointly learns reward and cost statistics from sparse interactions, and prove the first end-to-end regret bound for bandit algorithm applied on LLM routing covering both exploration and exploitation under a shared workload budget. (iii) We empirically validate WISERouter on RouterBench and SWE-Bench, demonstrating superior performance at tight budgets, precise budget utilization, and significant reduction in training data with WR-Online. 22 Related Work 
+
+Efficient LLM inference is a central challenge in large-scale AI deployment, with recent work spanning algorithmic improvements such as speculative decoding [ 23 , 5 ], pruning [ 14 , 22 ], quanti-zation [ 18 , 37 ], efficient KV caching [ 4], and others [ 21 , 34 , 12 ]. Orthogonally to these techniques which have access to model internal architectures, inference-time model selection reduces inference cost by routing queries to black-box models of varying capability and price [ 9, 30 , 26 ], cascading through a fixed model sequence [ 6, 8], or ensembling multiple outputs [ 19 , 16 ]. Below, we focus on the two directions most directly related to WISERouter; a full survey appears in Appendix B. 
+
+Efficient LLM Selection with Cost Constraint. Prior work on cost-aware LLM selection has addressed budget constraints in different ways, but none jointly enforces a workload-level budget across both learning and deployment. MetaLLM [ 29 ] treats model selection as a contextual bandit, using UCB [ 2] to satisfy per-query cost constraint by tuning a cost scaling factor in reward function. FrugalGPT [ 6] and CascadeRouting [ 8] cascade queries through increasingly capable models until a quality threshold is met, enforcing an explicit per-query budget. Such per-query constraints can be myopic, and adapting these methods to different cost constraints typically requires retraining the routing policy. PILOT [ 32 ] combines a LinUCB router with an online knapsack solver for budget enforcement, but applies the budget only during deployment: specifically, the exploration phase with LinUCB is unconstrained, and the regret analysis covers router learning alone rather than the full stages. WR-Online, the online variant of WISERouter, is the first LLM routing method to enforce a single workload-level budget across both exploration and exploitation, and to provide an end-to-end regret bound covering the complete online routing process. 
+
+Constrained Contextual Bandits. Badanidiyuru et al. [3] establishes the theoretical foundation for budget-constrained contextual bandits with an ˜O(√T ) regret bound, but the proposed algorithm is computationally intractable in practice. Wu et al. [40] proposes UCB-ALP for uniform-cost settings and ϵ-first ALP for heterogeneous costs setting, both assuming cost statistics are known a priori. Our work extends the ϵ-first ALP algorithm to the regime where both reward and cost must be estimated online from sparse interactions under a single budget shared across exploration and exploitation. 
+
+## 3 Preliminaries 
+
+3.1 LLM routing as Constrained Contextual Bandit 
+
+We consider a routing setting with K black-box LLMs, indexed by K = {1, . . . , K }, and a stream of user queries Q. At each time step t, an input prompt qt ∈ Q arrives and the router selects a single model At ∈ K to generate the response. After invoking the selected model, the router can observe: (i) a performance score Yt ∈ [0 , 1] that quantifies response quality (e.g., human preference, ground-truth-based metric when available), and (ii) a cost score St ∈ [0 , 1] that measures the resources used by the selected model, normalized by a known per-query maximum. In this work, St is the monetary cost computed by token-based pricing of the selected LLM. The same formulation also applies to other cost notions, such as latency or energy consumption. We formulate LLM routing as a Constrained Contextual Bandit (CCB) problem. Each incoming query provides a context, represented by its query embedding (detailed in Section 4.1), and each LLM selection is an action. The router receives bandit feedback (Yt, S t) only for the selected model at timestep t. Our goal for a routing policy Ψ is to maximize expected cumulative performance subject to a workload-level budget: maximize UΨ(T, B ) = E
+
+h TX
+
+> t=1
+
+Yt
+
+i
+
+subject to E
+
+h TX
+
+> t=1
+
+St
+
+i
+
+≤ B. 
+
+We optimize expected reward subject to expected cost to account for stochasticity in model generation, following prior work on efficient LLM selection [6, 8]. 
+
+3.2 Adaptive Linear Programming 
+
+Wu et al. [40] propose ALP for constrained contextual bandits over a finite horizon T : at each step it solves a linear program that converts the remaining budget b across the remaining τ rounds into a 3per-round average constraint b/τ , adapting to cost consumption at runtime. It operates under two assumptions: (a) a finite context space J = {1, . . . , J } with known context distribution {πj }Jj=1 ;and (b) known reward and cost statistics uj,k and cj,k , denoting the expected reward and cost for each context-action pair (j, k ). Let pj,k ∈ [0 , 1] denote the probability of selecting action k given context j. A null action k = 0 with uj, 0 = cj, 0 = 0 (skipping the current context) guarantees a valid action always exists. At each time step, ALP solves: 
+
+(LP τ,b ) max 
+
+> pj,k
+> J
+
+X
+
+> j=1
+
+πjKX
+
+> k=1
+
+pj,k uj,k (1) s.t. 
+
+> J
+
+X
+
+> j=1
+
+πjKX
+
+> k=1
+
+pj,k cj,k ≤ bτ , (2) 
+
+> K
+
+X
+
+> k=1
+
+pj,k ≤ 1, ∀ j ∈ J , (3) 
+
+pj,k ∈ [0 , 1] . (4) ALP was designed for finite contexts with known statistics. Neither assumption holds directly in LLM routing: query embeddings are continuous and high-dimensional, and reward and cost statistics are not known a priori and must be estimated from data. Section 4 addresses both limitations. 
+
+## 4 Our Method 
+
+WISERouter (Figure 2) addresses the two limitations identified in Section 3.2 in two steps: (1) discretize the query embedding space into a finite context set compatible with ALP (Section 4.1); and (2) perform ALP-based model selection under two regimes - WR-Offline (Section 4.2), which estimates statistics from historical data, and WR-Online (Section 4.3), which learns them online under a shared workload budget. We close with a discussion of the assumptions of our formulation. Step 1: Discretize query space  Step 2: Budget-aware routing         
+
+> 1
+> 23
+> Collect historical queries
+> Query embedding Clustering
+> Solve LPτ,b
+> WR-Offline
+> WR-Online
+> Historical data
+> -first exploration ϵ
+> Selected
+> LLM
+> Estimate
+> before deployment ̂
+> uj,k,̂cj,k
+> Learn
+> online under the
+> shared budget
+> ¯uj,k,¯cj,k
+> …
+> Centroids , context distribution {¯xj}J
+> j=1{πj}J
+> j=1
+> What is the
+> capital of
+> France?
+> Explain
+> Transformer Summarize this
+> legal document …
+
+Figure 2: Overview of WISERouter workflow. 
+
+4.1 Context Discretization 
+
+For the CCB formulation to be meaningful, the context must encode query-level features that explain the variation in LLM performance across queries. Since different LLMs can perform unevenly across query semantics [ 38 ], we use a pretrained encoder g(·) to map each query q ∈ Q to an embedding vector x = g(q) ∈ Rd. However, ALP assumes a finite context space with an explicit context distribution, so we discretize the embedding space via clustering. Specifically, given a historical query set Q = {qi}ni=1 , we compute embeddings xi = g(qi) and cluster {xi}ni=1 into J
+
+groups with centroids {¯xj }Jj=1 . We define the discrete context of query qi as its cluster assignment 
+
+σ(g(qi)) ∈ { 1, . . . , J }, and estimate the context distribution empirically by πj = P(X = j) = 
+
+|{ i ∈ [n] : σ(g(qi)) = j}| /n. At test time, each incoming query qt is embedded as xt = g(qt) and assigned to its nearest centroid, yielding a discrete context Xt ∈ { 1, . . . , J }. We assume that for each LLM, queries in the same cluster share the same expected reward and expected cost. The granularity of this approximation is controlled by J. Ablations in Appendix H.7 show stable performance across cluster counts and algorithms, with small intra-cluster reward and cost variance (Appendix H.4). 44.2 WR-Offline with Known Statistics 
+
+WR-Offline addresses the data-rich regime, where a historical dataset Dhist of query-model interac-tions is available. Applying the discretization from Section 4.1 to Dhist , we estimate ˆuj,k and ˆcj,k 
+
+as the mean reward and cost for each context-action pair (j, k ). These statistics are computed once offline and fixed at deployment. At each routing step, the router solves LP τ,b via a standard LP solver with negligible additional latency and samples an action from solution probability pj, ·(b/τ ) across all models under context j at per-round budget b/τ . Since the budget constraint is on expected cost, remaining budget b is updated by mean cost. The full procedure is given in Algorithm 1. 
+
+Algorithm 1 WR-O FFLINE 
+
+Require: Horizon T , workload budget B, model set K, encoder g, clustering map σ : Rd →{1, . . . , J }, context distribution {πj }Jj=1 , historical data Dhist  
+
+> 1:
+
+Init: τ ← T , b ← B; for each (j, k ), compute ˆuj,k and ˆcj,k from Dhist  
+
+> 2:
+
+for t = 1 to T and b > 0 do  
+
+> 3:
+
+Observe query qt; assign context j ← σ(g(qt))  
+
+> 4:
+
+Solve LP τ,b using (ˆ uj,k , ˆcj,k ) and {πj }Jj=1 ; Obtain solution probabilities pj,k (b/τ ) at budget 
+
+b/τ for each (j, k ); Sample At ∼ pj, ·(b/τ ) and route qt to model At 
+
+> 5:
+
+b ← b − ˆcj,A t ; τ ← τ − 1 
+
+> 6:
+
+end for 4.3 WR-Online with Exploration 
+
+When model responses have not been pre-collected across all candidate models for the historical queries, either because they are expensive or are not available beforehand, supervised learning is infeasible. WR-Online instead learns mean reward and cost online all under the same shared budget 
+
+B. Both statistics must be estimated post-hoc with the generated response from each model. WR-Online extends the ϵ-first ALP in Wu et al. [40] to jointly estimate uj,k and cj,k online. During the exploration phase of ϵ(T ) steps, it routes each query to the least-invoked model within its context, ensuring every (j, k ) pair is visited at least ⌊ϵ(T )/K ⌋ times, and updates running mean estimates 
+
+¯uj,k , ¯cj,k from observed feedback. For the remaining (1 − ϵ)T exploitation steps, the router solves 
+
+LP τ,b with the estimated statistics. Section 5 derives the sufficient condition on ϵ(T ) for an O(√T )
+
+end-to-end regret bound. The full procedure is in Algorithm 2. 
+
+Algorithm 2 WR-O NLINE 
+
+Require: Horizon T , budget B, exploration length ϵ(T ), model set K, encoder g, clustering map 
+
+σ : Rd → { 1, . . . , J }, context distribution {πj }Jj=1  
+
+> 1:
+
+Initialize Nj,k , ¯uj,k , ¯cj,k ← 0 for all j, k ; b ← B, τ ← T , 
+
+> 2:
+
+for t = 1 , . . . , ε (T ) and b > 0 do  
+
+> 3:
+
+Observe a query qt; set j ← σ(g(qt))  
+
+> 4:
+
+At = arg min k∈K Nj,k with random tie-break; observe (YAt,t , S At,t ) 
+
+> 5:
+
+b ← b − SAt,t ; τ ← τ − 1; Nj,k ← Nj,k + 1 , ¯uj,k ← ¯uj,k + YAt,t −¯uj,k  
+
+> Nj,k
+
+, ¯cj,k ← ¯cj,k + SAt,t −¯cj,k  
+
+> Nj,k
+> 6:
+
+end for  
+
+> 7:
+
+for t = ε(T ) + 1 to T and b > 0 do  
+
+> 8:
+
+Observe a query qt, set j ← σ(g(qt))  
+
+> 9:
+
+Solve LP τ,b with (¯ uj,k , ¯cj,k ) to obtain pj, ·(b/τ ); 
+
+> 10:
+
+Sample At ∼ pj, ·(b/τ ) and route qt to model At 
+
+> 11:
+
+b ← b − ¯cj,A t ; τ ← τ − 1 
+
+> 12:
+
+end for Practical validity of assumptions. The CCB formulation (Section 3.1) rests on three assumptions that hold under standard deployment conditions. I.i.d. contexts: queries from a stable user population are well-approximated by the stationary distribution πj estimated via clustering. Finite horizon 
+
+T : corresponds to a planning window (e.g., a monthly API quota) estimable from historical traffic. 
+
+Feedback acquisition: token-count costs are available immediately after generation; quality scores are 5read from Dhist in WR-Offline and collected during exploration without blocking routing decisions in WR-Online. Appendix A discusses practical mitigation for distributional shift and reward feedback. 
+
+## 5 Regret Analysis for WR-Online 
+
+Regret measures the cumulative expected reward gap between a bandit policy and an oracle policy with full knowledge of all statistics [ 40 , 2]. We analyze the regret of WR-Online by first establishing an oracle upper bound, then deriving a sufficient condition on the exploration length, and finally proving an end-to-end bound that jointly covers exploration and exploitation under a shared budget. Since this condition depends on unknown ground-truth statistics, we further provide a confidence level test as a criterion for certifying when exploration is theoretically sufficient. 
+
+Oracle upper bound. Let U ∗(T, B ) denote the cumulative expected reward of the oracle policy with knowledge of the true statistics uj,k , c j,k over horizon T under budget B. We establish an upper bound via LP T,B which uses the same formulation as LP τ,b (Section 4.2) but with a fixed per-round budget ρ = B/T in place of the adaptive b/τ . We prove that bU (T, B ) is an upper bound of U ∗(T, B )
+
+in Appendix C. The regret of WR-Offline is thus bounded by RALP (T, B ) ≤ bU (T, B ) − UALP (T, B ).
+
+Restating regret of ALP. The solution of upper bound algorithm LP T,B has a greedy structure: given per-round budget constraint ρ, it assigns probability 1 to context-action pairs in non-increasing order using their reward-cost ratio (defined below) until the remaining budget ρ can no longer support probability 1 for the next pair’s expected cost, which then receives a fractional probability so that its expected cost exactly exhausts the budget. A budget ρ is boundary if it coincides exactly with a switching point in this ordering; otherwise it is non-boundary . ALP’s regret arises from fluctuations in 
+
+b/τ around ρ: for non-boundary ρ, small fluctuations leave the solution probability unchanged w.h.p., incurring O(1) regret; for boundary ρ, fluctuations may shift the probability allocation, yielding 
+
+O(√T ) regret. We restate the ALP regret bound from [ 40 ] in Theorem 5.1. The full theorem statement and proof sketch are provided in Appendix D. 
+
+Theorem 5.1. Given any fixed ρ = B/T , the regret of ALP with known statistics satisfies: (1) for non-boundary cases, RALP (T, B ) = O(1); and (2) for boundary cases, RALP (T, B ) = O(√T ).
+
+Sufficient exploration for WR-Online. In WR-Online, uj,k and cj,k are unknown and estimated online. Meanwhile, the ALP solution relies on an ordered list of context-action pairs determined using the pairwise ratios ξj,k 1,k 2 := ( uj,k 1 − uj,k 2 )/(cj,k 1 − cj,k 2 ). If empirical estimates ¯uj,k , ¯cj,k 
+
+induce a different ordering of ¯ξj,k 1,k 2 := (¯ uj,k 1 − ¯uj,k 2 )/(¯ cj,k 1 − ¯cj,k 2 ) when exploration ends, the solution during exploitation will be suboptimal compared with the ground truth solution of ALP. If exploration instead produces estimates accurate enough to recover the correct ordering, exploitation runs ALP with the right solution structure and inherits the regret bound of Theorem 5.1. Our goal is therefore to characterize how much exploration suffices to guarantee correct ordering with high probability. The following quantities characterize how difficult this ordering is to recover from finite samples. We assume cj,k 1̸ = cj,k 2 for all j and actions k1̸ = k2, and define three quantities: the minimal cost gap ∆c 
+
+> min
+
+:= min j∈J ,k 1̸ =k2∈{ 0}∪K cj,k 1 − cj,k 2 , the minimal ratio separation 
+
+∆ξ 
+
+> min
+
+= min j1,j 2∈J , k 11 ,k 12 ,k 21 ,k 22 ∈{ 0}∪K |ξj1,k 11 ,k 12 − ξj2,k 21 ,k 22 |, and πmin := min j∈J πj . Small values require longer exploration to achieve correct ordering because the tighter cost gaps and ratio separations require more samples to distinguish reliably, while rarer contexts accumulate observations more slowly. However, smaller separations also imply that the context-action pairs have similar ξ, so misorderings among them are less consequential. Lemma 5.2 shows that if ϵ(T ) is sufficient, then 
+
+ϵ-first ALP recovers the correct ordering of ξj,k 1,k 2 with high probability after exploration. 
+
+Lemma 5.2 (Sufficient exploration) . Let 0 < δ < 1 and L := (∆ c
+
+> min
+
+)2∆ξ
+
+> min
+
+. Under WR-Online, if 
+
+ϵ(T ) ≥
+
+l K
+
+(1 − δ)πmin 
+
++ log T · max 
+
+n 1
+
+δ2 , 128 K
+
+(1 − δ)πmin L2
+
+om 
+
+, (5) 
+
+then for any contexts j1, j 2 ∈ J and actions k11 , k 12 , k 21 , k 22 ∈ { 0} ∪ K , if ξj1,k 11 ,k 12 < ξ j2,k 21 ,k 22 ,then at the end of the ϵ(T )-th round, P ¯ξj1,k 11 ,k 12 ≥ ¯ξj2,k 21 ,k 22 
+
+ ≤ (16 + J)T −2. Moreover, the algorithm ranks all the ξj,k 1,k 2 ’s correctly with probability no less than 1 − (4 KJ + J)T −2.
+
+Absent in prior regret analyses with known costs, the core challenge is that both uj,k and cj,k must be estimated simultaneously, and errors in both propagate through the ratio ξj,k 1,k 2 . Our proof 6(Appendix F) reformulates ratio comparison as an equivalent sign test on the difference of their cross-products, avoiding random denominators entirely. We apply Hoeffding’s inequality to the individual empirical means ¯uj,k and ¯cj,k , and the resulting concentration bounds propagate to the cross-product difference via triangle inequality. 
+
+Theorem 5.3 (End-to-end regret of WR-Online) . Let 0 < δ < 1. Under WR-Online, if ϵ(T ) satisfies condition (5) , then the regret of WR-Online satisfies: (1) for non-boundary cases, RWR-Online (T, B ) = 
+
+O(log T ); (2) for boundary cases, RWR-Online (T, B ) = O(√T ).
+
+Proof sketch. When rankings are correct, the exploitation phase runs ALP with correctly ordered statistics and incurs the regret from Theorem 5.1. The exploration phase contributes an additional 
+
+O(log T ) regret. Combined, the total is O(log T ) in the non-boundary case and O(√T ) in the boundary case since O(√T ) dominates O(log T ). When rankings are incorrect, the probability of incorrect ordering is O(T −2) by Lemma 5.2 that contributes a total of O(T ) · O(T −2) = O(T −1) to regret, which is negligible. 
+
+Confidence level test. We further derive a confidence level test (Appendix G) that certifies when the estimated statistics are accurate enough to guarantee correct ordering of ξj,k 1,k 2 w.h.p., providing a theoretically grounded stopping criterion. As the test is conservative in practice because reward and cost gaps in LLM routing are often small, our experiments use a fixed exploration schedule instead. 
+
+## 6 Experiments 
+
+We evaluate WISERouter under varying workload-level budgets. Section 6.2 compares WR-Offline against cost-constrained LLM selection baselines on performance, budget adherence, and latency. Section 6.3 evaluates WR-Online’s learning efficiency against offline methods and includes simulation results on empirical regret and budget consumption. Ablation study is provided in Appendix H.7. 
+
+6.1 LLM Routing Experiment Setup Datasets. We evaluate the LLM routing baselines on RouterBench [ 15 ] and SWE-Bench-verified [ 20 ](SWE-Bench). RouterBench contains 36 , 497 queries from eight diverse datasets, while SWE-Bench includes 500 realistic questions from real GitHub issues. All datasets use a 50:50 train-test split. Further details, including single-model performance, are provided in Appendix H.1. 
+
+Implementation Details for WISERouter. We embed queries using OpenAI’s TEXT -EMBEDDING -3-SMALL (d = 1536 ) and discretize via K-means [ 27 ] with J = 16 , selected on validation sets; Appendix H.7 shows robustness to these choices. Deployment budgets range from the cost of routing all queries to the cheapest model to that of always routing all to the most expensive. For WR-Offline, 
+
+T is the number of test queries with statistics estimated from the training set. For WR-Online, T
+
+spans both training and test queries; exploration is restricted to the training set for fair comparison with offline methods, with exploration length set to 1× – 4× the number of queries in training set. Unlike offline training which requires all model responses per query, each exploration step invokes only one model, keeping the total exploration cost well below the offline baseline. 
+
+Evaluation Metrics. For each dataset, we use the per-query performance scores and monetary costs as the reward and cost observations; details are in Appendix H.1. 
+
+Baselines. We compare WISERouter against the following baselines, all of which are inference-time LLM selection methods under cost constraints: (1) FrugalGPT [6 ] – an LLM cascading method that constrains on a per-query budget; (2) CascadeRouting [ 8 ] – a unified LLM cascade and routing method, with a per-query budget constraint; (3) MetaLLM [ 29 ] – a bandit-based routing method that controls the per-query cost as a cost-scaling penalty in the reward function and uses UCB [ 2]for model selection; (4) SingleBest – for each context j, greedily selects the highest-reward action within a per-query budget. All baseline implementation details are provided in Appendix H.2. 2
+
+6.2 Offline Baseline Comparison Performance comparison. Table 1 reports test performance across budget levels on RouterBench and SWE-Bench. WR-Offline consistently matches or outperforms all baselines at low-to-mid budgets. 
+
+> 2PILOT [32] is not publicly available; we therefore omit it from experiments and discuss it analytically in Section 2.
+
+7Table 1: Performance comparison under varying budget constraints ($). SingleBest, MetaLLM, and WR-Offline involve randomness and are averaged over five runs; FrugalGPT and CascadeRouting are deterministic and reported as single runs. Best results in bold .                                                                                  
+
+> RouterBench SWE-Bench Method B=2.52 B=19.92 B=37.31 B=54.71 B=72.10 B=151.42 B=232.72 B=253.04 B=273.37 B=293.69 B=314.02 B=659.44
+> FrugalGPT 0.00 0.70 0.70 0.72 0.73 0.80 0.00 0.00 0.00 0.42 0.67 0.68
+> CascadeRouting 0.50 0.71 0.73 0.75 0.76 0.79 0.51 0.55 0.55 0.56 0.56 0.67 SingleBest 0.36 ±0.011 0.69 ±0.002 0.70 ±0.002 0.70 ±0.001 0.71 ±0.002 0.79 ±0.001 0.24 ±0.037 0.31 ±0.064 0.36 ±0.095 0.40 ±0.078 0.46 ±0.054 0.65 ±0.020
+> MetaLLM 0.55 ±0.003 0.70 ±0.004 0.72 ±0.020 0.74 ±0.003 0.74 ±0.003 0.81 ±0.001 0.51 ±0.035 0.51 ±0.035 0.52 ±0.103 0.61 ±0.057 0.65 ±0.018 0.65 ±0.018
+> WR-Offline 0.54 ±0.003 0.72 ±0.002 0.74 ±0.003 0.76 ±0.002 0.77 ±0.001 0.81 ±0.001 0.58 ±0.033 0.60 ±0.027 0.62 ±0.031 0.64 ±0.020 0.65 ±0.020 0.65 ±0.017 FrugalGPT CascadeRouting SingleBest MetaLLM WR-Offline 2.52 19.92 37.31 54.71 72.10 151.42
+> Given Budget ($)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Remaining Budget Ratio
+
+(a) Budget Utilization Analysis for RouterBench 232.72 253.04 273.37 293.69 314.02 659.44  
+
+> Given Budget ($)
+> 0.0
+> 0.5
+> 1.0
+> Remaining Budget Ratio
+
+(b) Budget Utilization Analysis for SWE-Bench 
+
+Figure 3: Remaining budget ratios at each budget level. Error bars show ±1 std over five runs. FrugalGPT fails entirely at the lowest budgets on both datasets, as its cascade policy requires invoking multiple models per query and thus cannot satisfy tight per-query cost constraints. CascadeRouting is competitive on RouterBench, where it uses test-set statistics following its original setting, but drops on SWE-Bench where only regression-based estimates are available, revealing sensitivity to estimation quality. At the highest budget, most methods converge as any model can be freely invoked. 
+
+Budget Utilization. Figure 3 plots the ratio of remaining to total budget; positive values near zero indicate effective utilization without overspending, while negative values indicate violations. On RouterBench, WR-Offline maintains this ratio closest to zero across all budget levels because its adaptive re-solving with b/τ at each step continuously corrects for cost consumption. FrugalGPT underutilizes the budget at mid budget levels and fails entirely at the tightest budget. CascadeRouting generally respects the budget with occasional violations at low-to-mid levels. On SWE-Bench, a medium-cost model dominates the cost-performance frontier, leaving some budget unused across methods. The exception is FrugalGPT at the highest budget, which exploits the extra slack to achieve the best performance on this dataset (see also Table 1). 
+
+Latency Comparison. Table 2 reports training and per-query inference latency on RouterBench. FrugalGPT and CascadeRouting re-optimize cascade parameters per budget level , incurring high training cost. WR-Offline trains in 1.50 s on CPU, over 5,900 × faster than FrugalGPT which requires 
+
+8.85 × 10 3s on GPU because WR-Offline estimates statistics once and adapts to any budget at inference without retraining. 
+
+Adaptive LP vs. Static LP constraint. To assess whether WR-Offline’s adaptive constraint is essential for budget compliance, we compare it against a static variant that solves LP T,B with the same estimated statistics. We focus on the more realistic SWE-Bench, where high per-query cost variance makes budget drift more likely and adaptivity more important. Each point in Figure 4 shows its budget consumption and performance difference w.r.t. WR-Offline at one budget value. Without adaptive constraint, the static variant overshoots the workload budget by > 5% ; such overspends may be unacceptable when compounded over long horizons or over repeated deployments. WR-Offline avoids cost violation through adaptive LP, maintaining budget compliance without sacrificing reward. 
+
+6.3 WR-Online Experiment Performance Under End-to-End Budget. We compare WR-Online with offline methods under end-to-end budgets covering both data collection and deployment, in two scenarios: generous – full training and maximum deployment budget and constrained – full training and minimum deployment 8Table 2: Latency comparison of LLM routing baselines on RouterBench dataset averaged over all budget settings. 
+
+Method Train Inference Latency (s) Latency/Query (s) FrugalGPT 8.85 × 10 3 1.51 × 10 −2
+
+CascadeRouting 4.19 × 10 3 2.07 × 10 −3
+
+SingleBest 1.50 2.25 × 10 −4
+
+MetaLLM 1.76 5.35 × 10 −3
+
+WR-Offline 1.50 1.56 × 10 −350 60 70 80 90 100 110 120 130 
+
+> Budget Consumption Ratio (%) (consumed / budget)
+> −0.10
+> −0.05
+> 0.00
+> 0.05
+> 0.10
+> Reward Gap
+> (Static - WR-Offline)
+> underspend
+> & higer reward
+> overspend
+> & higher reward
+> underspend
+> & lower reward
+> overspend
+> & lower reward
+
+Figure 4: Budget consumption vs. reward gap for the static variant on SWE-Bench (5 runs); left-most point is under the largest budget constraint. 200 400 600   
+
+> Total Cost ($)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Average Reward per Query
+> 200 300 400
+> Total Cost ($)
+> SingleBest
+> FrugalGPT
+> CascadeRouting
+> WR-Offline
+> MetaLLM
+> WR-Online (1x)
+> WR-Online (2x)
+> WR-Online (3x)
+> WR-Online (4x)
+
+(a) Left: generous budget. Right: constrained budget. Random (cost)       
+
+> EpsGreedy (cost)
+> LinUCB (cost)
+> EFALP-Known (cost)
+> WR-Online (cost)
+> Random (regret)
+> EpsGreedy (regret)
+> LinUCB (regret)
+> EFALP-Known (regret)
+> WR-Online (regret)
+> 0300 600 900 1200 1500
+> Timestep t
+> 0
+> 100
+> 200
+> 300
+> 400
+> 500
+> 600
+> 700
+> 800
+> Cumulative cost
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> 0.50
+> Amortized regret
+
+(b) Simulation experiment 
+
+Figure 5: (a) WR-Online vs. offline baselines on RouterBench; vertical dashed lines mark offline training cost. (b) Cumulative cost and amortized regret of budget-aware online algorithms (5 runs). budget (Figure 5a). In the generous setting, all offline methods converge to around 0.8 average quality on RouterBench. WR-Online reaches this with a single pass over training queries, reducing data collection cost by 90% . This suggests that marginal gains from additional supervision diminish rapidly. On SWE-Bench (Figure 6, Appendix H.5), WR-Online improves with more exploration, reflecting that this dataset requires longer exploration to accurately estimate reward statistics. In the constrained setting, offline methods pre-commit training expense against deployment budget. WR-Online reallocates unspent exploration budget to deployment, matching the generous-setting performance under the same end-to-end budget. Appendix H.6 validates that the exploration converges accurately to ground-truth statistics. 
+
+Simulation Experiment for WR-Online. To validate Theorem 5.3, we run a controlled simulation under a global budget (Figure 5b). WR-Online’s amortized regret decays faster than O(1 /√T ),consistent with Theorem 5.3, and nearly matches ϵ-first ALP with known costs, with the gap attributable to online cost estimation. Other algorithms under-spend significantly while WR-Online tracks the B/T slope closely, incurring lower regret. See Appendix H.8 for detailed settings. 
+
+## 7 Conclusions and Limitations 
+
+We present WISERouter, a unified LLM routing framework that formulates routing as a constrained contextual bandit under a workload-level budget. WR-Offline enforces budget via Adaptive Linear Programming and adapts to new budgets at inference without retraining; WR-Online extends this to the data-scarce setting by jointly learning reward and cost statistics online under a common shared budget. We prove the end-to-end regret bound for WR-Online covering exploration and exploitation, and demonstrate superior performance at tight budgets, precise budget utilization, and up to 90% 
+
+reduction in training data with WR-Online. 
+
+Limitations. The i.i.d. context assumption holds in stable API query workloads but may be violated when queries exhibit dependencies or distributional shift, in which case regret bound no longer applies; see more discussion in Appendix A. We only explored monetary cost as the constraint on two datasets; extending to other cost definitions and benchmarks with larger model pools is a natural direction for future work. 9References 
+
+[1] Anthropic. Claude Team. https://claude.com/pricing/team , 2026. Accessed: 2026-04-28. [2] Peter Auer, Nicolò Cesa-Bianchi, and Paul Fischer. Finite-time analysis of the multiarmed bandit problem. Mach. Learn. , 47(2–3):235–256, May 2002. ISSN 0885-6125. doi: 10.1023/A: 1013689704352. URL https://doi.org/10.1023/A:1013689704352 .[3] Ashwinkumar Badanidiyuru, John Langford, and Aleksandrs Slivkins. Resourceful contextual bandits. In Maria Florina Balcan, Vitaly Feldman, and Csaba Szepesvári, editors, Proceedings of The 27th Conference on Learning Theory , volume 35 of Proceedings of Machine Learning Research , pages 1109–1134, Barcelona, Spain, 13–15 Jun 2014. PMLR. [4] Zefan Cai, Yichi Zhang, Bofei Gao, Yuliang Liu, Yucheng Li, Tianyu Liu, Keming Lu, Wayne Xiong, Yue Dong, Junjie Hu, and Wen Xiao. PyramidKV: Dynamic KV cache compression based on pyramidal information funneling. In Second Conference on Language Modeling , 2025. URL https://openreview.net/forum?id=ayi7qezU87 .[5] Charlie Chen, Sebastian Borgeaud, Geoffrey Irving, Jean-Baptiste Lespiau, Laurent Sifre, and John Jumper. Accelerating large language model decoding with speculative sampling. arXiv preprint arXiv:2302.01318 , 2023. [6] Lingjiao Chen, Matei Zaharia, and James Zou. FrugalGPT: How to use large language models while reducing cost and improving performance. Transactions on Machine Learning Research ,2024. ISSN 2835-8856. [7] Wei-Lin Chiang, Lianmin Zheng, Ying Sheng, Anastasios N. Angelopoulos, Tianle Li, Dacheng Li, Banghua Zhu, Hao Zhang, Michael I. Jordan, Joseph E. Gonzalez, and Ion Stoica. Chatbot arena: an open platform for evaluating llms by human preference. In Proceedings of the 41st International Conference on Machine Learning , ICML’24. JMLR.org, 2024. [8] Jasper Dekoninck, Maximilian Baader, and Martin Vechev. A unified approach to routing and cascading for LLMs. In Forty-second International Conference on Machine Learning , 2025. URL https://openreview.net/forum?id=AAl89VNNy1 .[9] Dujian Ding, Ankur Mallick, Chi Wang, Robert Sim, Subhabrata Mukherjee, Victor Rühle, Laks V. S. Lakshmanan, and Ahmed Hassan Awadallah. Hybrid LLM: Cost-efficient and quality-aware query routing. In The Twelfth International Conference on Learning Representations ,2024. URL https://openreview.net/forum?id=02f3mUtqnM .[10] Dujian Ding, Ankur Mallick, Shaokun Zhang, Chi Wang, Daniel Madrigal, Mirian Del Car-men Hipolito Garcia, Menglin Xia, Laks V. S. Lakshmanan, Qingyun Wu, and Victor Rühle. BEST-route: Adaptive LLM routing with test-time optimal compute. In Forty-second Inter-national Conference on Machine Learning , 2025. URL https://openreview.net/forum? id=tFBIbCVXkG .[11] Wenkui Ding, Tao Qiny, Xu-Dong Zhang, and Tie-Yan Liu. Multi-armed bandit with budget constraint and variable costs. In Proceedings of the Twenty-Seventh AAAI Conference on Artificial Intelligence , AAAI’13, page 232–238. AAAI Press, 2013. [12] William Fedus, Barret Zoph, and Noam Shazeer. Switch transformers: scaling to trillion parameter models with simple and efficient sparsity. J. Mach. Learn. Res. , 23(1), January 2022. ISSN 1532-4435. [13] Neha Gupta, Harikrishna Narasimhan, Wittawat Jitkrittum, Ankit Singh Rawat, Aditya Krishna Menon, and Sanjiv Kumar. Language model cascades: Token-level uncertainty and beyond. In The Twelfth International Conference on Learning Representations , 2024. URL https: //openreview.net/forum?id=KgaBScZ4VI .[14] B. Hassibi, D.G. Stork, and G.J. Wolff. Optimal brain surgeon and general network pruning. In IEEE International Conference on Neural Networks , pages 293–299 vol.1, 1993. doi: 10.1109/ICNN.1993.298572. 10 [15] Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. Routerbench: A benchmark for multi-llm routing system. CoRR , abs/2403.12031, 2024. doi: 10.48550/ARXIV.2403.12031. URL 
+
+https://doi.org/10.48550/arXiv.2403.12031 .[16] Keke Huang, Yimin Shi, Dujian Ding, Yifei Li, Yang Fei, Laks Lakshmanan, and Xiaokui Xiao. Thriftllm: On cost-effective selection of large language models for classification queries. Proc. VLDB Endow. , 18(11):4410–4423, September 2025. ISSN 2150-8097. doi: 10.14778/3749646. 3749702. URL https://doi.org/10.14778/3749646.3749702 .[17] Yi-Chong Huang, Xiaocheng Feng, Baohang Li, Yang Xiang, Hui Wang, Bing Qin, and Ting Liu. Ensemble learning for heterogeneous large language models with deep parallel collaboration. In 
+
+Neural Information Processing Systems , 2024. URL https://api.semanticscholar.org/ CorpusID:269282634 .[18] Benoit Jacob, Skirmantas Kligys, Bo Chen, Menglong Zhu, Matthew Tang, Andrew Howard, Hartwig Adam, and Dmitry Kalenichenko. Quantization and training of neural networks for efficient integer-arithmetic-only inference. In 2018 IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 2704–2713, 2018. doi: 10.1109/CVPR.2018.00286. [19] Dongfu Jiang, Xiang Ren, and Bill Yuchen Lin. LLM-blender: Ensembling large language models with pairwise ranking and generative fusion. In Anna Rogers, Jordan Boyd-Graber, and Naoaki Okazaki, editors, Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 14165–14178, Toronto, Canada, July 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.acl-long.792. [20] Carlos E Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik R Narasimhan. SWE-bench: Can language models resolve real-world github issues? In The Twelfth International Conference on Learning Representations , 2024. URL https: //openreview.net/forum?id=VTF8yNQM66 .[21] Yunho Jin, Chun-Feng Wu, David Brooks, and Gu-Yeon Wei. S3: increasing gpu utilization during generative inference for higher throughput. In Proceedings of the 37th International Conference on Neural Information Processing Systems , NIPS ’23, Red Hook, NY, USA, 2023. Curran Associates Inc. [22] Yann LeCun, John Denker, and Sara Solla. Optimal brain damage. In D. Touretzky, editor, 
+
+Advances in Neural Information Processing Systems , volume 2. Morgan-Kaufmann, 1989. [23] Yaniv Leviathan, Matan Kalman, and Yossi Matias. Fast inference from transformers via speculative decoding. In International Conference on Machine Learning , pages 19274–19286. PMLR, 2023. [24] Lihong Li, Wei Chu, John Langford, and Robert E. Schapire. A contextual-bandit approach to personalized news article recommendation. In Proceedings of the 19th International Conference on World Wide Web , WWW ’10, page 661–670, New York, NY, USA, 2010. Association for Computing Machinery. ISBN 9781605587998. doi: 10.1145/1772690.1772758. [25] Percy Liang, Rishi Bommasani, Tony Lee, Dimitris Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Kumar, Benjamin Newman, Binhang Yuan, Bobby Yan, Ce Zhang, Christian Cosgrove, Christopher D Manning, Christopher Re, Diana Acosta-Navas, Drew A. Hudson, Eric Zelikman, Esin Durmus, Faisal Ladhak, Frieda Rong, Hongyu Ren, Huaxiu Yao, Jue WANG, Keshav Santhanam, Laurel Orr, Lucia Zheng, Mert Yuksekgonul, Mirac Suzgun, Nathan Kim, Neel Guha, Niladri S. Chatterji, Omar Khattab, Peter Henderson, Qian Huang, Ryan Andrew Chi, Sang Michael Xie, Shibani Santurkar, Surya Ganguli, Tatsunori Hashimoto, Thomas Icard, Tianyi Zhang, Vishrav Chaudhary, William Wang, Xuechen Li, Yifan Mai, Yuhui Zhang, and Yuta Koreeda. Holistic evaluation of language models. Transactions on Machine Learning Research , 2023. ISSN 2835-8856. [26] Keming Lu, Hongyi Yuan, Runji Lin, Junyang Lin, Zheng Yuan, Chang Zhou, and Jingren Zhou. Routing to the expert: Efficient reward-guided ensemble of large language models. In Kevin Duh, Helena Gomez, and Steven Bethard, editors, Proceedings of the 2024 Conference of the 
+
+11 North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 1964–1974, Mexico City, Mexico, June 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.naacl-long.109. [27] James B McQueen. Some methods of classification and analysis of multivariate observations. In Proc. of 5th Berkeley Symposium on Math. Stat. and Prob. , pages 281–297, 1967. [28] Kai Mei, Wujiang Xu, Minghao Guo, Shuhang Lin, and Yongfeng Zhang. Omnirouter: Budget and performance controllable multi-llm routing. SIGKDD Explor. Newsl. , 27(2):107–116, December 2026. ISSN 1931-0145. doi: 10.1145/3787470.3787480. URL https://doi.org/ 10.1145/3787470.3787480 .[29] Quang H. Nguyen, Thinh Dao, Duy C. Hoang, Juliette Decugis, Saurav Manchanda, Nitesh V. Chawla, and Khoa D. Doan. Metallm: A high-performant and cost-efficient dynamic framework for wrapping llms, 2025. URL https://arxiv.org/abs/2407.10834 .[30] Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gonzalez, M Waleed Kadous, and Ion Stoica. RouteLLM: Learning to route LLMs from preference data. In The Thirteenth International Conference on Learning Representations , 2025. URL 
+
+https://openreview.net/forum?id=8sSqNntaMr .[31] OpenAI. API Pricing. https://openai.com/api/pricing/ , 2026. Accessed: 2026-04-28. [32] Pranoy Panda, Raghav Magazine, Chaitanya Devaguptapu, Sho Takemori, and Vishal Sharma. Adaptive LLM routing under budget constraints. In Christos Christodoulopoulos, Tan-moy Chakraborty, Carolyn Rose, and Violet Peng, editors, Findings of the Association for Computational Linguistics: EMNLP 2025 , pages 23934–23949, Suzhou, China, Novem-ber 2025. Association for Computational Linguistics. ISBN 979-8-89176-335-7. doi: 10.18653/v1/2025.findings-emnlp.1301. [33] Manhin Poon, XiangXiang Dai, Xutong Liu, Fang Kong, John C.S. Lui, and Jinhang Zuo. Online Multi-LLM Selection via Contextual Bandits under Unstructured Context Evolution. In 
+
+Proceedings of the AAAI Conference on Artificial Intelligence , volume 40, 2026. [34] Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc V. Le, Geoffrey E. Hinton, and Jeff Dean. Outrageously large neural networks: The sparsely-gated mixture-of-experts layer. In 5th International Conference on Learning Representations, ICLR 2017, Toulon, France, April 24-26, 2017, Conference Track Proceedings . OpenReview.net, 2017. URL 
+
+https://openreview.net/forum?id=B1ckMDqlg .[35] Richard S. Sutton and Andrew G. Barto. Reinforcement Learning: An Introduction . A Bradford Book, Cambridge, MA, USA, 2018. ISBN 0262039249. [36] Long Tran-Thanh, Archie Chapman, Enrique Munoz de Cote, Alex Rogers, and Nicholas R. Jennings. Epsilon–first policies for budget–limited multi-armed bandits. Proceedings of the AAAI Conference on Artificial Intelligence , 24(1):1211–1216, Jul. 2010. doi: 10.1609/aaai. v24i1.7758. [37] Vincent Vanhoucke, Andrew Senior, and Mark Z. Mao. Improving the speed of neural networks on cpus. In Deep Learning and Unsupervised Feature Learning Workshop, NIPS 2011 , 2011. [38] Xinyuan Wang, Yanchi Liu, Wei Cheng, Xujiang Zhao, Zhengzhang Chen, Wenchao Yu, Yanjie Fu, and Haifeng Chen. MixLLM: Dynamic Routing in Mixed Large Language Models. In Luis Chiruzzo, Alan Ritter, and Lu Wang, editors, Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 10912–10922, Albuquerque, New Mexico, April 2025. Association for Computational Linguistics. ISBN 979-8-89176-189-6. [39] Colin White, Samuel Dooley, Manley Roberts, Arka Pal, Benjamin Feuer, Siddhartha Jain, Ravid Shwartz-Ziv, Neel Jain, Khalid Saifullah, Sreemanti Dey, Shubh-Agrawal, Sandeep Singh Sandha, Siddartha Venkat Naidu, Chinmay Hegde, Yann LeCun, Tom Goldstein, Willie Neiswanger, and Micah Goldblum. Livebench: A challenging, contamination-free LLM benchmark. In The Thirteenth International Conference on Learning Representations , 2025. 12 [40] Huasen Wu, R. Srikant, Xin Liu, and Chong Jiang. Algorithms with logarithmic or sublinear regret for constrained contextual bandits. In Proceedings of the 29th International Conference on Neural Information Processing Systems - Volume 1 , NIPS’15, page 433–441, Cambridge, MA, USA, 2015. MIT Press. [41] Murong Yue, Jie Zhao, Min Zhang, Liang Du, and Ziyu Yao. Large language model cascades with mixture of thought representations for cost-efficient reasoning. In The Twelfth International Conference on Learning Representations , 2024. URL https://openreview.net/forum? id=6okaSfANzh .13 Appendix contents 
+
+A Discussion of Assumptions 15 B Related Work 15 C Proof of bU (T, B ) is Upper Bound 16 D Detailed Regret Bound of ALP 17 E Solution Formulation for LP T,B 18 F Proof of Lemma 5.2 20 G Confidence Level Test 21 H Experimental Details 22 
+
+H.1 Dataset . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22 H.2 Baseline Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 H.3 Running Environment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 H.4 Intra-Cluster Variance. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 H.5 WR-Offline Experiment Result on SWE-Bench . . . . . . . . . . . . . . . . . . . 24 H.6 Exploration Estimation Accuracy . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 H.7 Ablation Study . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 H.8 Simulation Experiment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25 14 A Discussion of Assumptions 
+
+We elaborate on the three assumptions introduced in Section 3.1 and discuss their practical validity. 
+
+I.i.d. contexts. There are two distinct aspects of this assumption. First, query independence : queries arrive without state transitions between them, enabling the contextual bandit formulation. This holds in the majority of real-world LLM API usage scenarios (e.g., document summarization, customer support all treat each query as a self-contained request), and is implicit in all supervised routing baselines, which also treat queries independently. Second, stationarity : the context distribution {πj }
+
+is assumed stable within the planning horizon T . Setting T to a window that captures recurring traffic patterns (e.g., weekly business-hours cycles) makes this reasonable in practice. For longer-term drift, the context distribution and LP can be easily updated from recent traffic without re-exploring model statistics. 
+
+Finite horizon T . A finite T is standard in the constrained contextual bandit literature as it makes regret analysis tractable; T can be set arbitrarily large, and the analysis characterizes how regret grows as a function of T . In practice, T is calibrated to the deployment window (e.g., a monthly API quota) using historical query volume estimates. 
+
+Feedback acquisition. The monetary cost St is available immediately via token-count pricing. The reward Yt is not restricted to ground-truth correctness: any observable scalar signal like proxy reward model scores, user thumbs-up/down feedback, or code accept rates can qualify. In WR-Offline, Yt is read from Dhist and is not needed at inference time. In WR-Online, Yt is used during exploration to update ¯uj,k ; per-cluster averaging over queries naturally absorbs observation noise, and delayed reward updates can be deferred without interrupting routing decisions. 
+
+## B Related Work 
+
+We expand on the related work highlights in Section 2 with inference-time LLM selection and constrained bandit methods. 
+
+Inference-time LLM selection. Motivated by the notable cost quality heterogeneity across today’s LLMs, recent work on efficient LLM inference has developed into three paradigms: routing, cascading and ensembling. 
+
+LLM Routing aims to learn a policy that routes a query to the most suitable model from a pool of candidate LLMs. HybridLLM [ 9] and RouteLLM [ 30 ] focus on a two-model setting, train a router that preserves quality while reducing cost by sending easy queries to a smaller model. Subsequent work such as Zooter [ 26 ] and MixLLM [ 38 ] extends this supervise-trained router idea to larger model pools and explicitly manages the quality-cost trade-off. OmniRouter [ 28 ] predicts cost and performance for each model-query pair using a retrieval-augmented predictor, then uses Lagrangian dual optimization to minimize global cost subject to a global performance threshold. This predictor requires dense historical model-query pair statistics, collecting which can be expensive. BestRoute [ 10 ] explores best-of-n sampling to better exploit test-time compute with smaller models and shows that this leads to significant reduction in cost compared to baselines. The approach is essentially a heuristic and lacks formal guarantees. Our work focuses on the routing setting where one model is called once per query with an explicit workload-level budget, and applies online learning with exploration when dense supervision dataset is too expensive to collect. 
+
+LLM Cascading method [ 6, 41 , 13 ] executes a pre-defined LLM sequence: a small, cheap model an-swers first and the system escalates to larger ones when a learned threshold criterion fails; Dekoninck et al. [ 8 ] cast routing and cascading within one framework and enforce explicit per-query budget. While they derive optimality results, per-query constraints can be myopic and suboptimal under a workload-level budget. 
+
+LLM Ensemble methods such as DeePEn [ 17 ] aligns model logits in a shared space and aggregates them at the token level, while LLMBlender [ 19 ] ensembles post hoc by training a T5-based model to fuse multiple model outputs into a refined response. These methods primarily optimize accuracy without explicit cost or latency constraints. ThriftLLM [ 16 ] enforces per-query budget and achieves 15 cost-efficient classification. Given our focus on single-model LLM routing with workload-level budget, we do not compare with these methods further. 
+
+Constrained Contextual Bandits. Contextual bandits extends the well-known multi-armed ban-dits (MAB) by utilizing additional context at each round, allowing the agent to choose an action conditioned on the context. Common baselines include ϵ-greedy [35], UCB [2], and LinUCB [24]. In a constrained bandit setting, an agent optimizes the cumulative reward subject to a global budget constraint. A well-known strategy for budget-constrained MAB without contexts is ϵ-first [ 36 ]. Badanidiyuru et al. [3] studies budget constrained contextual bandits and establishes an ˜O(√T )
+
+regret bound; however, their approach is computationally expensive in practice. Following this line, [40 ] proposes UCB-ALP for unit-cost systems where all arms have a uniform cost and ϵ-first ALP for heterogeneous-cost systems, though rely on cost statistics being known a priori. Another line of work studies stochastic costs under budget constrained MAB using UCB-style frameworks [ 11 ]. Our work extends ϵ-first ALP to the regime where both reward and cost must be estimated online under a single shared budget covering exploration and exploitation. 
+
+LLM Routing as a Bandit Problem. Several recent studies explicitly formulate LLM routing as a contextual bandits problem: each candidate model is an action, query embeddings provide context, and reward is reflected by task performance or human preference. MetaLLM [ 29 ] uses UCB to select an LLM per query, leveraging reward estimates learned from offline preference data to balance cost against performance. MixLLM [ 38 ] integrates contextual bandits and selects a model by a LinUCB-like score augmented by uncertainty and a latency penalty. Poon et al. [33] applies Greedy LinUCB to the context evolved from multi-step chat interaction under global budget. PILOT [ 32 ]initializes a LinUCB router from preference-aligned embeddings and enforces budget at deployment via an online knapsack solver; its regret analysis covers only the router learning phase, not the full exploration-to-deployment pipeline. All these works either apply budget constraints only at deployment or lack end-to-end regret guarantees jointly covering learning and routing. 
+
+## C Proof of bU (T, B ) is Upper Bound 
+
+Lemma C.1. For a heterogeneous cost system with K models, J discrete contexts and known true statistics, if the time-horizon is T and the budget is B, then the total expected reward bU (T, B ) ≥
+
+U ∗(T, B ), where ˆU (T, B ) = T v (ρ).Proof. Let Nj,k be the number of rounds that an action k is taken under context j for any realization under any feasible algorithm with known statistics. Let pj,k := E[Nj,k ]/(πj T ), which satisfies 
+
+0 ≤ pj,k ≤ 1. Then the expected total reward for this feasible algorithm becomes 
+
+> J
+
+X
+
+> j=1
+> K
+
+X
+
+> k=1
+
+uj,k E[Nj,k ] = T
+
+> J
+
+X
+
+> j=1
+> K
+
+X
+
+> k=1
+
+pj,k πj uj,k .
+
+Moreover, because we start with a feasible algorithm, the expected budget constraint is met for all realizations, i.e., E
+
+hPTt=1 St
+
+i
+
+≤ B, we have 
+
+E
+
+" TX
+
+> t=1
+
+St
+
+#
+
+=
+
+> J
+
+X
+
+> j=1
+> K
+
+X
+
+> k=1
+
+E
+
+" TX
+
+> t=1
+
+St1{Xt = j, A t = k}
+
+#
+
+= X
+
+> j,k
+
+cj,k E[Nj,k ] = T X
+
+> j
+
+πj
+
+X
+
+> k
+
+pj,k cj,k .
+
+Feasibility in expectation implies 
+
+X
+
+> j
+
+πj
+
+X
+
+> k
+
+pj,k cj,k ≤ B/T. 
+
+Thus, the expected total reward obtained by any feasible algorithm, including the oracle algorithm, is upper bounded by bU (T, B ).16 D Detailed Regret Bound of ALP 
+
+To derive this upper bound, we need to derive the explicit solution of the upper bounding linear program LP T,B and analyze the regret incurred when b/τ deviates from B/T . The details of this derivation, following the approach in [ 40 ], are provided in Appendix E. Here, we introduce the essential concepts and quantities that will be used in the main regret bound of Theorem D.1. 
+
+Deriving explicit LP solution. The goal is to rank all pairs globally by their reward rates, then apply greedy algorithm to prioritize pairs with the highest reward rates and select those actions with corresponding probabilities. We first prune the candidate sets of context-action pairs using two measurements. The reward rate ηj,k = uj,k  
+
+> cj,k
+
+measures expected utility per unit cost for pair (j, k ). The ratio ξj,k 1,k 2 :=   
+
+> uj,k 1−uj,k 2
+> cj,k 1−cj,k 2
+
+, k 1̸ = k2, measures the additional expected reward per additional unit cost when switching from k2 to k1 under context j. We can remove certain suboptimal pairs without decreasing the LP optimum by comparing ηj,k and ξj,k 1,k 2 (exact conditions in Appendix E). After pruning, the remaining actions within each context admit a consistent ordering w.r.t. ξj,k 1,k 2 .We then define a transformation detailed in Appendix E to obtain an equivalent linear program 
+
+fLP T,B such that the remaining candidate pairs can be globally sorted by a transformed marginal reward ratio ˜ηj,k . The key requirement for this reduction is that for any context j, the ordered ratios 
+
+ξj,k 1,k 2 lead to a consistent ranking of ˜ηj,k . Let the pairs sorted in descending order of ˜ηj,k be 
+
+{(j(1) , k (1) ), . . . , (j(M ), k (M ))}, where M is the total number of remaining pairs after pruning. We denote ˜η1 := max i ˜ηj(i),k (i) and ˜ηM := min i ˜ηj(i),k (i) accordingly. 
+
+Boundary and non-boundary cases. The performance of ALP depends on how the average remaining budget bτ evolves relative to the static B/T . In particular, the regret is affected by how often b/τ crosses certain critical thresholds associated with the sorted transformed pairs. We define the cumulative expected cost mass up to index i as Qi := Pii′=1 πj(i′) ˜cj(i′),k (i′) , represent-ing the total expected cost for the first i transformed items in the ordering M . For any static per-round budget ρ ∈ (0 , Q ], we define the threshold index ˜i(ρ) := max {i ∈ { 0, 1, . . . , M } : Qi ≤ ρ }. We say that ρ is non-boundary if ρ̸ = Qi for all i ∈ { 1, . . . , M } and boundary if ρ = Qi(ρ) for some 
+
+i(ρ).
+
+Concentration of b. Since regret mainly occurs when the empirical average remaining budget b/τ 
+
+deviates from ρ, we apply Lemma 12 of [ 40 ] based on the Azuma–Hoeffding inequality to obtain the tail bound P{| b/τ − ρ| < δ } ≥ e−κδ 2τ , 0 < δ < 1 for some constant κ = ρ2 
+
+> 2
+
+, which controls the probability of large deviations. The following theorem states that the ALP algorithm has a O(1) regret in the non-boundary case, and incurs an O(√T ) regret in the boundary case. 
+
+Theorem D.1. Given any fixed ρ ∈ (0 , 1) , there exists a positive constant κ := ρ2 
+
+> 2
+
+, such that the regret of ALP satisfies: (1) (Non-boundary cases) If ρ̸ = Qi for any i ∈ { 1, 2, . . . , M }, then RALP (T, B ) ≤ ˜η1−˜ηM 
+
+> 1−e−2κδ 2
+
+,
+
+where δ = min {ρ − Q˜i(ρ), Q ˜i(ρ)+1 − ρ}.(2) (Boundary cases) If ρ = Qi(ρ) for some i ∈ { 1, 2, . . . , M }, then RALP (T, B ) ≤ Θ(◦)√T + 
+
+> ˜η1−˜ηM
+> 1−e−2κδ 2
+
+, where Θ(◦) = (˜ η1 − ˜ηM ) PTτ =1 
+
+p πκτ and δ = min {ρ − Q˜i(ρ)−1, Q ˜i(ρ)+1 − ρ}.
+
+Proof Sketch. The proof for Theorem D.1 follows a similar structure as the unit-cost ALP regret proof in Appendix B.2 from [ 40 ]. For the non-boundary cases, the single-round expected reward satisfies E[v(b/τ )] = v(ρ) if the threshold ˜i(b/τ ) = ˜ i(ρ) for all possible vaules of b, where v(ρ) is the optimal single-round value of LP T,B at average budget ρ = B/T . The regret is then bounded by a constant because the probability of the event ˜i(b/τ )̸ = ˜ i(ρ) decays exponentially due to the concentration bound of b. For the boundary cases, we show the theorem by expressing the regret in terms of the expected absolute deviation of the average remaining budget bτ from the target value ρ,i.e., E[| bτ − ρ|].17 E Solution Formulation for LP T,B 
+
+In this section, we first decompose LP T,B into subproblem SP j which is a constrained problem on a single context j. Secondly, we show some actions can be deleted without affecting the performance in LP T,B .
+
+Lemma E.1. For any given ρj ≥ 0, there exists an optimal solution of SP j , i.e., p∗ 
+
+> j
+
+=(p∗
+
+> j, 1
+
+, p ∗
+
+> j, 2
+
+, . . . , p ∗ 
+
+> j,K j
+
+), which satisfies: 1. For k1, if there exists another action k2 such that ηj,k 1 ≤ ηj,k 2 and uj,k 1 ≤ uj,k 2 , then 
+
+p∗ 
+
+> j,k 1
+
+= 0 ;2. For k1, if there exist two actions k2 and k3 such that ηj,k 2 ≤ ηj,k 1 ≤ ηj,k 3 , uj,k 2 ≥ uj,k 1 ≥
+
+uj,k 3 , and uj,k 1 −uj,k 3 
+
+> cj,k 1−cj,k 3
+
+≤ uj,k 2 −uj,k 3 
+
+> cj,k 2−cj,k 3
+
+, then p∗ 
+
+> j,k 1
+
+= 0 .
+
+Intuitively, the first part of Lemma E.1 shows that if an action has small normalized and original expected reward, then it can be removed. The second part of Lemma E.1 shows that if an action has small normalized expected reward and medium original expected reward, but the increasing rate is smaller than another action with larger expected reward, then it can also be removed. Detailed proof can be found in [40] With probabilities pj,k ∈ [0 , 1] of choosing action k under context j, the oracle upper bound is the optimal value ˆv(ρ) of 
+
+max  
+
+> {pj,k }
+> J
+
+X
+
+> j=1
+
+πj
+
+X
+
+> k
+
+pj,k uj,k (6) s.t. 
+
+> J
+
+X
+
+> j=1
+
+πj
+
+X
+
+> k
+
+pj,k cj,k ≤ ρ, (7) 
+
+X
+
+> k
+
+pj,k ≤ 1 ( ∀j), (8) 
+
+pj,k ∈ [0 , 1] . (9) The intra-context constraint P 
+
+> k
+
+pj,k ≤ 1 enforces the probabilities of taking action k under context 
+
+j forms a probability distribution. The constraints can be decoupled by first allocating budget for each context, and then solving a subproblem with the allocated budget constraint for each context. Specifically, let ρj be the budget allocated to context j, then LP T,B can be decomposed as follows: 
+
+max  
+
+> {ρj}
+> J
+
+X
+
+> j=1
+
+πj ˆvj (ρj ),
+
+s.t. 
+
+> J
+
+X
+
+> j=1
+
+πj ρj ≤ BT ,
+
+where 
+
+(SP j ) ˆvj (ρj ) = max  
+
+> {pj,k }
+> K
+
+X
+
+> k=1
+
+pj,k uj,k , (10) s.t. 
+
+> K
+
+X
+
+> k=1
+
+pj,k cj,k ≤ ρj . (11) 
+
+X
+
+> k
+
+pj,k ≤ 1 (12) 
+
+pj,k ∈ [0 , 1] (13) After we introduce the transformations of ˜p, ˜u, and ˜c,18 For each j, sort actions by ηj,k = uj,k /c j,k in descending order and introduce the transformations of ˜p, ˜u, and ˜c. Let ˜ηj,k ja = ˜ uj,k ja /˜cj,k ja be the normalized expected reward of virtual action kja .For a = 1 , using uj,k j1
+
+> cj,k j1
+
+≥ uj,k j2
+
+> cj,k j2
+
+, we can show that ˜ηj,k j1 ≥ ˜ηj,k j2 . For 2 ≤ a ≤ Kj − 1, using   
+
+> uj,k ja −uj,k ja−1
+> cj,k ja −cj,k ja−1
+
+≥ uj,k ja+1 −uj,k ja−1 
+
+> cj,k ja+1 −cj,k ja−1
+
+, we can show that ˜ηj,k ja ≥ ˜ηj,k ja+1 . In other words, we can verify that ˜ηj,k j1 ≥ ˜ηj,k j2 ≥ · · · ≥ ˜ηj,k j,K j . Thus, without intra-context constraint, the optimal solution ˜p∗ 
+
+> j
+
+= [˜ p∗ 
+
+> j,k 1
+
+, ˜p∗ 
+
+> j,k 2
+
+, . . . , ˜p∗
+
+> j,k Kj
+
+] automatically satisfies ˜p∗ 
+
+> j,k 1
+
+≥ ˜p∗ 
+
+> j,k 2
+
+≥ · · · ≥ ˜p∗
+
+> j,k Kj
+
+. Hence, we can remove the intra-context constraint, and thus decouple the probability constraint under a context. The global LP reduces to a threshold solution by greedy algorithm: sorting all virtual pairs (j, a ) by 
+
+˜η yields the index ˜i(ρ) and cumulative masses Qi specified in the main text; the solution fully takes indices ≤ ˜i(ρ), partially takes ˜i(ρ) + 1 , and rejects the rest. 
+
+Step 1: Solution formulation of LP T,B . To simplify the LP solution, we first remove context-action pairs that do not contribute to the optimum [ 40 ]. Define the reward rate ηj,k = uj,k /c j,k . For context j, assume that the remaining candidate set Aj = {kj1 , k j2 , . . . , k jKj } has been sorted in descending order of their reward rates ηj,k .We then introduce the following transformations: 
+
+pj,k ja =
+
+(˜pj,k ja − ˜pj,k ja+1 , if 1 ≤ a ≤ Kj − 1,
+
+˜pj,k jKj
+
+, if a = Kj .
+
+˜uj,k ja =
+
+(
+
+uj,k j1 , if a = 1 ,uj,k ja − uj,k ja−1 , if 2 ≤ a ≤ Kj ,
+
+˜cj,k ja =
+
+(
+
+cj,k j1 , if a = 1 ,cj,k ja − cj,k ja−1 , if 2 ≤ a ≤ Kj .
+
+By formulating the initial LP into the fLP T,B problem with transformed variables ˜p, ˜c, and ˜u, the intra-context constraint can be omitted, as it is implicitly satisfied after the transformation. This follows from the property of context–action pairs once those that never appear in the optimal solution are removed. 
+
+( fLP T,B ) max 
+
+> ˜pj,k
+> J
+
+X
+
+> j=1
+> Kj
+
+X
+
+> a=1
+
+πj ˜pj,k ja ˜uj,k ja 
+
+s.t. 
+
+> J
+
+X
+
+> j=1
+> Kj
+
+X
+
+> a=1
+
+πj ˜pj,k ja ˜cj,k ja ≤ BT
+
+˜pj,k ja ∈ [0 , 1] , ∀j, and 1 ≤ a ≤ Kj
+
+After removing the intra-context constraint, all pairs (j, k ja ) can be ordered in descending or-der of their expected reward rate, defined as ˜ηj,k ja = ˜uj,k ja /˜cj,k ja . The resulting sequence is denoted by their indices as {(j(1) , k (1) ), . . . , (j(M ), k (M ))}. Let ρ = B/T and ˜i(ρ) =max 
+
+n
+
+i : Pii′=1 πj(i′) ˜cj(i′),k (i′) ≤ ρ
+
+o
+
+, which represents a threshold index with cumulative cost mass under ρ. The optimal solution of fLP T,B can be expressed as following: 
+
+˜pj(i),k (i) (ρ) = 
+
+
+
+1, if 1 ≤ i ≤ ˜i(ρ),ρ − P˜i(ρ) 
+
+> i′=1
+
+πj(i′) ˜cj(i′),k (i′)
+
+πj(˜ i(ρ)+1) ˜cj(˜ i(ρ)+1) ,k (˜ i(ρ)+1) 
+
+, if i = ˜ i(ρ) + 1 ,
+
+0, if i > ˜i(ρ) + 1 .
+
+The optimal solution of LP T,B can be calculated by reversing the transformation. 19 F Proof of Lemma 5.2 
+
+Proof. Lowerbound of context-action pair. We first analyze the number of executions for each context-action pair (j, k ) in the exploration stage ϵ(T ). Let Nj = Pϵ(T ) 
+
+> t=1
+
+1(Xt = j) be the number of occurences of context j up to round ϵ(T ). Since each context Xt arrives i.i.d. at each timestep, we can use Hoeffding’s Inequality for each context j.
+
+P
+
+h
+
+∀j ∈ X , N j ≥ (1 − δ)πj ϵ(T )
+
+i
+
+≥ 1 −
+
+> J
+
+X
+
+> j=1
+
+P
+
+h
+
+Nj < (1 − δ)πj ϵ(T )
+
+i
+
+≥ 1 − Je −2δ2ϵ(T )
+
+≥ 1 − Je −2 log T
+
+= 1 − JT −2
+
+From Lemma 1, we have the lower bound (1 −δ)πj ϵ(T ) ≥ K + 128 K log TL2 . From the implementation of the exploration stage in Algorithm 2, we know that if Nj ≥ (1 − δ)πj ϵ(T ), then 
+
+Nj,k ≥
+
+j
+
+1 + 128 log TL2
+
+k
+
+≥ 128 log TL2 , ∀k ∈ A . (14) Therefore, 
+
+P
+
+h
+
+∀j ∈ X , ∀k ∈ A : Nj,k ≥ 128 log TL2
+
+i
+
+≥ 1 − JT −2
+
+Condition on observing sign flip. Now, we want to investigate, at the end of exploration stage, the probability of having the order ¯ξj1,k 11 ,k 12 ≥ ¯ξj2,k 21 ,k 22 while the ground truth order is ξj1,k 11 ,k 12 <ξj2,k 21 ,k 22 . In another word, we want to show the probability of having such flipped order is small. Define the utility and cost differences 
+
+∆ui := uji,k i1 − uji,k i2 , ∆ci := cji,k i1 − cji,k i2 , i = 1 , 2,
+
+with empirical counterparts ∆¯ ui := ¯ uji,k i1 − ¯uji,k i2 and ∆¯ ci := ¯ cji,k i1 − ¯cji,k i2 . In order to apply the Hoefdding’s inequality, define the estimation errors 
+
+δu i := ∆¯ ui − ∆ui, δc i := ∆¯ ci − ∆ci.
+
+To avoid working with Hoeffding’s inequality on ratios, we apply with the cross-products and define 
+
+Z := ∆ u1∆c2 − ∆u2∆c1 = ( ξ1 − ξ2)∆ c1∆c2, (15) 
+
+¯Z := ∆¯ u1∆¯ c2 − ∆¯ u2∆¯ c1. (16) Using the triangle inequality together with u, ¯u ∈ [0 , 1] and c, ¯c ∈ (0 , 1] gives 
+
+| ¯Z − Z| ≤  |δu 1| + |δu 2| +  |δc 1| + |δc 2|
+
++ |δu 1δc 2| + |δu 2δc 1|.
+
+If ξj1,k 11 ,k 12 < ξ j2,k 21 ,k 22 , we have |Z| = |ξj2,k 21 ,k 22 − ξj1,k 11 ,k 12 || ∆c1|| ∆c2| ≥ ∆ξmin (∆ cmin )2 =
+
+L. | ¯Z − Z| < |Z| should be a sufficient condition to guarantee no flip between ground truth and estimation. Therefore, we need to bound | ¯Z − Z| with | ¯Z − Z| < ∆ξmin (∆ cmin )2.
+
+Concentration of empirical estimates. For each context-action pair (j, k ), let ¯uj,k and ¯cj,k denote the sample means of utility and cost from Nj,k i.i.d. observations. Since uj,k ∈ [0 , 1] and cj,k ∈ [0 , 1] 
+
+for each observation s, Hoeffding’s inequality gives 
+
+P|¯uj,k − uj,k | ≥ t ≤ 2 exp( −2Nj,k t2), (17) 
+
+P|¯cj,k − cj,k | ≥ t ≤ 2 exp( −2Nj,k t2). (18) 20 Set the threshold 
+
+t := L
+
+8√2 . (19) Using Nj,k ≥ 128 log TL2 from (14): 
+
+2 exp( −2Nj,k t2) ≤ 2 exp 
+
+
+
+−2 · 128 log TL2 · L2
+
+128 
+
+
+
+= 2 exp( −2 log T ) = 2 T −2.
+
+For a ground truth order ξj1,k 11 ,k 12 < ξ j2,k 21 ,k 22 , the event ¯ξj1,k 11 ,k 12 ≥ ¯ξj2,k 21 ,k 22 can only occur if some context j has fewer than (1 − δ)πj ϵ(T ) occurrences or at least one of the 8 pairs fails the concentration bound. Overall the total failure probability contributed is at most JT −2 + 16 T −2.
+
+Upper bound on | ¯Z−Z|. If each single estimation error satisfies |¯uj,k −uj,k | < t and |¯cj,k −cj,k | < t ,we have 
+
+|δu i| ≤ 2t, |δc i| ≤ 2t, i = 1 , 2.
+
+Since utilities and costs are both in [0 , 1] , the differences satisfy 
+
+|∆ui| ≤ 1, |∆ci| ≤ 1, i = 1 , 2.
+
+Applying the triangle inequality: 
+
+| ¯Z − Z| ≤ | δu 1|| ∆c2| + |δu 2|| ∆c1| + |∆u1|| δc 2| + |∆u2|| δc 1|
+
++ |δu 1|| δc 2| + |δu 2|| δc 1|≤ 2t · 1 + 2 t · 1 + 1 · 2t + 1 · 2t + 2 t · 2t + 2 t · 2t
+
+= 8 t + 8 t2. (20) Since |Z| ≤ 2 (as |∆ui| ≤ 1 and |∆ci| ≤ 1) and L ≤ | Z|, substituting t = L 
+
+> 8√2
+
+from (19) yields: 
+
+| ¯Z − Z| ≤ 8 · L
+
+8√2 + 8 ·
+
+ L
+
+8√2
+
+2
+
+= L
+
+√2 + L2
+
+16 
+
+≤ L
+
+√2 + 2L
+
+16 
+
+< L. (21) Therefore: 
+
+| ¯Z − Z| < L ≤ | Z|. (22) For all rankings to be correct, we need each individual estimate to concentrate and enough exploration have been made to each context-action pair: 
+
+P{all rankings correct } ≥ (1 − JT −2)(1 − 4JKT −2)
+
+≥ 1 − JT −2 − 4JKT −2
+
+= 1 − (4 JK + J)T −2. (23) 
+
+## G Confidence Level Test 
+
+We present the Confidence Level Test (CLT) for WR-Online in Algorithm 3. At any time t, the algorithm maintains empirical means (¯ uj,k , ¯cj,k ) and execution counts Nj,k for each context–action pair. Using these quantities, we form the empirical marginal reward-cost ratios ¯ξj,k 1,k 2 := (¯ uj,k 1 −
+
+¯uj,k 2 )/(¯ cj,k 1 − ¯cj,k 2 ), and adopt a fixed cost ordering so the cost difference in denominator is positive. 21 Algorithm 3 Confidence Level Test for WR-Online  
+
+> 1:
+
+Input: confidence target δ; empirical means {¯uj,k , ¯cj,k } and counts {Nj,k } 
+
+> 2:
+
+Output: flagSucc  
+
+> 3:
+
+H ← log(2 /δ ); ru(n) ← pH/ (2 n); rc(n) ← pH/ (2 n) 
+
+> 4:
+
+flagSucc ← true  
+
+> 5:
+
+for all (j1, k 11 , k 12 , j 2, k 21 , k 22 ) s.t. k11 ̸ = k12 , k21 ̸ = k22 , ¯cj1,k 11 > ¯cj1,k 12 , ¯cj2,k 21 > ¯cj2,k 22 
+
+do  
+
+> 6:
+
+∆¯ u1 ← ¯uj1,k 11 − ¯uj1,k 12 ; ∆¯ c1 ← ¯cj1,k 11 − ¯cj1,k 12  
+
+> 7:
+
+∆¯ u2 ← ¯uj2,k 21 − ¯uj2,k 22 ; ∆¯ c2 ← ¯cj2,k 21 − ¯cj2,k 22  
+
+> 8:
+
+δu 1 ← ru(Nj1,k 11 ) + ru(Nj1,k 12 ); δc 1 ← rc(Nj1,k 11 ) + rc(Nj1,k 12 ) 
+
+> 9:
+
+δu 2 ← ru(Nj2,k 21 ) + ru(Nj2,k 22 ); δc 2 ← rc(Nj2,k 21 ) + rc(Nj2,k 22 ) 
+
+> 10:
+
+ˆZ ← ∆¯ u1 · ∆¯ c2 − ∆¯ u2 · ∆¯ c1 
+
+> 11:
+
+B ← δu 2 · (|∆¯ c1| + δc 1) + δc 1 + δu 1 · (|∆¯ c2| + δc 2) + δc 2 + δu 1δc 2 + δu 2δc 1 
+
+> 12:
+
+if | ˆZ| < 2B then  
+
+> 13:
+
+flagSucc ← false  
+
+> 14:
+
+return flagSucc  
+
+> 15:
+
+end if  
+
+> 16:
+
+end for  
+
+> 17:
+
+return flagSucc 
+
+For two ratios ¯ξj1,k 11,k 12 and ¯ξj2,k 21,k 22 at each time step, CLT runs a confidence test that checks whether the estimated order is the same as the unknown actual order determined with sufficiently high confidence given the current sample counts. Algorithm 3 iterates over all ordered pairs of ratios; if every comparison passes, the policy stops exploration and switches to exploitation using the current empirical statistics; otherwise it continues exploring. CLT is conservative in practice for two reasons. First, LLM pricing tiers place competing models close in cost, so the gaps ∆c 
+
+> min
+
+are tiny; the test must accumulate enough samples to distinguish these nearly identical costs with high confidence, requiring far more exploration than is practical. Second, the test must pass for every one of the O(J2K4) ratio pairs, so a single hard-to-distinguish pair blocks the switch to exploitation even when all others are well-resolved. Crucially, CLT is only a sufficient condition: the exploitation phase performs well whenever the estimated ordering is approximately correct, even if the test never formally passes. We therefore use a fixed exploration schedule in our experiments. 
+
+## H Experimental Details 
+
+H.1 Dataset RouterBench RouterBench contains 36 , 497 unique queries each paired with responses from 11 different language models of varying sizes and capabilities. In our experiment,we take 10 models from this dataset and their accuracy and cost are shown in Table 3. The queries are drawn from eight diverse datasets(MMLU, HellaSwag, GSM8k, ARC Challenge, Winogrande, MBPP, MT-Bench, and RAG). 
+
+SWE-Bench For the SWE-Bench dataset, we use its verified subset. We analyze the performance and instance cost of 5 models downloaded from the benchmark’s official repository. Specifically, we include the following models • 20250511_ SWEAGENT _LM _32 B, referred to as sweagent-lm-32b • 20240402_ SWEAGENT _GPT 4_ PERFORMANCE , referred to as sweagent-gpt-4 • 20240620_ SWEAGENT _CLAUDE 3.5 SONNET , referred to as sweagent-claude-3.5-sonnet • 20240728_ SWEAGENT _GPT 4O, referred to as sweagent-gpt-4o • 20250522_ SWEAGENT _CLAUDE -4-SONNET -20250514, referred to as sweagent-claude-4-sonnet Those 5 models’ average successful rate and instance cost is shown in Table 4. 22 Table 3: Average performance and cost per query across different models on RouterBench. Model Avg Perf. Avg Cost ($) gpt-4-1106-preview 0.805 7.943e-03 mixtral-8x7b-chat 0.650 4.140e-04 claude-v1 0.648 5.870e-03 llama-2-70b-chat 0.606 1.337e-03 claude-instant-v1 0.590 1.236e-03 gpt-3.5-turbo-1106 0.687 7.086e-04 WizardLM-13B-V1.2 0.539 1.417e-04 code-llama-instruct-34b-chat 0.504 5.499e-04 claude-v2 0.512 6.153e-03 mistral-7b-chat 0.500 1.388e-04 Both datasets are split into training and test sets (50:50) using a fixed random seed for reproducibility, with the same split used across all methods. Table 4: Average performance and cost across different models on SWE-bench. Model Avg Perf. Avg Cost ($) sweagent-claude-4-sonnet 0.666 1.217 sweagent-lm-32b 0.402 1.039 sweagent-claude-3.5-sonnet 0.336 1.714 sweagent-gpt-4o 0.232 2.317 sweagent-gpt-4 0.224 2.418 
+
+H.2 Baseline Implementation 
+
+We provide the details of our implementation for each baseline methods: • FrugalGPT : A cascading method with a per-query budget constraint. To control training time latency, we cap the cascade length to be 2, all other setting uses the default implemen-tation. The cascade parameters are tuned on the training split to meet the target average budget ρ on test set. • CascadeRouting : We implement the method following the original paper, restricted to a cascade length of 2. The estimation strategy varies by dataset: For RouterBench, quality and cost estimators utilize ground-truth statistics with added noise. To ensure a fair comparison with baselines that lack ground-truth access, we adopt the High standard deviation setting as defined in the original work. For SWE-Bench, where we measure instance-level costs, we employ a linear regression model to estimate cost via query embeddings and a logistic regression model to predict quality. • SingleBest : For each cluster j, we select the action k⋆(j) = arg max k: cj,k ≤ρ uj,k ,the action with the highest estimated reward subject to the per-query budget ρ. At inference, the router always chooses k⋆(j) for queries in cluster j. Budget is enforced only through the fixed average constraint ρ = B/T , without adaptation over time. Use the same cluster and context-action pair statistics as WR-Offline. Since K-means clustering depends on random centroid initialization, we run five independent seeds ( 0–4) and report the mean and standard deviation over the resulting cluster assignments. • MetaLLM : We adapt the algorithm from the official implementation, using the same cluster and context-action pair statistics as in other baselines. Actions are selected by UCB with a Lagrangian penalty p ≥ 0 in the reward function to enforce budget adherence. For each budget level, p is tuned via grid search on a held-out validation set (10% of training data), selecting the value whose total validation cost is closest to the proportionally scaled budget without exceeding it. Results are averaged over 5 random seeds ( 0–4), each controlling action tie-breaking and K-means initialization. 23 1000 2000    
+
+> Total Cost ($)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Average Reward per Query
+> 1000 1500 2000 2500
+> Total Cost ($)
+> SingleBest
+> FrugalGPT
+> CascadeRouting
+> WR-Offline
+> MetaLLM
+> WR-Online (1x)
+> WR-Online (2x)
+> WR-Online (3x)
+> WR-Online (4x)
+
+Figure 6: Performance comparison under end-to-end budget constraints on SWE-Bench. Comparison between WR-Online and offline baselines. Vertical dashed lines represent the fixed cost of collecting the complete training set for offline methods. WISERouter values are averaged over five runs. 
+
+H.3 Running Environment 
+
+Our FrugalGPT experiments were run as Slurm jobs on a Linux GPU node, requesting one NVIDIA H100, while all other baselines were run on Slurm CPU nodes with 4 CPU tasks and 52GB host memory. 
+
+H.4 Intra-Cluster Variance. 
+
+The intra-cluster homogeneity assumption (Section 4.1) treats all queries in a cluster as sharing the same expected reward and cost for each model. Table 5 reports the average intra-cluster variance of reward and normalized cost at J = 16 . Cost variance is negligible on RouterBench and modest on SWE-Bench, confirming that cost discretization introduces little approximation error. Table 5: Average intra-cluster variance of reward and normalized cost at J = 16 .Dataset Avg. Reward Variance Avg. Normalized Cost Variance RouterBench 0.192 0.00049 
+
+SWE-Bench 0.199 0.065 
+
+H.5 WR-Offline Experiment Result on SWE-Bench 
+
+We provide the performance comparison between WR-Online and other offline baselines under end-to-end budget in Figure 6. 
+
+H.6 Exploration Estimation Accuracy 
+
+To validate that the exploration phase of WR-Online produces reliable statistics for the subsequent LP routing policy, we compare the empirical estimates ¯uj,k and ¯cj,k at the end of exploration against ground truth statistics computed over the full horizon T (J = 16 , exploration length 4× training set). Table 6 reports mean absolute error (MAE) and Pearson correlation across all context–action pairs 
+
+(j, k ). Both datasets show high reward correlation, confirming that exploration recovers the relative model ordering required by the LP. Cost estimates are nearly exact on RouterBench and accurate on SWE-Bench, where higher per-instance cost variance makes estimation harder. 
+
+H.7 Ablation Study 
+
+Here we present the hyperparameter tuning and ablation study result performed on the RouterBench dataset. All experiment results are conducted on RouterBench train set with cross validation and the 24 Table 6: Estimation accuracy of WR-Online exploration phase vs. ground truth statistics ( J = 16 ,normalized cost St ∈ [0 , 1] ). Reward ¯uj,k Cost ¯cj,k 
+
+Dataset MAE Pearson r MAE Pearson r
+
+RouterBench 0.011 0.997 2.72 × 10 −4 1.000 
+
+SWE-Bench 0.076 0.896 0.041 0.941 
+
+validation set ratio is 20%. Each experiment is runned 5 times and compute the average score. We first examine the sensitivity of our embedding method generated from a commercial API OpenAI’s 
+
+> TEXT
+
+-EMBEDDING -3-SMALL and an opensource model Q WEN 3-E MBEDDING -0.6B, Table 7 shows that the result on validation set over 5 runs is relatively stable, suggesting our method is robust towards the embedding methods and vector dimension choice. Table 7: Average reward across different embedding methods and PCA settings (3285 queries, 5 seeds). Embedding No PCA PCA (256 dim) Qwen3-Embedding-0.6B 2951.39 ± 22.83 2951.84 ± 21.27 OpenAI-text-embedding-3-small 2949.65 ± 18.74 2950.84 ± 22.42 We select J = 16 as the number of clusters for our K-means clustering method. As shown in Table 8, all values of J achieve similar average reward. However, J = 16 attains the highest reward (0.8083) while having the smallest standard deviation (0.0029), indicating the most stable performance across runs. Table 8: Hyperparameter selection for number of clusters J in K-means. Performance is averaged over 5 runs. 
+
+J Avg Reward per Query 8 0.8083 ± 0.0036 
+
+12 0.8079 ± 0.0030 
+
+16 0.8083 ± 0.0029 
+
+20 0.8082 ± 0.0030 
+
+We also examined other density based clustering methods DBSCAN. Table 9 shows results when replacing K-means with DBSCAN. Across all ϵ values we explored, the average reward remains around 0.808 , consistent with our K-means results. This indicates that our method is robust to the choice of clustering algorithm and its hyperparameters. 
+
+H.8 Simulation Experiment Simulation Setup. We consider a synthetic contextual decision-making environment with a finite horizon of T = 1500 , J = 11 discrete contexts, and K = 11 available actions. At each round t, a context j ∈ { 1, . . . , J } is sampled independently from a fixed power-law distribution with parameter 
+
+α = 1 .0, inducing a skewed frequency over contexts reflecting reality. Each context–action pair (j, k ) is associated with a ground-truth expected reward uj,k and expected cost cj,k . The reward matrix U ∈ [0 , 1] J×K and cost matrix C ∈ [0 , 1] J×K are generated once at initialization by sampling entries independently from a uniform distribution on [0 , 1] , and are held fixed throughout the experiment. These quantities define the expected reward and cost structure of the environment. Observed rewards and costs add noise to its expected value. Budget consumption is tracked using the expected cost cjt,k t to ensure that the workload constraint is applies upon the expected cumulative cost. 25 Table 9: Hyperparameter selection for DBSCAN ϵ.
+
+ϵ Avg Reward per Query 0.2 0.8083 ± 0.0036 
+
+0.4 0.8080 ± 0.0029 
+
+0.6 0.8084 ± 0.0035 
+
+0.8 0.8084 ± 0.0035 
+
+Budget construction. To characterize the feasible budget range in the simulated environment, we compute reference workload-level budgets based on the mean cost structure. Let cj,k denote the mean cost of action k under context j, and let pj be the context arrival distribution. The minimum per-step expected cost is defined as c = P 
+
+> j
+
+pj min k cj,k , corresponding to always selecting the cheapest action for each context. Similarly, the maximum per-step expected cost is 
+
+¯c = P 
+
+> j
+
+pj max k cj,k , which corresponds to always selecting the most expensive action. For a horizon of T = 1500 , these values induce a minimum feasible budget Bmin = T · c and a maximum feasible budget Bmax = T · c. In our simulation, we obtain the mid-level budget Bmid = 
+
+> 12
+
+(Bmin + Bmax ) = 762 .58 , which induces meaningful trade-offs between reward maximization and budget conservation and is therefore used throughout the simulation experiments. 
+
+Making Bandit Algorithms Budget-Aware. To enable a fair comparison, all baseline methods are adapted to respect the global budget constraint through an adaptive cost constraint. Specifically, at each round t, a baseline policy computes a per-round target cost b/τ, where b is the remaining budget and τ is the remaining time step. The policy then restricts its action selection to those actions whose expected cost does not exceed b/τ . If no such action exists, the policy defaults to the lowest-cost action. This mechanism ensures that even baselines that are not explicitly designed for constrained optimization are budget-aware and adapt their behavior over time as budget is consumed. 
+
+Compared Methods and Evaluation Protocol. We compare WR-Online against several baselines modified with the budget aware mechanism described above, including a random policy, ε-greedy policy [ 35 ], and budget-aware LinUCB [ 24 ], all equipped with the adaptive average cost mechanism described above. We additionally evaluate a variants of WR-Online when it is provided with the true expected cost value cj,k for all (j, k ), we call such method EFALP-known (same as the ϵ-first ALP proposed in [ 40 ]). Both variants use identical reward observations and budget accounting, differing only in their access to cost information. An oracle linear-programming policy with full knowledge of (uj,k , c j,k ) is used to compute the optimal expected reward and serves as the benchmark for regret computation. To ensure a fair comparison, all policies are evaluated on identical context sequences for each random seed. Results are reported with mean and standard deviation over multiple runs. 26

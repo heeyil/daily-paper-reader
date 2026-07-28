@@ -1,0 +1,570 @@
+Title: Recursive Governance: A Graph-Theoretic Framework for Risk Propagation and Drift Detection in Agentic AI Systems
+
+URL Source: https://arxiv.org/pdf/2607.23916v1
+
+Published Time: Tue, 28 Jul 2026 01:24:46 GMT
+
+Number of Pages: 33
+
+Markdown Content:
+# Recursive Governance: A Graph-Theoretic Framework for Risk Propagation and Drift Detection in Agentic AI Systems 
+
+# Advaith Nila Narayanan, The University of Massachusetts, Amherst ∗
+
+# Sriram Nagaraj, PhD †
+
+Abstract 
+
+As financial institutions transition from traditional predictive models to au-tonomous agentic systems, the static model inventory requirements of tradi-tional model risk management (MRM) face structural obsolescence. These systems introduce a class of risk— Agency Risk —that existing MRM frame-works are ill-equipped to quantify: non-deterministic reasoning paths, dynamic tool invocation, and cascading inter-agent dependencies that cannot be fully enumerated at registration time. Prior treatments of LLM governance address these symptoms in isolation—output bias testing here, hallucination bench-marking there—without a unifying structural account of why agentic systems break the inventory paradigm or a mechanism for containing the resulting risk once it manifests. The central novelty of this paper is to close that gap with a single, internally consistent governance loop rather than a collection of point fixes: we are, to our knowledge, among the first to (i) formalize the agent inven-tory itself as a directed graph over which validation failures provably propagate, (ii) give a materiality score that is provably immune to tool-count inflation, and (iii) ground reasoning-trajectory drift detection in a calibration procedure that matches the production test statistic rather than approximating it. 
+
+> ∗
+
+anilanarayan@umass.edu 
+
+> †
+
+dr.sri.nagaraj@gmail.com, Corresponding author arXiv:2607.23916v1 [math.NA] 27 Jul 2026 This paper proposes a dynamic Inventory-as-Code (IaC) governance loop that treats the model inventory as a living architectural component rather than a periodic documentation artifact. We make four principal contributions. First, we introduce a calibrated Degree of Autonomy (DoA) materiality score with an explicit, taxonomized tool-complexity weighting scheme that addresses the dominance problem of naive additive risk formulations, and we prove that tool breadth alone can never lift an agent’s tier—closing a gaming vector that additive scores leave open. Second, we construct the agent inventory as a Di-rected Acyclic Graph (DAG) and define a formal Composite Risk Propagation 
+
+algorithm under which upstream validation failures induce risk penalties on all reachable descendants; we further show that the blocking condition is properly decoupled from an agent’s inherent risk tier, so that high-tier agents are not auto-quarantined by their own risk scores, and we prove that the resulting blast radius equals exactly the transitive descendant set of a failure—a containment guarantee that holds by construction rather than as a numerical byproduct of penalty calibration. Third, we develop a Trajectory Monitoring protocol based on distributional cosine drift across ensembled Chain-of-Thought (CoT) em-beddings, with an explicit procedure for constructing and certifying the Golden Path baseline, a matched-bootstrap calibration that we show is necessary to avoid a severe false-positive artifact in the naive alternative, and a two-stage response that separates legitimate reasoning variation from detrimental drift without demanding that a single exceedance event trigger an irreversible ac-tion. Fourth, we address practical complications largely absent from the prior literature: LLM base-model version changes, latent feedback loops in nominally acyclic agent graphs, and a two-pass execution structure that stages validation ahead of risk propagation. Throughout, we motivate each design choice against the specific failure mode it is meant to close, rather than presenting the mech-anisms as free-standing formalism. We illustrate the framework with a fully reproducible simulation study on a 17-agent inventory (random seed 42; code provided as a companion script). A single Tier 1 failure cascades to block exactly the 6 agents in its transitive descendant set while leaving the remaining 10 agents, including the 3 other Tier 1 roots, operationally validated. Calibrating the trajectory monitor with a matched bootstrap that mirrors the production test statistic, we obtain a clean separation: all in-distribution validated agents remain within bounds while every agent subject to genuine trajectory drift is hard-flagged. We further 
+
+2show that the naive half-split calibration common in drift detection instead soft-flags roughly 90% of in-distribution Tier 1 agents—a sample-size artifact that the matched calibration removes. 
+
+3Contents 
+
+1 Introduction 52 MRM Background and the Agentic Gap 8
+
+2.1 MRM: Core Provisions . . . . . . . . . . . . . . . . . . . . . . . . . . 82.2 What MRM Does Not Address . . . . . . . . . . . . . . . . . . . . . 92.3 Why a Structural, Rather than Point, Fix Is Required . . . . . . . . . 10 
+
+3 The Inventory-as-Code Architecture 10 
+
+3.1 From Registry to Feedback Loop . . . . . . . . . . . . . . . . . . . . 10 3.2 The Four-Phase IaC Cycle . . . . . . . . . . . . . . . . . . . . . . . . 11 
+
+4 Materiality Scoring: The Degree of Autonomy Framework 12 
+
+4.1 Component Definitions . . . . . . . . . . . . . . . . . . . . . . . . . . 12 4.2 Tool Severity Taxonomy . . . . . . . . . . . . . . . . . . . . . . . . . 13 4.3 Motivation and the Dominance Problem . . . . . . . . . . . . . . . . 13 4.4 The Calibrated Inherent Risk Score . . . . . . . . . . . . . . . . . . . 14 4.5 Agent Inventory: Inherent Risk Scores . . . . . . . . . . . . . . . . . 15 
+
+5 Graph-Theoretic Modeling of Agent Interdependence 15 
+
+5.1 The Agent Dependency Graph . . . . . . . . . . . . . . . . . . . . . . 15 5.2 Composite Risk Propagation . . . . . . . . . . . . . . . . . . . . . . . 16 5.3 The Blocking Condition . . . . . . . . . . . . . . . . . . . . . . . . . 16 5.4 The Two-Pass Execution Structure . . . . . . . . . . . . . . . . . . . 18 5.5 Handling Quasi-Cyclic Architectures . . . . . . . . . . . . . . . . . . 19 5.6 Interdependence Reporting Snapshot . . . . . . . . . . . . . . . . . . 19 
+
+6 Trajectory Monitoring: Formalizing the Golden Path 20 
+
+6.1 The Inadequacy of Classical Drift Detection . . . . . . . . . . . . . . 20 6.2 Chain-of-Thought as an MRM Object . . . . . . . . . . . . . . . . . . 20 6.3 Constructing and Certifying the Golden Path . . . . . . . . . . . . . 21 6.4 The Drift Metric and Permutation Calibration . . . . . . . . . . . . . 21 6.5 Distinguishing Legitimate Deviation from Unintended Drift . . . . . . 22 6.6 The LLM Version Change Problem . . . . . . . . . . . . . . . . . . . 23 47 Practical Implementation Considerations 24 
+
+7.1 Telemetry and Logging Architecture . . . . . . . . . . . . . . . . . . . 24 7.2 Prompt Change Control . . . . . . . . . . . . . . . . . . . . . . . . . 24 7.3 Integration with Existing MRM Tooling . . . . . . . . . . . . . . . . 24 
+
+8 Simulation Study 25 
+
+8.1 Setup . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25 8.2 Composite Risk Propagation Results . . . . . . . . . . . . . . . . . . 25 8.3 Key Findings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25 8.4 Trajectory Monitoring Results . . . . . . . . . . . . . . . . . . . . . . 27 
+
+9 Open Problems and Conclusion 29 
+
+9.1 Open Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29 9.2 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29 
+
+A Notation Reference 31 B Recommended Calibration Parameters 32 
+
+# 1 Introduction 
+
+Traditional model risk management (MRM) treats a model as a quantitative method, system, or approach that applies statistical, economic, financial, or mathematical theories, techniques, and assumptions to process input data into quantitative esti-mates. Mature MRM practice requires an institution to maintain a model inventory that captures all models in use and assigns each a risk tier commensurate with its materiality. For over a decade, this framework had governed traditional predictive models— credit scorecards, prepayment models, VaR engines—with reasonable adequacy. The model’s inputs, transformations, and outputs are knowable at registration time. Val-idation is a point-in-time exercise. Inventory updates are periodic and manual. Large Language Model (LLM)-based agentic systems violate many, if not all, of these assumptions. An agent does not produce a single output from a fixed trans-formation; it reasons iteratively, invokes external tools, delegates sub-tasks to other agents [8–10], and may arrive at different action sequences given identical prompts. Its 5“model” cannot be reduced to a weight matrix because the effective computation in-cludes retrieval corpora, tool APIs, orchestration logic, and the stochastic sampling of the underlying LLM. Most critically, it acts : it writes to databases, executes trades, generates customer communications, and calls downstream agents that themselves act. 
+
+Causes: Why Agentic Systems Are Structurally Different 
+
+Four properties, largely absent from the traditional model taxonomy, jointly drive this departure. 
+
+• Non-determinism at the reasoning level, not just the output level. Tra-ditional models are stochastic only in a bounded, well-characterized sense (e.g., sampling noise around a fitted estimate). An LLM agent’s path to an output— which tools it calls, in what order, with what intermediate justifications—can vary materially across otherwise identical invocations, because the sampling oc-curs at every reasoning step, not once at the end. 
+
+• Dynamic, self-directed tool invocation. An agent selects which external systems to query or act upon at runtime, based on its own interpretation of the task. The realized set of tool calls for a given session is therefore a function of the agent’s reasoning, not a fixed input/output contract fixed at development time. 
+
+• Delegation and inter-agent composition. Multi-agent architectures allow one agent to invoke another as a subroutine [10]. This means an agent’s effective behavior depends on the current state and validation status of agents it did not directly configure and may not even be aware of, creating dependency chains that are invisible to any single-model view of risk. 
+
+• Exposure to uncontrolled upstream change. The underlying LLM back-bone, its safety tuning, and any external retrieval corpora it draws on are typ-ically controlled by a third-party provider and can change on a release cadence entirely outside the institution’s own change-control process. A model that was fully validated yesterday may be running on materially different weights today without any internally-initiated model change event. 6Each of these causes is why a static, registration-time inventory entry is the wrong governance primitive for an agentic system: the very quantities a traditional inventory records as fixed attributes—inputs, outputs, and validation status—are, for an agent, functions of runtime state. 
+
+Effects: Why This Matters Operationally 
+
+These structural causes translate into concrete operational and financial consequences, which is why we treat Agency Risk as a distinct risk category rather than an extension of existing model risk taxonomies. 
+
+• Cascading failure across dependency chains. Because agents consume one another’s outputs, a validation failure or behavioral degradation in one upstream agent silently propagates its error into every downstream consumer, potentially several hops removed from the point of failure and undetectable from any single agent’s own test results. 
+
+• Undetected reasoning drift beneath stable outputs. An agent can pre-serve a stable output distribution—the quantity classical monitoring tests—while its underlying reasoning shifts to a different, potentially exploitable justification for that output (Section 6). Output-only monitoring is therefore blind to an entire class of behavioral change. 
+
+• Uncontrolled expansion of the action surface. Because agents can write to production systems—executing trades, issuing credit decisions, sending customer communications—an ungoverned agent does not merely produce a wrong number for a human to catch; it can directly cause financial loss, data breach, or customer harm before any human review occurs. 
+
+• Audit and attestation failure. If the inventory cannot account for an agent’s current dependency graph, tool access, and validation status in real time, the institution cannot truthfully attest that its models are governed, independent of whether any individual agent is in fact behaving safely. This is a compliance risk in its own right, separate from the underlying behavioral risk. The existing MRM literature has begun to address LLM governance in isola-tion [1]—focusing on output bias testing, hallucination rates, and distributional drift 7on model outputs. These efforts address individual symptoms of the causes above but not their common structural source: they treat each agent as if it were still a standalone model with a fixed input/output contract. What is absent is a systemic treatment of the inter-agent risk structure: the graph of dependencies, the propa-gation of validation failures, and the formal monitoring of reasoning trajectories as first-class MRM objects. This paper fills that gap. The paper proceeds as follows. Section 2 reviews traditional MRM background and notes the specific provisions that require extension in the generative AI (genAI) context. Section 3 introduces the Inventory-as-Code architecture. Section 4 devel-ops the Degree of Autonomy materiality scoring framework. Section 5 formalizes the DAG model of agent interdependence and derives the Composite Risk Propagation algorithm. Section 6 develops the Trajectory Monitoring protocol in full. Section 7 ad-dresses practical implementation challenges. Section 8 presents the simulation study. Section 9 identifies open problems and concludes. 
+
+# 2 MRM Background and the Agentic Gap 
+
+2.1 MRM: Core Provisions 
+
+Traditional MRM established three pillars of model risk management: (1) model devel-opment, implementation, and use ; (2) model validation ; and (3) governance, policies, and controls . These three pillars exist for a specific reason: development/use controls limit the risk that a model is built or deployed outside its intended scope; validation controls limit the risk that a model’s actual performance diverges from its assumed performance; and governance controls limit the risk that either of the first two fail-ures goes undetected by the institution. Each pillar implicitly assumes that the object being governed—the model—has a stable identity between governance touchpoints: the same weights, the same input schema, the same output contract, until an ex-plicit change event occurs. The governance pillar is most immediately implicated by agentic systems, precisely because agentic systems violate this stable-identity assump-tion without necessarily triggering any of the change events the governance pillar is designed to catch. Standard MRM practice requires model inventories to capture: the model’s pur-pose and use, its inputs and outputs, the business line(s) it supports, its materiality tier, its validation status, and its ongoing monitoring status. For traditional models, 8each of these fields is statically knowable. For agentic systems, several are dynamically determined at runtime: 
+
+• Purpose and use may change without a model change event if the orchestration prompt is modified outside of change-control scope. 
+
+• Inputs include external API responses, retrieval-augmented document corpora, and outputs from upstream agents—none of which are fixed at registration. 
+
+• Outputs include not just numerical estimates but action sequences with real-world consequences. 
+
+• Validation status can become stale when the underlying LLM base model is updated by the provider—a change entirely outside the institution’s change-control process. 
+
+2.2 What MRM Does Not Address 
+
+Standard MRM was not designed for systems that delegate. This is not an oversight so much as a natural consequence of the era in which its provisions were written: the pillars were designed against a population of models that each had one owner, one input schema, and no ability to invoke one another. Consequently the framework contains no provisions for: 
+
+• Inter-model dependency tracking : If Model A feeds Model B, traditional MRM would recommend awareness of the dependency but provides no formal protocol for propagating validation failures. This matters because the absence of a formal protocol leaves the propagation decision to ad hoc human judgment, which does not scale once dependency graphs exceed a handful of models and cannot execute at the speed agents themselves operate. 
+
+• Non-deterministic outputs : MRM guidance assumes that validation can es-tablish a stable output distribution. However, agentic outputs are path-dependent. This is consequential because a single point-in-time validation pass certifies only the reasoning paths sampled during that pass; it says nothing about paths the agent has not yet taken but may take under different production inputs. 9• Tool access as a risk dimension : A model that can only read data is categor-ically different in risk profile from one that can write to a trading system. MRM has no vocabulary for this, which means two agents that are otherwise identical in accuracy and scope can carry wildly different real-world consequences under a materiality scheme that only looks at outputs. 
+
+• Emergent multi-agent behaviors : No provision covers risk that arises from the interaction of multiple individually-validated agents—the case where every agent passes its own behavioral test in isolation, yet the composed system pro-duces an unintended outcome because each agent’s test scope did not include the behavior of its counterparts. 
+
+2.3 Why a Structural, Rather than Point, Fix Is Required 
+
+A natural first response to each gap above is a point fix: add a dependency field to the inventory schema, add a non-determinism disclosure to the model documenta-tion template, add a tool-access column. We argue this is insufficient, for a reason that recurs throughout this paper: each gap is a symptom of the same underlying cause—the inventory is treated as a record of what a system is , when for an agentic system the governance-relevant facts are about what the system is currently doing 
+
+and connected to . Patching individual fields leaves the update mechanism unchanged: a human-mediated, periodic review cycle that cannot keep pace with a system whose dependency graph, tool exposure, and reasoning trajectory can all shift between two review dates. Sections 3–6 therefore replace the record-keeping paradigm itself, rather than extending its schema, which is why the remainder of this paper is organized around a control loop rather than a checklist. 
+
+# 3 The Inventory-as-Code Architecture 
+
+3.1 From Registry to Feedback Loop 
+
+The conventional model inventory is a ledger : a periodically-updated table of models and their attributes. We argue that this paradigm is architecturally incompatible with agentic systems for a fundamental reason: the inventory can never be synchronized with the system state because the relevant state variables change at agent runtime, not at human review cadence. 10 The Inventory-as-Code (IaC) paradigm treats the inventory as a real-time feed-back control system . The inventory is not populated by humans after the fact; it is an active participant in the agent’s execution lifecycle. Every state change in any agent—a failed behavioral test, a drift exceedance, a dependency change—is immedi-ately reflected in the inventory graph and triggers downstream consequences without human intermediation. We term this arrangement recursive governance : the inventory recursively governs the very agents that constitute it, and any governance action on one agent—a failure or a quarantine—propagates recursively along the dependency graph to all of its transitive descendants (Section 5), so the control loop continually re-evaluates its own downstream state. This is analogous to the Infrastructure-as-Code principle in DevOps, where the system’s desired state is expressed declaratively and enforcement is continuous. Ap-plied to model governance, it means the inventory is the source of truth for opera-tional permissions: an agent that is not Validated in the inventory cannot execute, regardless of its technical deployment status. 
+
+3.2 The Four-Phase IaC Cycle 
+
+The IaC loop operates as a continuous cycle with four distinct phases. The four-way split is deliberate: each phase closes a specific failure mode left open by the others. Discovery alone would find agents but not assign them a risk-commensurate governance regime; registration alone would assign a regime but not verify the agent actually meets it; a validation gate alone would verify point-in-time behavior but say nothing about whether that behavior persists after deployment; and monitoring alone, without the preceding three phases, would have no baseline to monitor against and no agreed identity for the thing being monitored. The phases are therefore sequential dependencies, not independent checklist items. 
+
+Phase 1: Discovery. Automated scanning of agent configuration manifests— stored as version-controlled YAML or JSON specifications—identifies the LLM back-bone (model ID, provider, version hash), the registered toolset, the system prompt hash, and declared upstream dependencies. Discovery is triggered by any commit to the agent configuration repository and runs on a scheduled cadence independent of commits. 
+
+Phase 2: Registration. Each discovered agent is assigned a Unique Model 11 Identifier (UMI) following the taxonomy in Section 4, its materiality tier is computed via the DoA formula, and its node is created in the inventory DAG with edges to declared upstream dependencies. An agent declaring a dependency on an unregistered upstream system is flagged for manual review before receiving a Validated status. 
+
+Phase 3: Validation Gate. Before an agent may execute in any environment above development, it must pass a tier-specific battery of behavioral benchmarks administered by the ValidationGuard subsystem. Tier 1 agents require adversarial prompt injection tests, boundary condition tests on all tool-call parameters, and a minimum of 500 distinct CoT trajectory samples for Golden Path construction (Section 6). Tier 3 agents require only output distribution checks. Passage is logged with a timestamp, the benchmark suite version, and the system prompt hash. 
+
+Phase 4: Ongoing Monitoring. Post-deployment, the IaC system continuously ingests runtime telemetry to update node statuses. Three triggers can change a node’s status without human intervention: (a) a Drift Metric exceedance (Section 6), (b) propagation of an upstream failure (Section 5), or (c) a base model version change detected via provider API polling. Status changes propagate immediately through the DAG. 
+
+# 4 Materiality Scoring: The Degree of Autonomy Framework 
+
+We now define the components that enter our empirical model that quantifies agent risk. 
+
+4.1 Component Definitions Definition 4.1 (Impact Score, I). I ∈ { 1, . . . , 10 } measures the maximum poten-tial financial or operational harm from an incorrect or adversarially-induced output. Calibration benchmarks: I = 1 (pure-read informational retrieval, no downstream action); I = 5 (generates recommendations consumed by a human decision-maker with consequential authority); I = 10 (direct write access to a trading system or credit decisioning engine with no human-in-the-loop confirmation). Values must be assigned by the business line owner and countersigned by the Chief Risk Officer or delegate. 
+
+Definition 4.2 (Degree of Autonomy, A). A ∈ { 1, . . . , 5} measures the degree to which the agent’s action sequence is governed by human oversight: 12 A Operational Description 1 Human-in-the-Loop: every action requires explicit approval 2 Human-on-the-Loop: human may intervene; actions execute after timeout 3 Supervised Autonomy: human reviews aggregated action logs daily 4 Asynchronous Oversight: exceptions escalated; routine actions unreviewed 5 Full Autonomy: no human review of individual actions 
+
+Definition 4.3 (Weighted Tool Complexity Score, T ). Each tool is assigned to a severity class s ∈ { 1, 2, 3, 4} and the corresponding class weight is ws. If ns is the number of registered tools of severity class s in the agent’s declared toolset—not a runtime invocation count—then we set the aggregate score as: 
+
+T = min X
+
+> s
+
+ws ns, T max 
+
+!
+
+(1) where Tmax = 20 caps the contribution of tool count (cardinality). Note that Tmax =20 is a design parameter chosen for our simulation study; a real-world implementation would calibrate it against operational data. 
+
+4.2 Tool Severity Taxonomy 
+
+Table 1: Tool Severity Taxonomy for T Computation Class Tool Type Weight ws Examples 1 Read-only, internal data 0.5 Data warehouse queries, internal dashboards 2 Read-only, external API 1.0 Market data feeds, reference APIs 3 Write-access, reversible 2.5 Draft generation, staging database writes 4 Write-access, irreversible 5.0 Trade execution, credit decisions, wire transfers 
+
+4.3 Motivation and the Dominance Problem 
+
+The simplest formulation of an agent risk score: 
+
+R = ( I × A) + X
+
+> s
+
+ws ns (2) 13 contains a structural flaw: the unbounded summation of tool complexities can dom-inate the impact-autonomy product for any agent with a large toolset, regardless of whether those tools are consequential. A read-only indexer with dozens of endpoints (such as AG-17 in our inventory, Section 8) should not be classified Tier 1 by virtue of cardinality alone. We replace this with a weighted, bounded formulation that separates the breadth and severity of tool access. 
+
+4.4 The Calibrated Inherent Risk Score 
+
+R = α · (I × A) + (1 − α) · T (3) where α ∈ (0 , 1) blends the impact-autonomy product against tool access risk. We set α = 0 .6 throughout, so Rmax = 0 .6 × 50 + 0 .4 × 20 = 38 .0. 
+
+Proposition 4.1 (Tier Assignment Rule) . With α = 0 .6 and Tmax = 20, the tier boundaries are: Tier( R) = 
+
+
+
+1 R ≥ 0.75 · Rmax = 28 .52 0.40 · Rmax ≤ R < 28 .5 (15 .2 ≤ R < 28 .5) 3 R < 0.40 · Rmax = 15 .2(4) 
+
+Remark 4.1. An agent with I = 10, A = 5 satisfies R ≥ 0.6 × 50 = 30 > 28 .5 and is automatically Tier 1 regardless of toolset. Conversely, the tool term is bounded: its maximum contribution is (1 − α) Tmax = 0 .4 × 20 = 8 .0, strictly below the Tier 2 cutoff of 15 .2, so tool breadth alone can never lift an agent above Tier 3 . For instance AG-17, a read-only agent with A = 1, I = 2 and 60 Class-1 tools, has raw tool score 60 × 0.5 = 30 capped to T = min(30 , 20) = 20, giving R = 0 .6 × 2 + 0 .4 × 20 = 9 .2— correctly Tier 3 despite carrying the largest toolset in the inventory (a naive additive score I×A + P 
+
+> s
+
+wsns = 2 + 30 = 32 would wrongly rank it near the top tier). Critically, tier assignment and runtime quarantine are decoupled in our frame-work. A Tier 1 agent with a high inherent risk score is not automatically quarantined; it is quarantined only when upstream failures propagate to it (Section 5). Conflating the two would render all high-tier agents inoperative by design. 14 4.5 Agent Inventory: Inherent Risk Scores 
+
+Table 2 reports the inherent risk scores for the 17-agent inventory used in our simu-lation study (Section 8). Agents are grouped by their computed tier. All scores are reproducible from the companion Python script with SEED=42 .Table 2: Inherent Risk Scores for the 17-Agent Simulation Inventory ( α = 0 .6, Tmax =20) 
+
+Agent ID Tier I A T R Description AG-01 1 10 5 13.0 35.20 Trade execution orchestrator AG-02 1 10 5 9.5 33.80 Credit decisioning engine AG-03 1 10 4 12.5 29.00 Capital reporter AG-04 1 9 5 12.0 31.80 Portfolio risk aggregator AG-05 2 7 4 8.0 20.00 Position limit monitor AG-06 2 6 4 9.0 18.00 Market data normaliser AG-07 2 8 3 9.5 18.20 Counterparty exposure calc AG-08 2 7 3 8.0 15.80 Collateral valuation agent AG-09 2 7 3 9.0 16.20 Document classification AG-10 2 7 3 9.5 16.40 Limit-breach alerting AG-11 3 2 2 2.0 3.20 Internal data retriever A AG-12 3 2 1 1.5 1.80 Internal data retriever B AG-13 3 3 2 3.5 5.00 Reference data lookup AG-14 3 2 2 2.0 3.20 Audit log reader AG-15 3 3 2 3.0 4.80 Reporting formatter AG-16 3 2 1 1.0 1.60 Status dashboard feeder AG-17 3 2 1 20.0 9.20 Enterprise log/document indexer †   
+
+> †AG-17 carries 60 Class-1 (read-only) tools; its raw tool score 60 ×0.5 = 30 is capped to
+> Tmax = 20. It is the wide-but-shallow control case that exercises the cap and blend (Section 8).
+
+# 5 Graph-Theoretic Modeling of Agent Interdependence 
+
+5.1 The Agent Dependency Graph Definition 5.1 (Agent Dependency Graph) . The agent inventory is modeled as a directed graph G = ( V, E ) where: 
+
+• V = {v1, . . . , v n} is the set of registered agents, each with associated metadata (Ri, Tier i, Status i). 15 • E ⊆ V × V , where ( vi, v j ) ∈ E denotes that vj consumes the output of vi or invokes vi as a tool. 
+
+G is required to be acyclic (a DAG) for topological execution order to be well-defined. Section 5.5 addresses violations of this assumption. 
+
+5.2 Composite Risk Propagation 
+
+The central insight of the DAG approach is that validation failures are not local events. If agent vi fails its behavioral benchmark, every downstream agent consuming 
+
+vi’s output is operating on potentially corrupted data. 
+
+Definition 5.2 (Ancestor and Descendant Sets) . For agent vj ∈ V :
+
+A(vj ) = {vi ∈ V : ∃ directed path from vi to vj } (5) 
+
+D(vi) = {vj ∈ V : ∃ directed path from vi to vj } (6) 
+
+Definition 5.3 (Composite Risk Score) .
+
+RCj = Rj +βF · {vi ∈ A (vj ) : Status i = Failed } +βB · {vi ∈ A (vj ) : Status i = Blocked }
+
+(7) where βF > 0 is the failed-ancestor penalty and βB > 0 is the blocked-ancestor penalty, with βF > β B . We set βF = 15 .0 and βB = 5 .0 throughout. 
+
+5.3 The Blocking Condition 
+
+An important design choice is how to translate the propagation state into a binary 
+
+Blocked / Validated decision. Two properties are required. First, the decision must be decoupled from an agent’s own inherent risk Rj : a naive threshold on the absolute composite score, RCj ≥ τ , would auto-quarantine high-tier agents even with no upstream failure. Second, it should not hinge on the specific numeric values of the penalties βF , β B , which are calibration choices for severity reporting and should not silently determine which agents are quarantined. We therefore define blocking directly by contamination reachability :Status j = Blocked ⇐⇒ ∃ vi ∈ A (vj ) with Status i ∈ { Failed , Blocked }, (8) 16 i.e. an agent (that does not itself fail) is quarantined exactly when its ancestor set contains at least one contaminated (Failed or Blocked) agent. The composite score 
+
+RCj of Eq. (7) is retained separately as a severity magnitude —it quantifies how deeply an agent is embedded in the cascade via its count of failed and blocked ancestors—but it no longer gates the Blocked/Validated decision. 
+
+Proposition 5.1 (Blast radius equals reachability from a failure) . Under Eq. (8), evaluated in any topological order, an agent vj that passes its own behavioral test is Blocked if and only if A(vj ) contains a Failed agent. Equivalently, the set of Blocked agents is exactly the transitive descendant set D(vf ) of the failed agent(s) 
+
+vf .
+
+Proof. (⇐) If some Failed vf ∈ A (vj ) then vj has a contaminated ancestor and, not having failed itself, is Blocked. ( ⇒) Suppose vj is Blocked. Then it has a contami-nated ancestor va; if va is Failed we are done. Otherwise va is Blocked, so by Eq. (8) 
+
+va has a contaminated ancestor strictly earlier in the topological order. Iterating, this walk moves strictly backward in a finite acyclic graph without revisiting a node; it cannot terminate at a Blocked agent (each has a contaminated ancestor), so it ter-minates at a Failed agent vf . Since every step follows an ancestor edge, transitivity gives vf ∈ A (vj ). This is precisely the containment guarantee one wants—the blast radius of a failure is exactly its transitive descendant set—but, unlike a threshold on ∆ RCj , it holds 
+
+by construction rather than as a numerical coincidence. A rule ∆ RCj ≥ βF would additionally block any agent that reaches βF from blocked ancestors alone (with 
+
+βB = 5, three blocked ancestors already sum to βF = 15), so its equivalence to “one failed ancestor” is not robust to the choice of penalties; Eq. (8) removes that dependence. 
+
+Remark 5.1. Eq. (8) cleanly separates two distinct concepts: tier (a static property of the agent’s design, measuring its potential harm) and runtime status (a dynamic property measuring its current trustworthiness given the state of its upstream depen-dencies). Conflating them by using an absolute threshold on RCj would make Tier 1 agents ungovernable. 17 5.4 The Two-Pass Execution Structure 
+
+We compute validation and propagation in two passes (Algorithm 1): Pass 1 runs every agent’s behavioral test and records a tentative Failed /Validated ∗ label, and Pass 2 then computes each agent’s composite score and finalizes its status. We em-phasize that this structure is an implementation convenience, not a correctness re-quirement . Because an agent’s composite score and blocking decision depend only on its ancestors (Eqs. (7)–(8)), and a topological order visits every ancestor before the agent itself, a single interleaved pass already produces correct scores and statuses: when an agent is visited, all of its ancestors—and hence their final Failed /Blocked 
+
+labels—are resolved. (Agents at the same topological depth are mutually incompa-rable and never lie in one another’s ancestor sets, so one’s failure never needs to be observed by the other.) Separating validation from scoring is nonetheless useful in practice: the behavioral tests are the expensive, potentially externally executed or parallelized step, so staging them ahead of the cheap graph propagation keeps the two concerns modular and makes propagation a pure function of the recorded validation landscape. 
+
+Algorithm 1 Two-Pass Governed Workflow Execution 
+
+Require: DAG G, ValidationGuard VG, severity penalties βF , β B 
+
+> 1:
+
+σ ← TopologicalSort (G) 
+
+> 2:
+
+▷ Pass 1: Validation only  
+
+> 3:
+
+for v ∈ σ do  
+
+> 4:
+
+if VG.RunBehavioralTest (v) = False then  
+
+> 5:
+
+Status[ v] ← Failed  
+
+> 6:
+
+else  
+
+> 7:
+
+Status[ v] ← Validated ∗ ▷ tentative  
+
+> 8:
+
+end if  
+
+> 9:
+
+end for  
+
+> 10:
+
+▷ Pass 2: Composite risk scoring and final status  
+
+> 11:
+
+for v ∈ σ do  
+
+> 12:
+
+RCv ← CompositeRisk (v, G, β F , β B ) ▷ severity magnitude  
+
+> 13:
+
+if Status[ v]̸ = Failed and A(v) has a Failed /Blocked agent then  
+
+> 14:
+
+Status[ v] ← Blocked  
+
+> 15:
+
+else if Status[ v] = Validated ∗ then  
+
+> 16:
+
+Status[ v] ← Validated  
+
+> 17:
+
+end if  
+
+> 18:
+
+end forreturn {(Status[ v], R Cv )}v∈V
+
+18 Either way, because propagation reads only finalized ancestor labels, the resulting statuses and composite scores are invariant to the particular (valid) topological order chosen. 
+
+5.5 Handling Quasi-Cyclic Architectures 
+
+Real agentic systems frequently violate the DAG assumption. Feedback agents, self-correcting loops, and multi-turn orchestrators create directed cycles. We handle these via Loop Unrolling : cycles are broken by introducing time-indexed copies of the looping agents. Agent vi at iteration t is treated as a distinct node v(t) 
+
+> i
+
+, with edges (v(t) 
+
+> i
+
+, v (t+1)  
+
+> i
+
+) representing the feedback path. A maximum iteration depth T loop max is enforced by the orchestration layer and registered in the inventory; the unrolled graph remains a DAG with n · T loop max nodes. 
+
+5.6 Interdependence Reporting Snapshot 
+
+At any timestamp, the IaC system generates an Interdependence Snapshot (Table 3) for MRM audit. The snapshot is generated directly from the simulation study (Sec-tion 8) and shows a subset of the 17-agent inventory at the moment AG-01 fails its behavioral test. Table 3: Agentic Model Interdependence Snapshot — Selected Agents (Simulation seed=42; full inventory in Table 4)                                                       
+
+> Agent ID Tier Upstream Deps RRC∆RCStatus AG-01 1None 35.20 35.20 —Failed AG-05 2AG-01 20.00 35.00 +15.0 Blocked AG-07 2AG-01 18.20 33.20 +15.0 Blocked AG-10 2AG-04, AG-05 16.40 36.40 +20.0 Blocked AG-15 3AG-09, AG-10 4.80 29.80 +25.0 Blocked AG-02 1None 33.80 33.80 —Validated AG-06 2AG-02 18.00 18.00 —Validated AG-12 3AG-06 1.80 1.80 —Validated
+
+The ∆ RC column surfaces the incremental penalty attributable to upstream fail-ures, enabling reviewers to immediately identify which agents are at risk due to their graph position rather than their own validation status. 19 6 Trajectory Monitoring: Formalizing the Golden Path 
+
+6.1 The Inadequacy of Classical Drift Detection 
+
+Standard model drift detection—Kolmogorov-Smirnov tests on output distributions, Population Stability Index on input features—is output-centric [6, 7]. It asks: has the distribution of this model’s outputs changed? For agentic systems, this question is necessary but insufficient. Consider an agent whose output distribution is stable (e.g., it consistently approves 73% of credit applications) but whose reasoning path 
+
+has shifted: it is now approving applications for different reasons in ways that a new adversarial input distribution could manipulate. The output drift test would not detect this. The Trajectory Monitoring protocol is designed to detect it. 
+
+6.2 Chain-of-Thought as an MRM Object 
+
+We treat the agent’s Chain-of-Thought (CoT) [2]—the sequence of intermediate rea-soning steps generated before each action—as a first-class MRM artifact. Recent work has shown that a model’s stated CoT is not always a faithful account of the computation that produced its output: chain-of-thought explanations can be systematically shaped by input features the model never verbalizes, and measured faithfulness varies with model size and task [3, 4]. This bears directly on what tra-jectory monitoring can and cannot certify. Drift in the CoT embedding does not 
+
+certify that an agent’s hidden reasoning is correct or unchanged; it is a monitorable 
+
+proxy —a necessary-but-not-sufficient signal whose value is that a large, sustained shift in the distribution of stated reasoning is unlikely under stable, in-distribution operation and therefore warrants review. We accordingly treat the CoT as an in-termediate model artifact and a pseudo-measure of the (un)explainability of agent behavior, complementary to—not a replacement for—output-level drift testing and behavioral validation. For each invocation of agent vi, the CoT is a sequence c = ( c1, c 2, . . . , c k) of natural language steps. We represent c as a vector in Rd via a frozen sentence embedding model ϕ:
+
+e(c) = ϕ
+
+> k
+
+M
+
+> j=1
+
+cj
+
+!
+
+∈ Rd (9) In the simulation we use d = 128, with embeddings L 2-normalized to the unit sphere 20 as is standard for sentence embedding models [5]. 
+
+6.3 Constructing and Certifying the Golden Path Definition 6.1 (Golden Path) . The Golden Path gvi for agent vi is the centroid of the embedding distribution over a certified validation corpus of Nval trajectories: 
+
+gvi = 1
+
+Nval 
+
+> Nval
+
+X
+
+> k=1
+
+e(c(k)) (10) normalised to unit length. A Golden Path that is uncritically accepted from whatever validation runs happen to produce risks certifying an unrepresentative or poorly-behaved baseline, against which all future drift would be measured incorrectly. The Golden Path must therefore satisfy four certification criteria before registration, each targeting a distinct way the baseline could be defective—incomplete task coverage, an internally inconsistent baseline, too few samples to estimate the centroid reliably, and no human check that the “acceptable” trajectories are in fact acceptable: 1. Coverage. The prompt set must cover the agent’s documented task distribu-tion, including edge cases and adversarial inputs identified during development validation. 2. Intra-distributional consistency. tr( ˆΣval ) ≤ σ2max , where σ2max is a tier-specific variance ceiling. 3. Sample size. Nval ≥ 500 (Tier 1), ≥ 200 (Tier 2), ≥ 50 (Tier 3). 4. Human review. At least 10% of validation CoTs must be manually annotated as “acceptable reasoning” by the validation team. 
+
+6.4 The Drift Metric and Permutation Calibration Definition 6.2 (Trajectory Drift Metric) . Let p(t) 
+
+> vi
+
+be the rolling centroid of the Nprod 
+
+most recent production CoT embeddings. The Drift Metric at monitoring period t is: 
+
+Dt = 1 − gvi · p(t)
+
+> vi
+
+∥gvi ∥ · ∥ p(t) 
+
+> vi
+
+∥ (11) 21 Dt ∈ [0 , 2]; Dt = 0 implies perfect alignment with the Golden Path. The drift threshold δ is calibrated by a matched bootstrap [11] that reproduces the null distribution of the production statistic, Eq. (11). That statistic compares an 
+
+Nval -sample Golden Path centroid against an Nprod -sample rolling window, so under the null (in-distribution production) its variance is governed by both sample sizes, scaling as 1 
+
+> Nval
+
++ 1 
+
+> Nprod
+
+. We therefore, per replicate, resample a Golden Path at Nval 
+
+and a window at Nprod from the certified validation corpus: 1. Draw Nval indices with replacement from the validation corpus and form the unit-normalised centroid g⋆.2. Independently draw Nprod indices with replacement and form the unit-normalised centroid p⋆.3. Record D(g⋆, p⋆). 4. Repeat across M = 1 ,000 replicates to obtain the empirical null ˆFD, and set 
+
+δ = ˆF −1 
+
+> D
+
+(1 − αfp ) for a false-positive target αfp .Matching both sample sizes is essential. A naive null that splits Nval into two equal halves compares two Nval /2-sample centroids, which does not reproduce the production statistic: when Nprod < N val the production window is noisier than either half, so the half-split null understates the production variance and yields a threshold that is far too tight. The effect is severe at Tier 1, where Nval = 500 ≫ Nprod = 100: under the half-split null a perfectly in-distribution agent exceeds the nominal 5% threshold roughly 90% of the time (Section 8). The matched bootstrap removes this mismatch and restores false-positive control at the intended αfp ; because it resamples with replacement it also applies unchanged when Nval < N prod (as at Tier 3). We use αfp = 0 .05 (Tier 1), 0 .01 (Tier 2), and 0 .10 (Tier 3) as calibration defaults (Appendix B). Under the matched calibration αfp is a pure false-positive budget—the fraction of in-distribution monitoring windows expected to soft-flag—set per tier to trade alert volume against detection sensitivity, independent of Nval .
+
+6.5 Distinguishing Legitimate Deviation from Unintended Drift 
+
+A Drift Metric exceedance Dt > δ is necessary but not sufficient for remedial action. 
+
+δ is calibrated to a false-positive budget , not a certainty threshold (Section 6.4), so 22 by construction some exceedances are expected under entirely benign operation. A single hard cutoff that immediately quarantines on any exceedance would therefore misspend that budget in one of two directions: set δ tight enough to catch genuine drift quickly and the agent inventory pays for it in false quarantines of benign reasoning variation (e.g., a legitimately novel but correct line of reasoning on an unusual input), each of which forces a full Validation Gate to reverse; set δ loose enough to keep false quarantines rare and detection of genuine drift is delayed. A single threshold cannot simultaneously minimize both costs because it collapses two different decisions— worth a human look versus worth taking the agent offline —into one. We address this by decoupling the two decisions into a two-stage response, so that the cheaper, reversible action (human review) absorbs the bulk of the false-positive budget and the expensive, disruptive action (quarantine) is reserved for exceedances that are either large enough to be implausible under the null or persistent enough that continued operation is no longer justified while awaiting review: 
+
+Stage 1: Soft Flag. When Dt ∈ (δ, 1.5δ], the agent status transitions to Under Review . This does not trigger downstream quarantine. A human validator reviews a random sample of recent CoTs against the registered task scope. 
+
+Stage 2: Hard Flag. When Dt > 1.5δ or a Soft Flag persists beyond τreview 
+
+days, status transitions to Quarantined and the downstream propagation algorithm runs. The agent requires a full Validation Gate before reinstatement. Under the matched calibration above, this two-stage rule cleanly separates the two populations in the simulation study (Section 8): every in-distribution validated agent remains Within Bounds while every agent subject to a genuine drift injection is Hard-Flagged . Any residual Soft Flags occur only at the per-tier αfp budget— confirming that the threshold now controls the intended error rate, in contrast to the 
+
+∼90% false-positive rate produced by a sample-size-mismatched null. 
+
+6.6 The LLM Version Change Problem 
+
+When an LLM provider releases a new model version, the embedding geometry of the agent’s CoT trajectories may shift, rendering the Golden Path meaningless. This is a direct consequence of the upstream-change cause identified in Section 2: the provider’s release is not an institutional change event, so nothing in traditional change control would otherwise catch it, yet it invalidates the very baseline the trajectory monitor depends on. Treating it as a silent non-event would let the monitor keep 23 comparing production trajectories against a baseline computed under a superseded model, producing either spurious drift alarms or, worse, a false sense of coverage. We mandate instead: (1) the affected agent is immediately suspended and transitioned to Pending Revalidation ; (2) the Golden Path is invalidated and the production trajectory buffer cleared; (3) a new Validation Gate run constructs a new Golden Path and recomputes δ; (4) the agent is reinstated only upon successful Gate completion. No waiver is permitted for Tier 1 or Tier 2 agents. 
+
+# 7 Practical Implementation Considerations 
+
+7.1 Telemetry and Logging Architecture 
+
+Every agent invocation must emit a structured telemetry event containing: the UMI, invocation timestamp, input hash, CoT transcript, action taken, tools invoked and their return values, and the output. This telemetry must be written to an append-only, tamper-evident log accessible to the MRM function independently of the busi-ness line, and retained for the institution’s specified model risk retention period (typ-ically 7 years for typical capital based models). 
+
+7.2 Prompt Change Control 
+
+Prompt engineering changes to an agent’s system prompt constitute a model change event and must trigger the Validation Gate. We recommend a Prompt Registry in which system prompts are version-controlled, each version is assigned a hash, and the currently-registered hash is compared against the runtime hash at each invocation. A hash mismatch generates an immediate alert and operationally suspends the agent pending change-control review. 
+
+7.3 Integration with Existing MRM Tooling 
+
+The IaC system’s CSV export maps directly to standard MRM inventory fields, with the addition of the RC and ∆ RC columns. Status changes should push automatically to the institution’s model inventory database. 24 8 Simulation Study 
+
+8.1 Setup 
+
+All results in this section are simulation based and require no external LLM inference. Embeddings are synthetic unit-sphere vectors drawn from a Gaussian centered on a per-agent direction, simulating the structure of real sentence embeddings. The 17-agent inventory follows the structure of Table 2: four Tier 1 root nodes (AG-01 through AG-04), six Tier 2 mid-layer agents (AG-05 through AG-10), and seven Tier 3 agents (AG-11 through AG-17)—the last of which, AG-17, is the wide-but-shallow control case (Section 4). The dependency graph contains 15 edges encod-ing the data-flow architecture described in Section 5 (AG-17 is a standalone read-only node with no dependencies). The graph is confirmed to be a DAG. AG-01 is forced to fail its behavioral test by the ValidationGuard , simulating a Tier 1 root-node failure. All other agents pass. The two-pass workflow (Algorithm 1) is then run with βF = 15 .0, βB = 5 .0. 
+
+8.2 Composite Risk Propagation Results 
+
+Table 4 reports the full two-pass output for all 17 agents, sorted by tier and then by agent ID within tier. The Circuit-Breaker (CB) column reports the breaker state derived from each agent’s propagation result, in the spirit of the circuit-breaker pattern in distributed systems [12]. The failed agent that trips the breaker is Active ; a blocked agent with a directly Failed parent is Triggered (first-hop containment); a blocked agent contaminated only through an intermediate Blocked parent is Quarantined (deeper containment); and a validated agent is on Standby . The Triggered/Quarantined distinction records how far a blocked agent sits from the originating failure, giving responders a natural triage order. 
+
+8.3 Key Findings 1. Proportional containment. The single failure of AG-01 (1 of 4 Tier 1 roots) cascades to block exactly 6 agents: its two direct Tier 2 dependents (AG-05, AG-07), one second-hop Tier 2 agent (AG-10), two Tier 3 agents directly downstream of blocked Tier 2 nodes (AG-11, AG-13), and one Tier 3 agent with mixed parentage 25 Table 4: Two-Pass Workflow Results: 17-Agent Inventory under AG-01 Failure (Seed=42; βF = 15 .0, βB = 5 .0)                                                                                                                                                  
+
+> Agent ID Tier Upstream Deps RRC∆RCStatus CB Traj. Flag AG-01 1None 35.20 35.20 —Failed Active Hard Flag AG-02 1None 33.80 33.80 —Validated Standby Within Bounds AG-03 1None 29.00 29.00 —Validated Standby Within Bounds AG-04 1None 31.80 31.80 —Validated Standby Within Bounds AG-05 2AG-01 20.00 35.00 +15.0 Blocked Triggered Hard Flag AG-06 2AG-02 18.00 18.00 —Validated Standby Within Bounds AG-07 2AG-01 18.20 33.20 +15.0 Blocked Triggered Hard Flag AG-08 2AG-02, AG-04 15.80 15.80 —Validated Standby Within Bounds AG-09 2AG-03 16.20 16.20 —Validated Standby Within Bounds AG-10 2AG-04, AG-05 16.40 36.40 +20.0 Blocked Quarantined Hard Flag AG-11 3AG-05 3.20 23.20 +20.0 Blocked Quarantined Hard Flag AG-12 3AG-06 1.80 1.80 —Validated Standby Within Bounds AG-13 3AG-07 5.00 25.00 +20.0 Blocked Quarantined Hard Flag AG-14 3AG-08 3.20 3.20 —Validated Standby Within Bounds AG-15 3AG-09, AG-10 4.80 29.80 +25.0 Blocked Quarantined Hard Flag AG-16 3AG-09 1.60 1.60 —Validated Standby Within Bounds AG-17 3None 9.20 9.20 —Validated Standby Within Bounds
+> Summary: 10 Validated, 6 Blocked, 1 Failed
+
+(AG-15). The remaining 10 agents—including the three other Tier 1 root nodes and the standalone AG-17—remain fully operational. The blast radius is precisely the transitive descendant set D(AG-01), exactly as guaranteed by Proposition 5.1. 
+
+2. Transitive blocking through validated intermediate nodes. AG-10 is blocked despite having AG-04 (Validated) as one of its direct parents. It is blocked because its ancestor set also contains AG-01 (via AG-05). This demonstrates that the reachability rule correctly identifies the full contamination path, not merely the immediate parent status. Similarly, AG-15 is blocked via the AG-09 → AG-10 path even though AG-09 itself is validated. 
+
+3. Penalty accumulation. AG-10 accumulates ∆ RC = +20 .0 (one failed an-cestor AG-01 contributing βF = 15 and one blocked ancestor AG-05 contributing 
+
+βB = 5), while AG-15 accumulates ∆ RC = +25 .0 (AG-01 contributing 15, AG-05 and AG-10 each contributing 5). This penalty accumulation gives MRM teams a quantitative measure of how deeply embedded in the failure cascade a given agent is (Section 5.3); the composite score serves purely as this severity signal and no longer 26 gates quarantine. 
+
+4. Tier independence of quarantine status. All 6 blocked agents span mul-tiple tiers (Tier 2: AG-05, AG-07, AG-10; Tier 3: AG-11, AG-13, AG-15), confirming that blocking is determined entirely by graph position relative to the failure, not by the agent’s inherent risk tier. 
+
+Figure 1: Governance map simulation results: The governance DAG topology of agent interconnectedness and tiering. The figure shows the cascading of failures to descendent nodes and overall risk propagation. 
+
+8.4 Trajectory Monitoring Results 
+
+Drift metrics are computed with Nprod = 100 production invocations and M = 1 ,000 bootstrap replicates for the matched threshold calibration of Section 6 (Appendix B). Each agent’s stochastic trajectory uses an independent, agent-keyed random genera-tor, so the results are invariant to processing order and to the presence of other agents. With the matched calibration the monitor separates the two populations cleanly. 
+
+Validated agents. All ten in-distribution validated agents are classified Within 
+
+27 Bounds , with drift ratios Dt/δ between roughly 0 .6 and 0 .9. Crucially, the three surviving Tier 1 validated agents (AG-02, AG-03, AG-04) now sit below threshold at Dt/δ = 0 .703, 0 .829, and 0 .743—in contrast to the half-split null, under which the same agents soft-flag at ratios above 1 .2 (Section 6). The per-tier thresholds are 
+
+δ ≈ 0.020–0 .022 (Tier 1), 0 .028–0 .031 (Tier 2), and 0 .045–0 .054 (Tier 3). AG-17, the wide-but-shallow control agent, is likewise Within Bounds (Dt/δ = 0 .883). 
+
+Failed and Blocked agents. All seven agents subject to the drift injection—the failed root AG-01 and its six blocked descendants (AG-05, AG-07, AG-10, AG-11, AG-13, AG-15)—receive Hard Flag status, with Dt/δ ratios from 3 .3 to 8 .3. In particular AG-13, which the mis-calibrated half-split null had under-flagged as a mere Soft Flag, is now correctly Hard-Flagged: the matched Tier 3 threshold ( δ ≈ 0.052, rather than the inflated 0 .126) no longer absorbs its drift. Overall the monitor yields a clean confusion matrix on this inventory—10 Within Bounds, 0 Soft, 7 Hard—with all in-distribution agents passing and all drifted agents caught. Residual soft false positives are expected only at the per-tier αfp budget; this seed realizes none. The drift injection magnitude of 0 .60 (orthogonal component) corresponds to a substantial angular displacement on the unit sphere. 
+
+Figure 2: Drift analysis simulation results: The figure shows per-agent trajectory drift, color coded by whether it is within bounds or soft/hard flagged (left panel). The right panel shows the case of agent AG-01 and its null distribution for drift threshold calibration. 28 9 Open Problems and Conclusion 
+
+9.1 Open Problems Embedding model stability. The Trajectory Monitoring protocol assumes the sentence embedding model ϕ is stable over time. If ϕ is updated, the Golden Path is invalidated by the same mechanism as a base model update. Institutions should pin embedding model versions and treat updates as a governance event requiring batch recomputation of all registered Golden Paths. 
+
+Multi-modal agentic outputs. The CoT embedding approach is defined for text-based reasoning chains. Agents reasoning over structured data, code, or images require analogous representations in appropriate embedding spaces with potentially different similarity metrics. 
+
+Adversarial trajectory manipulation. A sophisticated adversary who knows the Golden Path could craft inputs that preserve Dt < δ while manipulating agent behavior in semantically-aligned but functionally harmful ways. Defense against this class of attack requires adversarial trajectory testing during validation. 
+
+Calibration under non-i.i.d. production. The matched bootstrap of Section 6 controls the false-positive rate under the assumption that in-distribution production windows are exchangeable with the validation corpus. Real production streams may instead exhibit temporal autocorrelation, slow covariate drift, or heavier-tailed varia-tion than the validation set, for which an i.i.d. bootstrap null can be optimistic. Ex-tending the calibration to block-bootstrap or otherwise time-aware nulls, and studying the sensitivity–burden trade-off of αfp across real task distributions, remains valuable future work. 
+
+9.2 Conclusion 
+
+The governance of agentic AI systems using the principles of traditional MRM is not merely an extension of existing MRM practice. It requires a fundamental architectural shift: from the model inventory as a passive ledger to an active, real-time control system that participates in the agent’s operational lifecycle. This paper has developed that shift across four dimensions. The calibrated DoA materiality score addresses the dominance problem in naive risk aggregation and pro-vides an explicit, auditable taxonomy for tool access risk. The DAG-based compos-29 ite risk propagation algorithm—with its two-pass execution and blocking condition correctly decoupled from inherent risk tier—formalizes the intuition that validation failures are systemic events. The Golden Path trajectory monitoring framework pro-vides a statistically principled approach to drift detection that explicitly distinguishes legitimate reasoning variation from genuine behavioral departure. And the practical protocols for LLM version changes, feedback loop handling, and prompt change con-trol close the implementation gaps that would otherwise render a theoretically sound framework operationally unworkable. The simulation study demonstrates that the framework behaves as intended: a single Tier 1 failure propagates to exactly its transitive descendant set, leaving the rest of the inventory operational, while the trajectory monitoring provides a continu-ous, quantitative signal of reasoning fidelity that traditional output-distribution tests cannot supply. 30 A Notation Reference 
+
+Table 5: Summary of Mathematical Notation Symbol Definition 
+
+G = ( V, E ) Agent dependency graph (DAG) 
+
+vi Individual agent node 
+
+Ri Inherent Risk Score (Eq. 3) 
+
+RCi Composite Risk Score (Eq. 7) ∆RCi Composite risk increment: RCi − Ri
+
+I Financial/Operational Impact Score ( ∈ { 1, . . . , 10 })
+
+A Degree of Autonomy ( ∈ { 1, . . . , 5})
+
+T Weighted Tool Complexity Score 
+
+ws Weight for tool severity class sα Calibration parameter (= 0.6) 
+
+βF , β B Failed- and blocked-ancestor penalty coefficients 
+
+A(vj ) Ancestor set of vj in G
+
+D(vi) Descendant set of vi in G
+
+gvi Golden Path centroid for agent vi
+
+p(t) 
+
+> vi
+
+Rolling production trajectory centroid at time tDt Trajectory Drift Metric at time t (Eq. 11) 
+
+δ Drift threshold (calibrated via matched bootstrap) 
+
+αfp False-positive rate target for δ calibration 
+
+ϕ Sentence embedding function 
+
+Nval Validation corpus size for Golden Path construction 31 B Recommended Calibration Parameters 
+
+Table 6: Default Calibration Parameters by Tier Parameter Tier 1 Tier 2 Tier 3 
+
+Nval (Golden Path samples) 500 200 50 
+
+αfp (false-positive rate for δ) 0.05 0.01 0.10 Hard Flag multiplier on δ 1.5 1.5 1.5 
+
+τreview (Soft Flag resolution, days) 2 5 14 Prompt hash check frequency Per-invocation Daily Weekly Base model version polling frequency Hourly Daily Weekly 
+
+βF (failed-ancestor penalty) 15.0 (uniform) 
+
+βB (blocked-ancestor penalty) 5.0 (uniform) 
+
+α (DoA risk blend weight) 0.6 (uniform) 
+
+# References 
+
+[1] National Institute of Standards and Technology. Artificial Intelligence Risk Management Framework (AI RMF 1.0) . NIST AI 100-1, January 2023. DOI: 10.6028/NIST.AI.100-1. [2] J. Wei, X. Wang, D. Schuurmans, M. Bosma, B. Ichter, F. Xia, E. Chi, Q. Le, and D. Zhou. Chain-of-thought prompting elicits reasoning in large language models. In Advances in Neural Information Processing Systems (NeurIPS) , 2022. arXiv:2201.11903. [3] M. Turpin, J. Michael, E. Perez, and S. R. Bowman. Language models don’t al-ways say what they think: Unfaithful explanations in chain-of-thought prompt-ing. In Advances in Neural Information Processing Systems (NeurIPS) , 2023. arXiv:2305.04388. [4] T. Lanham, A. Chen, A. Radhakrishnan, et al. Measuring faithfulness in chain-of-thought reasoning. arXiv:2307.13702, 2023. [5] N. Reimers and I. Gurevych. Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In Proc. of EMNLP-IJCNLP , 2019. arXiv:1908.10084. 32 [6] J. Gama, I. ˇZliobait˙ e, A. Bifet, M. Pechenizkiy, and A. Bouchachia. A survey on concept drift adaptation. ACM Computing Surveys , 46(4):Article 44, 2014. [7] S. Rabanser, S. G¨ unnemann, and Z. C. Lipton. Failing loudly: An empirical study of methods for detecting dataset shift. In Advances in Neural Information Processing Systems (NeurIPS) , 2019. arXiv:1810.11953. [8] S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao. ReAct: Synergizing reasoning and acting in language models. In International Confer-ence on Learning Representations (ICLR) , 2023. arXiv:2210.03629. [9] T. Schick, J. Dwivedi-Yu, R. Dess` ı, R. Raileanu, M. Lomeli, L. Zettlemoyer, N. Cancedda, and T. Scialom. Toolformer: Language models can teach them-selves to use tools. In Advances in Neural Information Processing Systems (NeurIPS) , 2023. arXiv:2302.04761. [10] Q. Wu, G. Bansal, J. Zhang, Y. Wu, B. Li, E. Zhu, L. Jiang, X. Zhang, S. Zhang, J. Liu, A. H. Awadallah, R. W. White, D. Burger, and C. Wang. AutoGen: Enabling next-gen LLM applications via multi-agent conversation. arXiv:2308.08155, 2023. [11] B. Efron and R. J. Tibshirani. An Introduction to the Bootstrap . Chapman & Hall/CRC, 1993. [12] M. T. Nygard. Release It!: Design and Deploy Production-Ready Software . Prag-matic Bookshelf, 2nd edition, 2018. 33

@@ -1,0 +1,1465 @@
+Title: TECH-AIES-AUTONOMY-LEVEL-20260722-final
+
+URL Source: https://arxiv.org/pdf/2607.23438v1
+
+Published Time: Tue, 28 Jul 2026 00:52:15 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Separating Capability from Permission: A Governance Framework for Agentic 
+
+# AI Autonomy Levels 
+
+# Haining Zheng 1, Qian Dong 1, Rodolfo K. Depena 1, Jonathan D. Bhatia 1, Feng Xiao 2, Peng Xu 1
+
+> 1
+
+ExxonMobil Technology and Engineering Company 
+
+> 2
+
+ExxonMobil Global Operations Company 
+
+Abstract 
+
+As AI systems increasingly exhibit agentic behavior, discus-
+
+sions of autonomy often conflate what systems are techni-
+
+cally capable of doing with what they should be permitted to 
+
+do in practice. This paper introduces a governance frame-
+
+work that explicitly sep arates Allowed Autonomy Levels 
+
+(AAL) —which define the degree of autonomy an AI agent is 
+
+authorized to exercise given risk, oversight, and accountabil-
+
+ity considerations —from Autonomous Capability Levels 
+
+(ACL), which characterize an agent’s inherent technica l abil-
+
+ities. We present a structured set of autonomy levels spanning 
+
+reactive execution, decision support, supervised action, 
+
+goal‑directed autonomy, and delegated operational authority, 
+
+and describe how control, reversibility, and accountability 
+
+change as autonomy increases. To operationalize this frame-
+
+work, we propose a risk‑aware decision process for assigning 
+
+allowed autonomy, analyze how risk and accountability 
+
+evolve across autonomy levels, and demonstrate its applica-
+
+tion through a deployed enterprise data engineering agent, il-
+
+lustrating how a system assessed at a high capability level can 
+
+be deliberately constrained to a lower allowed autonomy 
+
+based on risk, reversibility, and organizational readiness. By 
+
+distinguishing authorization from capability, this work pro-
+
+vides practical guidance for the design, deployment, and gov-
+
+ernance of Agentic AI systems. 
+
+# Introduction 
+
+Artificial intelligence (AI) technologies and applications are 
+
+being rapidly adopted across society, ranging from con-
+
+sumer -facing products to large -scale enterprise systems, 
+
+largely driven by advances in Large Language Models 
+
+(LLMs). Despite this rapid ado ption, it has been widely rec-
+
+ognized that the development of Responsible AI frame-
+
+works, particularly in corporate enterprises, has not kept 
+
+pace with advancements in AI technologies (AI Index Steer-
+
+ing Committee 2026). This misalignment has become in-
+
+creasin gly pronounced with the recent acceleration in the 
+
+development and deployment of Agentic AI. 
+
+A critical requirement for the responsible design, govern-
+
+ance, and deployment of Agentic AI systems is the explicit 
+
+definition of autonomy levels. Without clear and shared au-
+
+tonomy definitions, organizations struggle to reason consist-
+
+ently about oversight requirements, acceptable risk, and ac-
+
+countability boundaries. However, existing work on auton-
+
+omy classification for AI systems remains limited, in part 
+
+because such distinctions were not practically necessary un-
+
+til recently. Some appr oaches define autonomy levels by 
+
+drawing analogies to autonomous driving systems (SAE 
+
+2021). Other perspectives focus on characterizing the role of 
+
+humans in the decision -making loop (Feng, McDonald, and 
+
+Zhang 2025), while additional efforts emphasize lega l or li-
+
+ability -based considerations (Soder et al. 2025). While val-
+
+uable, these approaches often conflate an agent’s technical 
+
+capabilities with the degree of authority it is permitted to 
+
+exercise in practice, or they focus on a single dimension of 
+
+autonomy without providing an operational decision frame-
+
+work. 
+
+In this paper, we propose a governance framework for de-
+
+fining autonomy levels that is explicitly designed to inte-
+
+grate with our enterprise Responsible AI practices in an ac-
+
+tionable and operational manner. Building on prior work 
+
+and informed by analogies to human organizational and de-
+
+cision -making systems, we argue that a clear separation be-
+
+tween an AI agent’s inherent technical capabilities and the 
+
+degree of autonomy it is authorized to exercise enables more 
+
+transparent, accountable, and risk -aware governan ce. We 
+
+distinguish between Allowed Autonomy Levels (AAL), 
+
+which define how much autonomy an agent is permitted to 
+
+exercise given governance, oversight, and accountability 
+
+constraints and Autonomous Capability Levels (ACL), 
+
+which capture what an agent is te chnically capable of doing. 
+
+This separation provides a practical basis for consistent 
+
+review, approval, and deployment of Agentic AI systems 
+
+across heterogeneous enterprise environments. By decou-
+
+pling capability assessment from autonomy authorization, 
+
+the proposed framework supports scalable governance while 
+
+accommodating rapid advances in Agentic AI technologies. 
+
+This framework is intended to help organizations move 
+
+faster and safer by providing an intuitive and practical gov-
+
+ernance approach that enables agents to be deployed at ap-
+
+propriate autonomy levels .Basic Concepts and Design Principles 
+
+The autonomy framework proposed in this paper is rooted 
+
+in our enterprise Responsible AI Framework , which is de-
+
+veloped on the foundation of the NIST AI Risk Management 
+
+Framework (NIST 2023) and complies with regulations 
+
+such as the EU AI Act (EU 2024). It has been deployed for 
+
+two years with an established intake process, risk question-
+
+naires, trained AI risk advisors, and a governance dashboard 
+
+used to track AI projects. While the system has been work-
+
+ing well for traditional machine learning approaches and 
+
+large foundation model s based GenAI applications , we find 
+
+that it needs to be updated to accommodate recent advances 
+
+in Agentic AI. 
+
+In this work, a n AI agent is defined as an autonomous or 
+
+semi -autonomous computer system that perceives its envi-
+
+ronment, reasons, plans, and takes actions to achieve goals, 
+
+and may improve through learning. Our definition is based 
+
+on widely accepted work by (Brustoloni 1991) and (Russell 
+
+and Norvig 2020). Agentic AI refers to an application in 
+
+which one or more AI agents are composed and orchestrated 
+
+to perform complex tasks or workflows through the coordi-
+
+nation of data, tools, and other systems, operating at varying 
+
+levels of autonomy within defined constraints and oversight 
+
+mechanisms. Such systems may consist of multiple interact-
+
+ing agents, orchestration logic, external tools, and support-
+
+ing infrastructure, collectively producing autonomous be-
+
+havior that cannot be attributed to any single component in 
+
+isolation. 
+
+The autonomy framework proposed in this paper is 
+
+guided by three design principles: rigor , stability , and usa-
+
+bility . These principles reflect both conceptual considera-
+
+tions about how autonomy should be reasoned about and 
+
+practical constraints arising from enterprise Responsible AI 
+
+governance. Together, they shape how autonomy levels are 
+
+defined, interpreted, and applie d across a wide range of 
+
+Agentic AI systems. 
+
+Rigor is required to ensure that autonomy assessments are 
+
+meaningful, consistent, and defensible. Autonomy levels 
+
+must be defined using clear criteria that allow different re-
+
+viewers, teams, and organizations to arrive at consistent 
+
+conclusions when evaluat ing similar systems. This objective 
+
+is particularly important because autonomy assessments 
+
+may inform deployment approvals, governance controls, 
+
+and accountability assignments. 
+
+Stability is critical because AI technologies evolve rap-
+
+idly, while governance frameworks must remain applicable 
+
+over longer time horizons. Autonomy levels that depend on 
+
+specific model capabilities, benchmarks, or architectural de-
+
+tails risk becoming obsol ete or misleading as new tech-
+
+niques emerge. To remain stable, autonomy definitions 
+
+should abstract away from implementation details and focus 
+
+instead on externally observable behaviors and decision -
+
+making authority. 
+
+Usability is essential for practical adoption. In large or-
+
+ganizations, autonomy assessments are often performed by 
+
+multidisciplinary teams that include not only AI researchers 
+
+and engineers, but also legal, risk, and governance profes-
+
+sionals. A framework t hat is overly complex or difficult to 
+
+interpret risks being inconsistently applied or ignored alto-
+
+gether. For this reason, the number of autonomy levels 
+
+should be limited, their meanings clearly articulated, and 
+
+their progression intuitive. 
+
+# Autonomy Level Decision Framework 
+
+A common approach to defining autonomy levels for AI sys-
+
+tems is to draw analogies to human roles or to existing tax-
+
+onomies from other domains, such as the Society of Auto-
+
+motive Engineers (SAE) levels for autonomous driving sys-
+
+tems ( SAE 202 1). While such approaches are intuitive, they 
+
+often implicitly combine technical capability and permitted 
+
+autonomy into a single progression. In practice, this cou-
+
+pling can be problematic for Agentic AI systems, particu-
+
+larly in enterprise environments where authorization, ac-
+
+countability, and oversight are strongly context -dependent. 
+
+Encouragingly, some prior work has explicitly centered 
+
+the role of humans in agentic systems. The framework pro-
+
+posed by (Feng, McDonald, and Zhang 2025) exemplifies 
+
+this approach by defining five levels of user involvement: 
+
+L1, where users act as operators and manage planning, in-
+
+vocation, or approval before actions; L2, where users serve 
+
+as collaborators and control can tran sfer between users and 
+
+agents; L3, where users function as consultants while agents 
+
+plan and execute most tasks; L4, where users act primarily 
+
+as approvers and are engaged only in high -consequence sit-
+
+uations; and L5, where users are observers and agents plan 
+
+and execute tasks with minimal human involvement aside 
+
+from extreme interventions such as emergency shutdowns. 
+
+This framework clearly articulates human roles across var-
+
+ying degrees o f autonomy and is applicable to a wide range 
+
+of settings. However, it does not provide an explicit decision 
+
+framework for assessing an agent’s inherent capabilities or 
+
+for systematically reasoning about the potential real -world 
+
+consequences associated with different autonomy assign-
+
+ments. 
+
+A useful parallel can be found in human organizations, 
+
+where capability and authority are routinely decoupled. An 
+
+individual may be fully capable of independently perform-
+
+ing a task, yet still be required to seek approval before doing 
+
+so, or may be authoriz ed to act only within a limited scope. 
+
+The autonomy framework proposed in this paper adopts a 
+
+similar perspective for Agentic AI systems. 
+
+Accordingly, we distinguish between two dimensions of 
+
+autonomy. Allowed Autonomy Levels (AAL) describe the 
+
+degree of autonomy that an AI agent or agentic system is 
+
+permitted to exercise in deployment, taking into account Figure 1: Flowchart to determine autonomy level. 
+
+governance requirements, oversight mechanisms, accounta-
+
+bility structures, and acceptable risk thresholds. Autono-
+
+mous Capability Levels (ACL) describe what an AI agent or 
+
+agentic system is technically capable of doing, independent 
+
+of organizational policy o r authorization, based on observa-
+
+ble behaviors such as perception, reasoning, planning, tool 
+
+use, and coordination. 
+
+This separation allows decisions about autonomy to be 
+
+made in a more structured and transparent manner. Capabil-
+
+ity assessments establish an upper bound on what a system 
+
+could do, while authorization decisions determine what it 
+
+should be allowed to do in a given context. Importantly, 
+
+higher capability does not automatically imply higher al-
+
+lowed autonomy. A highly capable system may still be de-
+
+ployed with limited autonomy, while a less capable system 
+
+may be granted greater freedom within a tightly constrained 
+
+scope. 
+
+Figure 1 illustrates the proposed autonomy level decision 
+
+framework. The first step is to assess the Autonomous Ca-
+
+pability Level of the system based on its technical charac-
+
+teristics. This assessment constrains the set of Allowed Au-
+
+tonomy Levels that are fe asible but does not determine the 
+
+final authorization decision. Governance considerations —
+
+including potential impact, reversibility of actions, account-
+
+ability structures, and mitigation mechanisms —are then 
+
+used to select an appropriate Allowed Autonomy Level for 
+
+deployment. 
+
+Note that a key decision step is “Is the risk acceptable?”. 
+
+We leverage our existing risk assessment questionaries and 
+
+decision process under the Responsible AI Framework. 
+
+Readers may leverage their existing risk assessment frame-
+
+work or establish such a practice if the framework does not 
+
+exist. 
+
+The decision process terminates at A1, which represents 
+
+the lowest allowed autonomy level. For most applications, 
+
+risks at A1 are acceptable given full human control. In rare 
+
+cases where risk remains unacceptable even at A1, the ap-
+
+plication should not be d eployed in its current form and re-
+
+quires redesign. 
+
+This two -step decision process is particularly important 
+
+for Agentic AI systems, where autonomous behavior may 
+
+emerge from interactions between multiple components ra-
+
+ther than from any single agent. By explicitly separating ca-
+
+pability assessment from autonomy authorization, the 
+
+framework supports stable and reusable governance deci-
+
+sions across diverse systems and deployment scenarios. It 
+
+also enables incremental and re versible autonomy progres-
+
+sion, allowing organizations to increase or decrease permit-
+
+ted au tonomy without reinterpreting underlying capabilities. 
+
+The following sections describe the Allowed Autonomy 
+
+Levels and Autonomous Capability Levels in detail. To-
+
+gether, they operationalize the decision framework intro-
+
+duced here and provide a structured basis for governing 
+
+Agentic AI systems within enterprise r esponsible AI pro-
+
+grams. 
+
+# Allowed Autonomy Level 
+
+Allowed Autonomy Level (AAL) concerns the level of ac-
+
+countability that an organization is willing to assume for an 
+
+Agentic AI application. AAL defines what an agentic sys-
+
+tem is authorized to do in deployment , rather than what it is 
+
+technically capable of doing. An agent should not operate at 
+
+an AAL higher than the level of accountability the human 
+
+organization is prepared to accept. Evaluating AAL there-
+
+fore requires examining the AI system within its full ope rat-
+
+ing environment, including the LLM, the agent harness, and 
+
+the surrounding organizational, procedural, and contextual 
+
+constraints. 
+
+Table 1 summarizes the five levels of Allowed Auton-
+
+omy. The progression from lower to higher AAL reflects in-
+
+creasing degrees of independent action, scope of impact, and 
+
+transfer of control from human operators to AI systems. As 
+
+autonomy increases, human co ntrol becomes less direct, re-
+
+versibility decreases, and the consequences of failures be-
+
+come more difficult to contain, requiring correspondingly 
+
+stronger governance justification and safeguards. 
+
+At Level 1 (A1) , agents execute bounded tasks only in re-
+
+sponse to explicit human invocation. Agents do not act au-
+
+tonomously and do not initiate actions on their own. Hu-
+
+mans are fully hands -on and execute tasks by calling agents. 
+
+The scope of agent operation is limited to individual, local 
+
+tasks. If an agent makes a mistake, the consequences are 
+
+bounded to a single invocation and can be corrected directly 
+
+by the human who initiated the action. Table 1: Allowed Autonomy Level (AAL) .
+
+At Level 2 (A2) , agents provide suggestions while being 
+
+called or while interacting with humans, but do not take ac-
+
+tions except generating recommendations, analyses, or pro-
+
+posed steps in response to human instructions or prompts, 
+
+but all execution remains human -performed. The human’s 
+
+role is to issue instructions and make decisions based on the 
+
+agent’s output. The agent’s scope is limited to decision sup-
+
+port. Errors or flaws in agent outputs may influence human 
+
+decisions, but the agent itself does not act on the environ-
+
+ment. 
+
+At Level 3 (A3) , agents execute multi -step tasks under 
+
+human supervision. Actions taken by agents require human 
+
+approval, must be reversible to a previous step, or must be 
+
+accompanied by mitigation mechanisms when actions are 
+
+taken without explicit approval. At this level, agents operate 
+
+at th e workflow scope rather than at the individual task 
+
+scope. Since agents now execute actions, failures manifest 
+
+as unwanted actions rather than advice; however, supervi-
+
+sion and reversibility help limit potential harm. Reversibility 
+
+is highly application -dependent and should be carefully 
+
+evaluated. For example, an AI coding agent that commits 
+
+changes to a source -control repository can be considered re-
+
+versible, whereas an agent that generates and executes con-
+
+trol commands for an industrial chemical process is not. 
+
+At Level 4 (A4) , agents autonomously execute 
+
+open -ended, multi -step workflows to achieve human -de-
+
+fined goals within fixed constraints. Humans specify goals, 
+
+success criteria, and guardrails upfront, but do not approve 
+
+individual actions during execution. Actions at this level 
+
+may be consequential or irreversible, moving correctness 
+
+concerns from run time supervision to upfront design. Hu-
+
+mans remain available for exception handling and escalation 
+
+but do not oversee individual steps. The agent’s scope ex-
+
+pands from workflows to system -level operation, and fail-
+
+ures at this level more often result from design or specifica-
+
+tion errors than from execution mistakes. 
+
+At Level 5 (A5) , humans define, encode, and authorize 
+
+policy intent and operating boundaries before operation be-
+
+gins. Once authorized, agents operate autonomously within 
+
+these policies, making and executing decisions without hu-
+
+man intervention, step -level supervision, or routine reversi-
+
+bility. Accountability rests with the organization that dele-
+
+gates this authority. At this level, agents operate at an organ-
+
+izational scope, and failures reflect breakdowns in govern-
+
+ance, policy design, or accountability rather than task -level 
+
+execution errors. 
+
+Levels A3, A4, and A5 represent successive transfers of 
+
+control from runtime supervision to upfront governance and, 
+
+ultimately, to delegated authority. At A3, agents execute ac-
+
+tions but remain supervised, interruptible, and reversible. At 
+
+A4, humans no lon ger supervise execution and instead rely 
+
+on upfront goal specification and constraints, even when ac-
+
+tions may be irreversible. At A5, operational authority itself 
+
+is delegated, with agents acting autonomously within au-
+
+thorized policies and boundaries. 
+
+To help development teams reason about these levels, we 
+
+provide informal descriptors based on the human role in-
+
+volved: “ hands on ” (A1), “ instructions on ” (A2), “ eyes 
+
+on ” (A3), “ mind on ” (A4), and “ mind off ” (A5). We expect 
+
+most real -world Agentic AI applications to operate at A1 
+
+through A3. Levels A4 and A5 require significantly stronger 
+
+justification and safeguards due to their scope and potential 
+
+impact and are therefore expected to be assigned more se-
+
+lectively. 
+
+Given the wide range of AI applications within a large 
+
+enterprise like us and the need for a framework that can be 
+
+applied consistently across use cases, we found that five 
+
+AAL levels strike an appropriate balance between distin-
+
+guishing meaningful differences in autonomous behavior 
+
+and maintaining usability for governance reviews. Organi-
+
+zations operating in different contexts may conclude that a 
+
+different number of levels better suits t heir needs. 
+
+# Autonomous Capability Level 
+
+Autonomous Capability Level (ACL) concerns the inherent 
+
+technical capabilities of an agent, independent of whether                   
+
+> AAL Human
+> Role
+> Human
+> Tasks
+> Task Scope Accountability Implication
+> A1 Hands on Execute Local -task Errors are bounded to a single invocation and corrected directly by the human
+> who initiated the action.
+> A2 Instruc-
+> tions on
+> Instruct Decision -
+> support
+> The agent provides advice, which can indirectly degrade human decisions.
+> A3 Eyes on Supervise Workflow Agents now act; failures become actions rather than advice, though supervision
+> and reversibility still limit harm.
+> A4 Mind on Set goals
+> and con-
+> straints
+> System Humans no longer supervise steps; failures stem from design errors rather than
+> execution mistakes.
+> A5 Mind off Set policies Organiza-
+> tional
+> Decision -making authority is delegated; failures reflect accountability and gov-
+> ernance gaps, not task errors.
+
+Table 2: Autonomous Capability Level (ACL ).                
+
+> ACL Capability Agent As Ex-
+> ample Roles
+> Highest AAL Example
+> C1 High -level perception/low -level rea-
+> soning. Able to provide results when
+> called.
+> Model, Tool A1 Pattern recognition model, isolated manufac-
+> turing systems
+> C2 High -level reasoning. Able to help hu-
+> mans make decisions.
+> Helper, Advi-
+> sor, Assistant
+> A2 Forecasting, predictive maintenance
+> C3 Reasoning, planning, and tool calling.
+> Able to complete tasks defined by hu-
+> mans.
+> Junior Opera-
+> tor
+> A3 AI data analysis, some AI coding tools.
+> C4 Reasoning, multi -step planning, tool
+> orchestration. Able to plan and com-
+> plete tasks from a goal: execute open -
+> ended workflows.
+> Sr. Operator A4 Advanced AI coding agents
+> C5 Reasoning, planning, tool orchestra-
+> tion, monitoring, and adaption. Able to
+> run entire operations independently.
+> Plant Man-
+> ager, Decision
+> Maker
+> A5 Self -running supply chain, unmanned manu-
+> facturing
+
+those capabilities are exercised in deployment. ACL charac-
+
+terizes what an agent can do , rather than what it is author-
+
+ized to do , and focuses on the agent’s functional abilities ra-
+
+ther than organizational or governance considerations. In the 
+
+autonomy decision framework introduced earlier, ACL as-
+
+sessment informs —but does not determine —the Allowed 
+
+Autonomy Level. Table 2 summarizes t he five Autonomous 
+
+Capability Levels defined in this section. 
+
+We classify agent capabilities into five levels based on the 
+
+progression of abilities in perception, reasoning, planning, 
+
+action, and adaptation. At the lowest level, denoted as C1 ,
+
+an agent possesses high -level perception or low -level rea-
+
+soning. For example, a computer vision model that converts 
+
+raw camera input into labels of different objects is consid-
+
+ered to exhibit high -level perception. It is important to note 
+
+that perception and reasoning may overlap, and that it is of-
+
+ten difficult to draw a strict boundary between high -level 
+
+perception and low -level reasoning. For instance, in an au-
+
+tonomous driving scenario, after detecting an object, an 
+
+agent may estimate the object’s speed and trajectory and de-
+
+termine whether a collision is likely. This capability lies on 
+
+a continuous spectrum, and the boundar y between percep-
+
+tion and reasoning is blurred. At this level, agents do not 
+
+possess advanced reasoning, planning, or action capabilities 
+
+and may take the form of models or tools. An agent at this 
+
+level is a clear floor for agent capabilities, recognizing t hat 
+
+many traditional machine learning applications continue to 
+
+play an important role in modern AI systems and can be clas-
+
+sified at this level. 
+
+At C2 , an agent begins to demonstrate high -level reason-
+
+ing and can assist humans in decision -making . As an exam-
+
+ple, agents at this level act as helpers, advisors, or assistants 
+
+to humans. Additional examples include market forecasting 
+
+agents and predictive maintenance agents. AI assistant tools 
+
+that provide recommendations to humans can also be classi-
+
+fied at this level. Agents at C2 may qualify as AI agents un-
+
+der our definition. Although the agents’ planning and action 
+
+capabilities remain limited. The examples provided here are 
+
+not exhaustive, bu t rather illustrative within prescribed 
+
+boundaries. For instance, if market forecasting is performed 
+
+solely using a time -series model, the system should be clas-
+
+sified as C1. If, however, the agent invokes a time -series 
+
+model, incorporates market sentiment analysis, and reasons 
+
+over internal business knowledge to forecast market trends, 
+
+it should be classified as C2. 
+
+At C3 , an agent is fully capable of perception, reasoning, 
+
+planning, tool invocation, and taking actions. There is a sig-
+
+nificant increase in capability from C2 to C3, and agents at 
+
+this level are unequivocally AI agents under our definition. 
+
+Given these capabil ities, C3 agents can be viewed as junior 
+
+operators. Humans define tasks at a high level, such as “an-
+
+alyze this dataset.” The agent may autonomously write code, 
+
+execute the analysis, interpret the results, and visualize the 
+
+outputs. 
+
+Agents at C4 possess advanced reasoning, multi -step 
+
+planning, and tool orchestration capabilities. They can plan 
+
+and complete open -ended workflows based on goals speci-
+
+fied by humans. Agents at this level may be considered sen-
+
+ior operators. For example, instead of requesting “analyze 
+
+this dataset,” a human can ask an agent to “build a market 
+
+analysis report.” The C4 agent then searches for relevant 
+
+data, performs analyses (like a C3 agent), generates charts, 
+
+writes reports, revises content, and presents its results. Some 
+
+of the most advanced AI -assisted coding tools operate at this 
+
+level. 
+
+At C5 , agents exhibit perception, reasoning, planning, 
+
+tool orchestration, monitoring, and adaptation capabilities 
+
+sufficient to operate independently over extended periods. Agents, at this level, can be viewed as managers or deci-
+
+sion -makers. Example applications include self -running 
+
+supply chains and unmanned manufacturing systems. It re-
+
+mains debatable how many Agentic AI applications cur-
+
+rently operate at this level. For example, some may consider 
+
+a software system like OpenClaw (Wang et al. 2026) or sim-
+
+ilar Agentic AI systems to approach C5. Regardless, agents 
+
+at this level are associated with high risk and potentially se-
+
+vere real -world consequences. 
+
+In our experience, five capability levels provide sufficient 
+
+granularity to distinguish meaningful differences in agent 
+
+capabilities while remaining practical for governance re-
+
+views. Other organizations may reasonably choose different 
+
+level boundaries. For example, C1 and C2 could be com-
+
+bined if less distinction is needed among lower -capability 
+
+systems. Conversely, organizations that place greater em-
+
+phasis on learning, adaptation, or self -improvement capabil-
+
+ities may choose to introduce additional capability levels. 
+
+# Example Applications 
+
+In this section, we use two deployed applications to illustrate 
+
+how Autonomous Capability Levels and Allowed Auton-
+
+omy Levels can be applied to manage risk. Additional de-
+
+tails are provided in the supplementary material. 
+
+The first system detect s and remediate s data quality gaps 
+
+within a large -scale enterprise platform that integrates real -
+
+time drilling sensor data for operational surveillance. A su-
+
+pervisor agent routes natural language requests to special-
+
+ized sub -agents for data gap detection, log analysis, and re-
+
+mediation execution . This multi -step goal decomposition is 
+
+the characteristic of C4. The system is deployed at A3 rather 
+
+than the technically feasible A4 because ungoverned back-
+
+fill jobs can corrupt downstream pipelines .
+
+The second system supports engineering decision -making 
+
+in unconventional oil field operations, where engineers re-
+
+view ~20,000 unstructured field reports annually and incor-
+
+rect conclusions can inform unsafe decisions about high -
+
+value assets and personnel safety. A supervisor routes each 
+
+query to specialized sub -agents for text -to -SQL retrieval, 
+
+RAG over operating procedures, vision -language analysis of 
+
+engineering drawings and pump performance monitoring 
+
+cards, deterministic failure signal extraction, time -series sur-
+
+veillance, and physics -based equipment sizing. Due to the 
+
+risk of operational hazards, every reasoning step is con-
+
+strained by deterministic verification tools and explicit 
+
+guardrails, following a "tools verify, humans decide" oper-
+
+ating principle . The system is technically capable of C3, yet 
+
+deliberately deployed at A2 (advisory -only) because correct 
+
+interpretation requires domain -specific engineering judg-
+
+ment, physical -domain actions are largely irreversible, and 
+
+failures can carry significant safety and asset consequences .
+
+Together, the two deployments demonstrate the frame-
+
+work's effectiveness in managing risk by decoupling agents' 
+
+capabilities from permitted autonomy. While both applica-
+
+tions assign an AAL that is one level below the correspond-
+
+ing capability upper bound, thi s is not always necessary. De-
+
+ploying a system at its maximum allowable autonomy level 
+
+may be appropriate when risks are well understood and ad-
+
+equately managed. 
+
+# Discussion and Future Work 
+
+As discussed earlier, this work builds on an established Re-
+
+sponsible AI framework that has served effectively prior to 
+
+the widespread adoption of Agentic AI applications. The un-
+
+derlying governance principles, intake processes, and organ-
+
+izational accountability structures remain sound and do not 
+
+require fundamental revision. Instead, the primary gap ex-
+
+posed by Agentic AI lies in the absence of clear definitions 
+
+for AI agents and Agentic AI , as well as the lack of a struc-
+
+tured decision process for assigning appropriate autonomy 
+
+levels. 
+
+The framework introduced in this paper addresses these 
+
+gaps by explicitly separating capability assessment from au-
+
+thorization decisions and by providing a practical mecha-
+
+nism for integrating Agentic AI into existing governance 
+
+processes. The framework is intentionally designed to be in-
+
+tuitive to promote adoption and usability. The terminology 
+
+used to describe different levels —such as “junior operators” 
+
+and “senior operators” for capability levels, and “hands on” 
+
+and “mind on” for allowed autonomy levels —has proven ef-
+
+fective for communication but may benefit from further 
+
+fine -tun ing as the framework is applied more widely in prac-
+
+tice. 
+
+The five -level structures for both AAL and ACL have 
+
+proven practical within our organization, balancing expres-
+
+sive power with governance usability. Other o rganizations 
+
+may adopt more or fewer levels, provided the underlying 
+
+separation between capability and authorization is pre-
+
+served. The level boundaries, especially f or AAL , may be 
+
+refined based on different organizations’ needs. Readers 
+
+may refer to seminal work by Sheridan and Verplank (1978) 
+
+to gain insight into such refinement .
+
+The design outlined here is to refine our existing Respon-
+
+sible AI framework. As more applications go through this 
+
+process, practical lessons will emerge regarding usability, 
+
+calibration, and consistency across teams and application domains. Future work will focus on evaluating the frame-
+
+work across these applications , refining autonomy level def-
+
+initions and terminology where needed, examining how 
+
+level -assignment judgments vary across applications , and 
+
+sharing empirical learnings from deployment and govern-
+
+ance practice in future venues. 
+
+# References 
+
+AI Index Steering Committee. 2026. The 2026 AI Index Report. 
+
+Stanford University Institute for Human -Centered AI. 
+
+https://hai.stanford.edu/ai -index/2026 -ai -index -report. 
+
+Brustoloni, J. C. 1991. Autonomous Agents: Characterization and 
+
+Requirements . Technical Report CMU -CS -91 -204, Carnegie 
+
+Mellon University. 
+
+Cohen, M. K.; Kolt, N.; Bengio, Y.; Hadfield, G. K.; Russell, S. 
+
+2025. Regulating Advanced Artificial Agents. Science 
+
+384(6691):36 –38. https://www.science.org/doi/10.1126/sci-
+
+ence.adl0625 .
+
+EU. 2024. Regulation (EU) 2024/1689 Laying Down Harmonised 
+
+Rules on Artificial Intelligence (Artificial Intelligence Act). 
+
+(2024). Official Journal of the European Union, L 2024/1689 , July 
+
+2024. 
+
+Feng, K.; McDonald, D. W.; Zhang, A. X. 2025. Levels of Auton-
+
+omy for AI Agents . arXiv:2506.12469. 
+
+NIST. 2023. Artificial Intelligence Risk Management Framework 
+
+(AI RMF 1.0), https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100 -
+
+1.pdf , January 2023. 
+
+Russell, S. J.; Norvig, P. 2020. Artificial Intelligence: A Modern 
+
+Approach (4th ed.). New Jersey: Pearson. 
+
+SAE. 2021. SAE Levels of Driving Automation .
+
+https://doi.org/10.4271/J3016_202104/ .
+
+Sheridan T.B.; Verplank W.L. 1978. Human and Computer Con-
+
+trol of Undersea Teleoperators , Technical Report. MIT Cambridge 
+
+Man -Machine Systems Lab. 
+
+Soder, L.; Smakman, J.; Dunlop, C.; Sussman, O. 2025. An Auton-
+
+omy -Based Classification: AI Agents, Liability and Lessons from 
+
+the Automated Vehicles Act . https://www.interface -eu.org/publica-
+
+tions/ai -agent -classification. 
+
+Wang, Y.; Chen, X.; Jin, X.; Wang, M.; Yang, L. 2026 . OpenClaw -
+
+RL: Train Any Agent Simply by Talking . arXiv:2603.1016 .
+
+# Appendix 
+
+# A. Data Engineering Multi -Agent System 
+
+## A.1 System Architecture 
+
+The system is designed to detect and remediate data quality 
+
+gaps within a large -scale enterprise data platform. It em-
+
+ploys a supervisor -routed multi -agent architecture: a central 
+
+orchestrator receives user requests and routes them to spe-
+
+cialized sub -agents responsible for bounded domains. Each 
+
+sub -agent's reasoning chain is deliberately kept short, typi-
+
+cally three to four steps, reflecting current limitations in 
+
+LLM reliability over longer chains. As shown in Figure A1, 
+
+the supervisor classifies user intent and delegates tasks to 
+
+four specialize d sub -agents : Data Quality, Job Log Analy-
+
+sis, Real -time Data Gap Detection, and Azure Data Explorer 
+
+(ADX) Gap Detection . E ach equipped with domain -specific 
+
+tools and remediation capabilities. This intent -based routing 
+
+logic decomposes natural language requests into actionable 
+
+workflows, enabling autonomous data pipeline monitoring, 
+
+root cause analysis, and automated gap remed iation across 
+
+the Azure Databricks and Azure Data Explorer ecosystem. Figure A1 : Data Engineering Multi -Agent System .
+
+## A.2 Capability Assessment (C4) 
+
+From a capability perspective, the composed system ex-
+
+hibits characteristics consistent with C4 (Senior Operator). 
+
+While each individual sub -agent operates at C3 (autono-
+
+mously querying metadata catalogs, comparing data states 
+
+against ground truth, and invok ing tools), the system 
+
+demonstrates multi -step planning and tool orchestration 
+
+working towards a high -level goal. A user request to "find 
+
+and fix data gaps" results in the supervisor routing to a gap 
+
+detection sub -agent, then invoking a log analysis sub -agent 
+
+to diagnose root causes and finally triggering a remediation 
+
+job through a job execution sub -agent. Th e behavior of de-
+
+composing a goal into sub -tasks, orchestrating multiple spe-
+
+cialized agents, and synthesizing their outputs , is the distin-
+
+guishing characteristic of C4. This assessment highlights an 
+
+important consideration: in multi -agent systems, the Auton-
+
+omous Capability Level should be evaluated at the level of 
+
+the composed system, not at the level of individual compo-
+
+nents in isolation. This is consistent with our definition of 
+
+Agentic AI, where autonomous behavior emerges from in-
+
+teractions between multiple components rather than from 
+
+any single agent. The system does not reach C5 because it 
+
+lacks continuous self -monitoring an d adaptation capabili-
+
+ties, and reasoning chains are deliberately bounded. 
+
+## A.3 Deployment Decision (A3) 
+
+Although the agent is capable of C4: goal -directed, multi -
+
+step workflow execution, the system is deployed at A3 
+
+(Eyes On) rather than A4. Certain remediation actions , such 
+
+as triggering backfill jobs , carry significant operational risk 
+
+if executed without oversight. An un -governed backfill job 
+
+can corrupt downstream data pipelines, introduce silent 
+
+data -quality regressions, or consume substantial compute 
+
+resources unnecessarily. This risk profile motivates restrict-
+
+ing the system to A3, where a human supervisor monitor s
+
+outcomes, approves consequential actions, and retains the 
+
+ability to intervene or reverse them. This deployment deci-
+
+sion is justified by the domain's favorable risk characteris-
+
+tics: outputs are independently verifiable against ground 
+
+truth, reasoning cha ins within each sub -agent are short and 
+
+decomposable, and remediation actions are reversible. Ar-
+
+chitectural controls , including identity propagation from 
+
+user through supervisor to tool, programmatic loop -count 
+
+guardrails, and immutable audit traces , provide the opera-
+
+tional safeguards necessary to sustain supervised autonomy 
+
+while preventing unsanctioned escalation to A4. 
+
+An alternative deployment at A2 (Instructions On) is also 
+
+viable for the same system. In a C4/A2 configuration, the 
+
+system identifies gaps and recommends remediation ac-
+
+tions, but all execution remains human -performed. The 
+
+framework accommodates both config urations without re -assessing the underlying capability level, and an organiza-
+
+tion may transition between A2 and A3 as infrastructure ma-
+
+tures and operational confidence grows. The system does 
+
+not meet the conditions for A4 (Mind On), which would re-
+
+quire unsupervised execution of open -ended workflows .
+
+This would be a level of delegation the organization is not 
+
+prepared to accept for a production -critical data platform, 
+
+regardless of the agent's technical capabilities. The gap be-
+
+tween C4 and A2 or A3 is not a deficiency; it is a deliberate 
+
+governance choice. The framework supports this by design: 
+
+an organization can deploy at C4/A2, build confidence, ma-
+
+ture its rollback infrastructure, and advance to C4/A3, or re-
+
+vert fro m A3 to A2 if operational conditions change, without 
+
+re -assessing the underlying capability level. 
+
+# B. Energy Operations Multi -Agent Copilot 
+
+## B.1 System Architecture 
+
+The system is designed to accelerate engineering deci-
+
+sion -making in unconventional oil and gas field operations, 
+
+where engineers must review approximately 20,000 un-
+
+structured field reports annually , including free -text job 
+
+logs, inspection records, and equipment drawings. As shown 
+
+in Figure A2, i t employs a supervisor -routed multi -agent ar-
+
+chitecture in which a central orchestrator receives engineer 
+
+queries and delegates tasks to specialized sub -agents re-
+
+sponsible for bounded analytical domains: text -to -SQL re-
+
+trieval against operational databases, retrieval -augmented 
+
+generation over operating procedures and case files, vision -
+
+language analysis of engi neering drawings and equipment 
+
+images , deterministic failure -signal extraction with taxon-
+
+omy validation and physics checks, time -series surveillance 
+
+from sensor data, and physics -based equipment sizing in-
+
+cluding numerical simulations for tubing sizing and gas lift 
+
+design. Each sub -agent uses short reasoning chains bound 
+
+by deterministic verification tools under an explicit "AI rea-
+
+sons, guardrails verify, human decides" operating principle, 
+
+because agent hallucination in a regulated and high -stakes 
+
+industry is an operational hazard .
+
+## B.2 Capability Assessment (C3) 
+
+From a capability perspective, the composed system is as-
+
+sessed at C3 (Junior Operator), with emerging characteris-
+
+tics of C4. The system reasons, plans, and calls tools to com-
+
+plete human -defined analytical tasks: autonomously formu-
+
+lates and executes database queries, invokes computational 
+
+sizing routines, and synthesizes extracted signals into struc-
+
+tured findings. The system's autonomous query formulation 
+
+and tool execution are hallmarks of C3. The system stops 
+
+short of C4 considering its supervisor follows an established 
+
+workflow and performs intent -based routing to the appropri-
+
+ate specialist for a given query rather than autonomously Figure A2: Energy Operations Multi -Agent Copilot Architecture. 
+
+.
+
+decomposing an open -ended goal into a multi -agent execu-
+
+tion plan, and it does not exhibit the continuous self -moni-
+
+toring and adaptation that would indicate C5. 
+
+The contrast with the C4 data engineering system is i n-
+
+structive: the data engineering agent chains gap detection, 
+
+root -cause diagnosis, and remediation into a pipeline pursu-
+
+ing a compound goal (“find and fix”), where as the energy 
+
+operations copilot dispatches each bounded query to a single 
+
+specialist .
+
+## B.3 Deployment Decision (A2) 
+
+Despite being technically capable of operating at A3, the 
+
+system is purposefully deployed at A2 (Instructions On). It 
+
+analyzes reports, answers operational questions, and sur-
+
+faces recommended findings . All consequential decisions 
+
+and actions remain human -performed . The agent does not 
+
+execute actions against physical or production systems. This 
+
+deployment decision is justified by the domain's unfavora-
+
+ble risk characteristics: outputs cannot be independently 
+
+verified against external ground truth , and actions in the 
+
+physical domain are largely irreversible (a wrong equipment 
+
+sizing decision cannot be undone once installed downhole) .
+
+At the meanwhile correct interpretation frequently depends 
+
+on engineering judgment and tacit knowledge that engineer-
+
+ing domain expertise must validate. Under these conditions, 
+
+a failure at A2 manifests as a flawed recommendation that a 
+
+human reviewer can catch, rather than as an unsanctioned 
+
+action, keeping accountability squarely with the human de-
+
+cision -maker. 
+
+The system is nonetheless architecturally designed for in-
+
+cremental autonomy advancement. As deterministic verifi-
+
+cation matures for specific bounded, reversible sub -tasks, 
+
+individual workflows may advance toward A3 without re -
+
+assessing the underlying C3 cap ability
