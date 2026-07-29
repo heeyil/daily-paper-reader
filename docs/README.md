@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-28</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-29</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 23 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-28 22:13:53 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-29 22:11:57 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日成果：23篇论文中9篇精读，聚焦MoE与LoRA融合及计算机代理强化学习框架。</p>
-<p>最值得看：MoE²-LoRA（9.0）探索MoE风格的低秩适应创新；SeekJudge（9.0）为计算机使用代理提供实用奖励框架。</p>
-<p>建议：关注混合专家模型与微调方法的结合趋势，以及强化学习在具身代理中的奖励设计。</p>
+<p>今日23篇论文聚焦智能体长程任务与多机器人协调，Matryoshka Agent（10分）和StateAct（9分）最受推荐。速读推荐社会一致性多机器人导航、因果剪枝及成本感知智能体工作流优化。建议优先精读满分论文，再扫读速读列表。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -76,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MoE$^2$-LoRA: When MoE Models Meet MoE-style Low-Rank Adaptation">MoE$^2$-LoRA: When MoE Models Meet MoE-style Low-Rank Adaptation</span></li><li><span class="dpr-home-dashboard-paper-title" title="SeekJudge: A Practical Reward Framework for Reinforcement Learning in Computer-Use Agents">SeekJudge: A Practical Reward Framework for Reinforcement Learning in Computer-Use Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="WISERouter: LLM Routing with Workload Budget Constraint">WISERouter: LLM Routing with Workload Budget Constraint</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Matryoshka Agent: Unfolding Sub-Agents for Long-Horizon Machine Learning Engineering">Matryoshka Agent: Unfolding Sub-Agents for Long-Horizon Machine Learning Engineering</span></li><li><span class="dpr-home-dashboard-paper-title" title="StateAct: Program State, before Pixels, for Long-Horizon Computer-Use Agents">StateAct: Program State, before Pixels, for Long-Horizon Computer-Use Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="JarvisHub: An Open Harness for Canvas-Native Multimodal Creative Agents">JarvisHub: An Open Harness for Canvas-Native Multimodal Creative Agents</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>6</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>8</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -89,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CORVUS: Context Optimization and Reduction Via Underlying Synchronization for LLM Coding Agents">CORVUS: Context Optimization and Reduction Via Underlying Synchronization for LLM Coding Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="ConsistencyGate: Preventing Memory Contamination in LLM Agents via Self-Consistency Admission Control">ConsistencyGate: Preventing Memory Contamination in LLM Agents via Self-Consistency Admission Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="Are You Still the Agent I Authorized? Earned Authority under a Fixed Ceiling for Evolving Agents">Are You Still the Agent I Authorized? Earned Authority under a Fixed Ceiling for Evolving Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Socially Consistent Multi-Robot Navigation Using Decoupled Planning and Trajectory Coordination">Socially Consistent Multi-Robot Navigation Using Decoupled Planning and Trajectory Coordination</span></li><li><span class="dpr-home-dashboard-paper-title" title="CausalGate: Causal Importance Distillation for Transformer Module Pruning">CausalGate: Causal Importance Distillation for Transformer Module Pruning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Agent-UCT: Upper Confidence Bounds Applied to Trees for Agentic Workflow Optimization with Cost-Awareness">Agent-UCT: Upper Confidence Bounds Applied to Trees for Agentic Workflow Optimization with Cost-Awareness</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>14</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
 </section>
 </div>
 

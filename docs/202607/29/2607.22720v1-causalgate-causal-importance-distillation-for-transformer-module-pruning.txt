@@ -1,0 +1,634 @@
+Title: CausalGate: Causal Importance Distillation for Transformer Module Pruning
+
+URL Source: https://arxiv.org/pdf/2607.22720v1
+
+Published Time: Tue, 28 Jul 2026 00:12:09 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# CausalGate: Causal Importance Distillation for Transformer Module Pruning 
+
+## Kiran Nair ∗, Smriti Regmi, Rodrigue Rizk 
+
+USD Artificial Intelligence Research Lab, Department of Computer Science University of South Dakota, Vermillion, SD 57069, USA kiran.prasannannair@coyotes.usd.edu 
+
+Abstract 
+
+Existing adaptive inference methods for Large Language Mod-els rely on observational heuristics, such as hidden-state sim-ilarity or activation magnitudes, to drop redundant modules. However, these correlation-based metrics often fail to capture subtle, non-linear structural computations vital for semantic accuracy. We introduce CausalGate, an intervention-guided framework for compute-efficient transformer inference. Dur-ing a calibration phase, CausalGate isolates individual Atten-tion and MLP sub-layers, zeros out their respective outputs, and measures the exact semantic damage via the Kullback-Leibler divergence of the final logit distribution. To elim-inate runtime routing overhead, this structural importance hierarchy is distilled into a global set of static, lightweight scalar gates using an Exponential Moving Average smoothing objective paired with a differentiable pairwise ranking loss. Evaluated on TinyLlama-1.1B, Qwen2.5-3B, and Llama-3.1-8B across language modeling and commonsense reasoning benchmarks, CausalGate consistently outperforms prominent dynamic routing and layer-skipping baselines, translating the-oretical compute savings into concrete hardware latency re-ductions with zero operational overhead. 
+
+## 1 Introduction 
+
+Ever since the seminal paradigm shift of "Attention Is All You Need," (Vaswani et al. 2017) scaling transformer archi-tectures has unlocked unprecedented linguistic capabilities at a severe computational cost, making Large language model (LLM) inference a critical deployment bottleneck. To mit-igate this, model compression methods such as structural pruning and sub-layer skipping (He et al. 2025) seek to per-manently deactivate low-utility blocks, avoiding the heavy hardware execution overhead and branch prediction penal-ties characteristic of runtime-dynamic routing frameworks like CALM (Schuster et al. 2022) or Mixture-of-Depths (MoD) (Raposo et al. 2024). Existing structural pruning met-rics typically rely on observational proxies, such as activation magnitudes or hidden-state similarity, to determine if a mod-ule can be bypassed. However, such observational metrics can occasionally overlook subtle yet critical computational steps. A hidden-state vector traversing a module might ex-hibit minimal geometric displacement, yet that module may 
+
+> ∗
+
+Corresponding author. 
+
+still execute a non-linear "causal refinement" vital for fac-tual accuracy or logical coherence. By relying primarily on representational characteristics rather than direct structural necessity, heuristic-driven static pruning risks bypassing qui-etly essential modules, leading to sharp performance degra-dation at higher compute savings. To overcome the limitations of observational proxies, we look to classical scientific inquiry: to truly determine whether a component is essential to a system, one must actively intervene upon it rather than merely observe it. We intro-duce CausalGate, an offline structural calibration frame-work establishing a permanent module-selection hierarchy through direct, input-agnostic structural interventions. In-stead of estimating utility from runtime representation align-ments, CausalGate isolates individual Attention and MLP modules during an offline calibration phase, zeros out their outputs, and measures the resulting Kullback-Leibler ( KL )divergence ( DKL ) in the final token distribution. This ap-proach is governed by a central hypothesis: a module’s true global computational importance is explicitly defined by its causal influence on the final logit distribution. By opera-tionalizing this principle at the sub-layer level, CausalGate bypasses heuristic guesswork and directly quantifies the ex-act semantic damage incurred by skipping any given block. A key architectural distinction of CausalGate is its fine-grained operation at the sub-layer module level rather than the monolithic transformer-layer level. Because Multi-Head Attention and MLP modules execute distinct functions, atten-tion routes context across sequences while MLPs act as local-ized Key-Value (KV) memories, independent pruning yields significantly higher computational flexibility than uniform layer-dropping. However, calculating causal interventions at runtime is prohibitive. To achieve zero-overhead inference, CausalGate distills the structural importance hierarchy dis-covered during calibration into global, static, learned scalar gates. We optimize these gates using an Exponential Moving Average (EMA) smoothing objective to filter intervention noise, paired with a differentiable pairwise ranking loss that forces gate values to strictly preserve the discovered causal ordering. This optimization strategy bridges causal analysis and hardware execution efficiency, encoding global structural knowledge into a deterministic inference mask. Because these functional sub-layers perform decoupled tasks, the arXiv:2607.22720v1 [cs.LG] 21 Jul 2026 model establishes a sequence-agnostic importance hierar-chy operating at compile-time. Consequently, CausalGate eliminates runtime routing overhead, ensuring straight-line inference execution that pairs exceptionally well with local-ized memory boundaries and standard hardware loops. In summary, our contributions are as follows: 1. We introduce a novel approach to structural model prun-ing that replaces traditional observational heuristics with a ground-truth importance hierarchy derived directly from structural causal interventions during calibration. 2. We demonstrate that evaluating and skipping Attention and MLP modules independently yields a significantly more flexible and precise compute-performance tradeoff than uniform layer-dropping strategies. 3. We propose an optimization framework utilizing EMA target smoothing and a pairwise ranking loss to suc-cessfully encode structural causal hierarchies into global, static gates, enabling zero-overhead inference. 4. We conduct extensive evaluations against prominent base-lines, demonstrating that CausalGate preserves language-model quality substantially better at larger compute re-ductions. The remainder of this paper is organized as follows. Sec-tion 2 reviews related literature in adaptive inference and mechanistic interpretability. Section 3 introduces the struc-tural components of the CausalGate architecture alongside its intervention and training frameworks. Section 4 presents our empirical evaluation and comparative baseline analyses. Finally, the broader implications, limitations, and avenues for future work are discussed in Section 5, and Section 6 provides concluding summaries. 
+
+## 2 Related Works 
+
+Adaptive Inference and Layer Skipping. Adaptive infer-ence dynamically adjusts computation based on input dif-ficulty or latency bounds. Early mechanisms in Convolu-tional Neural Networks leveraged filter pruning, quantiza-tion (Zhang et al. 2024), early exiting (Han et al. 2021; Bolukbasi et al. 2017), and dynamic channel gating (Be-jnordi, Blankevoort, and Welling 2019; Gao et al. 2018; Lin et al. 2017). In Vision Transformers, frameworks like Dy-namicViT (Rao et al. 2021) and A-ViT (Yin et al. 2022) fo-cus on dynamic token reduction, while AdaViT (Meng et al. 2022) adaptively drops attention heads or entire blocks per sample. For Large Language Models (LLMs), dynamic com-putational routing has expanded into token-skipping policies such as Mixture-of-Depths (MoD) (Raposo et al. 2024) and conditional early-exiting schemes (Rotem et al. 2023). Closer to our work, structural alternatives focus on bypassing redun-dant segments via uniform layer skipping (Liu, Meng, and Zhou 2024; Luo, Wang, and Yan 2025), input-output sim-ilarity heuristics (He et al. 2025), reinforcement learning routing (Liu et al. 2025), or training-infused residual rout-ing gates (Laitenberger et al. 2025; Nair, Rizk, and Santosh 2026). However, these approaches predominantly introduce dynamic control-flow branching or rely on shallow observa-tional proxies during runtime. In contrast, we shift the exe-cution boundary entirely to compile-time by utilizing offline interventional distillation to generate zero-overhead, static module masks. 
+
+Structural Pruning. Static network compression perma-nently drops underutilized weights or channels. For LLMs, post-training pruning often prioritizes channel groups, lay-ers, or individual weights based on raw magnitudes (Fran-tar et al. 2022), weight-activation products like Wanda (Sun et al. 2024), or structural activation variances. To compress architectures structurally, frameworks like LLM-Pruner (Ma, Fang, and Wang 2023) and Sheared LLaMA (Xia et al. 2024) utilize first-order gradient approximations to isolate redun-dant coupled components for removal. Similarly, static sen-sitivity analysis leverages Taylor-series expansions or zero-shot similarity metrics, such as Block Influence in Short-GPT (Men et al. 2025), to map module importance. While related, these alternatives rely strictly on observational cor-relations or localized gradients. CausalGate fundamentally differs by operationalizing active interventional calculus ( do -operations) at a decoupled Attention and MLP sub-layer granularity to isolate true downstream semantic shifts. 
+
+Complementary Acceleration Paradigms. Beyond layer pruning, the literature contains orthogonal strategies to alleviate LLM inference bottlenecks. Memory footprints are frequently managed via compressed or pyramidal KV caches (Ge et al. 2024; Xiao et al. 2025; Cai et al. 2024), or via uniform mixed-precision weight and activation quan-tization frameworks (Xiao et al. 2023; Lin et al. 2024; Fran-tar et al. 2022; Park et al. 2024). Concurrently, specula-tive and aggressive decoding paradigms (Leviathan, Kalman, and Matias 2023; Stern, Shazeer, and Uszkoreit 2018; Sun et al. 2021) accelerate autoregressive generation by predict-ing multiple tokens in parallel via distinct draft verification branches. These methodologies remain fully complementary to CausalGate and can be applied jointly to maximize hard-ware deployment efficiency. 
+
+## 3 Methodology 
+
+Our key intuition is that modules whose removal substantially alters the output distribution should be preserved, whereas modules with negligible influence can be skipped with min-imal impact on model quality. Let a transformer model consist of L layers, each con-taining an attention submodule and an MLP submodule. We treat each attention and MLP block as an indepen-dent computational unit, yielding a set of M modules 
+
+M = {m1, m 2, . . . , m M }. For TinyLlama-1.1B, this cor-responds to M = 44 modules (22 attention and 22 MLP modules). Our framework consists of three stages, as illus-trated in Figure 4: (1) intervention-based causal importance estimation, (2) distillation of causal importance into learned module gates, and (3) compute-efficient inference through module selection. 
+
+Causal Module Importance Estimation 
+
+We estimate the importance of each module through inter-vention analysis. Given an input sequence x, we first obtain the output distribution of the original model, p(y | x). Next, Figure 1: TinyLlama backbone. 
+
+Figure 2: Intervention-based causal importance estimation and gate learning. 
+
+Figure 3: Compute-efficient inference by skipping low-gate modules. Figure 4: Proposed intervention-guided module selection framework. Each attention and MLP module is independently evaluated by zeroing its output; the resulting final logit KL divergence defines its causal importance score. EMA smoothing and pairwise ranking losses distill these signals into learned scalar gates, allowing low-utility modules to be skipped at inference under a target compute budget. we intervene on a module mi by zeroing its output activa-tion while leaving all remaining modules unchanged. The resulting model produces an intervened output distribution 
+
+p(y | x, m i → 0) . The causal importance of module mi is quantified as the KL divergence between the intervened and original output distributions: 
+
+∆(t) 
+
+> i
+
+= DKL 
+
+
+
+p(y | x, m i → 0) ∥ p(y | x)
+
+
+
+, (1) where t denotes the current training iteration. A large value of ∆(t) 
+
+> i
+
+indicates that intervening on module mi substantially alters the model’s predictive distribution, suggesting that the module plays an important role in generation. Conversely, a small value implies that the module has relatively little influ-ence on the final prediction. We compute intervention scores independently for every attention and MLP module in the network. The resulting set of scores forms a module-level causal importance map that characterizes the relative contri-bution of each transformer module to the model’s predictive behavior. 
+
+Causal Importance Distillation 
+
+Although intervention scores provide a principled estimate of module importance, they can exhibit substantial variability across training iterations. Consequently, directly using raw intervention scores for module selection can lead to unsta-ble rankings and suboptimal compute-allocation decisions. To address this issue, we distill intervention-derived causal importance into a set of learned module gates that capture a stable global ordering of module relevance. For each module 
+
+mi, we associate a learnable scalar gate 
+
+gi = σ(θi), (2) where θi is a trainable logit and σ(·) denotes the sigmoid function. Each gate is a single learned scalar associated with a transformer module and is shared across all inputs and token positions. Higher gate values indicate modules that should be preferentially preserved during inference. 
+
+EMA Target Aggregation. Intervention-derived impor-tance estimates can vary across training iterations, resulting in unstable module rankings. To obtain more reliable super-vision, we first normalize the intervention scores using the maximum module importance in the current iteration: 
+
+˜z(t) 
+
+> i
+
+= ∆(t)
+
+> i
+
+max j ∆(t) 
+
+> j
+
++ ϵ , (3) where ϵ is a small constant for numerical stability. A target floor is then applied to prevent low-importance modules from collapsing to zero: 
+
+z(t) 
+
+> i
+
+= α + (1 − α)˜ z(t) 
+
+> i
+
+, (4) where α denotes the target floor. The final target is updated using an EMA: 
+
+¯z(t) 
+
+> i
+
+= β ¯z(t−1)  
+
+> i
+
++ (1 − β)z(t) 
+
+> i
+
+, (5) where β ∈ [0 , 1) is the EMA decay factor. The EMA targets are initialized as ¯z(0)  
+
+> i
+
+= z(0)  
+
+> i
+
+. The learned gates are then trained to match the EMA-smoothed targets using a mean-squared error objective: 
+
+LMSE = 1
+
+M
+
+> M
+
+X
+
+> i=1
+
+
+
+gi − ¯z(t)
+
+> i
+
+2
+
+, (6) where M denotes the total number of modules. 
+
+Pairwise Ranking Supervision. While the absolute mag-nitude of intervention scores may vary, the relative ordering between modules is often more informative for module se-lection. We therefore introduce a pairwise ranking objective that encourages the learned gates to preserve the causal or-dering induced by the EMA-smoothed targets. For a sampled module pair (mi, m j ), we define 
+
+sij = sign 
+
+
+
+¯z(t) 
+
+> i
+
+− ¯z(t)
+
+> j
+
+
+
+, (7) where tied pairs are ignored. The pairwise ranking loss is then 
+
+Lrank = 1
+
+|P| 
+
+X
+
+> (i,j )∈P
+
+max (0 , γ − sij (gi − gj )) , (8) where P is the set of sampled non-tied module pairs and γ
+
+is the ranking margin. This objective penalizes pairs whose gate ordering is reversed or whose correctly ordered gate values are separated by less than the margin γ. The sparsity regularizer encourages smaller gate activations and is defined as 
+
+Lsparse = 1
+
+M
+
+> M
+
+X
+
+> i=1
+
+g2 
+
+> i
+
+. (9) The final gate-training objective combines language model-ing, sparsity, causal regression, and ranking supervision: 
+
+L = λlm LLM +λsparse Lsparse +λcausal LMSE +λrank Lrank .
+
+(10) 
+
+CausalGate Inference 
+
+After training, the learned gate values provide a global rank-ing of module importance that can be directly leveraged for compute-efficient inference. Let G = {g1, g 2, . . . , g M } de-note the set of learned gate values for the M transformer modules. Modules are sorted according to their gate values, producing an ordered importance ranking g(1) ⩾ g(2) ⩾
+
+· · · ⩾ g(M ), where larger gate values correspond to mod-ules with higher estimated causal importance. Given a target 
+
+Figure 5: Comparison between intervention-derived causal importance rankings and the rankings learned by CausalGate. module-skip ratio, we retain only the highest-ranked mod-ules and disable the remaining modules. Specifically, for a target compute reduction ratio ρ, the number of modules to retain is 
+
+K = ⌈(1 − ρ)M ⌉ . (11) The top-K modules according to the learned ranking are preserved, while the remaining modules are skipped during inference. Formally, the binary inference mask for module 
+
+mi is defined as 
+
+bi =
+
+1, if gi ∈ TopK( G, K ),
+
+0, otherwise . (12) where bi = 1 indicates that the module remains active and 
+
+bi = 0 indicates that the module is skipped. Table 1: Performance comparison across progressive module-removal compute budgets on TinyLlama-1.1B. Lower perplexity is better ( ↓), while higher accuracy is better ( ↑). All baselines are evaluated at matched architectural savings tiers. 
+
+Budget Method WikiText PPL ↓ C4 PPL ↓ HellaSwag ↑ PIQA ↑ CSQA ↑ WinoGrande ↑
+
+0% TinyLlama-1.1B (Ref) 13.58 9.89 0.484 0.707 0.367 0.540 
+
+5% CausalGate (Ours) 16.00 10.84 0.445 0.723 0.359 0.54 
+
+CALM (Softmax) 32.33 20.85 0.383 0.664 0.320 0.524 CALM (Hidden-State) 23.11 28.97 0.453 0.734 0.313 0.540 MoD 25.04 16.00 0.484 0.648 0.359 0.516 GateSkip 14.71 16.12 0.461 0.684 0.313 0.54 
+
+AdaSkip 27.08 26.42 0.406 0.633 0.273 0.510 Act-Norm (Zero-Shot) 25.26 19.59 0.359 0.606 0.301 0.520 
+
+10% CausalGate (Ours) 18.46 12.84 0.410 0.715 0.332 0.506 CALM (Softmax) 71.96 48.35 0.383 0.648 0.297 0.522 CALM (Hidden-State) 46.43 70.59 0.391 0.641 0.281 0.538 
+
+MoD 60.29 40.75 0.406 0.605 0.336 0.492 GateSkip 22.43 27.34 0.441 0.613 0.293 0.518 AdaSkip 40.40 43.75 0.410 0.602 0.246 0.514 Act-Norm (Zero-Shot) 81.11 161.86 0.262 0.512 0.234 0.490 
+
+20% CausalGate (Ours) 67.0 40.0 0.340 0.610 0.260 0.490 CALM (Softmax) 198.0 141.0 0.350 0.610 0.300 0.510 CALM (Hidden-State) 80.0 130.0 0.370 0.590 0.250 0.520 
+
+MoD 407.0 269.0 0.310 0.510 0.260 0.520 
+
+GateSkip 81.0 100.0 0.320 0.550 0.260 0.480 AdaSkip 1816.0 531.0 0.246 0.554 0.200 0.490 Act-Norm (Zero-Shot) 2781.6 1085.0 0.273 0.535 0.231 0.510 
+
+30% CausalGate (Ours) 116.0 69.0 0.340 0.540 0.250 0.490 CALM (Softmax) 601.0 422.0 0.290 0.600 0.290 0.500 CALM (Hidden-State) 185.0 299.0 0.290 0.600 0.230 0.520 
+
+MoD 1313.0 990.0 0.250 0.530 0.240 0.510 GateSkip 365.0 491.0 0.257 0.520 0.250 0.470 AdaSkip 2064.0 623.0 0.238 0.539 0.170 0.490 Act-Norm (Zero-Shot) 3563.2 3385.3 0.238 0.535 0.176 0.500 
+
+40% CausalGate (Ours) 1365.0 441.0 0.280 0.500 0.200 0.480 CALM (Softmax) 1574.0 1047.0 0.280 0.530 0.250 0.500 
+
+CALM (Hidden-State) 1472.0 712.0 0.270 0.570 0.220 0.490 MoD 4433.0 3403.0 0.260 0.510 0.180 0.500 
+
+GateSkip 1698.0 2046.0 0.250 0.490 0.200 0.460 AdaSkip 4260.0 4509.0 0.235 0.527 0.160 0.460 Act-Norm (Zero-Shot) 20825.4 31094.0 0.254 0.527 0.207 0.488 
+
+## 4 Experiments 
+
+We evaluate whether intervention-guided module ranking can identify computationally important transformer modules while preserving language modeling and reasoning perfor-mance under reduced compute budgets. Specifically, we seek to answer the following questions: 
+
+• Can CausalGate retain model quality while disabling low-importance modules? 
+
+• How does CausalGate compare against existing compute-reduction baselines? 
+
+• Does intervention-derived supervision produce a mean-ingful ranking of module importance? 
+
+Experimental Setup 
+
+CausalGate Setup. All experiments are conducted using TinyLlama-1.1B, which consists of 22 transformer layers and 44 computational modules (22 attention and 22 MLP submodules). Gates are trained using AdamW with a learn-ing rate of 0.01, gradient accumulation of 8 steps, and a maximum of 1000 optimization steps. We employ an EMA decay factor of β = 0 .9, target floor α = 0 .25 , ranking mar-gin γ = 0 .05 , and 128 sampled ranking pairs per iteration. The loss weights are set to λLM = 1 .0, λsparse = 0 .001 ,
+
+λcausal = 10 .0, and λrank = 2 .0. All experiments, including baseline evaluations, were conducted on a single NVIDIA Tesla V100 GPU with 32 GB of memory. The hyperparam-eter configuration was selected using a one-factor-at-a-time (OFAT) sensitivity analysis, in which each hyperparameter was varied independently while all remaining settings were fixed. The complete sensitivity analysis and additional ex-perimental results are provided in the Appendix (Table 3). 
+
+Baselines. We compare CausalGate against representa-tive compute-reduction strategies spanning adaptive-depth inference, dynamic routing, learned gating, and heuristic module selection. The full TinyLlama-1.1B model serves as the no-compression reference. We include two CALM variants (Schuster et al. 2022) based on confidence-driven early exiting: (i) Softmax Margin, which exits when pre-diction confidence exceeds a calibrated threshold, and (ii) Hidden-State Saturation, which exits when consecutive hid-den representations become sufficiently similar. To evaluate dynamic depth allocation, we implemented a Mixture-of-Depths (MoD) (Raposo et al. 2024) routing baseline that selectively bypasses computations based on token-level rout-ing decisions. We further compare against GateSkip (Laiten-berger et al. 2025), a learned gating approach that trains lightweight gating functions to suppress low-importance computations, and AdaSkip (He et al. 2025), a heuristic module-selection strategy that ranks modules according to input-output similarity. To further validate the precise struc-tural contribution of our proposed intervention framework over basic observational methods, we also implement a zero-shot Activation-Norm Pruning (Act-Norm) baseline. This approach executes a forward pass over the calibration data to measure the absolute magnitude of the activations flow-ing out of each attention and MLP module. Formally, let 
+
+Hi ∈ RT ×d represent the output activation matrix of module 
+
+mi for a sequence of length T . The zero-shot importance met-ric Izero (mi) is computed as the expected magnitude across the token dimension: 
+
+Izero (mi) = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+∥Hi,t ∥22 (13) Modules yielding the lowest Izero scores are permanently masked out to satisfy the target compute reduction budget 
+
+ρ. Collectively, these baselines represent diverse approaches for reducing transformer computation through early exiting, dynamic routing, learned gating, and structural pruning. 
+
+Datasets. Evaluation is performed on both language mod-eling and commonsense reasoning benchmarks. For language modeling, we report perplexity on WikiText-2, the Penn Tree-bank (PTB), and the C4 corpus. For downstream reason-ing, we evaluate on HellaSwag, PIQA, CommonsenseQA (CSQA), and WinoGrande using standard multiple-choice accuracy. These benchmarks collectively assess the ability of compute-reduction methods to preserve language mod-eling performance, commonsense reasoning, and multiple-choice question answering accuracy under reduced compu-tation budgets. 
+
+Main Results 
+
+Table 1 compare CausalGate against recent inference op-timization baselines under 5%, 10%, 20%, 30% and 40% module-removal budgets, respectively. Performance is eval-uated across language modeling tasks (WikiText-2 and C4 perplexity) and downstream commonsense reasoning bench-marks (HellaSwag, PIQA, CommonsenseQA, and Wino-Grande). To characterize model robustness under progressive compute reduction, Figure 7 reports the relative perplexity degradation on PTB across increasing budgets. Table 2: Inference efficiency of CausalGate under increasing module-removal budgets.                             
+
+> Model Removal Latency (s) Tok/s Speedup
+> TinyLlama-1.1B 0% 2.100 60.9 1.00 ×
+> TinyLlama-1.1B 10% 1.954 65.5 1.08 ×
+> TinyLlama-1.1B 20% 1.747 73.3 1.20 ×
+> Qwen2.5-3B 0% 3.980 32.2 1.00 ×
+> Qwen2.5-3B 10% 3.641 35.2 1.09 ×
+> Qwen2.5-3B 20% 3.393 37.7 1.17 ×
+
+To assess practical inference efficiency, Table 2 reports end-to-end latency, throughput, and hardware speedups ob-tained by applying the learned module rankings. These mea-surements confirm that theoretical compute savings translate into measurable runtime improvements on physical hard-ware. Finally, to evaluate scalability beyond TinyLlama-1.1B, we apply CausalGate to Qwen2.5-3B-Instruct and Llama-3.1-8B-Instruct. Figure 6 summarizes the resulting WikiText-2 and C4 perplexities across module-removal bud-gets ranging from 0% to 20%, demonstrating the efficacy of our intervention-guided module ranking on larger trans-former backbones. 
+
+## 5 Discussion 
+
+Non-Uniform Causal Importance. The intervention-derived causal importance scores are highly non-uniform across transformer modules. While a small subset of mod-ules induces substantial changes in the output distribution when intervened upon, the majority produce only negligi-ble effects. In particular, several MLP submodules exhibit disproportionately large KL divergence values, indicating a dominant influence on the model’s predictions, whereas many attention submodules, especially in later layers, con-tribute comparatively little. This concentration of causal im-portance suggests that transformer computation is inherently redundant and motivates selectively preserving highly in-fluential modules during inference. A visualization of the learned causal importance distribution is provided in the Appendix (Figure 10). 
+
+Recovery of the Causal Hierarchy. A key objective of CausalGate is to distill expensive intervention-derived im-portance estimates into a compact set of learned gate param-eters. Figure 5 demonstrates that the learned gates recover much of the causal hierarchy identified through intervention analysis. The resulting gate rankings exhibit a Spearman cor-relation of 0.78 with the intervention-derived KL rankings, indicating strong agreement in the relative ordering of mod-ule importance. Although the Pearson correlation is lower (0.51), this behavior is expected since the ranking objective explicitly encourages ordering preservation rather than exact value matching. Furthermore, substantial overlap is observed among the highest- and lowest-ranked modules, suggesting that the learned gates successfully identify both critical and redundant components of the network. These results indicate that intervention-derived causal structure can be effectively distilled into lightweight gate parameters, eliminating the need for costly intervention analysis during inference. Figure 6: Scaling behavior of CausalGate on Qwen2.5-3B and Llama-3.1-8B under increasing module-removal bud-gets. 
+
+Impact on Compute Reduction. Table 1 summarizes per-formance across progressive module-removal budgets from 5% to 40%. At the 5% and 10% tiers, CausalGate establishes a highly favorable Pareto-efficiency frontier, achieving the lowest C4 perplexities (10.84 and 12.84) alongside superior or highly competitive downstream reasoning accuracy com-pared to all baselines. This margin expands significantly in the moderate 20% and 30% compression regimes. Notably, at a 30% budget reduction, CausalGate retains a tight language modeling perplexity (WikiText PPL of 116.0), whereas key baselines like GateSkip (365.0) and MoD (1313.0) experi-ence catastrophic architectural degradation. Furthermore, the complete failure of the data-dependent Act-Norm baseline at these moderate budgets (perplexity exceeding 3500) empiri-cally validates that active structural interventions are strictly necessary to diagnose true functional utility, which simple static observation misses. At the extreme 40% threshold, all models encounter an architectural inflection point where removing nearly half the sub-layers severely drops perfor-mance. While CALM (Hidden-State) demonstrates localized resilience on language modeling at this edge, CausalGate maintains highly competitive downstream reasoning met-rics. This systemic robustness is verified in Figure 7, where CausalGate incurs the lowest relative perplexity degradation on PTB across multiple compression tiers. Beyond single-model benchmarks, Figure 6 shows that this intervention-guided scaling behavior successfully translates to Qwen2.5-3B and LLaMA-3.1-8B under progressive constraints. Cru-cially, these advantages incur no operational overhead; as detailed in Table 2, compile-time mask generation translates theoretical structural savings into concrete throughput gains and latency reductions. A two-tailed Wilcoxon signed-rank test comparing the task-wise profiles of CausalGate against all baselines across the 5%–40% budgets confirms these per-formance gains are statistically significant ( p < 0.05 ). Over-all, these results confirm that intervention-derived causal im-portance provides a robust criterion for structural pruning. 
+
+Limitations and Future Work. The proposed framework employs a global module ranking that is learned once and ap-plied uniformly across all inputs. While this design enables efficient module selection and stable compute reduction, it does not account for input-specific variability in module im-portance. Consequently, modules that are unimportant on 
+
+Figure 7: Relative perplexity degradation on the PTB bench-mark under approximately 5% and 10% module-removal budgets. Values are reported as the percentage increase in perplexity relative to the full TinyLlama-1.1B model. average may still be beneficial for particular inputs or tasks. Future work could extend CausalGate toward input-adaptive policies that dynamically select modules based on the char-acteristics of each input sequence. Although the observed trends are consistent across both language modeling and rea-soning benchmarks, further validation on larger language models and diverse architectures is needed to assess the gen-erality of intervention-derived module ranking. Future work may also investigate finer-grained causal gating strategies, including token-level and context-dependent module selec-tion, as well as integration with runtime-aware execution frameworks for achieving practical inference acceleration. 
+
+## 6 Conclusion 
+
+In this work, we introduced CausalGate, an intervention-guided framework for compute-efficient transformer infer-ence. Unlike existing approaches that rely on observational heuristics such as confidence estimates or representation similarity, CausalGate directly measures module importance through structural interventions and quantifies each mod-ule’s causal influence on the model’s output distribution. By distilling intervention-derived importance scores into lightweight scalar gates using EMA target aggregation and pairwise ranking supervision, the proposed method learns a stable hierarchy of module importance that enables efficient module selection without requiring intervention analysis at inference time. Experimental results on language modeling and commonsense reasoning benchmarks demonstrate that CausalGate consistently achieves a more favorable compute-performance trade-off than existing adaptive inference meth-ods, particularly under increasingly restrictive compute bud-gets. These findings suggest that causal contribution provides a principled criterion for identifying redundant computation in LLMs and offer a promising direction toward more effi-cient and interpretable inference systems. 
+
+## References 
+
+Bejnordi, B. E.; Blankevoort, T.; and Welling, M. 2019. Batch-shaping for learning conditional channel gated net-works. arXiv preprint arXiv:1907.06627 .Bolukbasi, T.; Wang, J.; Dekel, O.; and Saligrama, V. 2017. Adaptive neural networks for efficient inference. In Interna-tional conference on machine learning , 527–536. PMLR. Cai, Z.; Zhang, Y.; Gao, B.; Liu, Y.; Li, Y.; Liu, T.; Lu, K.; Xiong, W.; Dong, Y.; Hu, J.; et al. 2024. Pyramidkv: Dy-namic kv cache compression based on pyramidal information funneling. arXiv preprint arXiv:2406.02069 .Frantar, E.; Ashkboos, S.; Hoefler, T.; and Alistarh, D. 2022. Gptq: Accurate post-training quantization for generative pre-trained transformers. arXiv preprint arXiv:2210.17323 .Gao, X.; Zhao, Y.; Mullins, R.; Xu, C.-z.; et al. 2018. Dy-namic channel pruning: Feature boosting and suppression. 
+
+arXiv preprint arXiv:1810.05331 .Ge, S.; Zhang, Y.; Liu, L.; Zhang, M.; Han, J.; and Gao, J. 2024. Model tells you what to discard: Adaptive kv cache compression for llms. In International Conference on Learn-ing Representations , volume 2024, 22975–22988. Han, Y.; Huang, G.; Song, S.; Yang, L.; Wang, H.; and Wang, Y. 2021. Dynamic neural networks: A survey. IEEE transac-tions on pattern analysis and machine intelligence , 44(11): 7436–7456. He, Z.; Yao, Y.; Zuo, P.; Gao, B.; Li, Q.; Zheng, Z.; and Wu, F. 2025. Adaskip: Adaptive sublayer skipping for accelerating long-context llm inference. In Proceedings of the AAAI Con-ference on Artificial Intelligence , volume 39, 24050–24058. Laitenberger, F.; Kopiczko, D.; Snoek, C. G.; and Asano, Y. M. 2025. What Layers When: Learning to Skip Compute in LLMs with Residual Gates. arXiv preprint arXiv:2510.13876 .Leviathan, Y.; Kalman, M.; and Matias, Y. 2023. Fast infer-ence from transformers via speculative decoding. In Inter-national Conference on Machine Learning , 19274–19286. PMLR. Lin, J.; Rao, Y.; Lu, J.; and Zhou, J. 2017. Runtime neural pruning. Advances in neural information processing systems ,30. Lin, J.; Tang, J.; Tang, H.; Yang, S.; Chen, W.-M.; Wang, W.-C.; Xiao, G.; Dang, X.; Gan, C.; and Han, S. 2024. Awq: Activation-aware weight quantization for on-device llm com-pression and acceleration. Proceedings of machine learning and systems , 6: 87–100. Liu, F.; Wang, J.; Yang, N.; Wang, Z.; Zhao, J.; Jiang, L.; and Guan, H. 2025. Aster: Adaptive dynamic layer-skipping for efficient transformer inference via markov decision process. In Proceedings of the 33rd ACM International Conference on Multimedia , 11853–11861. Liu, Y.; Meng, F.; and Zhou, J. 2024. Accelerating infer-ence in large language models with a unified layer skipping strategy. arXiv preprint arXiv:2404.06954 .Luo, X.; Wang, W.; and Yan, X. 2025. Adap-tive layer-skipping in pre-trained llms. arXiv preprint arXiv:2503.23798 .Ma, X.; Fang, G.; and Wang, X. 2023. Llm-pruner: On the structural pruning of large language models. Advances in neural information processing systems , 36: 21702–21720. Men, X.; Xu, M.; Zhang, Q.; Yuan, Q.; Wang, B.; Lin, H.; Lu, Y.; Han, X.; and Chen, W. 2025. Shortgpt: Layers in large language models are more redundant than you expect. In 
+
+Findings of the Association for Computational Linguistics: ACL 2025 , 20192–20204. Meng, L.; Li, H.; Chen, B.-C.; Lan, S.; Wu, Z.; Jiang, Y.-G.; and Lim, S.-N. 2022. Adavit: Adaptive vision trans-formers for efficient image recognition. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , 12309–12318. Nair, K.; Rizk, R.; and Santosh, K. 2026. A Spike-Gated Residual Unit for Information Flow Control in Transformers. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 3469–3478. Park, G.; Kim, M.; Lee, S.; Kim, J.; Kwon, B.; Kwon, S. J.; Kim, B.; Lee, Y.; Lee, D.; et al. 2024. Lut-gemm: Quan-tized matrix multiplication based on luts for efficient infer-ence in large-scale generative language models. In Inter-national Conference on Learning Representations , volume 2024, 38069–38086. Rao, Y.; Zhao, W.; Liu, B.; Lu, J.; Zhou, J.; and Hsieh, C.-J. 2021. Dynamicvit: Efficient vision transformers with dy-namic token sparsification. Advances in neural information processing systems , 34: 13937–13949. Raposo, D.; Ritter, S.; Richards, B.; Lillicrap, T.; Humphreys, P. C.; and Santoro, A. 2024. Mixture-of-depths: Dynamically allocating compute in transformer-based language models. 
+
+arXiv preprint arXiv:2404.02258 .Rotem, D.; Hassid, M.; Mamou, J.; and Schwartz, R. 2023. Finding the sweet spot: Analysis and improvement of adap-tive inference in low resource settings. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 14836–14851. Schuster, T.; Fisch, A.; Gupta, J.; Dehghani, M.; Bahri, D.; Tran, V.; Tay, Y.; and Metzler, D. 2022. Confident adap-tive language modeling. Advances in Neural Information Processing Systems , 35: 17456–17472. Stern, M.; Shazeer, N.; and Uszkoreit, J. 2018. Blockwise parallel decoding for deep autoregressive models. Advances in Neural Information Processing Systems , 31. Sun, M.; Liu, Z.; Bair, A.; and Kolter, Z. 2024. A simple and effective pruning approach for large language models. In International Conference on Learning Representations ,volume 2024, 4942–4964. Sun, X.; Ge, T.; Wei, F.; and Wang, H. 2021. Instantaneous grammatical error correction with shallow aggressive de-coding. In Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th Inter-national Joint Conference on Natural Language Processing (Volume 1: Long Papers) , 5937–5947. Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.; Jones, L.; Gomez, A. N.; Kaiser, Ł.; and Polosukhin, I. 2017. Attention is all you need. Advances in neural information processing systems , 30. Xia, M.; Gao, T.; Zeng, Z.; and Chen, D. 2024. Sheared llama: Accelerating language model pre-training via struc-tured pruning. In International Conference on Learning Rep-resentations , volume 2024, 5385–5409. Xiao, G.; Lin, J.; Seznec, M.; Wu, H.; Demouth, J.; and Han, S. 2023. Smoothquant: Accurate and efficient post-training quantization for large language models. In International conference on machine learning , 38087–38099. PMLR. Xiao, G.; Tang, J.; Zuo, J.; Guo, J.; Yang, S.; Tang, H.; Fu, Y.; and Han, S. 2025. Duoattention: Efficient long-context llm inference with retrieval and streaming heads. In Inter-national Conference on Learning Representations , volume 2025, 37228–37253. Yin, H.; Vahdat, A.; Alvarez, J. M.; Mallya, A.; Kautz, J.; and Molchanov, P. 2022. A-vit: Adaptive tokens for efficient vision transformer. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , 10809– 10818. Zhang, X.; Xiao, G.; Duan, M.; Chen, Y.; and Li, K. 2024. APPQ-CNN: An adaptive CNNs inference accelerator for synergistically exploiting pruning and quantization based on FPGA. IEEE Transactions on Sustainable Computing , 9(6): 874–888. A Ablation Studies and Analysis 
+
+> Table 3: One-factor-at-a-time hyperparameter sensitivity analysis of CausalGate. Each hyperparameter is varied independently while all remaining settings are fixed to their default values. Spearman correlation is computed with respect to the intervention-derived ranking, and WikiText-2 perplexity is reported at the 10% module-removal budget.
+
+# Hyperparameter Value Spearman ↑ WikiText PPL ↓ Selected 
+
+# Learning Rate 0.001 0.6879 20.19 0.005 0.6765 21.15 
+
+# 0.010 0.6849 18.46 ✓
+
+# 0.020 0.681 18.52 EMA β 0.70 0.679 18.6 0.80 0.675 18.62 
+
+# 0.90 0.68 18.44 ✓
+
+# 0.95 0.66 19.01 Target Floor α 0.10 0.72 18.47 
+
+# 0.25 0.71 18.44 ✓
+
+# 0.40 0.7 18.44 Rank Margin γ 0.01 0.62 18.48 
+
+# 0.05 0.68 18.43 ✓
+
+# 0.10 0.65 18.45 Rank Pairs 32 0.68 18.45 64 0.68 18.45 
+
+# 128 0.68 18.45 ✓
+
+# 256 0.68 18.45 
+
+# λcausal 1 0.54 20.1 5 0.56 19.7 
+
+# 10 0.6 18.48 ✓
+
+# 20 0.6 18.9 
+
+# λrank 0 0.43 19.2 1 0.57 19.2 
+
+# 2 0.68 18.46 ✓
+
+# 3 0.66 18.56 Training Steps 500 0.7 21.15 
+
+# 1000 0.68 18.4 ✓
+
+# 1500 0.69 18.45 Table 4: Summary of datasets used for training and evaluation. 
+
+# Dataset Usage Task License 
+
+# WikiText-2 Training + Evaluation Language Modeling CC BY-SA 3.0 C4 Evaluation Language Modeling ODC-BY 1.0 HellaSwag Evaluation Commonsense Reasoning MIT PIQA Evaluation Physical Reasoning MIT CommonsenseQA Evaluation Question Answering MIT WinoGrande Evaluation Commonsense Reasoning MIT 
+
+## B Algorithm 
+
+Algorithm 1: Intervention-Based Causal Importance Estimation 
+
+Require: Transformer f , module set M = {mi}Mi=1 , input batch x
+
+Ensure: Module-level causal scores {∆i}Mi=1  
+
+> 1:
+
+Run the original model to obtain logits ℓorig ← f (x) 
+
+> 2:
+
+Compute final-token distribution porig (yT |x) 
+
+> 3:
+
+for each module mi ∈ M do  
+
+> 4:
+
+Zero the residual-branch output of module mi 
+
+> 5:
+
+Run the intervened model to obtain logits ℓint ,i  
+
+> 6:
+
+Compute final-token distribution pint ,i (yT |x) 
+
+> 7:
+
+Compute causal importance score: 
+
+∆i = DKL (pint ,i (yT |x) ∥ porig (yT |x))  
+
+> 8:
+
+end for  
+
+> 9:
+
+return {∆i}Mi=1 Algorithm 2: CausalGate Distillation and Module Selection 
+
+Require: Frozen transformer f , training data D, module set M
+
+Require: Target floor α, EMA decay β, ranking margin γ, ranking pairs R
+
+Require: Loss weights λLM , λ sparse , λ causal , λ rank 
+
+Ensure: Learned gate ranking and selected modules under target budget ρ 
+
+> 1:
+
+Initialize one scalar gate logit θi ← 0 for each module mi 
+
+> 2:
+
+Set gi ← σ(θi) 
+
+> 3:
+
+Freeze all backbone parameters of f 
+
+> 4:
+
+for training step t = 1 , . . . , T do  
+
+> 5:
+
+Sample batch x ∼ D  
+
+> 6:
+
+Compute intervention scores {∆(t) 
+
+> i
+
+}Mi=1 using Algorithm 1  
+
+> 7:
+
+Normalize scores: 
+
+˜z(t) 
+
+> i
+
+= ∆(t)
+
+> i
+
+max j ∆(t) 
+
+> j
+
++ ϵ 
+
+> 8:
+
+Apply target floor: 
+
+z(t) 
+
+> i
+
+= α + (1 − α)˜ z(t) 
+
+> i
+> 9:
+
+if t = 1 then  
+
+> 10:
+
+Initialize EMA target ¯z(t) 
+
+> i
+
+← z(t) 
+
+> i
+> 11:
+
+else  
+
+> 12:
+
+Update EMA target: 
+
+¯z(t) 
+
+> i
+
+= β ¯z(t−1)  
+
+> i
+
++ (1 − β)z(t) 
+
+> i
+> 13:
+
+end if  
+
+> 14:
+
+Update gate values gi ← σ(θi) 
+
+> 15:
+
+Compute causal regression loss: 
+
+LMSE = 1
+
+M
+
+> M
+
+X
+
+> i=1
+
+
+
+gi − ¯z(t)
+
+> i
+
+2 
+
+> 16:
+
+Sample R random non-tied module pairs P 
+
+> 17:
+
+Define sij = sign(¯ z(t) 
+
+> i
+
+− ¯z(t) 
+
+> j
+
+) 
+
+> 18:
+
+Compute ranking loss: 
+
+Lrank = 1
+
+|P| 
+
+X
+
+> (i,j )∈P
+
+max (0 , γ − sij (gi − gj ))  
+
+> 19:
+
+Compute sparsity loss: 
+
+Lsparse = 1
+
+M
+
+> M
+
+X
+
+> i=1
+
+g2 
+
+> i
+> 20:
+
+Compute total loss: 
+
+L = λLM LLM + λsparse Lsparse + λcausal LMSE + λrank Lrank  
+
+> 21:
+
+Update only gate logits {θi}Mi=1 using AdamW  
+
+> 22:
+
+end for  
+
+> 23:
+
+Rank modules by learned gate values in descending order  
+
+> 24:
+
+For target saved ratio ρ, compute S = round( ρM ) and K = M − S 
+
+> 25:
+
+Keep the top-K modules and suppress the remaining S modules  
+
+> 26:
+
+return learned gate ranking and selected module set C An Interventional Causal Interpretation of CausalGate 
+
+Although CausalGate is implemented entirely within a transformer, its module-ranking strategy can be interpreted through the lens of interventional causal reasoning. Rather than estimating module importance from observational statistics such as activation magnitudes, hidden-state similarity, or confidence measures, CausalGate explicitly intervenes on individual transformer modules and measures the resulting change in the model prediction. 
+
+Figure 8: Effect of reducing the fraction of active transformer modules. Accuracy is reported for HellaSwag, CommonsenseQA, and PIQA, while perplexity is shown on a logarithmic scale. 
+
+Figure 9: Interventional causal interpretation of CausalGate. Given an input sequence X, the transformer produces the predictive distribution P (Y | X). An intervention suppresses the residual contribution of a selected module (illustrated for M3), producing the intervened distribution P (Y | do (M3 = 0) , X ). The KL divergence between the original and intervened distributions quantifies the module’s interventional influence on the model prediction, providing the supervision signal for learning module importance. Consider a transformer consisting of N computational modules (attention and MLP sublayers). Let X denote the input token sequence, Mi denote the output representation of the i-th transformer module, and Y denote the next-token predictive distribution. The forward computation may be written as Figure 10: Module-level causal importance scores obtained through intervention analysis. Each cell reports the average KL divergence induced by zeroing the corresponding attention or MLP submodule. Higher values indicate modules whose removal causes larger changes in the model’s output distribution. 
+
+M1 = f1(X), (14) 
+
+M2 = f2(M1), (15) ... (16) 
+
+MN = fN (MN −1), (17) 
+
+P (Y |X) = g(MN ), (18) where each module causally influences all downstream representations through the residual computation graph. Under this interpretation, each transformer module represents an intermediate causal variable whose effect propagates to the final prediction. Figure 9 illustrates this computational graph together with the intervention performed by CausalGate. Rather than estimating module importance from observational statistics, an intervention suppresses the residual contribution of a selected transformer module while leaving the remainder of the computational graph unchanged. This produces an intervened predictive distribution that can be directly compared with the original model prediction. From an interventional perspective, modules whose removal induces larger changes in the output distribution are interpreted as exerting greater causal influence on the model’s prediction. Consequently, CausalGate estimates module importance through explicit interventions on the computational graph rather than through correlation-based proxies such as activation magnitude or hidden-state similarity.
