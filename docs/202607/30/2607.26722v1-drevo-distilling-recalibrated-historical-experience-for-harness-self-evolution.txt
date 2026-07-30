@@ -1,0 +1,374 @@
+Title: DREvo: Distilling Recalibrated Historical Experience for Harness Self-Evolution
+
+URL Source: https://arxiv.org/pdf/2607.26722v1
+
+Published Time: Thu, 30 Jul 2026 00:43:20 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# DREvo: Distilling Recalibrated Historical Experience for Harness Self-Evolution 
+
+## Hanghui Guo 1, Weijie Shi 2, Zhangze Chen 3, Shengxiang Xu 1, Yishu Wang 1, Yimei Zhang 4,Wangze Ni 5, Jia Zhu 3, Shimin Di 1
+
+> 1
+
+School of Computer Science and Engineering, Southeast University, China 
+
+> 2
+
+Department of Computer Science and Engineering, Hong Kong University of Science and Technology, China 
+
+> 3
+
+Zhejiang Key Laboratory of Intelligent Education Technology and Application, Zhejiang Normal University, China 
+
+> 4
+
+College of Computer Science and Technology, Zhejiang University of Technology, China 
+
+> 5
+
+College of Computer Science and Technology, Zhejiang University, China 
+
+Abstract 
+
+Harness plays a critical role in large language model agent per-formance, and building a high-performing harness requires substantial expert effort. Therefore, recent research has in-creasingly explored harness self-evolution, which iteratively proposes, evaluates, and improves harnesses using historical trial experience. However, accumulated historical experience does not always translate into stable search guidance, and per-formance often fluctuates substantially across evolution itera-tions, making it difficult to reliably discover high-performing harnesses under a limited evolution budget. We identify two limitations in how existing harness self-evolution methods leverage historical experience: (1) Lack of dynamic reassess-ment of whether historical experience remains valid for the current harness , and (2) Lack of explicit mechanisms for trans-lating valid historical experience into actionable search di-rections . To address these limitations, we propose a new har-ness self-evolution method, named DREvo , which integrates function-level evidence anchoring, state-dependent evidence recalibration, and role-conditioned search intent distillation to determine which historical evidence remains valid and where the harness should evolve next . Under limited evolution bud-gets, DREvo exhibits smoother evolution trajectories, achieves the highest accuracy on all five benchmarks, and delivers av-erage gains of 16.2% and 13.8% over the evaluated baselines on domain reasoning and agentic tasks, respectively. 
+
+## Introduction 
+
+The capabilities of a large language model (LLM) agent are shaped not only by its underlying foundation model, but also by its external execution framework, commonly referred to as a harness (Rajasekaran 2026; Lopopolo 2026; Chen 2026). The harness specifies how an agent operates during execu-tion, including how it constructs context, manages memory, invokes tools, and parses output, and can therefore substan-tially affect its behavior (Yang et al. 2024b; Li et al. 2024; Liu et al. 2026). However, effective harness design still re-lies heavily on human expertise. Developers must inspect evaluation failures and execution traces, diagnose interac-tions among components, and repeatedly coordinate revi-sions across the entire harness (Guo et al. 2025; Shen et al. 2026; Hu, Lu, and Clune 2025). As tasks grow more com-plex and harnesses involve more components, manual refine-ment becomes increasingly labor-intensive and difficult to scale (Zhang et al. 2025a; Qiao et al. 2025; Yang et al. 2024a), 
+
+Figure 1: (a) Full-history and compressed-history reuse 
+
+(Meta-harness, Claude Opus 4.6, 1M-token context win-dow) both exhibit non-stationary evolution across the S2D, USPTO, and Law datasets, with accuracy repeatedly regress-ing and recovering across iterations despite accumulating historical experience. (b) Two limitations in harness self-evolution: What is still valid? and Where to evolve next? 
+
+motivating recent research into harness self-evolution .Existing harness self-evolution methods, such as Meta-harness (Lee et al. 2026), AHE (Lin et al. 2026), and ACE (Zhang et al. 2025b), typically follow a history-driven paradigm . Specifically, at each iteration, the candidate har-ness is executed and evaluated, and the resulting records or their processed summaries are accumulated as historical experience, including candidate code, execution trajectories such as model responses and tool interactions, and derived feedback such as failure summaries. This historical experi-ence is then provided to the proposer in subsequent iterations to guide the generation of new candidate harnesses. Overall, this pipeline aims to optimize harness designs through itera-tive propose-evaluate-feedback cycles (Agrawal et al. 2025). In practice, this process requires generating and evaluating a candidate harness at every iteration. Each iteration involves multiple LLM calls and task-environment interactions, often resulting in long rollout times, substantial API and compu-tational costs. However, as shown in Figure 1(a), under both arXiv:2607.26722v1 [cs.MA] 29 Jul 2026 full-history and compressed-history reuse, accuracy does not exhibit a stable upward trend as historical experience accu-mulates, but instead fluctuates markedly across iterations, revealing pronounced non-stationarity in the evolution trajec-tory. This suggests that the continued accumulation of histor-ical experience does not necessarily provide effective search guidance for subsequent evolution. Consequently, many it-erations that fail to produce a better harness continue to consume evaluation budget. Under a limited evolution bud-get, history-driven harness self-evolution may therefore fail to reliably discover a high-performing harness. To further investigate this issue, we identify two key limita-tions in how existing harness self-evolution methods leverage historical experience, as summarized in Figure 1(b): 
+
+(1) What is still valid? Historical experience in harness self-evolution is highly state-dependent and cannot be reused unconditionally. Each trial record reflects the effect of a com-ponent modification under a specific harness implementa-tion, execution outcome, and task context. As the evolution process proceeds, subsequent modifications may alter the component state on which earlier experience depends. As a result, a previously effective modification may become in-valid under the current state, while a previously harmful or ineffective direction may become viable again due to state changes. Existing methods typically preserve such experi-ence as statically valid evidence, but lack explicit calibration of its applicability to the current harness state. Thus, the pro-poser may base its updates on mismatched evidence, causing stale experience to distort the subsequent search trajectory. 
+
+(2) Where to evolve next? Historical experience in har-ness self-evolution is not merely a record of past trials, but ev-idence for guiding subsequent harness modifications. How-ever, turning such evidence into effective updates requires deciding which harness component to modify and how to modify it. A harness typically contains multiple interrelated components and substantial code, while historical experi-ence contains heterogeneous evidence. Simply exposing the proposer to full historical experience or summaries leaves these decisions implicit. This may produce ineffective evo-lution directions and make it more difficult to discover a high-performing harness under a limited budget. Thus, har-ness self-evolution requires an explicit update policy that balances exploration and exploitation across iterations, en-abling past experience to stably guide subsequent search. To address these limitations, we introduce a novel harness self-evolution method, named DREvo . Specifically, DREvo consists of three main components: (1) Function-Level Ev-idence Anchoring. It transforms coarse iteration-level trial logs into function-anchored evidence units, making heteroge-neous feedback localizable and traceable to specific harness components while providing the basis for subsequent evi-dence recalibration and search-intent distillation. (2) State-Dependent Evidence Recalibration. It recalibrates each ev-idence unit according to its reliability across prior uses and its structural compatibility with the current harness, thereby reassessing the validity of historical experience under the evolving harness state. (3) Role-Conditioned Search Intent Distillation. It retrieves historical evidence relevant to fail-ure patterns observed in the current iteration and distills it into an explicit, role-conditioned search intent that specifies where and how the harness should evolve next. The main contributions of our work are as follows: 
+
+• We identify substantial performance fluctuations as a key reliability challenge in harness self-evolution and trace them to two limitations concerning what is still valid 
+
+and where to evolve next , both of which reduce search effectiveness and hinder the reliable discovery of high-performing harnesses under limited evolution budgets. 
+
+• We propose DREvo , a novel harness self-evolution method that transforms raw trial logs into fine-grained, function-anchored evidence units, dynamically recali-brates their validity under the current harness state, and distills the calibrated evidence into an explicit search in-tent through evidence-conditioned role selection. 
+
+• We validate the effectiveness of DREvo through exten-sive experiments, showing smoother evolution trajecto-ries with fewer performance oscillations and average gains of 16.2% and 14.2% over the evaluated baselines on do-main reasoning and agentic tasks, respectively. 
+
+## Related Work 
+
+Harness Engineering. Harness design plays a crucial role in shaping the capabilities of large language model (LLM) agents (Ning et al. 2026; Meng et al. 2026; Wang et al. 2026). For example, SWE-agent provides interfaces for code navigation, editing, and testing (Yang et al. 2024b). Open-Hands integrates code execution, terminal interaction, and sandbox environments (Wang et al. 2025). Mini-SWE-Agent adopts a simplified Bash interface with a linear message his-tory (Yang et al. 2024b). Terminus-2 allows the model to directly operate a persistent terminal session (Merrill et al. 2026). Terminus-KIRA employs native tool calling for termi-nal tasks (KRAFTON and Robotics 2026). Claude Code in-tegrates codebase understanding, file editing, and command execution into a project development workflow. Collectively, these systems demonstrate how harness design shapes agent– environment interaction and task execution, but their archi-tectures and interfaces remain primarily hand-engineered. 
+
+Harness Self-Evolution. Recent advances in LLMs have improved their code generation abilities (Liang et al. 2026). This progress enables LLMs to drive harness self-evolution, reducing reliance on manual engineering. Some work fo-cuses primarily on context management within the harness. ACE uses LLMs to build an evolving playbook that accumu-lates and revises task strategies (Zhang et al. 2025b). MCE uses LLM agents at two optimization levels to jointly evolve context engineering skills and context artifacts (Ye et al. 2026). However, these methods optimize only the context component of the harness and may therefore be less effec-tive in complex tasks involving multiple interacting harness components. Later studies extend optimization to a wider range of harness components. AutoHarness synthesizes task-specific constraint code from environmental feedback (Lou et al. 2026). Self-Harness examines how harness modifica-tions should be adapted to differing requirements of founda-tion models (Zhang et al. 2026). Meta-harness guides har-ness generation by reusing compressed summaries of can-Figure 2: Detailed overview of the DREvo framework, which anchors historical evidence at the function level, recalibrates its validity under the current harness state, and distills it into explicit guidance for harness self-evolution under limited budgets. didate code, evaluation scores, and execution traces (Lee et al. 2026). AHE generates improved harnesses through tra-jectory distillation and verifiable feedback from execution outcomes (Lin et al. 2026). These studies broaden the scope of harness optimization and advance harness self-evolution through execution feedback and modification validation. However, prior studies primarily focus on constructing end-to-end pipelines for harness self-evolution, while the re-liability of history-driven search within this process remains underexplored. Specifically, these methods typically reuse records or summaries as fixed context. As the harness state changes, historical experience may become stale. Moreover, search decisions often rely on the proposer’s implicit reason-ing, leading to unstable search directions during evolution. These issues motivate DREvo, which anchors, recalibrates, and distills historical evidence into explicit search intent. 
+
+## Proposed Approach 
+
+Problem Setup 
+
+Harness Self-Evolution. We first formalize the conven-tional history-driven harness self-evolution paradigm. Given an initial harness h0, an evaluation environment E, and T
+
+evolution iterations, harness self-evolution performs history-conditioned sequential optimization. Before evolution, h0 is evaluated under E to obtain the initial trial log τ0 and initialize the experience repository R0. At iteration t (1 ≤ t ≤ T ), the proposer P first generates a candidate harness ht conditioned on the preceding harness ht−1 and repository Rt−1. Evaluat-ing ht under E then produces a trial log τt, which is appended to Rt. The objective is to select the best-performing harness: 
+
+ht ∼ P (· | ht−1, Rt−1), h⋆ = arg max  
+
+> h∈H
+
+JE (h), (1) where H = {h0, h 1, . . . , h T } contains the initial harness and all candidates generated during evolution, and JE denotes their evaluation performance. 
+
+Overview of DREvo. In the conventional process above, the proposer directly conditions each new harness on accumu-lated experience. However, as the harness evolves, historical evidence may become invalid and does not explicitly indi-cate which component to modify or how to modify it. These limitations can destabilize the search and hinder the reliable discovery of a high-performing harness within T iterations. To address them, we propose DREvo , as illustrated in Fig-ure 2. DREvo comprises three components: Function-Level Evidence Anchoring , State-Dependent Evidence Recalibra-tion , and Role-Conditioned Search Intent Distillation .
+
+Function-Level Evidence Anchoring 
+
+Raw trial logs are organized at the iteration level, mixing harness modifications, execution trajectories, and evaluation feedback. When directly using these logs, the proposer P
+
+must infer the relationships between component modifica-tions and execution outcomes from a growing volume of heterogeneous information, making reusable experience dif-ficult to extract. To address this issue, we introduce Function-Level Evidence Anchoring , which uses functions as basic anchoring units to associate each modification with its ob-served feedback, thereby localizing the resulting evidence to specific harness components and storing it in Rt.Specifically, we represent a harness as a set of functional components C, such as tool use and memory management. Each component c ∈ C is represented by its corresponding function implementation fc, thereby establishing an explicit anchor between the component and its evolving code state. At each iteration, DREvo first parses the structured trial log τt to extract feedback ot = ( gt, Qt, Ft). Here, gt records global statistics, including the pass rate, average score, and resource consumption; Qt contains task-level outcomes, in-cluding the pass status, score change, and failure summary of each task; and Ft summarizes the frequencies of differ-ent failure patterns, such as timeouts, runtime exceptions, tool-call errors, and context overflow. DREvo then computes a line-level code diff between ht−1
+
+and ht. Each diff hunk is mapped to its enclosing func-tional component according to the source-span boundaries of {fc}c∈C , allowing DREvo to identify the modified com-ponents and collect their corresponding code changes: 
+
+FuncDiff( ht−1, h t) = (c, δ t,c ) | c ∈ C ∆ 
+
+> t
+
+, (2) where C∆ 
+
+> t
+
+is the set of modified components, c identifies a specific component, and δt,c records the code changes made to the function corresponding to c. In practice, DREvo en-courages the proposer to modify a single target component whenever possible, so that the resulting feedback can be more directly attributed to a component-scoped code change. For each modified component c ∈ C ∆ 
+
+> t
+
+, DREvo further de-termines two attributes of the corresponding evidence unit: an initial binary polarity ρe and weight we. To determine the polarity, DREvo computes the trial-level performance change 
+
+∆t = JE (ht) − JE (ht−1), setting ρe = −1 if ∆t < 0 and 
+
+ρe = +1 otherwise, including ties. By default, we = 1 .0
+
+for a single-component edit and we = 0 .5 for a multi-component edit, reflecting lower attribution confidence be-cause component-specific effects cannot be isolated in the latter case. DREvo then constructs the function-anchored ev-idence unit et,c = ( c, f c, δ t,c , ot, ∆t, ρ e, w e, p t), where pt
+
+points to the provenance traces in τt.All constructed evidence units et,c are appended to Rt.When an evidence unit is subsequently reused to guide evo-lution, its polarity is updated using the same rule based on the resulting performance change, while its weight is recali-brated through State-Dependent Evidence Recalibration .
+
+State-Dependent Evidence Recalibration 
+
+Function-Level Evidence Anchoring transforms trial logs into function-level evidence, but each piece of evidence is derived under a specific harness state. As the harness evolves, previously effective experience may become obso-lete, whereas failed directions may become viable again. Thus, historical evidence must be re-evaluated before guid-ing subsequent evolution. To address this issue, we introduce 
+
+State-Dependent Evidence Recalibration to dynamically cal-ibrate evidence validity under the current harness state. Specifically, the validity of historical evidence is assessed from two perspectives: (1) whether the evidence remains re-liable based on prior uses (historical reliability rt(e)), (2) whether its associated component state remains compatible with the current harness (structural compatibility qt(e)). To estimate historical reliability, DREvo maintains an in-teraction log for each evidence unit. The log is initialized with the performance change and outcome polarity observed when the evidence is created, and subsequently records the corresponding outcome of each invocation. Based on this accumulated interaction history, DREvo characterizes his-torical reliability from two complementary signals: outcome consistency and freshness, capturing whether previous uses remain supportive and temporally relevant during evolution. Outcome consistency measures how strongly the recorded outcomes support the current evidence polarity, weighted by their performance changes. Let It(e) denote the set contain-ing the creation record and all subsequent invocation records of evidence e up to iteration t, where ρj (e) and ∆j (e) de-note the outcome polarity and performance change recorded at iteration j, respectively. We define it as cons t(e):
+
+cons t(e) = 
+
+P 
+
+> j∈I t(e)
+
+I[ρj (e) = ρe] |∆j (e)|
+
+P 
+
+> j∈I t(e)
+
+|∆j (e)| + ϵ , (3) where ρe denotes the current evidence polarity, I[·] is the indicator function, and ϵ is a small constant that prevents a zero denominator. Thus, cons t(e) represents the fraction of the total observed performance variation that supports the current evidence polarity. It becomes high when more prior invocations, particularly those with large performance changes, agree with the current polarity; otherwise, the value tends to be low. Therefore, cons t(e) reflects the reliability of the current polarity under historical usage. Freshness measures temporal relevance with a fixed decay: 
+
+fresh t(e) = 0 .9 t−ℓt(e), (4) where ℓt(e) denotes the iteration of the most recent record in 
+
+It(e), corresponding to either its creation or latest invocation. Freshness therefore decays as the evidence remains unused. Since historically reliable evidence should be both outcome-consistent and recent, DREvo defines its historical reliability as rt(e) = cons t(e) fresh t(e).Beyond historical reliability, DREvo estimates structural compatibility. Each evidence unit is tied to the component implementation under which it was created; as the harness evolves, that implementation may change and reduce the ap-plicability of the evidence. DREvo therefore checks whether the evidence-anchored component remains structurally com-patible with its current state before reuse. Specifically, DREvo retrieves the component code associ-ated with the evidence and locates the corresponding compo-nent in the current harness through function-level anchoring. It then parses both component implementations into abstract syntax trees (ASTs), which serve as a lightweight structural proxy for compatibility rather than a proof of semantic equiv-alence , and normalizes superficial lexical details, such as identifiers, while preserving behavior-sensitive literal val-ues, prompt strings, control-flow structures, call patterns, and state-update operations. Let Te and Tt denote the AST of the component at evidence creation and in the current harness, respectively. The structural compatibility of the component state is defined as qt(e):
+
+qt(e) = 1 − TED( Te, T t)
+
+|Te| + |Tt| , (5) where TED( Te, T t) denotes the minimum number of node insertions, deletions, and substitutions required to transform Te into Tt, and |Te| and |Tt| denote their respective num-bers of AST nodes. A smaller tree edit distance indicates that the control structures, function calls, and state-update logic underlying the evidence are better preserved in the current component, resulting in higher state compatibility. Conversely, substantial structural changes reduce qt(e). Be-cause comparison is restricted to the anchored component, unrelated changes do not affect compatibility. Finally, DREvo computes the calibrated evidence weight as: 
+
+we = 2rt(e)qt(e)
+
+rt(e) + qt(e) + ϵ , (6) where we ∈ [0 , 1] . This aggregation treats reliability and compatibility as jointly necessary: a high value in one factor cannot fully compensate for a low value in the other. 
+
+Role-Conditioned Search Intent Distillation 
+
+Directly using the experience repository Rt as context re-quires the proposer P to perform evidence selection and search planning simultaneously, implicitly deciding which evidence to exploit, avoid, or revisit, as well as which com-ponent to modify and how to modify it. This can destabi-lize search directions across iterations. Even with relevance-based retrieval or history compression, the resulting context remains primarily descriptive of previous trials, leaving its implications for subsequent evolution to P’s implicit reason-ing. To address this issue, we introduce Role-Conditioned Search Intent Distillation , an evidence-conditioned search policy that distills calibrated evidence into an explicit search intent specifying the target component and corresponding modification direction before P generates ht+1 .Specifically, after running ht in iteration t, DREvo extracts current failure patterns Ft from the trial log τt and directly retrieves historical evidence associated with the same failure categories from Rt. We denote the retrieved evidence set by 
+
+Zt. For each evidence unit e ∈ Z t, DREvo obtains its cur-rent polarity ρe ∈ { +1 , −1} and its weight we ∈ [0 , 1] cal-ibrated by State-Dependent Evidence Recalibration. DREvo first partitions the retrieved evidence into three decision sets according to its polarity and weight. Given a confidence threshold θ = 0 .5 (midpoint of we ∈ [0 , 1] ), the evidence partition is defined as: 
+
+Xt = {e ∈ Z t | we > θ, ρ e = +1 },
+
+At = {e ∈ Z t | we > θ, ρ e = −1},
+
+Tt = {e ∈ Z t | we ≤ θ}.
+
+(7) Here, Xt, At, and Tt contain reliable positive evidence, reliable negative evidence, and low-confidence evidence, re-spectively. Based on these decision sets, Role-Conditioned Search Intent Distillation defines four search roles: Exploit ,
+
+Avoid , Retest , and Explore . Each role assigns a distinct operational meaning to the retrieved evidence and prescribes a corresponding search direction for subsequent evolution. The Exploit role treats reliable positive evidence from Xt
+
+as binding guidance, requiring P to follow the correspond-ing direction and inherit or refine the validated modifica-tions. The Avoid role uses reliable negative evidence from 
+
+At to avoid known harmful modifications while leaving the Algorithm 1: Role Activation 
+
+Require: Evidence sets (Xt, At, Tt), retrieved evidence Zt,and previous Retest-failure flag failRetest t−1
+
+Ensure: Activated search role at 
+
+> 1:
+
+if Xt̸ = ∅ then  
+
+> 2:
+
+at ← Exploit  
+
+> 3:
+
+else if At̸ = ∅ then  
+
+> 4:
+
+at ← Avoid  
+
+> 5:
+
+else if Zt = ∅ ∨ failRetest t−1 then  
+
+> 6:
+
+at ← Explore  
+
+> 7:
+
+else if Tt̸ = ∅ then  
+
+> 8:
+
+at ← Retest  
+
+> 9:
+
+else  
+
+> 10:
+
+at ← Explore  
+
+> 11:
+
+end if  
+
+> 12:
+
+return at
+
+remaining search space open. The Retest role presents low-confidence evidence from Tt as non-binding references, al-lowing P to independently decide whether to follow or avoid the corresponding directions. Unlike these evidence-driven roles, Explore imposes no evidence-derived constraints and allows P to freely determine the component and modification direction based on the current failure patterns. After evidence partition, DREvo adopts a role activation strategy that prioritizes high-confidence positive evidence, as shown in Algorithm 1. Let at denote the activated search role, and let failRetest t−1 indicate whether the previous it-eration was guided by Retest but yielded no performance improvement. Retest is used to reassess low-confidence ev-idence under the current harness state. If a Retest -guided iteration is unsuccessful, it switches to Explore in the next iteration to avoid repeated attempts along uncertain direc-tions. Then, DREvo distills the current failure patterns and role-associated evidence into an explicit search intent: 
+
+st = G(at, Ft, Zat 
+
+> t
+
+) , ht+1 ∼ P (· | ht, s t), (8) where Zat 
+
+> t
+
+denotes the subset of retrieved evidence associ-ated with the activated role at, and G instantiates the corre-sponding role semantics to distill the current failure patterns and role-associated evidence into a target component and corresponding modification direction. 
+
+## Experiments 
+
+Experimental Setups 
+
+Tasks and Datasets. (1) Domain Reasoning. We consider USPTO for chemical reaction prediction (Schneider, Stiefl, and Landrum 2016), Symptom2Disease (S2D) for medical diagnosis (Lee et al. 2026), and Law for legal reasoning (Fei et al. 2024). These tasks evaluate context organization, ex-ample selection, and reasoning strategies. Each dataset is divided into a validation set for harness evolution and a test set for the final evaluation of the best-performing evolved harness. (2) Agentic Tasks. We choose Terminal-Bench 2.0 (TB2) for terminal interaction (Merrill et al. 2026) and SWE-Bench Verified for code repair (Jimenez et al. 2024). Domain Reasoning Agentic Tasks Method USPTO S2D Law Method Terminal-Bench 2.0 SWE-Bench Verified Acc. ∆ Acc. ∆ Acc. ∆ Acc. ∆ Acc. ∆                                                                                        
+
+> Naive 12.0 13.0 63.2 26.0 7.0 42.0 OpenHands 31.5 11.2 61.8 5.8 Few-Shot (8) 14.0 11.0 72.2 17.0 21.0 28.0 Terminus-KIRA 25.8 16.9 41.4 26.2 Few-Shot (32) 13.0 12.0 67.9 21.3 21.0 28.0 Terminus-2 34.8 7.9 49.6 18.0 Few-Shot (all) 15.0 10.0 78.3 10.9 29.0 20.0 Mini-SWE-Agent 23.6 19.1 66.8 0.8 MCE 14.0 11.0 83.0 6.2 23.0 26.0 Meta-harness 29.2 13.5 38.6 29.0 ACE 16.0 9.0 77.8 11.4 29.0 20.0 Claude Code 24.7 18.0 55.2 12.4 Meta-harness 14.0 11.0 86.8 2.4 45.0 4.0 AHE ––61.8 5.8
+> DREvo (Ours) 25.0 –89.2 –49.0 –DREvo (Ours) 42.7 –67.6 –
+
+Table 1: Overall performance (%). ∆ denotes the absolute improvement of DREvo over each baseline. Bold and underlined values indicate the best and second-best accuracy.                                                                                                                       
+
+> Method Terminal-Bench 2.0 SWE-Bench Verified Easy Med. Hard Full Django SymPy Sphinx MPL Sklearn PyData Astropy Others Full # Tasks 455 30 89 231 75 44 34 32 22 22 40 500 OpenHands 50.0 41.8 10.0 31.5 66.2 65.3 50.0 67.6 62.5 36.4 50.0 57.5 61.8 Terminus-KIRA 75.0 34.5 3.3 25.8 48.1 33.3 31.8 29.4 62.5 27.3 36.4 32.5 41.4 Terminus-2 75.0 41.8 16.7 34.8 55.4 46.7 36.4 47.1 68.8 54.5 27.3 32.5 49.6 Mini-SWE-Agent 25.0 30.9 10.0 23.6 73.6 69.3 54.5 58.8 71.9 86.4 36.4 45.0 66.8 Meta-harness 50.0 34.5 16.7 29.2 41.6 37.3 29.5 32.4 62.5 36.4 22.7 30.0 38.6 Claude Code 75.0 29.1 10.0 24.7 64.5 53.3 43.2 32.4 68.8 63.6 27.3 37.5 55.2
+> DREvo (Ours) 75.0 49.1 26.7 42.7 68.4 65.3 54.5 67.6 90.6 86.4 45.5 65.0 67.6
+
+Table 2: Fine-grained success rates (%) by task difficulty and repository. Others include Pytest, Pylint, Requests, Seaborn, and Flask. Bold and underlined values denote the best and second-best accuracy, respectively. Matplotlib is abbreviated as MPL. These benchmarks evaluate tool use, state management, er-ror recovery, and long-horizon execution. Following existing work (Lee et al. 2026), we perform harness self-evolution and evaluation on the original agentic benchmark suites with-out additional splits. The proposer receives only structured harness-level evidence extracted from logs, excluding refer-ence solutions and task-specific target outputs. Consequently, the reported gains reflect benchmark-specific harness adapta-tion rather than generalizable improvements on unseen tasks. 
+
+Baselines. (1) Domain Reasoning. We compare against the non-evolutionary baselines Naive (no_memory), Few-Shot (8), Few-Shot (32), and Few-Shot (all), as well as the evolution-based baselines MCE, ACE, and Meta-harness. (2) Agentic Tasks. We compare against the non-evolutionary agents OpenHands, Terminus-KIRA, Terminus-2, Mini-SWE-Agent, and Claude Code (v2.1.150), together with the evolution-based baselines AHE and Meta-harness. 
+
+Models and Evolution Setting. All evolution-based meth-ods use Claude Opus 4.6 (1M-token context window) as the proposer. All methods are evaluated with GPT-OSS-120B for domain reasoning tasks and DeepSeek-V4-Flash (no think-ing) for agentic tasks. Evolution-based methods run for 20 iterations on domain reasoning tasks and 10 iterations on agentic tasks. We initialize the harness by combining the no_memory and Few-Shot (all) configurations for domain reasoning tasks and using Terminus-KIRA for agentic tasks. 
+
+Experimental Results 
+
+In this section, we present the main experiments, in-cluding overall and fine-grained performance comparisons, evolution-trajectory analysis, ablation studies, and robustness analysis under component-state drift. 
+
+Overall Performance. Table 1 compares DREvo with rep-resentative manually designed harnesses and harness self-evolution methods. DREvo achieves the highest point esti-mate on all five benchmarks under the evaluated configura-tion and a limited evolutionary budget. On domain reasoning, it reaches 25.0% on USPTO, 89.2% on S2D, and 49.0% on Law, exceeding the second-best methods by 9.0, 2.4, and 4.0 percentage points, respectively. On agentic tasks, DREvo also outperforms manually engineered task-specific harnesses and several existing harness-evolution methods. Notably, the agentic evolution starts from the terminal-oriented Terminus-KIRA rather than a coding-specific harness. On SWE-Bench Verified, DREvo evolves the terminal-oriented initial harness into a competitive code-repair harness through direct evolu-tion under the target environment, without requiring manual task-specific engineering. Overall, consistent gains in rea-soning and agentic tasks demonstrate the effectiveness of DREvo in diverse task domains and execution environments. 
+
+Fine-Grained Analysis. Table 2 provides a fine-grained comparison across task difficulties and software reposito-ries. On TB2, DREvo matches the best result on Easy tasks 0               
+
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> Ctx (k tokens)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> Ctx (k tokens)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> Ctx (k tokens)
+> 1510 15 20
+> Evolution iteration
+> 65
+> 70
+> 75
+> 80
+> 85
+> 90
+> Accuracy (%)
+> S2D
+> 1510 15 20
+> Evolution iteration
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Accuracy (%)
+> USPTO
+> 1510 15 20
+> Evolution iteration
+> 45.0
+> 47.5
+> 50.0
+> 52.5
+> 55.0
+> 57.5
+> 60.0
+> 62.5
+> Accuracy (%)
+> Law
+> Acc: DREvo Acc: Meta-harness Ctx: DREvo Ctx: Meta-harness
+
+Figure 3: Validation set accuracy (Acc.) and context (Ctx.) size during harness self-evolution for DREvo and Meta-harness (compressed-history) on domain reasoning tasks. Retrieval          
+
+> Parser
+> State mgmt
+> Prompt
+> USPTO
+> Prompt
+> Retrieval
+> Parser
+> State mgmt
+> S2D
+> −15 −10 −505
+> Retrieval
+> State mgmt
+> Parser
+> Prompt
+> Law
+> −15 −10 −505
+> LLM call
+> Context mgmt
+> Tool parsing
+> Agent loop
+> TB2
+> Injected drift type
+> Performance change (percentage points)
+> Blind reuse DREvo
+
+Figure 4: Performance changes under controlled component state drift during harness evolution. Drift perturbs the target component while keeping historical evidence fixed. Blind Reuse applies evidence without state calibration. and achieves the highest success rates on Medium and Hard tasks. Its gains increase from 7.3 points on Medium tasks to 10.0 points on Hard tasks, indicating greater effectiveness as execution complexity increases. On SWE-Bench Verified, DREvo ranks first or ties for first on five of the eight repos-itory groups and ranks second on the remaining three. It achieves the best results on Scikit-learn and Others, while matching the best methods on Sphinx, Matplotlib, and Py-Data. This broad coverage shows that its overall improvement is not driven by a single repository or software ecosystem. 
+
+Effectiveness Analysis. Figure 3 compares validation accu-racy and proposer context size during harness self-evolution. DREvo improves in early iterations and follows smoother ac-curacy trajectories with fewer large oscillations than Meta-harness. Despite the overhead introduced by its structured search specification, DREvo keeps the proposer context bounded at approximately 2.9K tokens. By contrast, Meta-harness exhibits substantial accuracy fluctuations as its con-text grows beyond 5.3K tokens. Importantly, DREvo con-tinues to improve without expanding the proposer context, indicating that its gains do not simply result from exposing the proposer to more history or from context compression alone. Together, these patterns support the effectiveness of recalibrating evidence under the current harness state and distilling it into an explicit, targeted search intent. Agentic evolution trajectories are provided in Supplementary Ma-terial B. Figure 4 evaluates robustness to component-state drift by prompting Claude Opus 4.6 to randomly modify one component of the final evolved harness. Across 16 settings covering four drift types and four benchmarks, blind evi-dence reuse decreases performance by 5.3 points on average, whereas DREvo improves it by 0.6 points. DREvo maintains Components Domain Reasoning Terminal-Bench 2.0 A R D USPTO S2D Law Full Easy Med. Hard 
+
+× × × 12.0 78.8 34.0 29.2 50.0 34.5 16.7 
+
+✓ × × 20.0 81.1 37.0 29.2 75.0 34.5 13.3 
+
+✓ ✓ × 23.0 86.3 39.0 35.9 75.0 40.0 23.3 
+
+✓ × ✓ 18.0 84.0 42.0 37.1 100.0 38.2 26.7 
+
+✓ ✓ ✓ 25.0 89.2 49.0 42.7 75.0 49.1 26.7 
+
+Table 3: Ablation results (%). A, R, and D denote Function-Level Evidence Anchoring, State-Dependent Evidence Re-calibration, and Role-Conditioned Search Intent Distillation. or improves performance in 11 settings, compared with only 2 under blind reuse. The largest gap occurs under prompt drift on S2D, where the performance change improves from 
+
+−10 .0 to +6 .0 points. Although degradation remains under retrieval and LLM-call drift, DREvo consistently mitigates the impact of outdated evidence across all four benchmarks. 
+
+Ablation Study. Table 3 presents the ablation results. A alone improves history-driven evolution by 8.0, 2.3, and 3.0 points on the three reasoning tasks, indicating that function-level anchoring makes historical feedback more attributable and reusable, although it leaves TB2 unchanged. Adding R improves all four results, including a 6.7-point gain on TB2, confirming the value of reassessing evidence validity as the harness evolves. D particularly benefits harder agentic tasks but is less consistent without R: A+D achieves 100.0% on Easy and 26.7% on Hard, yet trails the full model on ev-ery aggregate result. Combining A, R, and D achieves the strongest aggregate performance across all benchmarks and exceeds A+D by 5.6 points on TB2. These results demon-strate their complementary roles: A anchors feedback to at-tributable modifications, R identifies evidence that remains reliable under the current state, and D distills the calibrated evidence into actionable search directions. 
+
+## Conclusion and Future Work 
+
+In this paper, we investigated the non-stationary search be-havior exhibited by history-driven harness self-evolution un-der both full-history and compressed-history reuse of ac-cumulated trial experience. We identified two underlying limitations: historical evidence may become invalid as the harness state evolves , and it does not directly specify which component to modify or how to modify it . To address these limitations, we proposed DREvo , which organizes histori-cal trial experience into function-anchored evidence, recali-brates its validity under the current harness state, and distills calibrated evidence into an explicit role-conditioned search intent. DREvo improves performance across five benchmarks and yields smoother evolution trajectories under limited evo-lution budgets. Future work will further investigate cross-component evidence calibration and adaptive role-selection policies for longer-horizon harness self-evolution. 
+
+## References 
+
+Agrawal, L. A.; Tan, S.; Soylu, D.; Ziems, N.; Khare, R.; Opsahl-Ong, K.; Singhvi, A.; Shandilya, H.; Ryan, M. J.; Jiang, M.; et al. 2025. Gepa: Reflective prompt evolu-tion can outperform reinforcement learning. arXiv preprint arXiv:2507.19457 .Chen, C. 2026. Unlocking the Codex harness: how we built the app server. OpenAI engineering note .Fei, Z.; Shen, X.; Zhu, D.; Zhou, F.; Han, Z.; Huang, A.; Zhang, S.; Chen, K.; Yin, Z.; Shen, Z.; et al. 2024. Lawbench: Benchmarking legal knowledge of large language models. In 
+
+Proceedings of the 2024 conference on empirical methods in natural language processing , 7933–7962. Guo, H.; Zhu, J.; Di, S.; Shi, W.; Chen, Z.; and Xu, J. 2025. Dior: Adaptive cognitive detection and contextual retrieval optimization for dynamic retrieval-augmented generation. In 
+
+Proceedings of the 63rd Annual Meeting of the Associa-tion for Computational Linguistics (Volume 1: Long Papers) ,2953–2975. Hu, S.; Lu, C.; and Clune, J. 2025. Automated design of agentic systems. In International Conference on Learning Representations , volume 2025, 21344–21377. Jimenez, C. E.; Yang, J.; Wettig, A.; Yao, S.; Pei, K.; Press, O.; and Narasimhan, K. 2024. Swe-bench: Can lan-guage models resolve real-world github issues? In Inter-national Conference on Learning Representations , volume 2024, 54107–54157. KRAFTON, A.; and Robotics, L. 2026. Terminus-KIRA: Boosting frontier model performance on Terminal-Bench with minimal harness. Lee, Y.; Nair, R.; Zhang, Q.; Lee, K.; Khattab, O.; and Finn, C. 2026. Meta-harness: End-to-end optimization of model harnesses. arXiv preprint arXiv:2603.28052 .Li, M.; Zhao, S.; Wang, Q.; Wang, K.; Zhou, Y.; Srivastava, S.; Gokmen, C.; Lee, T.; Li, L. E.; Zhang, R.; et al. 2024. Embodied agent interface: Benchmarking llms for embodied decision making. Advances in Neural Information Process-ing Systems , 37: 100428–100534. Liang, Y.; Zhu, J.; Shi, W.; Guo, H.; Cui, Y.; Shen, J.; Ma, G.; Liu, J.; Niu, Q.; Wang, Y.; et al. 2026. RSDA: Restoring Stale Data Affinity via Dynamic Renovation Strategy for Mitigating Data Scarcity. In Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 8280–8309. Lin, J.; Liu, S.; Pan, C.; Lin, L.; Dou, S.; Xi, Z.; Huang, X.; Yan, H.; Han, Z.; Gui, T.; et al. 2026. Agentic har-ness engineering: Observability-driven automatic evolution of coding-agent harnesses. arXiv preprint arXiv:2604.25850 .Liu, M. M.; Garcia, D.; Parllaku, F.; Upadhyay, V.; Shah, F.; and Roth, D. 2026. Toolscope: Enhancing llm agent tool use through tool merging and context-aware filtering. In Pro-ceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 34095– 34119. Lopopolo, R. 2026. Harness engineering: leveraging codex in an agent-first world. OpenAI Engineering Blog .Lou, X.; Lázaro-Gredilla, M.; Dedieu, A.; Wendelken, C.; Lehrach, W.; and Murphy, K. P. 2026. Autoharness: improv-ing llm agents by automatically synthesizing a code harness. 
+
+arXiv preprint arXiv:2603.03329 .Meng, Q.; Wang, Y.; Chen, L.; Wang, Q.; Lu, C.; Wu, W.; Gao, Y.; Wu, Y.; and Hu, Y. 2026. Agent harness for large language model agents: A survey. Merrill, M. A.; Shaw, A. G.; Carlini, N.; Li, B.; Raj, H.; Bercovich, I.; Shi, L.; Shin, J. Y.; Walshe, T.; Buchanan, E. K.; et al. 2026. Terminal-bench: Benchmarking agents on hard, realistic tasks in command line interfaces. arXiv preprint arXiv:2601.11868 .Ning, X.; Tieu, K.; Fu, D.; Wei, T.; Li, Z.; Bei, Y.; Zou, J.; Ai, M.; Liu, Z.; Li, T.-W.; et al. 2026. Code as agent harness. 
+
+arXiv preprint arXiv:2605.18747 .Qiao, S.; Fang, R.; Qiu, Z.; Wang, X.; Zhang, N.; Jiang, Y.; Xie, P.; Huang, F.; and Chen, H. 2025. Benchmarking agentic workflow generation. In International Conference on Learning Representations , volume 2025, 69679–69703. Rajasekaran, P. 2026. Harness design for long-running ap-plication development. Anthropic Engineering Blog. URL: https://www. anthropic. co m/engineering/harness-design-long-running-apps. accessed , 05–07. Schneider, N.; Stiefl, N.; and Landrum, G. A. 2016. What’s what: The (nearly) definitive guide to reaction role as-signment. Journal of chemical information and modeling ,56(12): 2336–2346. Shen, J.; Zhu, J.; Guo, H.; Shi, W.; Cui, Y.; Niu, Q.; Ma, G.; Liu, J.; Liang, Y.; Wang, Y.; et al. 2026. ACR: Adaptive Context Refactoring via Context Refactoring Operators for Multi-Turn Dialogue. In Findings of the Association for Computational Linguistics: ACL 2026 , 3149–3167. Wang, X.; Li, B.; Song, Y.; Xu, F. F.; Tang, X.; Zhuge, M.; Pan, J.; Song, Y.; Li, B.; Singh, J.; et al. 2025. Openhands: An open platform for ai software developers as generalist agents. In International Conference on Learning Representations ,volume 2025, 65882–65919. Wang, Y.; Chen, X.; Jin, X.; Wang, M.; and Yang, L. 2026. Openclaw-rl: Train any agent simply by talking. arXiv preprint arXiv:2603.10165 .Yang, C.; Wang, X.; Lu, Y.; Liu, H.; Le, Q. V.; Zhou, D.; and Chen, X. 2024a. Large language models as optimizers. In International Conference on Learning Representations ,volume 2024, 12028–12068. Yang, J.; Jimenez, C.; Wettig, A.; Lieret, K.; Yao, S.; Narasimhan, K.; and Press, O. 2024b. Swe-agent: Agent-computer interfaces enable automated software engineer-ing. Advances in Neural Information Processing Systems ,37: 50528–50652. Ye, H.; He, X.; Arak, V.; Dong, H.; and Song, G. 2026. Meta Context Engineering via Agentic Skill Evolution. arXiv preprint arXiv:2601.21557 .Zhang, H.; Zhang, S.; Li, K.; Zhang, C.; Chen, Y.; Zhang, Y.; Bai, L.; and Hu, S. 2026. Self-Harness: Harnesses That Improve Themselves. arXiv preprint arXiv:2606.09498 .Zhang, J.; Xiang, J.; Yu, Z.; Teng, F.; Chen, X.; Chen, J.; Zhuge, M.; Cheng, X.; Hong, S.; Wang, J.; et al. 2025a. Aflow: Automating agentic workflow generation. In Inter-national Conference on Learning Representations , volume 2025, 34040–34077. Zhang, Q.; Hu, C.; Upasani, S.; Ma, B.; Hong, F.; Kamanuru, V.; Rainton, J.; Wu, C.; Ji, M.; Li, H.; et al. 2025b. Agentic context engineering: Evolving contexts for self-improving language models. arXiv preprint arXiv:2510.04618 .

@@ -1,0 +1,733 @@
+Title: CodeSpec: Dual Executable Specifications for Agentic Long-Horizon Feature Development
+
+URL Source: https://arxiv.org/pdf/2607.26777v1
+
+Published Time: Thu, 30 Jul 2026 00:47:23 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+## CodeSpec : Dual Executable Specifications for Agentic Long-Horizon Feature Development 
+
+Peiding Wang 1, Li Zhang 1, Fang Liu 1∗, Taichuan Li 1, Yinghao Zhu 2
+
+1State Key Laboratory of Complex & Critical Software Environment, School of Computer Science and Engineering, Beihang University, China 
+
+2School of Computing and Data Science, The University of Hong Kong 
+
+{wangpeiding, fangliu}@buaa.edu.cn 
+
+Abstract 
+
+LLM-based code agents have advanced repository-level soft-ware development through iterative interaction with code-bases and tools. However, feature development requires in-tegrating new behaviors into existing architectures through coherent cross-component functional chains. Existing agents typically derive such chains through free-form reasoning, often producing unreliable feature designs with incomplete functional chains. Moreover, textual designs are difficult to verify and enforce, making it challenging to maintain de-sign–implementation consistency throughout long-horizon development. We propose CodeSpec , a dual executable spec-ification method for repository-level feature development. It builds reliable functional chains from evidence pairing sub-requirement semantics with repository architectures, then compiles them into complementary architecture and behavior specifications that check chain completeness and correctness while preserving design–implementation consistency over long interactions. On FeatureBench, which targets feature de-velopment in existing repositories, CodeSpec achieves 70.7%, 55.0%, and 49.9% pass rates under DeepSeek-V4-Pro, outper-forming representative baselines such as Claude Code. Results on the repository generation benchmark NL2Repo-Bench fur-ther demonstrate its generalizability. The code and data are available at https://github.com/zhu-zhu-ding/CodeSpec. 
+
+Introduction 
+
+With the rapid advancement of large language models, auto-mated software development has evolved from standalone function generation (Chen 2021; Austin et al. 2021) to repository-level tasks (Li et al. 2024; Jimenez et al. 2024). Feature development is particularly important because real-world software systems are continuously extended to satisfy evolving requirements (Du et al. 2025; Li et al. 2025; Zhou et al. 2026). Unlike standalone generation, implementing a new feature requires integrating new behaviors into an exist-ing architecture. Agents must determine not only which code entities should be created or modified, but also how these entities should interact across components. Feature develop-ment therefore commonly requires the design stage that orga-
+
+> ∗
+
+Corresponding author. Copyright © 2027, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. class BaseMlflowSpanProcessor(...):   
+
+> def on_start (self, span, parent_context):
+> mlflow_span = LiveSpan (
+> span, trace_id, span_type
+> )
+> Required Factory Call
+
+Locally Plausible Code, Incomplete Feature Realization    
+
+> Generated Local Call
+> class BaseMlflowSpanProcessor(...):
+> def on_start (self, span, parent_context):
+> mlflow_span = create_mlflow_span (
+> span, trace_id, span_type
+> )
+
+Long-Horizon Constraint Drift    
+
+> Turn 1 Turn 50 Turn 150 Turn 300
+> Functional-chain constraints gradually fade
+
+Feature Instruction + Existing Repository     
+
+> Task Statement
+> •Implement MLflow Distributed Tracing System
+> Core Functionalities
+> •Create and manage distributed tracing ......
+> •Support both live and immutable span ...... MLFlow
+> Repository
+> import
+
+Repository-Constrained Design                     
+
+> # base_mlflow.py
+> Class BaseMlflow
+> SpanProcessor()
+> # span.py
+> create_mlflow_span()
+> LiveSpan/Span/...
+> # trace_data.py
+> TraceData
+> # otel.py
+> OTLP
+> # provider.py
+> # fluent.py
+> # trace_manager.py
+> # constant.py # utils.py
+> dispatch
+> propagate ?
+> serialize
+> •APIs
+> •Files
+> •Modul es
+> •Constraints
+> •Dependencies
+> bypasses the required factory relation
+> invoke ?
+> ?
+> ?
+> Processor →invoke →Factory
+> Factory →dispatch →Span types
+> TraceData →serialize →OTLP
+
+Figure 1: Feature development requires agents to de-rive repository-consistent functional chains and preserve them throughout implementation. Missing a critical ar-chitectural relation, such as invoking factory method cre-ate_mlflow_span() , may break the end-to-end feature behav-ior. nizes these entities and interactions into a coherent functional chain from feature entry points to observable behaviors. The repository-level nature of feature development makes LLM-based coding agents a promising paradigm. Repre-sentative agents, including Claude Code (Anthropic 2026), Codex (OpenAI 2025), SWE-agent (Yang et al. 2024), and OpenHands (Wang et al. 2025c), rely on the agent’s reasoning capabilities to implicitly plan development through natural-language interactions while iteratively generating and repair-ing code. Other approaches introduce explicit design pro-cesses: MetaGPT (Hong et al. 2024) and ChatDev (Qian et al. 2024) produce natural-language artifacts describing module responsibilities and collaboration workflows, while RTADev (Liu et al. 2025) performs architecture planning be-fore implementation. However, both free-form implicit plan-ning and explicit textual design provide limited support for deriving reliable repository-grounded functional chains and arXiv:2607.26777v1 [cs.SE] 29 Jul 2026 enforcing them throughout long-horizon development. As illustrated in Figure 1, existing agents face two closely related challenges: 
+
+• Unreliable functional-chain design. Existing agents typ-ically design features through free-form reasoning, which can deviate from repository architecture constraints and overlook the call and dependency relations among code entities. Consequently, they may derive functional chains that are incomplete or inconsistent with the repository. 
+
+• Weak long-horizon enforcement. Functional designs are typically represented as free-form textual plans, which are difficult to verify and enforce during iterative explo-ration, editing, and repair. As a result, the implementation may gradually diverge from the intended functional chain, leading to inconsistencies between design and realization. To address these challenges, we propose CodeSpec , a dual executable specification method for agentic long-horizon feature development. It constructs repository-grounded functional-chains for feature sub-requirements and compiles each chain into complementary architecture and behavior ex-ecutable specifications. CodeSpec consists of two key com-ponents: 
+
+1) Evidence-Grounded Functional Chain derives traceable feature realization paths by identifying relevant functional units and connecting them with paired requirement seman-tics and repository as evidence, such as design patterns, call relations, and dependencies. This reduces free-form archi-tectural reasoning and grounds each transition in the existing repository to improve the design reliability. 
+
+2) Dual Executable Specification Compilation converts each functional chain into two executable forms: an ar-chitecture specification that represents its architecture re-alization and a behavior specification that represents its ex-pected execution. They complementarily verify whether the chain is complete and whether it behaves correctly, thereby preserving design–implementation consistency throughout long-horizon development. Experiments on FeatureBench (Zhou et al. 2026) show that CodeSpec achieves 70.7%, 55.0%, and 49.9% %Passed on the Lite, Fast, and Full splits, consistently outperform-ing coding-agent and architecture-planning baselines under the same DeepSeek-V4-Pro backbone. Results with GPT-5.4-mini and NL2Repo-Bench (Ding et al. 2026) which evaluates greenfield repository development from natural-language requirements further demonstrate robustness across models and generalization to greenfield repository genera-tion. Ablation and further analyses confirm the effectiveness of evidence-grounded functional chains and the complemen-tary executable specifications, particularly on complex and long-horizon tasks, with moderate additional cost. Our main contributions are summarized as follows: 
+
+• We propose evidence-grounded functional-chain reason-ing that pairs task semantics with repository architecture evidence at each transition, enabling agents to derive reli-able cross-component realization paths from feature entry points to observable behaviors. 
+
+• We introduce dual executable specifications that repre-sent the architecture realization and expected execution of each functional chain, jointly verifying whether the chain is complete and behaves correctly while maintain-ing design–implementation consistency throughout long-horizon development. 
+
+• We conduct extensive experiments on FeatureBench and NL2Repo with different backbone models, demonstrating the effectiveness, robustness, generalizability, and favor-able quality–cost trade-off of CodeSpec for long-horizon feature development. 
+
+Related Work 
+
+Repository-level Feature Development Benchmarks 
+
+Code generation research has evolved from standalone func-tion synthesis (Chen 2021; Austin et al. 2021) to repository-level software development, where models need to under-stand project context and generate patches in real codebases. Benchmarks such as DevEval (Li et al. 2024) and SWE-bench (Jimenez et al. 2024) evaluate such repository-level ca-pabilities through realistic software engineering tasks. More recent feature-level benchmarks, including FEA-Bench (Li et al. 2025), and FeatureBench (Zhou et al. 2026), further focus on practical feature development, where a high-level instruction may require coordinated changes and generation across multiple functions, files, classes, and interfaces. These tasks usually involve a full development process of design, implementation, testing, execution, and repair, making one-shot generation insufficient and motivating coding agents that interact with repositories and development environments over multiple steps. 
+
+LLM-based Coding Agents 
+
+LLM-based coding agents have become a popular paradigm for repository-level software development (Wang et al. 2026, 2025b,a). Unlike one-shot generation methods, they can au-tonomously invoke tools, inspect files, text plan, edit pro-grams, and iteratively repair failures. Representative coding agents and assistants include Claude Code (Anthropic 2026), Codex (OpenAI 2025), SWE-agent (Yang et al. 2024), and OpenHands (Wang et al. 2025c). In addition, development-oriented agent frameworks such as MetaGPT (Hong et al. 2024), ChatDev (Qian et al. 2024) and RTADev (Liu et al. 2025) organize software development into structured stages and use textual architecture designs to coordinate soft-ware development. Despite their progress, existing agents still mainly maintain design information as free-form tex-tual plans, which makes it difficult to explicitly preserve functional chains and architecture constraints during long-horizon feature development. 
+
+Method 
+
+Task Definition 
+
+In this section, we define the feature development task. Given a natural-language feature instruction I and an existing repository R, an LLM-based coding agent generates a patch 
+
+P to get the updated repository R′ which preserving existing functionality and satisfying the instruction I:
+
+P = LLM( I, R ), R′ = R ⊕ P. (1) Behavior F eedback 
+
+Behavior Failure 
+
+Chain Violation                       
+
+> Arch F eedback
+> Executable Architecture Specification
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> 10
+> 11
+> 12
+> 13
+> 14
+> 15
+> def spec_subfunction_i(repo):
+> #requirement : <required feature behavior i>
+> # chain: u1 -> u2 -> ... -> uk
+> #evidence :desgin patterns ,call relations ,...
+> #data flow: invoke, dispatch,propagate, ...
+> check_unit(repo, "<u 1>" ,"<u 2>" )
+> check_relation( "< u1>" ,"< u2>" ,"< ρ1>" )
+> ...
+> check_unit(repo, "<u k-1 >" ,"<u k>" )
+> check_relation( "<u k-1 >" ,"<u k>" ,"< ρk-1 >" )
+> return feedback( info )
+> check_ data_flow ("<u 1>" ,"<u 2>" ,"< d1>" )
+> check_ data_flow ("<u k-1 >" ,"<u k>" ,"< dk>" )
+
+Create span ... 
+
+1 Functional Chain Construction 2 Dual Executable Specification Compilation 
+
+3 Specification Guided Code Generation Inputs 
+
+Feature 
+
+Instruction 
+
+Existing 
+
+Repository 
+
+Repository Grounding 
+
+Requirements 
+
+Export OTLP ... 
+
+Code Unit s
+
+span.py types.py 
+
+trace.py io.py 
+
+util.py base.py 
+
+Evidence-Grounded Functional Chain 
+
+Edit Patch 
+
+Verified 
+
+Patch 
+
+all checks pass 
+
+long-horizon constraint preservation 
+
+Propagate ... 
+
+... 
+
+Requirement s
+
+Semantics 
+
+> Design Patterns
+
+Paired Evidence Repository 
+
+Architecture     
+
+> Processor Factory SpanType ...
+> Call Relations ...
+> invoke
+
+<u 1> <u 2> <u 3>
+
+<d 1>  
+
+> dispatch propagate data flow
+
+<d 2> <d 3> <d k>
+
+<u k>
+
+< ρ1> < ρ 2> < ρk-1 >
+
+<e 1> <e 2> <e k-1 >               
+
+> Executable Behavior Specification
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> 10
+> 11
+> 12
+> 13
+> 14
+> 15
+> def test _subfunction _chain _i():
+> #requirement : <required feature behavior i>
+> # chain: u1 -> u2 -> ... -> uk
+> #evidence :desgin patterns ,call relations ,...
+> #behaviors : b 1,b2,b3, ..., bn
+> check_ output ("< π1>" ,"< boutput 1>" )
+> check_ boundary ("< π1>" ,"< bboundary 1>" )
+> ...
+> check_ state ("< π1>" ,"< bstate 1>" )
+> return feedback( info )
+
+Execute Specifications 
+
+Architecture 
+
+Checks 
+
+Path 
+
+Integrity 
+
+Behavior 
+
+Checks 
+
+Runtime 
+
+Correctness    
+
+> Revise
+> check_ output ("< πn>" ,"< boutput n>" )
+> check_ boundary ("< πn>" ,"< bboundary n>" )
+> check_ state ("< πn>" ,"< bstate n>" )
+> Behavior
+> Analysis
+
+Figure 2: The overview of CodeSpec .
+
+Overview 
+
+As shown in Figure 2, CodeSpec constructs reliable func-tional chains using evidence that pairs sub-requirement se-mantics with the corresponding repository architecture. It then compiles each chain into dual executable specifica-tions: an architecture specification representing its struc-tural realization and a behavior specification representing its expected execution. These specifications complementar-ily verify whether the chain is complete and behaves cor-rectly, thereby maintaining design–implementation consis-tency throughout long-horizon feature development. 
+
+Evidence-Grounded Functional Chain 
+
+A feature is realized through coordinated interactions among multiple repository components rather than isolated code modifications. However, feature instructions usually describe desired behaviors without specifying which components should participate or how they should interact. To bridge this gap, CodeSpec constructs an evidence-grounded functional chain for each sub-function by pairing requirement seman-tics with repository architecture evidence at every reasoning step. Given a feature instruction I, the agent first decomposes it into a set of sub-requirements: 
+
+LLM( I) = {r1, r 2, . . . , r m}. (2) Each requirement ri represents a specific behavior that the feature should achieve. For each requirement, the agent identifies candidate implementation units that need to be modified or introduced: 
+
+Uri = {u1, u 2, . . . , u n}. (3) These units provide candidate building blocks, but select-ing relevant units alone does not yield a valid feature design; the key is determining how they should be connected to real-ize each obligation. CodeSpec therefore prompts the LLM to perform evidence-driven chain reasoning by pairing require-ment evidence, which explains why a transition is needed from requirements, with repository evidence, which shows how it is supported by existing design patterns, call relations, or repository architectures. The resulting functional chain is an ordered sequence in which each adjacent pair of units uki
+
+and uk+1 
+
+i is linked according to its supporting evidence eki :
+
+ci = {u1
+
+i , e 1
+
+i , u 2
+
+i , . . . , u ki , e ki , u k+1 
+
+i }. (4) Here, uki denotes a functional unit involved in realizing re-quirements ri, and eki denotes the evidence supporting the transition from uki to uk+1 
+
+i . Each evidence eki pairs re-quirement semantics with repository evidence, ensuring that adjacent units are connected through traceable, repository-supported reasoning rather than free code relations. 
+
+Dual Executable Specification Compilation 
+
+The constructed functional chains explicitly describe how in-dividual feature requirement should be realized across repos-itory components. However, retaining these chains as tex-tual design artifacts is unsuitable for long-horizon develop-ment, because agents may gradually overlook pre-designed key information during long-term interactions. Therefore, we compile each functional chain into two complementary executable specifications: the architecture specification that verifies path integrity and the behavior specification that ver-ifies runtime correctness along the path. 
+
+Executable Architecture Specification Given a sub-requirement ri and its functional chain ci, CodeSpec instan-tiates an executable architecture specification sarch  
+
+> i
+
+using the template τarch shown in Figure 2: 
+
+sarch  
+
+> i
+
+= LLM arch (R, r i, c i; τarch ). (5) Inspired by architecture conformance checking and pro-gram analysis (Pruijt et al. 2017; Murphy, Notkin, and Sul-livan 2001; Kildall 1973), we operationalize path integrity using three representative dimensions: functional units, ar-chitectural relations, and data flows. The template maps the units, relations, and data flows in ci into three types of checks: 
+
+sarch  
+
+> i
+
+=
+
+n
+
+CheckUnit( uji )
+
+oki
+
+> j=1
+
+∪
+
+n
+
+CheckRelation( uji , u j+1  
+
+> i
+
+, ρ ji )
+
+oki−1
+
+> j=1
+
+∪
+
+n
+
+CheckDataFlow( uji , u j+1  
+
+> i
+
+, d ji )
+
+oki−1
+
+> j=1
+
+.
+
+(6) Here, ρji and dji are jointly inferred from the requirement and repository evidence in eji , representing the intended ar-chitectural relation and data-flow operation between uji and 
+
+uj+1  
+
+> i
+
+, respectively. CheckUnit verifies that each required unit exists, CheckRelation checks whether adjacent units preserve the intended relation ρji , and CheckDataFlow ver-ifies the required data state dji between them. During implementation, the specification is executed against the updated repository. Missing units, broken re-lations, or interrupted data flows are reported as localized architecture violations. In this way, executable architecture specifications preserve the path integrity of each functional chain. 
+
+Executable Behavior Specification Given the sub-requirement ri, its functional chain ci, and the corresponding architecture specification sarch  
+
+> i
+
+, CodeSpec jointly analyzes the intended path structure and architectural constraints to identify behavior-observation subpaths, and instantiates an executable behavior specification using the template τbeh 
+
+shown in Figure 2: 
+
+sbeh  
+
+> i
+
+= LLM beh (ri, c i, s arch  
+
+> i
+
+; τbeh ). (7) Inspired by established property-based, category-partition, and model-based testing techniques (Claessen and Hughes 2000; Ostrand and Balcer 1988; Chow 1978), we operationalize behavioral obligations using three represen-tative dimensions: observable outputs, boundary conditions, and state transitions. The template derives three types of behavioral checks at multiple observation scopes along the functional chain: 
+
+sbeh  
+
+> i
+
+= {CheckOutput( πqi , b output  
+
+> i,q
+
+),
+
+CheckBoundary( πqi , b boundary  
+
+> i,q
+
+),
+
+CheckState( πqi , b state  
+
+> i,q
+
+)}ni
+
+> q=1
+
+.
+
+(8) Here, ni denotes the number of behavioral observation scopes derived for ci, and πqi ⊆ ci denotes the q-th scope, which may cover a functional unit, a transition, or a sub-path. The checks examine observable outcomes, including returned values and external effects, boundary and excep-tional conditions, and state transitions at multiple positions along the functional chain. Thus, the behavior specification examines multiple intermediate and final behaviors rather than only the final output. During implementation, violated expectations are reported as localized behavior violations. In this way, executable be-havior specifications complement architecture specifications by preserving runtime correctness along each functional chain. 
+
+Specification Guided Code Generation 
+
+For all sub-requirements, the generated architecture and be-havior specifications are aggregated as: 
+
+Sarch =
+
+> m
+
+[
+
+> i=1
+
+sarch  
+
+> i
+
+, Sbeh =
+
+> m
+
+[
+
+> i=1
+
+sbeh  
+
+> i
+
+. (9) The agent implements the feature under the joint con-straints of Sarch and Sbeh . Architecture feedback identifies missing units, broken relations, or interrupted data flows, while behavior feedback reports incorrect runtime behaviors along the functional chains. The agent incorporates both sig-nals into subsequent edits until all specifications pass or the interaction budget K is exhausted. Algorithm 1: Specification Guided Code Generation 
+
+Input: Instruction I, repository R, specifications Sarch 
+
+and Sbeh , budget K
+
+Output: Patch P 
+
+> 1:
+
+P, F arch , F beh ← ∅  
+
+> 2:
+
+k ← 0 
+
+> 3:
+
+while k < K do  
+
+> 4:
+
+∆P ← LLM code (I, R, S arch , S beh , P, F arch , F beh ) 
+
+> 5:
+
+P ← P ⊕ ∆P 
+
+> 6:
+
+R′ ← R ⊕ P 
+
+> 7:
+
+Farch ← ExecArch( R′, S arch ) 
+
+> 8:
+
+Fbeh ← ExecBeh( R′, S beh ) 
+
+> 9:
+
+if Pass( Farch ) ∧ Pass( Fbeh ) then  
+
+> 10:
+
+break  
+
+> 11:
+
+end if  
+
+> 12:
+
+k ← InteractCount()  
+
+> 13:
+
+end while  
+
+> 14:
+
+return P
+
+Here, ExecArch verifies the integrity of the functional chains, whereas ExecBeh verifies their runtime behaviors. Their complementary feedback jointly preserves path in-tegrity and behavioral correctness throughout long-horizon implementation. 
+
+Experimental Setups 
+
+Research Questions 
+
+We evaluate CodeSpec through the following research ques-tions: Agent Scaffold Lite Fast Full %Passed #Resolved Avg. Cost ($) %Passed #Resolved Avg. Cost ($) %Passed #Resolved Avg. Cost ($)                                              
+
+> OpenHands 60.0 ±5.7 60.15 41.4 ±3.6 10 0.13 37.1 ±2.7 18 0.11 Claude Code 59.8 ±5.4 60.11 47.0 ±3.8 14 0.12 41.1 ±2.8 23 0.10 Mini-SWE-Agent 62.6 ±6.0 70.09 49.6 ±4.0 24 0.09 43.4 ±2.8 25 0.09 RTADev 65.3 ±5.6 60.17 49.7 ±3.8 15 0.16 46.1 ±2.8 26 0.15
+> CodeSpec 70.7 ±5.1 90.18 55.0 ±3.8 17 0.19 49.9 ±2.8 28 0.16
+
+Table 1: Comparison under the DeepSeek-V4-Pro (max thinking) backbone model on FeatureBench. The Lite, Fast, and Full splits contain 30, 100, and 200 tasks, respectively. Bold numbers indicate the best performance.                   
+
+> Agent Scaffold %Passed #Resolved Avg. Cost ($)
+> Mini-SWE-Agent 47.5 ±6.0 20.7 OpenHands 48.1 ±5.9 31.2 RTADev 45.9 ±5.7 31.3 Codex 51.7 ±6.2 40.7
+> CodeSpec 54.7 ±5.8 51.3
+
+Table 2: Comparison of different coding agents with the same GPT-5.4-mini backbone (medium thinking) on the Fea-tureBench Lite split. 
+
+• RQ1: Overall Performance. How does CodeSpec com-pare with existing coding agents on repository-level fea-ture development tasks? 
+
+• RQ2: Ablation Study. How does each component con-tribute to the CodeSpec ’s performance? 
+
+• RQ3: Executable vs. Textual Specifications. Do exe-cutable specifications preserve design constraints more effectively than textual specifications? 
+
+• RQ4: Greenfield Repository Development Generaliza-tion. Can CodeSpec generalize from repository evolution to greenfield repository generation? 
+
+Benchmarks and Metrics 
+
+We evaluate CodeSpec on FeatureBench (Zhou et al. 2026), a repository-level feature development benchmark requir-ing coordinated modifications across mutli-interfaces. Each problem averages 4.8k words and requires about 800 lines of valid code, compared with 0.2k words and about 32 lines in SWE-Bench(Jimenez et al. 2024). It contains three splits: 
+
+Lite (30) , Fast (100) , and Full (200) .Following FeatureBench, we report %Passed , the aver-age proportion of fail-to-pass tests passed across tasks, and 
+
+Resolved # , the number of tasks for which all required tests pass. The former measures partial implementation progress, while the latter measures complete task resolution. We also reporte the average cost metric for each task: Avg.Cost ($) .
+
+Baselines and Implementation Details 
+
+We compare CodeSpec with five representative coding-agent scaffolds: 
+
+• OpenHands (Wang et al. 2025c), a general-purpose agent supporting repository exploration, code editing, execu-tion, and iterative repair. 
+
+• Mini-SWE-Agent (Yang et al. 2024), a lightweight agent based on a minimal repository interaction and repair loop. 
+
+• Claude Code (Anthropic 2026), a widely adopted in-dustrial coding agent for autonomous repository editing, execution, and debugging. 
+
+• Codex (OpenAI 2025), an OpenAI coding agent support-ing repository-level reasoning, tool use, code modifica-tion, and iterative refinement. 
+
+• RTADev (Liu et al. 2025), an architecture-first agent that uses textual architecture designs to guide development; For controlled comparison, all methods (except for Codex) use DeepSeek-V4-Pro as the backbone model. We addition-ally evaluate GPT-5.4-mini to examine model-level gener-alization. All methods share the same repository environ-ments, evaluation scripts, and interaction budgets. We boot-strap task-level results 10,000 times and report the resulting mean and standard deviation. 
+
+Experimental Results 
+
+RQ1: Overall Performance 
+
+As shown in Table 1, CodeSpec consistently achieves the best performance across all FeatureBench splits under the same DeepSeek-V4-Pro backbone. On the Lite split, CodeSpec 
+
+reaches 70.7% %Passed and resolves 9 tasks, outperforming the strongest baseline RTADev by 5.4 percentage points in %Passed and 3 resolved tasks. Similar improvements are ob-served on the Fast and Full splits, where CodeSpec improves %Passed over RTADev by 5.3 and 3.8 percentage points, re-spectively, while achieving the highest number of resolved tasks. Compared with general-purpose coding agents such as OpenHands and Mini-SWE-Agent, CodeSpec obtains larger gains across all splits. Unlike textual plans, which remain pas-sive context and can be overlooked during extended interac-tions, executable specifications continuously expose whether the intended functional chains remain complete and correct. Their lightweight feedback also helps agents localize vio-lations without repeatedly reconsidering the entire design. These results demonstrate that explicitly modeling functional chains and enforcing them through executable specifications effectively improves repository-level feature development. Variant %Passed #Resolved Avg. Cost ($)                
+
+> Specification Ablations
+> w/o All Specification 62.6 ±6.0 70.09 w/o Behavior Specification 64.0 ±5.2 60.13 w/o Architecture Specification 66.6 ±5.7 70.16
+> Evidence-Grounded Functional Chain Ablations
+> w/o Evidence 64.8 ±5.7 60.16
+> CodeSpec 70.7 ±5.1 90.18
+
+Table 3: Ablation study on the FeatureBench Lite split. All variants use DeepSeek-V4-Pro as the base model. The additional architecture design and specification execu-tion introduce moderate overhead. Compared with RTADev, 
+
+CodeSpec increases the average cost by only $0.01–$0.03 per task, while consistently improving feature completion performance across different task scales. The additional inter-actions mainly come from executing functional-chain speci-fications and leveraging their violation feedback for iterative refinement, which provides more precise guidance during im-plementation. To further examine robustness across different backbone models, we additionally compare agent scaffolds using GPT-5.4-mini on the Lite split (Table 2). CodeSpec 
+
+maintains the best performance, achieving 54.7% %Passed and resolving 5 tasks under the same backbone, even surpass-ing Codex, a dedicated coding agent developed by OpenAI for GPT series LLMs. These results suggest that the effec-tiveness of CodeSpec is robust across different backbone models rather than relying on a specific LLM. 
+
+RQ2: Ablation Study 
+
+Table 3 reports the contribution of executable specifications and evidence-guided functional-chain construction. Remov-ing all specifications decreases %Passed from 70.7% to 62.6% and reduces the number of resolved tasks from 9 to 7, confirming that persistent executable constraints are impor-tant for long-horizon feature implementation. The two spec-ification types provide complementary benefits. Removing the behavior specification causes a substantial drop to 64.0% Passed and 6 resolved tasks, indicating that architecture con-nectivity alone cannot ensure correct outputs, boundary han-dling, or state transitions. Removing the architecture specifi-cation reduces %Passed to 66.6% and resolves 7 tasks, show-ing that behavior checks alone may still permit incomplete or unintended realization paths. Their combination therefore improves both path integrity and runtime correctness. Evidence-guided functional-chain is also critical. Without explicit evidence grounding, %Passed falls from 70.7% to 64.8%, while the number of resolved tasks decreases from 9 to 6. This suggests that requirement semantics and repository evidence help identify more reliable functional units and rela-tions, thereby reducing unsupported architectural reasoning. Although the complete method incurs the highest average cost at $0.18 per task, the increase is modest relative to the consistent gains in both partial progress and complete task resolution. <= 3,000 words 3,000-5,000 words > 5,000 words   
+
+> Task description length (words)
+> 0%
+> 20%
+> 40%
+> 60%
+> 80%
+> 100%
+> Mean pass rate
+> 69.5
+> 43.8
+> 36.3
+> 77.2
+> 71.8
+> 38.3
+> 74.1
+> 68.9
+> 17.2
+> CodeSpec (Text) CodeSpec RTADev
+
+(a) Pass-rate comparison across different instruction-length groups. <= 120 turns 120-200 turns > 200 turns    
+
+> Agent interaction turns
+> 0%
+> 20%
+> 40%
+> 60%
+> 80%
+> 100%
+> Mean pass rate
+> 64.8
+> 55.2 51.2
+> 69.0
+> 78.8
+> 65.2 65.2
+> 78.6
+> 50.1
+> CodeSpec (Text) CodeSpec RTADev
+
+(b) Pass-rate comparison across different agent interaction-length groups. 
+
+Figure 3: Pass-rate comparison among textual specifications, executable specifications, and RTADev across tasks grouped by instruction length and agent interaction turns. 
+
+RQ3: Executable vs. Textual Specifications 
+
+We further investigate whether executable specifications preserve design constraints more effectively than textual specifications. CodeSpec (Text) retains the same evidence-grounded functional-chain construction as CodeSpec , but represents the resulting design as textual information rather than executable specifications. We compare it with Code-Spec and RTADev, another code agent based on textual de-sign planning. We compared the three methods described above on the FeatureBench Lite split. As shown in Figure 3, the three methods perform rel-atively similarly on simpler tasks with instructions below 3,000 words or interactions under 120 turns. The gaps widen as task complexity increases: CodeSpec achieves 71.8% on instructions of 3,000–5,000 words, compared with 43.8% for CodeSpec (Text), and reaches 65.2% beyond 200 turns, outperforming the two textual approaches by 14.0 and 15.1 points. Although textual plans also provide useful design in-formation, placing all details in the context increases input size and the risk of overlooking requirements and design constraints. In contrast, CodeSpec provides lightweight ex-ecutable feedback throughout interaction, offering more re-liable guidance for requirement-intensive and long-horizon tasks. Agent Scaffold Easy Medium Hard Overall %Passed %Passed %Passed %Passed #Resolved Avg.Cost ($) 
+
+OpenHands 48.6 ±6.5 26.2 ±4.4 9.4 ±2.2 26.4 ±2.9 2 0.10 Claude Code 62.0 ±5.6 45.7 ±4.6 19.3 ±3.7 41.6 ±3.2 5 0.11 Mini-SWE-Agent 58.0 ±6.3 35.0 ±4.2 18.7 ±4.2 35.5 ±3.1 4 0.08 RTADev 61.3 ±6.3 47.4 ±4.7 16.3 ±4.8 41.3 ±3.5 7 0.14 
+
+CodeSpec 70.0 ±5.6 51.7 ±4.3 20.4 ±4.7 46.6 ±3.3 8 0.17 
+
+Table 4: Comparison on NL2Repo using DeepSeek-V4-Pro (max thinking). Easy, Medium, and Hard correspond to repositories with <1.5K, 1.5K–4K, and >4K lines of code (LOC). Bold indicates the best result. 
+
+RQ4: Greenfield Repository Development Generalization 
+
+To assess generalization beyond repository evolution, we evaluate CodeSpec on NL2Repo-Bench (Ding et al. 2026), which contains 104 greenfield tasks that require generating a Python repository from a requirements document and an empty workspace. CodeSpec first creates a repository skele-ton and functional units, after which the evolving codebase provides repository evidence for functional-chain construc-tion and specification compilation. As shown in Table 4, CodeSpec achieves 70.0%, 51.7%, and 20.4% %Passed on the Easy, Medium, and Hard splits, outperforming the strongest baselines by 8.0, 4.3, and 1.1 per-centage points, respectively. It also obtains the best overall %Passed (46.6%) and #Resolved (8), demonstrating its gen-eralizability to greenfield development. The larger gains on Easy and Medium tasks suggest that CodeSpec effectively organizes requirements into coherent implementations for repositories within approximately 4K lines of code, while the smaller gain on Hard tasks reflects the remaining difficulty of coordinating larger requirements for current agents. Al-though its additional specification and feedback steps slightly increase the average cost to 0.17, the performance gains in-dicate a favorable quality–cost trade-off. 
+
+Discussion 
+
+Case Study 
+
+Figure 4 presents a representative MLflow feature-development task in Featurebench that requires the agent to preserve a complete span lifecycle across multiple modules. The RTADev and CodeSpec (Text) identify the major enti-ties, but fail to preserve several cross-module relations dur-ing implementation. In particular, it dispatches spans based on is_recording() rather than the required OTel span type, misses a required import between modules, and leaves the OTLP conversion path incomplete. Although many indi-vidual interfaces are implemented, these broken connections lead to an incomplete feature and a pass rate of 56.7%. In contrast, CodeSpec compiles the functional chain into complementary executable architecture and behavior spec-ifications. Architecture feedback reveals whether the chain remains complete and connected, while behavior feedback identifies whether the connected path realizes the intended behavior correctly. This lightweight, targeted feedback al-Implementation Comparison 
+
+RTADev && CodeSpec (Text) 
+
+CodeSpec  
+
+> missing cross-module import wrong dispatch
+
+✓          
+
+> Executable Checks
+> ✓check_runtime_imports()
+> cross-module import
+> ✓check_create_mlflow_span_runtime()
+> NoOpSpan · LiveSpan · Span dispatch
+> ✓TraceData → OTLP serialization
+> ✓......
+> Processor create_mlflow_span() LiveSpan / Span /
+> NoOpSpan TraceData
+> serialization incomplete
+> Processor create_mlflow_span() LiveSpan / Span /
+> NoOpSpan TraceData
+
+× ×
+
+✓          
+
+> def create_mlflow_span():
+> #...
+> if isinstance(otel_span, OTelReadableSpan):
+> if otel_span.is_recording():
+> return LiveSpan(otel_span, trace_id, span_type or
+> SpanType.UNKNOWN)
+> else:
+> return Span(otel_span)
+> def create_mlflow_span():
+> #...
+> if not otel_span or isinstance(otel_span,
+> NonRecordingSpan):
+> return NoOpSpan()
+> if isinstance(otel_span, OTelSpan):
+> return LiveSpan(otel_span, trace_id, span_type)
+> if isinstance(otel_span, OTelReadableSpan):
+> return Span(otel_span)
+> Broken Relations
+> ×Processor → Factory:
+> invoke broken by missing import
+> ×Factory → Span Types :
+> wrong dispatch
+> ×TraceData → OTLP :
+> serialization incomplete
+> OTLP
+> OTLP
+> Pass Rate: 100%
+> Pass Rate: 56.7%
+> ✓
+
+×
+
+✓
+
+✓
+
+Figure 4: Case study of MLflow distributed tracing in Fea-turebench by using DeepSeek-V4-Pro. lows the agent to localize and repair structural or behavioral violations during implementation. The case therefore shows that executable specifications go beyond textual design de-scriptions by continuously enforcing the functional chain and maintaining design–implementation consistency across long-horizon development. 
+
+Conclusion 
+
+We propose CodeSpec , a dual-specification approach for agentic long-horizon feature development. It constructs evidence-grounded functional chains from feature require-ments and repository evidence, and compiles each chain into complementary executable architecture and behavior specifi-cations. Architecture specifications preserve the integrity of feature realization paths, while behavior specifications verify runtime correctness along those paths. Together, they provide fine-grained and persistent feedback throughout implemen-tation. Experiments on FeatureBench show that CodeSpec 
+
+consistently outperforms representative coding agents, par-ticularly on complex and long-horizon tasks. Moreover, re-sults on NL2Repo-Bench further demonstrate its generaliz-ability across repository-level development settings. References 
+
+Anthropic. 2026. Claude Code: An Agentic Cod-ing Tool. https://docs.anthropic.com/en/docs/claude-code/ overview. Accessed: 2026-07-11. Austin, J.; Odena, A.; Nye, M.; Bosma, M.; Michalewski, H.; Dohan, D.; Jiang, E.; Cai, C.; Terry, M.; Le, Q.; et al. 2021. Program synthesis with large language models. arXiv preprint arXiv:2108.07732 .Chen, M. 2021. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 .Chow, T. S. 1978. Testing software design modeled by finite-state machines. IEEE transactions on software engineering ,(3): 178–187. Claessen, K.; and Hughes, J. 2000. QuickCheck: alightweight tool for random testing of Haskell programs. In 
+
+Proceedings of the fifth ACM SIGPLAN international con-ference on Functional programming , 268–279. Ding, J.; Long, S.; Pu, C.; Zhou, H.; Gao, H.; Gao, X.; He, C.; Hou, Y.; Hu, F.; Li, Z.; Shi, W.; Wang, Z.; Zan, D.; Zhang, C.; Zhang, X.; Chen, Q.; Cheng, X.; Deng, B.; Gu, Q.; Hua, K.; Lin, J.; Liu, P.; Li, M.; Pan, X.; Peng, Z.; Qin, Y.; Shan, Y.; Tan, Z.; Xie, W.; Wang, Z.; Yuan, Y.; Zhang, J.; Zhao, E.; Zhao, Y.; Zhu, H.; Zhu, L.; Zou, C.; Ding, M.; Jiao, J.; Liu, J.; Liu, M.; Liu, Q.; Tao, C.; Yang, J.; Yang, T.; Zhang, Z.; Chen, X.; Huang, W.; and Zhang, G. 2026. NL2Repo-Bench: Towards Long-Horizon Repository Generation Evaluation of Coding Agents. arXiv:2512.12730. Du, Y.; Cai, Y.; Zhou, Y.; Wang, C.; Qian, Y.; Pang, X.; Liu, Q.; Hu, Y.; and Chen, S. 2025. Swe-dev: Evaluating and training autonomous feature-driven software development. 
+
+arXiv preprint arXiv:2505.16975 .Hong, S.; Zhuge, M.; Chen, J.; Zheng, X.; Cheng, Y.; Wang, J.; Zhang, C.; Yau, S.; Lin, Z.; Zhou, L.; et al. 2024. MetaGPT: Meta programming for a multi-agent collabora-tive framework. In International Conference on Learning Representations , volume 2024, 23247–23275. Jimenez, C. E.; Yang, J.; Wettig, A.; Yao, S.; Pei, K.; Press, O.; and Narasimhan, K. 2024. Swe-bench: Can lan-guage models resolve real-world github issues? In Inter-national Conference on Learning Representations , volume 2024, 54107–54157. Kildall, G. A. 1973. A unified approach to global program optimization. In Proceedings of the 1st annual ACM SIGACT-SIGPLAN symposium on Principles of programming lan-guages , 194–206. Li, J.; Li, G.; Zhao, Y.; Li, Y.; Liu, H.; Zhu, H.; Wang, L.; Liu, K.; Fang, Z.; Wang, L.; Ding, J.; Zhang, X.; Zhu, Y.; Dong, Y.; Jin, Z.; Li, B.; Huang, F.; Li, Y.; Gu, B.; and Yang, M. 2024. DevEval: A Manually-Annotated Code Generation Benchmark Aligned with Real-World Code Repositories. In Ku, L.-W.; Martins, A.; and Srikumar, V., eds., Findings of the Association for Computational Linguistics: ACL 2024 ,3603–3614. Bangkok, Thailand: Association for Computa-tional Linguistics. Li, W.; Zhang, X.; Guo, Z.; Mao, S.; Luo, W.; Peng, G.; Huang, Y.; Wang, H.; and Li, S. 2025. Fea-bench: A bench-mark for evaluating repository-level code generation for fea-ture implementation. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 17160–17176. Liu, J.; Wang, G.; Yang, R.; Zeng, J.; Zhao, M.; and Cai, Y. 2025. RTADev: Intention Aligned Multi-Agent Framework for Software Development. In Che, W.; Nabende, J.; Shutova, E.; and Pilehvar, M. T., eds., Findings of the Association for Computational Linguistics: ACL 2025 , 1548–1581. Vienna, Austria: Association for Computational Linguistics. ISBN 979-8-89176-256-5. Murphy, G. C.; Notkin, D.; and Sullivan, K. J. 2001. Software reflexion models: Bridging the gap between design and im-plementation. IEEE Transactions on Software Engineering ,27(4): 364–380. OpenAI. 2025. Introducing Codex. https://openai.com/ index/introducing-codex/. Accessed: 2026-07-11. Ostrand, T. J.; and Balcer, M. J. 1988. The category-partition method for specifying and generating functional tests. Com-munications of the ACM , 31(6): 676–686. Pruijt, L.; Köppe, C.; van der Werf, J. M.; and Brinkkem-per, S. 2017. The accuracy of dependency analysis in static architecture compliance checking. Software: practice and Experience , 47(2): 273–309. Qian, C.; Liu, W.; Liu, H.; Chen, N.; Dang, Y.; Li, J.; Yang, C.; Chen, W.; Su, Y.; Cong, X.; et al. 2024. Chatdev: Com-municative agents for software development. In Proceedings of the 62nd annual meeting of the association for computa-tional linguistics (volume 1: Long papers) , 15174–15186. Wang, P.; Zhang, L.; Liu, F.; Shi, L.; Li, M.; Shen, B.; and Fu, A. 2025a. CodeIF-Bench: Evaluating Instruction-Following Capabilities of Large Language Models in Interactive Code Generation. arXiv:2503.22688. Wang, P.; Zhang, L.; Liu, F.; Tao, C.; and Zhu, Y. 2026. Code-MEM: AST-Guided Adaptive Memory for Repository-Level Iterative Code Generation. arXiv preprint arXiv:2601.02868 .Wang, P.; Zhang, L.; Liu, F.; Zhu, Y.; Xu, W.; Shi, L.; Lian, X.; Li, M.; Shen, B.; and Fu, A. 2025b. EfficientEdit: Accel-erating Code Editing via Edit-Oriented Speculative Decod-ing. arXiv:2506.02780. Wang, X.; Li, B.; Song, Y.; Xu, F. F.; Tang, X.; Zhuge, M.; Pan, J.; Song, Y.; Li, B.; Singh, J.; et al. 2025c. Openhands: An open platform for ai software developers as generalist agents. In International Conference on Learning Represen-tations , volume 2025, 65882–65919. Yang, J.; Jimenez, C.; Wettig, A.; Lieret, K.; Yao, S.; Narasimhan, K.; and Press, O. 2024. Swe-agent: Agent-computer interfaces enable automated software engineer-ing. Advances in Neural Information Processing Systems ,37: 50528–50652. Zhou, Q.; Zhang, J.; Wang, H.; Hao, R.; Wang, J.; Han, M.; Yang, Y.; Wu, S.; Pan, F.; Fan, L.; et al. 2026. Featurebench: Benchmarking agentic coding for complex feature develop-ment. arXiv preprint arXiv:2602.10975 .

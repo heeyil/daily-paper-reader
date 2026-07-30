@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-29</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-30</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 22 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-29 22:11:57 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-30 22:16:11 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日23篇论文聚焦智能体长程任务与多机器人协调，Matryoshka Agent（10分）和StateAct（9分）最受推荐。速读推荐社会一致性多机器人导航、因果剪枝及成本感知智能体工作流优化。建议优先精读满分论文，再扫读速读列表。</p>
+<p>今日22篇论文中精读9篇，聚焦长时任务规划与交互智能体进化两大前沿方向。</p>
+<p>最值得关注的两篇高分work：持久共享环境中的礼貌性预测方法及交互智能体进化系统（均9.0分）。</p>
+<p>建议优先精读这两篇高分论文，再结合边缘LLM代理校准、办公套件基准等8.0分速读内容拓展应用场景。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +76,9 @@
     <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Matryoshka Agent: Unfolding Sub-Agents for Long-Horizon Machine Learning Engineering">Matryoshka Agent: Unfolding Sub-Agents for Long-Horizon Machine Learning Engineering</span></li><li><span class="dpr-home-dashboard-paper-title" title="StateAct: Program State, before Pixels, for Long-Horizon Computer-Use Agents">StateAct: Program State, before Pixels, for Long-Horizon Computer-Use Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="JarvisHub: An Open Harness for Canvas-Native Multimodal Creative Agents">JarvisHub: An Open Harness for Canvas-Native Multimodal Creative Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Courteous Anticipation: Improving Long-Lived Task Planning in Persistent Shared Environments">Courteous Anticipation: Improving Long-Lived Task Planning in Persistent Shared Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Living-Harness Is an Interactive-Agent Evolver">Living-Harness Is an Interactive-Agent Evolver</span></li><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Self-Evolution: A Constrained Exploration-Exploitation Process for Mitigating Skill Overfitting">Rethinking Self-Evolution: A Constrained Exploration-Exploitation Process for Mitigating Skill Overfitting</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>8</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">14 篇</strong>
+    <strong class="dpr-home-dashboard-count">13 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Socially Consistent Multi-Robot Navigation Using Decoupled Planning and Trajectory Coordination">Socially Consistent Multi-Robot Navigation Using Decoupled Planning and Trajectory Coordination</span></li><li><span class="dpr-home-dashboard-paper-title" title="CausalGate: Causal Importance Distillation for Transformer Module Pruning">CausalGate: Causal Importance Distillation for Transformer Module Pruning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Agent-UCT: Upper Confidence Bounds Applied to Trees for Agentic Workflow Optimization with Cost-Awareness">Agent-UCT: Upper Confidence Bounds Applied to Trees for Agentic Workflow Optimization with Cost-Awareness</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Think Short, Defer Smart, Act, and Repeat: Calibrated Reasoning and Uncertainty-Aware Deferral for Edge LLM Agents">Think Short, Defer Smart, Act, and Repeat: Calibrated Reasoning and Uncertainty-Aware Deferral for Edge LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="OmegaUse-OfficeVal: Benchmarking LLM Agents on Long-Horizon Office-Suite Tasks with Economic Grounding">OmegaUse-OfficeVal: Benchmarking LLM Agents on Long-Horizon Office-Suite Tasks with Economic Grounding</span></li><li><span class="dpr-home-dashboard-paper-title" title="MR-TGN: A Meta-Role Temporal Graph Network for Team-Level Intent Prediction in Multi-Agent Systems">MR-TGN: A Meta-Role Temporal Graph Network for Team-Level Intent Prediction in Multi-Agent Systems</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>11</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
 </section>
 </div>
 
