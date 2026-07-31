@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-30</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-31</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 22 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-30 22:16:11 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-31 22:23:23 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日22篇论文中精读9篇，聚焦长时任务规划与交互智能体进化两大前沿方向。</p>
-<p>最值得关注的两篇高分work：持久共享环境中的礼貌性预测方法及交互智能体进化系统（均9.0分）。</p>
-<p>建议优先精读这两篇高分论文，再结合边缘LLM代理校准、办公套件基准等8.0分速读内容拓展应用场景。</p>
+<p>今日共梳理23篇论文，精读9篇、速读14篇，重点关注LLM智能体控制与自我进化。最值得看的是以控制论视角管理冻结智能体上下文组装，以及SkillMentor通过盲点诊断实现智能体自我进化。下一步可关注FAVA形式化权限验证与PAUSE个人助手基准，为实际部署打基础。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -76,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Courteous Anticipation: Improving Long-Lived Task Planning in Persistent Shared Environments">Courteous Anticipation: Improving Long-Lived Task Planning in Persistent Shared Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Living-Harness Is an Interactive-Agent Evolver">Living-Harness Is an Interactive-Agent Evolver</span></li><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Self-Evolution: A Constrained Exploration-Exploitation Process for Mitigating Skill Overfitting">Rethinking Self-Evolution: A Constrained Exploration-Exploitation Process for Mitigating Skill Overfitting</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Context Assembly as the Controlled Variable: A Control-Theoretic View of Harness Policies for Frozen LLM Agents">Context Assembly as the Controlled Variable: A Control-Theoretic View of Harness Policies for Frozen LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="SkillMentor: LLM Agent Self-Evolution via Learning Blind-Spot Diagnosis">SkillMentor: LLM Agent Self-Evolution via Learning Blind-Spot Diagnosis</span></li><li><span class="dpr-home-dashboard-paper-title" title="SKIMIX: Multi-Agent Harness-Time Scaling with Skill Mixture for Dynamic Harness Engineering">SKIMIX: Multi-Agent Harness-Time Scaling with Skill Mixture for Dynamic Harness Engineering</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>2</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">13 篇</strong>
+    <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Think Short, Defer Smart, Act, and Repeat: Calibrated Reasoning and Uncertainty-Aware Deferral for Edge LLM Agents">Think Short, Defer Smart, Act, and Repeat: Calibrated Reasoning and Uncertainty-Aware Deferral for Edge LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="OmegaUse-OfficeVal: Benchmarking LLM Agents on Long-Horizon Office-Suite Tasks with Economic Grounding">OmegaUse-OfficeVal: Benchmarking LLM Agents on Long-Horizon Office-Suite Tasks with Economic Grounding</span></li><li><span class="dpr-home-dashboard-paper-title" title="MR-TGN: A Meta-Role Temporal Graph Network for Team-Level Intent Prediction in Multi-Agent Systems">MR-TGN: A Meta-Role Temporal Graph Network for Team-Level Intent Prediction in Multi-Agent Systems</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="FAVA: Formal Authorization for Verified Agents with Evidence-Backed Permission Graphs">FAVA: Formal Authorization for Verified Agents with Evidence-Backed Permission Graphs</span></li><li><span class="dpr-home-dashboard-paper-title" title="PAUSE: A User-Centric Benchmark for Personal AI Assistants in Unified Service Environments">PAUSE: A User-Centric Benchmark for Personal AI Assistants in Unified Service Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Bridging Inference-Time Scaling and Episodic Memory with Action-Centric Graphs">Bridging Inference-Time Scaling and Episodic Memory with Action-Centric Graphs</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>11</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>14</strong></span></div>
 </section>
 </div>
 

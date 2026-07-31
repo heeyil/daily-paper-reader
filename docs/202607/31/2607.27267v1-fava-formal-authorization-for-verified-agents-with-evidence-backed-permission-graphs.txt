@@ -1,0 +1,391 @@
+Title: FAVA: Formal Authorization for Verified Agents with Evidence-Backed Permission Graphs
+
+URL Source: https://arxiv.org/pdf/2607.27267v1
+
+Published Time: Fri, 31 Jul 2026 00:02:14 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# FAVA : Formal Authorization for Verified Agents with Evidence-Backed Permission Graphs 
+
+## Yifan Zhang 1, Xinkui Zhao 1∗, Sai Liu 1, Hengxuan Lou 1, Guanjie Cheng 1, Chang Liu 1
+
+> 1
+
+Zhejiang University zhaoxinkui@zju.edu.cn 
+
+Abstract 
+
+Large language model (LLM) agents autonomously interleave semantic reasoning with complex system operations. In these dynamic environments, static tool-level permissions are fun-damentally insufficient; safe authorization is highly context-dependent and heavily reliant on evolving runtime states and data flows. We present FAVA (Formal Authorization for 
+
+Verified Agents), a permission-carrying authorization frame-work for agent execution. FAVA utilizes an LLM-guided Per-mission Intermediate Representation (IR) to translate ambigu-ous natural-language tasks into structured constraints. A deter-ministic lowering pass then converts this IR into an evidence-backed permission graph that explicitly tracks data flows, de-pendencies, and contextual labels. To provide strict security guarantees, a Satisfiability Modulo Theories (SMT) autho-rizer mathematically verifies the current graph against security policies before any effectful action executes. A runtime gate-way then enforces the solver’s result, either authorizing the execution or intercepting it with a precise counterexample. We evaluate FAVA across OpenAgentSafety, OctoBench, and ActPlane scenarios. Our evaluation demonstrates that FAVA 
+
+achieves a 90.5% Decision Compliance Rate (DCR) over the aggregate dataset, successfully intercepting dynamic violating traces in the evaluated trace-conditioned scenarios. 
+
+## Introduction 
+
+LLM agents are increasingly integrated into critical com-putational environments, operating across software repos-itories, enterprise chat systems, cloud storage, and local shells (Debenedetti et al. 2024; Wang et al. 2025; Yang et al. 2024; Zhang et al. 2025a; Wei and Wang 2025). In these complex settings, an agent routinely interleaves se-mantic tasks with concrete system actions, such as reading files, generating code, and executing shell commands (Chat-latanagulchai et al. 2025a,b; Lulla et al. 2026). Because LLMs autonomously plan and execute actions probabilis-tically, their exact runtime trajectories and data flows cannot be statically foreseen (Jiang et al. 2024; Zheng et al. 2026a; Wu et al. 2026). Consequently, agent authorization is highly context-dependent rather than bound to static actions. 
+
+> ∗
+
+Corresponding author. Copyright © 2027, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 
+
+To understand the exact nature of this context dependency in practice, we conducted an empirical study on real-world agent governance. Our analysis of active open-source reposi-tories reveals that developer-defined authorization is heavily stateful. Specifically, 90% of the analyzed projects enforce sequence-dependent temporal constraints, and over 40% in-corporate complex nested conditional logic. However, existing defense mechanisms only address frag-ments of this dynamic complexity and fall short in providing checkable runtime authorization boundaries. Prompt-only policies attempt to ask the model to behave safely but com-pletely fail to enforce actual runtime decisions (Zou et al. 2023; Andriushchenko et al. 2025). While keyword filters and static tool allowlists are easy to deploy, they inherently ignore critical data flow and execution context (Babu and Iyer 2026; Gaurav, Heikkonen, and Chaudhary 2025; Luo et al. 2025). OS-level sandboxes can restrict file and network execution, but they lack the semantic understanding needed to govern the high-level conditional logic that modern agents require (Ruan et al. 2024a; Zhou et al. 2024; Chen et al. 2025; Docker Inc. 2024; E2B 2024). To address these concerns, we propose FAVA , Formal Au-thorization for Verified Agents. The central philosophy of 
+
+FAVA is to separate semantic permission extraction from final safety authorization. Rather than trusting an LLM to make opaque “safe/unsafe" judgments, FAVA utilizes the LLM where it excels: parsing natural language tasks into a structured Permission IR (Intermediate Representation). This IR explicitly maps intents, protected assets, tool-level actions, obligations, scoped allowances, forbidden actions, and evidence spans. A deterministic lowering pass then con-verts this IR into an evidence-backed permission graph . The final safety decision is computed by an SMT authorizer over the graph and system policy. Thus, FAVA does not provide an end-to-end proof that an agent is safe from natural language alone; its formal guarantee begins once available evidence has been lowered into the permission graph. Under the stated graph, policy, gateway, and backend assumptions, FAVA re-turns either a counterexample to intercept forbidden flows or a capability set to authorize backend execution. Crucially, this graph-based design enables monotone graph repair: run-time events append observed facts to the graph and force re-authorization before any effectful action occurs. This paper makes three primary contributions: arXiv:2607.27267v1 [cs.CR] 29 Jul 2026 0 10 20 30 40 50      
+
+> Repository index
+> 0
+> 10
+> 20
+> 30
+> Statement count  Temporal constraints
+> 010 20 30 40 50
+> Repository index
+> 0
+> 2
+> 4
+> 6
+> Nested constraints
+
+Figure 1: Frequency of dynamic constraints extracted from real-world agent instruction files in 2026 GitHub reposito-ries. The left panel shows the widespread use of temporal constraints (sequence-dependent execution), while the right panel highlights the reliance on nested conditional logic (e.g., "if", "only when"). 
+
+• Framework Concept and Positioning: We propose 
+
+FAVA , a novel runtime authorization framework for LLM agents that fundamentally shifts permission management to verifiable graph authorization. 
+
+• Formal Authorization Methodology: We introduce a pipeline that leverages LLMs to parse natural-language tasks into a structured Permission IR , which is deter-ministically lowered into an evidence-backed permission graph . This design enables an SMT authorizer to compute policy-consistency decisions over the graph and supports monotone graph repair with just-in-time re-authorization. 
+
+• Comprehensive Evaluation: We evaluate FAVA across OpenAgentSafety, OctoBench, and ActPlane scenarios. 
+
+FAVA achieves 90.5% DCR over the full 801-case re-play while preserving 100.0% DCR on the structured and labeled trace-conditioned splits. 
+
+## Motivation: Agent Constraints 
+
+Data Collection. To understand how developers define au-thorization boundaries for LLM agents in practice, we con-ducted an empirical study on open-source projects. We col-lected public GitHub repositories containing CLAUDE.md or 
+
+AGENT.md —standardized files increasingly used to provide system-level behavioral instructions to autonomous coding agents. We specifically targeted AI-agent projects created or actively maintained in 2026. To ensure the ecological validity and quality of our dataset, we applied strict filtering crite-ria, systematically excluding non-code, inactive, artificially inflated (fake-star), and stub repositories. We then parsed the natural language instructions within these files to extract and categorize statements dictating execution permissions. 
+
+Data Analysis and Implications. Our analysis reveals that real-world agent authorization is rarely static; instead, it is highly dependent on runtime states and execution order. As illustrated in Figure 1, developers increasingly govern agent capabilities through complex, stateful policies rather than simple binary allowlists. Specifically, 90% of the an-alyzed repositories enforce sequence-dependent temporal constraints (e.g., “do not commit before running tests”), with individual projects often containing a substantial vol-ume of such rules. Compounding this complexity, over 40% of the repositories incorporate nested and conditional logic (e.g., “allow internet access only when querying the offi-cial API”). This pervasive combination of temporal sequenc-ing and state-dependent modifiers highlights a fundamental misalignment between current static authorization mecha-nisms and actual governance needs. Consequently, the in-herent semantic complexity of real-world policies motivates a paradigm shift in agent security, underscoring the critical necessity for an approach capable of extracting rich semantic rules from natural language and formally verifying multi-step execution graphs at runtime. 
+
+## FAVA Method 
+
+Overview 
+
+Real-world agent policies are inherently stateful and com-plex, yet natural language instructions remain fundamentally too ambiguous for rigorous enforcement. Left unchecked, this modality gap exposes agents to critical vulnerabilities, which can be broadly categorized into: (1) unauthorized data exfiltration (e.g., leaking secrets to untrusted sinks), (2) destructive state modifications (e.g., executing unsafe commands), and (3) temporal obligation violations (e.g., bypassing mandatory prerequisite checks). Because probabilistic LLMs cannot guarantee formal cor-rectness against these threats, security requires strict math-ematical formalization. To achieve this, FAVA strictly sepa-rates semantic comprehension from logical enforcement. It leverages LLMs solely to parse ambiguous tasks into a struc-tured Permission IR . To capture stateful data flows, this IR is deterministically lowered into a Permission Graph . Fi-nally, rather than relying on opaque model judgments, the graph serves as the exact substrate for an SMT Authorizer ,transforming agent safety into an mathematical satisfiability problem. 
+
+Evidence Acquisition and Permission IR 
+
+Because formal verifiers cannot process raw natural language and probabilistic LLMs cannot be trusted with access con-trol decisions, FAVA employs an LLM strictly as a semantic extractor. It parses task text, execution contracts, and run-time traces into a structured Permission IR. This IR ex-plicitly defines the authorization boundary using five core fields— intent , assets , actions , obligations ,and sinks —alongside evidence spans that cryptograph-ically or textually link each field to its source. By cleanly separating extraction from authorization, com-plex semantic instructions (e.g., “summarize and send to Slack”) and temporal guards (e.g., “require review be-fore testing”) are preserved as auditable structural con-straints rather than being compressed into opaque LLM judg-ments. To maintain architectural consistency, dynamic run-time traces are mapped into this exact same IR format. They are populated directly from observed tool calls, arguments, and event ancestry, ensuring a uniform representation across static tasks and dynamic executions where only the source of the evidence differs. Natural                                             
+
+> language
+> tasks
+> Execution
+> contracts
+> Runtime
+> traces
+> Evidence
+> Acquisition
+> Permission IR
+> intent: ...
+> assets : ...
+> actions : ...
+> obligations : ...
+> sinks : ...
+> evidence : ...
+> Lowering
+> Pass
+> u:User
+> pii c:Context
+> pii
+> d:Doc
+> secret
+> m:LLM
+> untrusted
+> t:search
+> untrusted
+> t: email.send
+> secret
+> s:net: *
+> secret
+> •--> block
+> •--> warn
+> secret
+> Policy
+> untrusted
+> Formalization
+> Let 𝐀 = ( 𝐀 ,𝐀 ,𝐀 ), 𝐀 𝐀𦐀𝐀𣠀𝐀𣰀 ,𝐀 𝐀𦐀𝐀𦐀𝐀𧐀𝐀𧐀𝐀𧐀𣠀𣰀
+> Label propagation:
+> ℎ𦐀𣰀 (𝐀 ,𝐀 ) ← 𝐀 (𝐀 )
+> ℎ𦐀𣰀 (𝐀 ,𝐀 ) ← ℎ𦐀𣰀 (𝐀 ,𝐀 ) ∧ ( 𝐀 ,𝐀 ) ∈ 𝐀
+> Grant rules:
+> 𝐀𥀀𦐀𧰀𝐀 (𝐀 ,𝐀 ) ← 𝐀𧐀𝐀𧐀𝐀𦐀 (𝐀 ,𝐀 ) ∧ ℎ𦐀𣰀 (𝐀 ,𝐀 ) → 𦐀𝐀𝐀𧐀𝐀 (𝐀 ,𝐀 )
+> Safety check:
+> ∀𝐀 .𝐀 ∈𝐀𣠀𝐀 (𝐀 ) ⇒ 𝐀 ∈𝐀𣠀𝐀 (𝐀 )
+> SMT Authorizer
+> Execuite
+> Label : untrusted
+> Sink : s:net:search
+> Node : t:search
+> Authorized
+> Counter example
+> Label : secret
+> Sink : s:net: *
+> Node : t:email.send
+> Explain violation
+> Monotinic Runtime Repair
+> new event new
+> evidence new
+> node/ edge new label
+
+Input & Semantic Extraction 
+
+Graph Lowering 
+
+Authorization 
+
+> refinement
+> error message
+
+Figure 2: FAVA architecture. The system extracts inputs into a Permission IR, lowers it into an evidence-backed graph, and enforces security via an SMT authorizer and runtime gateway. The graph is monotonically updated with new observations. 
+
+Graph Lowering 
+
+To enforce sequence-dependent temporal constraints, flat permission lists are structurally insufficient. Instead, a de-terministic lowering pass maps the Permission IR into an evidence-backed permission graph G = (V, E ) (Ta-ble 1). Nodes carry evidence-grounded security labels (e.g., 
+
+secret , destructive ), while edges encode dependency relations. This pass preserves IR semantics rather than compress-ing them into lossy allowlists. Scoped allowances be-come declassification constraints, not unconditional per-missions. Crucially, sanitization requires explicit trusted transformer specifications (e.g., redact(secret) -> safe_text ); vague LLM assertions (e.g., “summary”) are not treated as sanitizers. This transforms semantic data into a formally verifiable substrate. Mapping rules explicitly translate IR assets to source 
+
+nodes, effectful calls to tool nodes, and external targets to 
+
+sink nodes. Typed edges formalize interactions: data for value flows, control for temporal guards, and parent for runtime ancestry. The authorizer strictly trusts observed and policy-defined edges, retaining inferred edges purely for au-diting extraction errors. Finally, to guarantee integrity against LLM hallucinations, the lowered graph undergoes strict structural and evidential validation, rejecting malformed con-structs before reaching the SMT authorizer. 
+
+SMT Authorization 
+
+The complex nested and conditional logic prevalent in real-world agent policies creates authorization boundaries too intricate for standard heuristic checks. FAVA formulates au-thorization over its permission-graph abstraction as a Satis-fiability Modulo Theories (SMT) problem. Conceptually, the solver continuously evaluates two di-mensions over the evidence graph: data-flow taint and capa-
+
+Object Field Meaning 
+
+Node 
+
+id Unique identifier 
+
+kind Type (e.g., context, source, tool, sink) 
+
+op Action (e.g., read, write, execute) 
+
+args , outputs Input/output arguments and values 
+
+labels Security labels and evidence 
+
+requests Required or optional capabilities 
+
+time Execution timestamp or order Edge 
+
+src , dst Source and destination nodes 
+
+type Dependency (data, control, parent) 
+
+evidence Textual span or event ancestry 
+
+trust Trust source (observed, policy, inferred) 
+
+Table 1: Permission graph schema used by the lowering pass. bility grants. Labels (e.g., secret , pii ) propagate along dependency edges unless transformed by a trusted sanitizer specification. Simultaneously, the system evaluates capabil-ities required to execute a candidate action against a core policy of forbidden label-to-sink flows (e.g., secret -> net:* , pii -> tool:slack.post_message ). The solver either returns an authorized capability set or surfaces a precise counterexample to intercept the execution. Formally, for a finite graph G = ( V, E ), P red (v) denotes the predecessors of v over data and policy-control edges. Explicit (v, ℓ ) is true when node v directly carries evidence for label ℓ, and Source (v, ℓ, P ) is true when policy P labels the resource read or produced by v as ℓ. A capability c is a nor-malized resource request (e.g., file:write:/tmp/x ). Let H[v, ℓ ] denote the presence of label ℓ at node v, and 
+
+A[v, c ] denote that capability c is granted to v. Req (v, c ) dic-tates that v cannot execute unless c is granted. A forbidden rule f = ( Lf , S f ) defines protected labels Lf and a sink pat-tern Sf , with Match (v, S f ) returning capabilities requested by v that match the sink. Obligations are encoded as Boolean guard facts over the prefix. For example, allow(commit) only if tests_passed becomes: 
+
+A[v, commit ] ⇒ Seen (tp, v ),
+
+where Seen (tp, v ) is true only if an earlier observation node establishes the tests_passed fact. Data-flow denial (e.g., 
+
+deny network_send if reachable(secret) )is encoded as: 
+
+∀v. ¬(H[v, secret ] ∧ A[v, net:send ]) .
+
+Because FAVA operates on finite prefix graphs, constraints are solved over the bounded runtime state and re-evaluated as new events occur. 
+
+Finite-Graph Soundness. For a validated finite permis-sion graph and fixed policy translation, Algorithm 1 is sound for forbidden label-to-sink reachability: any satisfiable capa-bility assignment is guaranteed to strictly satisfy all policy rules encoded in P . Conversely, if granting a required ca-pability forces a protected collision, the constraints become unsatisfiable, and the solver yields a precise counterexam-ple trace identifying the violating path. This guarantee ap-plies strictly to the formal abstraction; it does not assert the completeness of upstream natural-language extraction or implicit-flow discovery. 
+
+Taint-Monotonic Safety. The monotonicity in FAVA ap-plies strictly to observed graph information. Let G ⪯t G′
+
+denote a taint-only extension: G′ contains all objects in G
+
+and may add more, but does not introduce new trusted san-itizers, declassifications, or positive obligation facts (e.g., 
+
+tests_passed ). For a fixed policy and required capa-bility set, if action a is rejected on G, it is necessarily re-jected on any G′ where G ⪯t G′. Because label propagation is monotonically increasing and forbidden-flow checks are hard constraints, adding taint information can only preserve or introduce collisions; it cannot resolve an existing one. Positive guard observations and trusted transformations (e.g., sanitization) are treated separately as explicit policy mechanisms. Establishing a tests_passed observation may satisfy a precondition, but this represents the fulfillment of an explicit rule, not a weakening of the safety boundary. Therefore, these events are excluded from G ⪯t G′ and fall outside ordinary monotone taint growth. 
+
+Monotonic Tracking and Enforcement Gateway 
+
+Agent environments are highly dynamic: an action that is benign initially may become dangerous later if a sensitive re-source is accessed. To prevent the “context amnesia” typical of LLM agents, FAVA continuously expands its authorization boundary through monotonic runtime repair. Runtime events strictly append new nodes, edges, labels, and evidence; es-tablished security constraints are never silently discarded. Operating on this monotonic graph, FAVA acts as a strict Just-In-Time (JIT) gateway. It runs the SMT authorizer im-mediately before any effectful action and ensures that down-stream execution backends remain at least as restrictive as the solver’s mathematical decision. Algorithm 1: SMT Authorization Encoding                                                                        
+
+> Require: Permission graph G= ( V, E ), policy P
+> Ensure: Authorized capabilities Cor counterexample 1: Variables: H[v, ℓ ](label presence), A[v, c ](capability granted) 2: for all v∈Vdo
+> 3: // 1. Label Propagation
+> 4: for all label ℓdo
+> 5: if vhas trusted sanitizer for ℓthen
+> 6: Assert transformed label according to sanitizer speci-fication 7: else
+> 8: Assert H[v, ℓ ] = Explicit (v, ℓ )∨Source (v, ℓ, P )∨W
+> u∈P red (v)H[u, ℓ ]
+> 9: end if
+> 10: end for
+> 11: // 2. Capability Allocation
+> 12: For each req. cat v: Assert A[v, c ] = true if required, else softly minimize A[v, c ]
+> 13: end for
+> 14: // 3. Policy Enforcement
+> 15: for all forbidden rule f∈Pand v∈Vdo
+> 16: Assert ¬  V
+> ℓ∈Labels (f)H[v, ℓ ]∧
+> W
+> c∈M atch (v,Sink (f)) A[v, c ]
+> 17: end for
+> 18: // 4. Resolution
+> 19: return authorized capabilities if satisfiable; otherwise coun-terexample trace
+
+The gateway enforces a deterministic, risk-aware binary decision. If the solver identifies a counterexample, the action is block ed and the violating path is surfaced. If no viola-tion is found and the Permission IR marks the task as benign, the action is allow ed. Crucially, if the solver finds no ex-plicit forbidden flow but the extracted risk posture remains 
+
+sensitive , dangerous , or ambiguous , the gateway deliberately fails closed. This strict automation prioritizes security over utility—resolving scope ambiguity via default blocking rather than human intervention—a tradeoff explic-itly reflected in our conservative benign allow rate. 
+
+Security Assumptions and System Scope 
+
+FAVA provides authorization guarantees over the explicit abstraction it checks, not over every possible behavior of an unconstrained agent runtime. The SMT authorizer is sound with respect to the generated permission graph, the fixed policy translation, and the gateway-visible candidate action. This formal guarantee relies on three foundational engineer-ing assumptions. First, all security-relevant runtime effects must be mediated by the gateway before execution. Second, backend execution must be capability-conformant: a backend may restrict more than the solver permits, but it must never execute effects outside the granted capability set. Third, pol-icy translation and sanitizer specifications are treated as part of the trusted computing base. 
+
+## Implementation 
+
+The FAVA prototype is implemented in Python, utilizing Z3 (De Moura and Bjørner 2008) as SMT engine. The graph Method OctoBench OpenAgentSafety ActPlane Public ActPlane Traces TP TN FP FN DCR TP TN FP FN DCR TP TN FP FN DCR TP TN FP FN DCR Vanilla / No Guard 0 16 0 201 7.4 0 56 0 303 15.6 0 15 0 20 42.9 0 76 0 114 40.0 GuardAgent 10 16 0 191 12.0 168 14 42 135 50.7 20 15 0 0 100.0 38 75 1 76 59.5 Regex Guard 158 7 9 43 76.0 303 0 56 0 84.4 15 2 13 5 48.6 12 54 22 102 34.7 AgentSpec 12 16 0 189 12.9 181 18 38 122 55.4 20 14 1 0 97.1 77 75 1 37 80.0 ActPlane – – – – – 122 36 20 181 44.0 20 0 15 0 57.1 98 7 69 16 55.3 AuthGraph 51 16 0 150 30.9 81 50 6 222 36.5 10 15 0 10 71.4 114 76 0 0 100.0 SafeAgent 174 13 3 27 86.2 244 12 44 59 71.3 10 15 0 10 71.4 114 76 0 0 100.0                     
+
+> FAVA 196 115 590.8 301 254 284.4 20 15 00100.0 114 76 00100.0
+
+Table 2: Decision-compliance results. DCR is reported as a percentage. parser converts heterogeneous inputs into schema-validated structures, systematically extracting labels, sources, sinks, and evidence. The authorizer governs files, network hosts, and tools; notably, it models shell execution as a coarse-grained command sink rather than a syscall-level provenance graph. Finally, the runtime gateway enforces these decisions across mock APIs and local system environments. 
+
+Z3-Based SMT Encoding. Algorithm 1 details our Z3-based SMT encoding. Instead of materializing transitive clo-sures, we encode data-flow reachability as local label propa-gation over the finite permission graph. For each node v, the Boolean variable H[v, ℓ ] tracks the presence of label ℓ, which is either explicitly introduced, propagated from predecessors, or transformed by a trusted sanitizer specification. Concur-rently, A[v, c ] represents granted capabilities, where required requests are enforced as hard constraints and optional ones are minimized using Z3’s soft objectives. A policy violation occurs if any node holds a protected label while being granted a forbidden sink capability. If the constraints are satisfiable, the authorizer returns the granted capabilities. Otherwise, a secondary solver pass fixes the required grants to extract a counterexample (including the violating node, label, sink, and tainted paths), allowing the system to map the violation directly back to the underlying graph evidence. 
+
+## Experiments 
+
+Datasets. To ensure a rigorous evaluation, we construct a diverse benchmark mixture containing 801 tasks in total. This includes: (1) OpenAgentSafety (Vijayvargiya, Soni et al. 2025): 359 evaluable tasks from OpenAgentSafety (exclud-ing two directories from the original 361 that lack usable task, scenario, or checkpoint text); (2) OctoBench (Ding et al. 2026): 217 original tasks from OctoBench; (3) Act-Plane Public : 35 public end-to-end and file-flow cases from ActPlane (Zheng et al. 2026b); and (4) ActPlane traces : 190 trace-conditioned scenarios designed to test complex contex-tual dependencies from ActPlane (Zheng et al. 2026b). Two OpenAgentSafety cases use deepseek-v3 Permission IR fall-back because the gpt-5.5 provider refused high-risk bench-mark content. The trace-conditioned split is reported sepa-rately because it uses benchmark-provided trace evidence as part of the trace specification. 
+
+Baselines. We compare FAVA with representative de-fenses: Vanilla / No Guard, which executes all actions; GuardAgent (Xiang et al. 2025), a prompt-only policy lack-ing strict enforcement; Regex Guard (Zheng et al. 2026b), which blocks via static lexical triggers; AgentSpec (Wang, Poskitt, and Sun 2025), applying its native runtime rules; and ActPlane (Zheng et al. 2026b), an OS-level compile adapter that treats unsupported semantic cases as missed violations. Because public implementations are unavailable, we also in-clude best-effort reimplementations of two recent systems over our interface: AuthGraph (Wang, Li, and Tian 2026), which approximates intent-to-execution graph alignment over source labels and candidate sinks; and SafeAgent (Liu et al. 2026), which approximates a runtime risk controller evaluating protected labels, risky text, and effectful sinks. 
+
+Metrics. Our primary evaluation metric is the Decision Compliance Rate (DCR), which measures the overall ac-curacy of binary allow/block decisions. Defining the pos-itive class as actions the system “should block,” we track four granular outcomes: True Positives ( TP , unauthorized actions correctly blocked), True Negatives ( TN , benign ac-tions correctly allowed), False Positives ( FP , benign actions incorrectly blocked), and False Negatives ( FN , unauthorized actions incorrectly allowed, i.e., under-blocking). Based on these components, the DCR is formally defined as: 
+
+DCR = T P + T N T P + T N + F P + F N 
+
+RQ1: Main Permission-Compliance Result 
+
+Table 2 presents the main effectiveness results across four diverse datasets. The central finding is that FAVA achieves strong attack blocking with fully automated allow/block decisions. Existing mechanisms typically fail in two op-posite extremes. First, lexical triggers (Regex Guard) and OS-observable compile adapters (ActPlane) lack semantic nuance and suffer from severe over-blocking. For instance, Regex Guard achieves zero True Negatives (TN=0) on Ope-nAgentSafety by blindly blocking legitimate actions. It is crucial to properly contextualize ActPlane’s results in this regard: evaluated here as a native compile adapter under our unified binary labels, ActPlane models OS-observable artifacts but lacks visibility into high-level semantic autho-rization (e.g., recipient scope or benchmark trace evidence). Consequently, on the ActPlane Public dataset, it successfully Variant OB OAS AP AT                     
+
+> FAVA 90.8 84.4 100.0 100.0
+> w/o Evidence Labels 7.4 15.6 42.9 40.0
+> w/o Data-Flow Edges 25.8 61.6 42.9 100.0
+> w/o SMT Authorization 25.8 61.6 42.9 100.0
+> w/o Runtime Gateway 88.9 80.5 100.0 40.0
+
+Table 3: Ablation results. Values are DCR percentages across the four benchmark categories (OB: OctoBench, OAS: Ope-nAgentSafety, AP: ActPlane Public, AT: ActPlane Traces). intercepts all 20 unauthorized cases (FN=0) but falsely blocks all 15 benign intents (TN=0, FP=15), resulting in a 57.1% DCR. This highlights the inherent modality gap addressed by FAVA , rather than contradicting the optimal performance configurations reported in the original ActPlane publication within its native scope. Conversely, prompt-only safety poli-cies (GuardAgent) and naive runtime adapters (AgentSpec) exhibit severe under-blocking. Because these methods rely on natural-language instructions or heuristic rules without explicitly tracking tainted data flows, they are highly suscep-tible to context amnesia, resulting in massive False Nega-tives (e.g., GuardAgent and AgentSpec yield 191 and 189 FNs on OctoBench, respectively). FAVA resolves these ex-tremes by separating semantic extraction from solver-based enforcement, and by intentionally failing closed when the un-resolved risk posture remains sensitive , dangerous ,or ambiguous . Consequently, our approach achieves 100% DCR (0 FP, 0 FN) on ActPlane Public and the labeled trace-conditioned diagnostic, 90.8% DCR on OctoBench, 84.4% on OpenAgentSafety, and 90.5% over the full 801-case bi-nary matrix. This fully automated setting is intentionally con-servative: the benign allow rate is 57.7% overall and remains appropriately low on ambiguous natural-language tasks. 
+
+RQ2: Component Ablations 
+
+Table 3 isolates the contribution of each major component in 
+
+FAVA . Overall, the system relies on four mechanisms in dis-tinct ways: labels provide semantic grounding, edges provide dependency structure, the SMT solver enforces global con-straints, and the gateway handles online trace interception. 
+
+Evidence Labels (Semantic Grounding). Removing la-bels causes the most severe degradation, plummeting DCR to 7.4% on OctoBench and 15.6% on OpenAgentSafety (OAS). Without explicit semantic evidence, the permission graph collapses into an unconstrained structure, leaving the au-thorizer with no foundational basis to distinguish benign instructions from unauthorized sinks. 
+
+Data-Flow Edges & SMT Authorization (Global Reason-ing). Removing dependency edges or replacing the SMT authorizer with a local decision rule yields identical, se-vere regressions (falling to 25.8% on OctoBench and 61.6% on OAS). This confirms that a local heuristic cannot re-place global constraint reasoning. Edges are strictly neces-sary to propagate taint across multi-hop operations, and the SMT solver is not a cosmetic detail—it is the exact mecha-nism that resolves these dependencies. Notably, edge ablation 70 75 80 85 90     
+
+> DCR (%)
+> Qwen3.5-35B-A3B
+> DeepSeek-V4-Flash
+> MiniMax-M2.5
+> GPT-5.4-Mini
+> GPT-5.5
+> GPT-5.6-Luna
+> OctoBench
+> 60 65 70 75 80
+> DCR (%)
+> OpenAgentSafety
+
+Figure 3: Model replacement results. Bars show DCR per-centages when using different LLM backends. minimally impacts the 190-trace setting because our current ingestion explicitly attaches benchmark-provided trace evi-dence to violating nodes, reinforcing this split as a labeled diagnostic rather than zero-shot discovery. 
+
+Runtime Gateway (Online Interception). Disabling on-line repair and blocking drastically reduces DCR on the trace-conditioned benchmark from 100.0% to 40.0%, while static datasets experience only minor declines. This isolates the gateway’s critical role: dynamic benchmarks inherently require sequential prefix reasoning and Just-In-Time (JIT) interception to stop execution before a violation occurs. 
+
+RQ3: Generalization 
+
+To answer RQ3, we evaluate FAVA across several configured LLM backends for Permission IR extraction (Figure 3). The results show that the downstream authorizer is not tied to a single extraction backend: the same graph validator and SMT authorizer are reused after each model emits the struc-tured IR. At the same time, the final DCR remains sensitive to extraction quality, especially on OctoBench, where work-flow obligations and repository instructions are often indi-rect. This supports a narrower claim than model-independent security: better IR extraction improves the evidence available to the deterministic checker, while missed labels or obliga-tions remain a source of false negatives. 
+
+RQ4: Runtime Efficiency 
+
+We evaluate the computational overhead of FAVA in terms of both absolute initialization cost and real-time execution im-pact. First, the LLM-guided semantic extraction (IR parsing and graph lowering) acts as an upfront initialization step. To isolate this from environmental noise (e.g., network or shell delays), we evaluate the static path using OctoBench (Ding et al. 2026). Under this pure measurement, the full initial pipeline takes an average of 18.9 seconds. When integrated into real-time trajectories from OpenAgentSafety (Vijay-vargiya, Soni et al. 2025) (Figure 4), this one-time initializa-tion introduces an average latency overhead of 8.75% relative to the native task duration. Crucially, once this initial Permis-sion IR is compiled, the active runtime gateway—handling monotonic graph updates and SMT authorization—adds only a negligible 0.3% end-to-end overhead to the live agent ex-ecution. Table 4 isolates this per-call active authorization cost. Because FAVA encodes the permission boundary as a bounded prefix graph, the SMT solver remains highly effi-cient. Across 607 real-world policy checks, the overall me-dian JIT authorization takes strictly under 1 ms (0.845 ms, 0 100 200 300 400 500 600 700 800  
+
+> End-to-end time (s)
+> api-in-codebase
+> applications
+> apply-patch
+> auth-code
+> backup-cron-job
+> backup-home-directory
+> backup-script
+> binaries
+> bloat
+> boot-times
+> Native agent Overhead
+
+Figure 4: End-to-end execution time comparison on the first 10 trajectories from the OpenAgentSafety dataset. The grey bars represent the native agent’s execution time, while the or-ange bars indicate the latency overhead introduced by FAVA .
+
+Graph Size Count Median (ms) P95 (ms) Max (ms) 
+
+1–2 nodes 521 0.831 1.214 1.700 3–5 nodes 83 1.445 1.718 1.987 6–10 nodes 3 2.172 2.172 2.391 
+
+Overall 607 0.845 1.580 2.391 
+
+Table 4: Per-call authorization latency by graph size. Each graph/policy pair is authorized five times. P95: 1.580 ms). While solve time naturally scales with topo-logical complexity, even the largest observed graphs (6–10 nodes) resolve in under 2.5 ms. This confirms that introduc-ing strict mathematical formalization into the agent loop does not bottleneck real-time execution. 
+
+RQ5: Failure Analysis 
+
+We analyzed the 76 mismatches from the 801-case evaluation (Figure 5). The errors fall into three primary families: 
+
+Over-Labeling Authorized Content (False Positives). 
+
+The extractor often incorrectly flags quoted, tested, or transformed text as natively malicious. For example, in 
+
+safety-abusive-apology , the agent formats an apol-ogy containing a user-provided offensive quote. FAVA treats the quote as newly generated harmful content and blocks the chat sink. This is a provenance tracking failure that conflates “mentioned evidence” with “actionable output.” 
+
+Extraction Misses (False Negatives). Relevant safety la-bels or workflow guards occasionally fail to reach the permission graph. In agents-inkline-type-guard ,repository-specific test and export constraints are completely missed during parsing. Without these explicit obligations in the graph, the SMT authorizer lacks the necessary constraints and permits the action. 
+
+Sink Mismatches. The extractor may identify the correct risk label but map the recipient coarsely, treating a safe local operation as an effectful external sink. This lack of recipient resolution explains the conservative benign allow rate. Overall, this analysis reinforces our central engineering takeaway: the mathematical authorization boundary is ro-bust. Future improvements to FAVA should focus entirely on provenance-aware semantic extraction and precise sink scoping, rather than altering the SMT decision rule. 0 10 20 30 40 
+
+> Share of Failed Cases (%)
+> Benign sensitive context
+> Security keyword trigger
+> Missing protected label
+> Maintenance as destructive
+> Untrusted over-propagation
+> 39.4%
+> 27.7%
+> 26.6%
+> 3.2%
+> 3.2%
+
+Figure 5: Failure buckets for the mismatched cases. 
+
+## Discussion 
+
+While the SMT authorizer is mathematically sound with re-spect to the generated permission graph, FAVA inherently relies on an upstream LLM for semantic extraction; conse-quently, unobserved tool effects, missing data-flow edges, or vague human intents can still yield false negatives. At the sys-tem level, the prototype operates as a per-instance gateway rather than a fully verified compiler, abstracting away low-level execution complexities such as concurrent tool calls, shell ASTs, and TOCTOU races. Finally, to prioritize strict safety, FAVA adopts a conservative posture that intentionally fails closed on sensitive or ambiguous actions lacking explicit authorization. This design deliberately trades benign utility for security—yielding 69 false blocks—to success-fully achieve a 98.9% attack interception rate. 
+
+## Related Work 
+
+Prompt-level guards (e.g., GuardAgent (Xiang et al. 2025)) offer semantic flexibility but suffer from probabilistic vulner-abilities, leaving authorization implicit (Debenedetti et al. 2024; Zhan et al. 2024; Zhang et al. 2024; Yuan et al. 2024). Conversely, OS-level sandboxes (e.g., ActPlane (Zheng et al. 2026b), AgentSpec (Wang, Poskitt, and Sun 2025), VIGIL (Li et al. 2026)) strictly restrict system effects but lack semantic awareness for stateful workflows. Graph-based methods like AuthGraph (Wang, Li, and Tian 2026) bridge this by aligning execution with intent, yet rely on heuristic matching rather than mathematical guarantees. While formal frameworks (e.g., Fides (Costa et al. 2025), ToolEmu (Ruan et al. 2024b)) provide such rigor, they struggle to extract constraints from ambiguous natural language. FAVA uni-fies these paradigms: it translates unstructured evidence into a Permission IR graph and employs a deterministic SMT authorizer to formally enforce label-to-sink flows, actively blocking violations at runtime (Vijayvargiya, Soni et al. 2025; Ding et al. 2026; Zhang et al. 2025b). 
+
+## Conclusion 
+
+We introduced FAVA , which transforms agent permission management into formal graph authorization. By convert-ing semantic intent into an evidence-backed Permission IR and resolving dependencies via an SMT solver, it bridges ambiguous natural language and deterministic system exe-cution. This explicitly decouples LLM comprehension from safety enforcement. Backed by a runtime gateway, FAVA 
+
+achieves a 90.5% DCR, establishing a strict, mathematically grounded foundation for securing autonomous agents. References 
+
+Andriushchenko, M.; Souly, A.; Dziemian, M.; Duenas, D.; Lin, M.; Wang, J.; Hendrycks, D.; Zou, A.; Kolter, Z.; Fredrikson, M.; et al. 2025. Agentharm: A benchmark for measuring harmfulness of llm agents. In International Con-ference on Learning Representations , volume 2025, 79185– 79220. Babu, R. S.; and Iyer, L. G. 2026. ToolMenuBench: Bench-marking Tool-Menu Filtering Strategies for Reliable and Ef-ficient LLM Agents. arXiv preprint arXiv:2606.15508 .Chatlatanagulchai, W.; Li, H.; Kashiwa, Y.; Reid, B.; Thon-glek, K.; Leelaprute, P.; Rungsawang, A.; Manaskasemsak, B.; Adams, B.; Hassan, A. E.; et al. 2025a. Agent READMEs: An Empirical Study of Context Files for Agentic Coding. 
+
+arXiv preprint arXiv:2511.12884 .Chatlatanagulchai, W.; Thonglek, K.; Reid, B.; Kashiwa, Y.; Leelaprute, P.; Rungsawang, A.; Manaskasemsak, B.; and Iida, H. 2025b. On the use of agentic coding manifests: An empirical study of claude code. In International Conference on Product-Focused Software Process Improvement , 543– 551. Springer. Chen, Z.; Zhan, Y.; Hu, P.; Zhao, X.; Yang, M.; Tan, S.; Zhang, L.; Lu, L.; Yin, J.; and Chen, Z. 2025. UKFaaS: Lightweight, High-Performance and Secure FaaS Commu-nication With Unikernel. IEEE Transactions on Computers .Costa, M.; Kopf, B.; Kolluri, A.; Paverd, A.; Russinovich, M.; Salem, A.; Tople, S.; Wutschitz, L.; and Zanella-Béguelin, S. 2025. Securing AI Agents with Information-Flow Control. arXiv:2505.23643. De Moura, L.; and Bjørner, N. 2008. Z3: An efficient SMT solver. In International conference on Tools and Al-gorithms for the Construction and Analysis of Systems , 337– 340. Springer. Debenedetti, E.; Zhang, J.; Balunović, M.; Beurer-Kellner, L.; Fischer, M.; and Tramèr, F. 2024. AgentDojo: A Dy-namic Environment to Evaluate Prompt Injection Attacks and Defenses for LLM Agents. arXiv:2406.13352. Ding, D.; Liu, S.; Yang, E.; Lin, J.; Chen, Z.; Dou, S.; Guo, H.; Cheng, W.; Zhao, P.; Xiao, C.; et al. 2026. Oc-tobench: Benchmarking scaffold-aware instruction following in repository-grounded agentic coding. In Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 5958–5978. Docker Inc. 2024. Docker Agent (Early Access). https: //docs.docker.com/ai/docker-agent/. Accessed: 2024. E2B. 2024. E2B: Secure Sandboxes for AI Agents. https: //e2b.dev/. Accessed: 2024. Gaurav, S.; Heikkonen, J.; and Chaudhary, J. 2025. Governance-as-a-service: A multi-agent framework for ai system compliance and policy enforcement. arXiv preprint arXiv:2508.18765 .Jiang, Y.; Wang, Y.; Zeng, X.; Zhong, W.; Li, L.; Mi, F.; Shang, L.; Jiang, X.; Liu, Q.; and Wang, W. 2024. Fol-lowbench: A multi-level fine-grained constraints following benchmark for large language models. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 4667–4688. Li, Y.; Chen, Y.; Wen, H.; Zhang, B.; Liu, H.; Wang, P.; Feng, Y.; and Tian, Y. 2026. VIGIL: Runtime En-forcement of Behavioral Specifications in AI Agent Skills. arXiv:2606.26524. Liu, H.; Ilyushin, E.; Ni, J.; and Zhu, M. 2026. SafeAgent: A runtime protection architecture for agentic systems. arXiv preprint arXiv:2604.17562 .Lulla, J. L.; Mohsenimofidi, S.; Galster, M.; Zhang, J. M.; Baltes, S.; and Treude, C. 2026. On the Impact of AGENTS. md Files on the Efficiency of AI Coding Agents. arXiv preprint arXiv:2601.20404 .Luo, Z.; Peng, Z.; Liu, Y.; Sun, Z.; Li, M.; Zheng, J.; and He, X. 2025. Unsafe {LLM-Based } Search: Quantitative Analysis and Mitigation of Safety Risks in {AI } Web Search. In 34th USENIX Security Symposium (USENIX Security 25) ,8055–8074. Ruan, Y.; Dong, H.; Wang, A.; Pitis, S.; Zhou, Y.; Ba, J.; Dubois, Y.; Maddison, C.; and Hashimoto, T. 2024a. Iden-tifying the risks of lm agents with an lm-emulated sandbox. In International Conference on Learning Representations ,volume 2024, 27031–27098. Ruan, Y.; Dong, H.; Wang, A.; Pitis, S.; Zhou, Y.; Ba, J.; Dubois, Y.; Maddison, C. J.; and Hashimoto, T. 2024b. Iden-tifying the Risks of LM Agents with an LM-Emulated Sand-box. arXiv:2309.15817. Vijayvargiya, V.; Soni, S.; et al. 2025. OpenAgentSafety: A Comprehensive Framework for Evaluating Real-World AI Agent Safety. arXiv:2507.06134. Wang, H.; Poskitt, C. M.; and Sun, J. 2025. Agentspec: Customizable runtime enforcement for safe and reliable llm agents. arXiv preprint arXiv:2503.18666 .Wang, P.; Li, Y.; and Tian, Y. 2026. Aligning Provenance with Authorization: A Dual-Graph Defense for LLM Agents. 
+
+arXiv preprint arXiv:2605.26497 .Wang, X.; Li, B.; Song, Y.; Xu, F. F.; Tang, X.; Zhuge, M.; Pan, J.; Song, Y.; Li, B.; Singh, J.; et al. 2025. Openhands: An open platform for ai software developers as generalist agents. In International Conference on Learning Representations ,volume 2025, 65882–65919. Wei, K.; and Wang, G. 2025. Poster: Agentic Shell Honeypot Using Structured Logging. In Proceedings of the 2025 ACM SIGSAC Conference on Computer and Communications Se-curity , 4803–4805. Wu, T.; Chang, C.; Cao, L.; Gao, W.; and Wang, W. 2026. Crab: A Semantics-Aware Checkpoint/Restore Runtime for Agent Sandboxes. arXiv preprint arXiv:2604.28138 .Xiang, Z.; Zheng, L.; Li, Y.; Hong, J.; Li, Q.; Xie, H.; Zhang, J.; Xiong, Z.; Xie, C.; Bastian, N. D.; et al. 2025. Guardagent: safeguard LLM agents via knowledge-enabled reasoning. In 
+
+ICML 2025 workshop on computer use agents .Yang, J.; Jimenez, C.; Wettig, A.; Lieret, K.; Yao, S.; Narasimhan, K.; and Press, O. 2024. Swe-agent: Agent-computer interfaces enable automated software engineer-ing. Advances in Neural Information Processing Systems ,37: 50528–50652. Yuan, T.; et al. 2024. R-Judge: Benchmarking Safety Risk Awareness for LLM Agents. arXiv:2401.10019. Zhan, Q.; Liang, Z.; Ying, Z.; and Kang, D. 2024. In-jecAgent: Benchmarking Indirect Prompt Injections in Tool-Integrated Large Language Model Agents. In Findings of the Association for Computational Linguistics: ACL 2024 ,10471–10506. Association for Computational Linguistics. Zhang, H.; Huang, J.; Mei, K.; Yao, Y.; Wang, Z.; Zhan, C.; Wang, H.; and Zhang, Y. 2024. Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents. arXiv:2410.02644. Zhang, Y.; Zhao, X.; Wang, Z.; Zhou, Z.; Cheng, G.; Deng, S.; and Yin, J. 2025a. Sortinghat: Redefining operating sys-tems education with a tailored digital teaching assistant. In 
+
+Companion Proceedings of the ACM on Web Conference 2025 , 2951–2954. Zhang, Z.; Cui, S.; Lu, Y.; Zhou, J.; Yang, J.; Wang, H.; and Huang, M. 2025b. Agent-SafetyBench: Evaluating the Safety of LLM Agents. arXiv:2412.14470. Zheng, Y.; Fan, J.; Fu, Q.; Yang, Y.; Zhang, W.; and Quinn, A. 2026a. AgentCgroup: Understanding and controlling OS resources of AI agents. arXiv preprint arXiv:2602.09345 .Zheng, Y.; Wu, T.; Fu, Q.; Yu, T.; Mao, W.; Wang, W.; Williams, D.; and Quinn, A. 2026b. ActPlane: Pro-grammable OS-Level Policy Enforcement for Agent Har-nesses. arXiv preprint arXiv:2606.25189 .Zhou, X.; Kim, H.; Brahman, F.; Jiang, L.; Zhu, H.; Lu, X.; Xu, F.; Lin, B. Y.; Choi, Y.; Mireshghallah, N.; et al. 2024. Haicosystem: An ecosystem for sandboxing safety risks in human-ai interactions. arXiv preprint arXiv:2409.16427 .Zou, A.; Wang, Z.; Carlini, N.; Nasr, M.; Kolter, J. Z.; and Fredrikson, M. 2023. Universal and transferable ad-versarial attacks on aligned language models. arXiv preprint arXiv:2307.15043 .
