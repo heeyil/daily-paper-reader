@@ -1,0 +1,598 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-08-01T21:25:04.428028+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 4,
+    "deep_divecandidates": 8,
+    "deep_cap": 9,
+    "deep_selected": 8,
+    "quick_candidates": 5,
+    "quick_skim_target": 14,
+    "quick_selected": 5
+  },
+  "deep_dive": [
+    {
+      "id": "2607.27652v1",
+      "source": "arxiv",
+      "title": "Harness-G: A Graph-Structured Harness for Search Agents",
+      "abstract": "Reinforcement learning (RL) search agents commonly model retrieval as free-form natural-language query generation and optimize multi-turn interactions using final-answer rewards. Current studies mainly improve training with denser or more structured credit signals, but rarely examine whether retrieval is properly formulated at the policy-environment interface. We observe pronounced retrieval aliasing during Search-R1 training: rollouts for the same question continue to generate distinct query strings, yet their accumulated evidence sets increasingly overlap. We call this phenomenon retrieval-equivalence collapse; in this regime, trajectories approach utility equivalence with respect to retrieval decisions, leaving within-group returns with little effective retrieval contrast. To address this problem, we propose Harness-G, a graph-structured retrieval framework that redesigns this interface. It reformulates free-form query generation as finite action selection: the policy selects an evidence sentence or entity, or chooses to answer, while the environment constructs the menu, tracks retrieval state, and validates and executes each choice. This interface reduces linguistic aliasing and makes same-state alternatives directly comparable. Building on this interface, we introduce Structured Non-myopic Credit (SNC), which uses a frozen answer scorer to compare the selected action with its alternatives and assigns downstream gains to the earlier actions that enabled them. Across six QA benchmarks, Harness-G achieves the highest average F1 at both evaluated model scales, outperforming the strongest baseline, Graph-R1, by 10.74 points at 1.5B and 3.98 points at 3B.",
+      "authors": [
+        "Yanning Hou",
+        "Haoyuan Chen",
+        "Sihang Zhou",
+        "Xiaoshu Chen",
+        "Xirui Liu",
+        "Duanyang Yuan",
+        "Lingyuan Meng",
+        "Quan Liu",
+        "Jian Huang"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-30T04:05:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.27652v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "graph-structured harness for search agents to improve retrieval policy-environment interface",
+      "llm_evidence_cn": "为搜索智能体设计的图结构化控制框架，改进检索策略与环境接口",
+      "llm_evidence": "为搜索智能体设计的图结构化控制框架，改进检索策略与环境接口",
+      "canonical_evidence": "为搜索智能体设计的图结构化控制框架，改进检索策略与环境接口",
+      "llm_tldr_en": "Harness-G proposes a graph-structured harness for RL search agents, addressing retrieval-equivalence collapse where distinct queries produce overlapping evidence sets. It reformulates retrieval at the policy-environment interface to preserve effective signal, improving training and retrieval decisions.",
+      "llm_tldr_cn": "搜索智能体在强化学习训练中会出现检索等价坍缩：不同查询产生重叠证据，导致梯度和奖励信号失效。本文提出Harness-G，用图结构化框架重新设计检索策略与环境接口，将检索决策表示为图中证据路径，减少等价坍缩对训练的影响。该方法使rollout间的有效差异更清晰，从而改善搜索智能体的收敛和最终答案质量，为搜索代理训练提供了通用控制框架。",
+      "llm_tldr": "搜索智能体在强化学习训练中会出现检索等价坍缩：不同查询产生重叠证据，导致梯度和奖励信号失效。本文提出Harness-G，用图结构化框架重新设计检索策略与环境接口，将检索决策表示为图中证据路径，减少等价坍缩对训练的影响。该方法使rollout间的有效差异更清晰，从而改善搜索智能体的收敛和最终答案质量，为搜索代理训练提供了通用控制框架。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "techniques for harnessing and controlling agents",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.27958v1",
+      "source": "arxiv",
+      "title": "$Σ$-Mem: An Online Reliability Memory for LLM-based Multi-Agent Systems",
+      "abstract": "Memory is central to long-horizon LLM agents, yet existing memory systems primarily preserve interaction content rather than modeling which agents can be trusted and under what conditions. This limitation is particularly important in multi-agent systems, where a central model may be unable to directly verify plausible or correlated peer responses. We introduce $Σ$-Mem, an online reliability memory that records historical competence evidence for individual peers and peer relationship evidence across the peer set. Both forms of evidence are maintained as real symmetric states and updated from post-decision correctness feedback. By Weyl's inequality, the spectral change caused by each event-level update is bounded, enabling stable online adaptation without retraining the underlying models. $Σ$-Mem provides a general write-and-read interface: the same memory can be used for residual steering of a central model, response-free peer routing, or reliability-weighted voting. Across five Qwen-family models, $Σ$-Mem adapts to counterfactual reliability shifts and generalizes to unseen peers and task domains. Direct memory readouts also outperform majority voting and the best fixed peer over the full OOD evaluation set. Moreover, performance improves consistently as more correctness feedback becomes available, indicating that $Σ$-Mem progressively accumulates actionable reliability information. These results establish reliability memory as a reusable foundation for adaptive coordination in LLM-based multi-agent systems.",
+      "authors": [
+        "Peilin Feng",
+        "Suorong Yang",
+        "Soujanya Poria"
+      ],
+      "primary_category": "cs.MA",
+      "categories": [
+        "cs.MA",
+        "cs.AI"
+      ],
+      "published": "2026-07-30T10:05:50+00:00",
+      "link": "https://arxiv.org/pdf/2607.27958v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "online reliability memory designed for long-horizon LLM agents",
+      "llm_evidence_cn": "面向长期运行的LLM智能体的在线可靠性记忆",
+      "llm_evidence": "面向长期运行的LLM智能体的在线可靠性记忆",
+      "canonical_evidence": "面向长期运行的LLM智能体的在线可靠性记忆",
+      "llm_tldr_en": "Sigma-Mem introduces an online reliability memory for LLM-based multi-agent systems, storing per-agent competence and relationship evidence as symmetric states updated by correctness feedback. The bounded spectral change from Weyl's inequality enables stable online adaptation, addressing trust and reliability in long-horizon multi-agent operation.",
+      "llm_tldr_cn": "长期运行的LLM多智能体系统需要记忆哪些智能体值得信任，而现有记忆只保存交互内容。本文提出Sigma-Mem在线可靠性记忆，记录各智能体的历史能力证据及智能体间关系证据，并以对称矩阵形式维护，根据任务后正确性反馈持续更新。利用Weyl不等式保证每次更新的谱变化有界，从而使在线适应稳定。该方法在不依赖中央验证的情况下提升长期协同的可靠性，是长周期智能体记忆研究的重要进展。",
+      "llm_tldr": "长期运行的LLM多智能体系统需要记忆哪些智能体值得信任，而现有记忆只保存交互内容。本文提出Sigma-Mem在线可靠性记忆，记录各智能体的历史能力证据及智能体间关系证据，并以对称矩阵形式维护，根据任务后正确性反馈持续更新。利用Weyl不等式保证每次更新的谱变化有界，从而使在线适应稳定。该方法在不依赖中央验证的情况下提升长期协同的可靠性，是长周期智能体记忆研究的重要进展。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.28430v1",
+      "source": "arxiv",
+      "title": "AgentRadio: Passive Awareness for Long-Horizon Multi-Agent Collaboration",
+      "abstract": "Understanding large codebases is a long-horizon task for Large Language Model (LLM) agents: answering a single question can require building and running the software, tracing execution across files, and synthesizing evidence over tens of minutes. On SWE-Atlas QnA, a benchmark of long-horizon questions over production repositories, a single Claude Code agent (Opus 4.6) resolves only 32.3% of tasks. Dividing the work among agents with clean contexts mitigates this limitation. However, the subtasks of code comprehension are interdependent. One agent's findings can rewrite another's task, so agents must coordinate during execution, not only at phase boundaries. Existing multi-agent systems support such exchange only between phases, through staged handoffs or synchronized rounds. Communication and work remain mutually exclusive. A discovery made mid-execution cannot be shared until the next boundary. We present AgentRadio, an asynchronous message-passing layer that equips coding-agent harnesses with three primitives: threads, messages, and waiting for mentions. The last runs as a background task, surfacing teammates' messages without interrupting foreground work, so each agent remains passively aware of its peers and folds new findings into its ongoing task. Under a five-phase protocol of division of labor and negotiation, four agents organized by AgentRadio resolve 62.1% of tasks, 29.8 points above a single agent and above Claude Code with the newer Opus 4.8 (57.2%). Rubric-level analysis shows the gain growing with task difficulty, consistent with mid-course correction as the underlying mechanism. Our code is available at https://github.com/Coral-Protocol/AgentRadio.",
+      "authors": [
+        "Xinxing Ren",
+        "Qianbo Zang",
+        "Ziyan Wang",
+        "Caelum Forder",
+        "Suman Deb",
+        "Peter Carroll",
+        "Zekun Guo"
+      ],
+      "primary_category": "cs.MA",
+      "categories": [
+        "cs.MA"
+      ],
+      "published": "2026-07-30T16:07:32+00:00",
+      "link": "https://arxiv.org/pdf/2607.28430v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Long-horizon multi-agent collaboration for code understanding with passive awareness",
+      "llm_evidence_cn": "面向长视界多智能体协作的被动感知机制",
+      "llm_evidence": "面向长视界多智能体协作的被动感知机制",
+      "canonical_evidence": "面向长视界多智能体协作的被动感知机制",
+      "llm_tldr_en": "AgentRadio enables long-horizon multi-agent code understanding by letting agents passively share findings during execution, not just at phase boundaries, improving coordination and success on SWE-Atlas QnA.",
+      "llm_tldr_cn": "长视界代码理解任务需要智能体持续追踪并综合多文件证据，单个智能体表现有限，而多智能体分工又面临子任务相互依赖、执行中需要协调的问题。AgentRadio提出被动感知机制，让智能体在执行过程中共享上下文发现，而不是只在阶段边界交接。在SWE-Atlas QnA基准上，该方法借助干净上下文分工与执行中协调显著提升解决率，验证了长视界多智能体协作的有效性。",
+      "llm_tldr": "长视界代码理解任务需要智能体持续追踪并综合多文件证据，单个智能体表现有限，而多智能体分工又面临子任务相互依赖、执行中需要协调的问题。AgentRadio提出被动感知机制，让智能体在执行过程中共享上下文发现，而不是只在阶段边界交接。在SWE-Atlas QnA基准上，该方法借助干净上下文分工与执行中协调显著提升解决率，验证了长视界多智能体协作的有效性。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that operates over long horizons",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.26148v1",
+      "source": "arxiv",
+      "title": "Embodied Agents Take Control: Minimal-Interface Zero-Shot Agents Rival Industrial-Scale Policies in Vision-and-Language Navigation",
+      "abstract": "Autonomous embodied agents must sustain a long decision-making loop that involves perceiving, acting, verifying, and self-correcting over many steps. Current systems sustain this loop through task-specific workflows or embodied policies. We study a third form, agentic embodied control, in which a general-purpose agent holds the loop itself. Using zero-shot navigation as a controlled testbed, we evaluate three software-engineering agent harnesses given only a monocular RGB camera and discrete actions. Under this strictly minimal condition, replicated default-effort configurations reach 70.7$\\pm$3.5% success (opus-5, mean over three runs), and fable-5 reaches 78% at maximum effort. When a trained waypoint tool is exposed alongside primitives as an optional capability, the hybrid fable-5 agent reaches 76.7$\\pm$0.6% at default effort, using half the environment steps and less than one quarter of the wall time of the maximum-effort primitive run. Controlled interventions show that capability is primarily model-centered: model choice strongly changes success, harness effects are descriptive, and a forced waypoint interface helps weaker models but can hinder stronger ones. Performance nevertheless falls sharply on longer-horizon tasks, while latency and context growth limit sustained operation. These results show that agentic control is already competitive in zero-shot navigation and that models, harnesses, and interfaces offer complementary paths toward autonomous embodied agents.",
+      "authors": [
+        "Jian Zhou",
+        "Xunyi Zhao",
+        "Gengze Zhou",
+        "Zerui Li",
+        "Sihao Lin",
+        "Jiajun Liu",
+        "Qi Wu"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-07-28T18:00:34+00:00",
+      "link": "https://arxiv.org/pdf/2607.26148v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "long-horizon embodied decision loop sustained by general-purpose agent harnesses",
+      "llm_evidence_cn": "通用智能体框架维持具身长时决策循环",
+      "llm_evidence": "通用智能体框架维持具身长时决策循环",
+      "canonical_evidence": "通用智能体框架维持具身长时决策循环",
+      "llm_tldr_en": "Autonomous embodied agents need long decision loops of perceive-act-verify-correct. This paper studies agentic embodied control with minimal-interface zero-shot harnesses, reaching 70.7-78% success in vision-language navigation and rivaling industrial-scale policies.",
+      "llm_tldr_cn": "自主具身智能体需要在感知、行动、验证和自我纠正之间维持长时间决策循环，当前系统多依赖任务专用流程或专用策略。该工作研究了第三种形式：让通用智能体自行持有整个循环，在仅给定单目RGB相机与离散动作的最小接口下，评估三种软件工程智能体框架。零样本导航结果显示默认配置即可达到70.7%成功率，最高配置达78%。这说明通用智能体框架在长时具身控制中具有对标工业级策略的潜力。",
+      "llm_tldr": "自主具身智能体需要在感知、行动、验证和自我纠正之间维持长时间决策循环，当前系统多依赖任务专用流程或专用策略。该工作研究了第三种形式：让通用智能体自行持有整个循环，在仅给定单目RGB相机与离散动作的最小接口下，评估三种软件工程智能体框架。零样本导航结果显示默认配置即可达到70.7%成功率，最高配置达78%。这说明通用智能体框架在长时具身控制中具有对标工业级策略的潜力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Research papers on autonomous agents with long horizon planning capabilities",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.27497v1",
+      "source": "arxiv",
+      "title": "SkillSmith: Learning to Compose Parametric Skills and Textual Knowledge",
+      "abstract": "Agentic systems driven by large language models (LLMs) regularly feature two key mechanisms to autonomously solve complex problems: synthesizing text-based knowledge and procedures from past experiences and building parametric (weight-space) skill libraries for recurring sub-goals. To date, research has largely treated these as orthogonal pursuits: either organizing textual knowledge through composition and reflection, or consolidating parametric skills via weight-space merging. Consequently, the seamless integration of text and model weights for targeted performance improvements remains largely unexplored. This work bridges this modality gap by treating model weights as an additional modality that an LLM can natively reason over. We instantiate parametric learning via prefix-tuning and augment an LLM to ingest both prefix weights and rich textual data which capture relationships to a target capability. Our augmented LLM, which we call SkillSmith, synthesizes these inputs to perform instruction-steered parametric synthesis, directly outputting new prefix weights that manifest the target skill. We demonstrate that our approach significantly outperforms both text-only and weight-space-only baselines, unlocking performance gains that are out of reach for uni-modal (text-only or weight-only) adaptations.",
+      "authors": [
+        "Lucio M. Dery",
+        "Benedict Aaron Tjandra",
+        "Siavash Samiei",
+        "Adhiguna Kuncoro",
+        "Zohar Yahav",
+        "Jiajun Shen",
+        "Arthur Szlam"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-29T22:28:36+00:00",
+      "link": "https://arxiv.org/pdf/2607.27497v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix",
+        "query:moe-routing"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "LLM agents compose parametric skills and textual knowledge to improve themselves over time",
+      "llm_evidence_cn": "LLM代理组合参数技能与文本知识，随时间自我改进",
+      "llm_evidence": "LLM代理组合参数技能与文本知识，随时间自我改进",
+      "canonical_evidence": "LLM代理组合参数技能与文本知识，随时间自我改进",
+      "llm_tldr_en": "SkillSmith enables LLM-driven agents to combine textual knowledge and parametric (weight-space) skills by treating model weights as a modality, allowing targeted performance improvements in agentic systems.",
+      "llm_tldr_cn": "现有LLM驱动代理通常分别处理文本知识合成和参数化技能库，两者割裂。SkillSmith将模型权重视为一种可推理的模态，使代理能够组合参数技能与文本知识，实现针对性的性能提升。该方法打通了文本与权重两类经验表示，让代理在遇到重复子目标时更高效地复用和合成技能。为提升代理自主求解复杂问题的能力提供了新的维度。",
+      "llm_tldr": "现有LLM驱动代理通常分别处理文本知识合成和参数化技能库，两者割裂。SkillSmith将模型权重视为一种可推理的模态，使代理能够组合参数技能与文本知识，实现针对性的性能提升。该方法打通了文本与权重两类经验表示，让代理在遇到重复子目标时更高效地复用和合成技能。为提升代理自主求解复杂问题的能力提供了新的维度。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent that improves itself over time",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.27973v1",
+      "source": "arxiv",
+      "title": "TAPO: Transition-Aware Policy Optimization for LLM Agents",
+      "abstract": "Recently, Reinforcement Learning (RL) has emerged as a crucial paradigm for the post-training of Large Language Model (LLM) agents. However, existing methods predominantly rely on sparse task rewards for policy optimization, failing to fully exploit another class of inherently dense supervisory signals naturally present during online interaction: environmental feedback following action execution. Recent theoretical studies suggest that generalization in multi-step, goal-oriented tasks hinges on predictive knowledge of environmental consequences. Inspired by this, we propose TAPO: Transition-Aware Policy Optimization for LLM Agents, a unified training framework that alternates between policy optimization and transition supervision. Beyond standard RL updates, TAPO repurposes rollout data to apply action-conditioned next-observation prediction supervision on a shared backbone model. This approach enhances the model's sensitivity to environmental transition dynamics and action consequences while concurrently optimizing the policy. It serves as a computationally lightweight, plug-and-play enhancement module for existing agent RL algorithms, requiring no additional expert data, extra sampling costs, or inference-time overhead. We conduct systematic experiments on WebShop and ALFWorld, integrating foundation models of various scales with different policy optimization algorithms. Empirical results demonstrate that TAPO consistently improves task performance over pure policy optimization baselines.",
+      "authors": [
+        "Cong Li",
+        "Peixi Peng",
+        "Yisen Zhao",
+        "Xinyu Hu",
+        "Shudong Liu",
+        "Zhan Su",
+        "Zhuojian Li"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-07-30T10:17:55+00:00",
+      "link": "https://arxiv.org/pdf/2607.27973v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "exploits dense environmental feedback as transition supervision for policy optimization",
+      "llm_evidence_cn": "利用动作后的环境反馈作为转换监督信号进行策略优化",
+      "llm_evidence": "利用动作后的环境反馈作为转换监督信号进行策略优化",
+      "canonical_evidence": "利用动作后的环境反馈作为转换监督信号进行策略优化",
+      "llm_tldr_en": "Proposes TAPO, a unified RL framework that alternates policy optimization with transition supervision to exploit dense environmental feedback, improving multi-step LLM agent generalization.",
+      "llm_tldr_cn": "现有LLM智能体强化学习主要依赖稀疏任务奖励，未能充分利用在线交互中天然存在的稠密环境反馈。TAPO提出一个统一训练框架，交替进行策略优化与转换监督，在标准RL更新之外额外学习环境动态。该方法受多步目标导向任务泛化依赖于预测环境后果的理论启发，通过稠密监督提升策略学习效率。实验表明TAPO能改善智能体在多步任务上的表现，为利用环境反馈训练智能体提供了有效方案。",
+      "llm_tldr": "现有LLM智能体强化学习主要依赖稀疏任务奖励，未能充分利用在线交互中天然存在的稠密环境反馈。TAPO提出一个统一训练框架，交替进行策略优化与转换监督，在标准RL更新之外额外学习环境动态。该方法受多步目标导向任务泛化依赖于预测环境后果的理论启发，通过稠密监督提升策略学习效率。实验表明TAPO能改善智能体在多步任务上的表现，为利用环境反馈训练智能体提供了有效方案。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "AI systems that learn and improve through self supervision",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.28037v1",
+      "source": "arxiv",
+      "title": "ClawTrack: Towards Trace-Level Evaluation and Improvement of Real-World Autonomous Agents",
+      "abstract": "As LLM-based agents are deployed in complex, multi-step workflows, a critical evaluation gap has emerged: most existing benchmarks judge only final outcomes, unable to distinguish reliable reasoning from lucky success or attribute failures to specific process deficiencies, hindering attribution in long-horizon tasks.   In this work, we present ClawTrack, a dual-assessment benchmark that simultaneously measures what an agent achieves (Task Score) and how it achieves it (Process Score). ClawTrack comprises 320 tasks across 8 domains with 25+ deterministic mock services. A Process Grader scores each reasoning turn along four dimensions (goal alignment, efficiency, information utilization, and result verification), anchored by 12,541 task-specific rubric items. Evaluating 21 models over 16,000+ trials, we find that: (1) process scores effectively attribute success and failure to specific reasoning dimensions, filtering lucky passes invisible to outcome-only evaluation; (2) the four dimensions are complementary, with result verification as the systematic bottleneck; (3) the framework is robust to evaluator choice across different judge LLMs; and (4) process-based trajectory filtering yields consistent post-training improvements across model scales.",
+      "authors": [
+        "Xingjian Wu",
+        "Xuhang Zhu",
+        "Xingchen Liu",
+        "Junlin Liu",
+        "Jianing Wang",
+        "Linsen Guo",
+        "Xiaoyu Li",
+        "Xuezhi Cao",
+        "Xunliang Cai"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-07-30T11:18:47+00:00",
+      "link": "https://arxiv.org/pdf/2607.28037v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "trace-level benchmark for improving real-world autonomous agents on long-horizon tasks",
+      "llm_evidence_cn": "面向长时程任务的智能体轨迹级评估与改进基准",
+      "llm_evidence": "面向长时程任务的智能体轨迹级评估与改进基准",
+      "canonical_evidence": "面向长时程任务的智能体轨迹级评估与改进基准",
+      "llm_tldr_en": "ClawTrack provides trace-level evaluation for real-world autonomous agents, scoring both final outcomes and reasoning processes across long-horizon multi-step tasks to support improvement.",
+      "llm_tldr_cn": "现有基准大多只评判智能体的最终结果，难以在长时程多步任务中归因失败环节，阻碍过程层面的改进。ClawTrack提出任务分数与过程分数双评估框架，包含8个领域320个任务，并从目标对齐、效率、信息利用和结果验证四个维度逐轮打分。实验基于12541条标注支撑过程评判，能够更细粒度地诊断智能体缺陷，为长时程自主智能体的研究与改进提供新工具。",
+      "llm_tldr": "现有基准大多只评判智能体的最终结果，难以在长时程多步任务中归因失败环节，阻碍过程层面的改进。ClawTrack提出任务分数与过程分数双评估框架，包含8个领域320个任务，并从目标对齐、效率、信息利用和结果验证四个维度逐轮打分。实验基于12541条标注支撑过程评判，能够更细粒度地诊断智能体缺陷，为长时程自主智能体的研究与改进提供新工具。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "autonomous agent research planning and improvement",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.28527v1",
+      "source": "arxiv",
+      "title": "MANTA: Multi-Agent Network Topology Adaptation for Self-Evolving Multi-Agent Systems",
+      "abstract": "Large language model-based multi-agent systems improve complex problem solving through task decomposition, agent specialization, information exchange, and intermediate validation. However, existing systems typically treat communication topology as a fixed design choice or an offline optimization target. We introduce MANTA, a framework for Multi-Agent Network Topology Adaptation that enables communication structures to self-evolve at inference time. Before execution, MANTA initializes a task-conditioned topology from prior structural experience. During deployment, it monitors collaboration traces and applies bounded structural updates when the current organization becomes insufficient. These updates can modify agent roles, communication links, execution order, information visibility, and validation pathways while preserving the task interface and agent budget. We evaluate MANTA against representative single-agent and multi-agent baselines on five benchmarks spanning information seeking, tool use, planning, workflow execution, and mathematical reasoning. MANTA achieves the highest average score of 74.0, outperforming the strongest baseline by 5.8 percentage points and obtaining the best result on PlanCraft. These results show that inference-time self-improvement can extend to the architecture of collaboration itself.",
+      "authors": [
+        "Mao-xun Huang",
+        "Jerry Wang",
+        "Yi-Cheng Lai",
+        "Zhengxin Zhang",
+        "Claire Cardie",
+        "Hen-Hsen Huang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-30T17:01:27+00:00",
+      "link": "https://arxiv.org/pdf/2607.28527v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "self-evolving communication topology at inference time for multi-agent systems",
+      "llm_evidence_cn": "多智能体系统推理时自演化通信拓扑",
+      "llm_evidence": "多智能体系统推理时自演化通信拓扑",
+      "canonical_evidence": "多智能体系统推理时自演化通信拓扑",
+      "llm_tldr_en": "Multi-agent systems often fix communication topology. MANTA initializes a task-conditioned topology from prior experience and applies bounded structural updates at inference time based on collaboration traces, enabling roles and links to self-evolve.",
+      "llm_tldr_cn": "现有基于大语言模型的多智能体系统通常将通信拓扑视为固定设计或离线优化目标，难以应对复杂问题求解中的动态需求。本文提出 MANTA 框架，在执行前利用先验结构经验初始化任务条件化的拓扑，在部署中监控协作轨迹，并在当前组织方式不足时实施有界的结构更新。这些更新可调整智能体角色与通信链接，使多智能体系统的组织方式在推理阶段自演化，提升复杂任务的适应性与求解能力。",
+      "llm_tldr": "现有基于大语言模型的多智能体系统通常将通信拓扑视为固定设计或离线优化目标，难以应对复杂问题求解中的动态需求。本文提出 MANTA 框架，在执行前利用先验结构经验初始化任务条件化的拓扑，在部署中监控协作轨迹，并在当前组织方式不足时实施有界的结构更新。这些更新可调整智能体角色与通信链接，使多智能体系统的组织方式在推理阶段自演化，提升复杂任务的适应性与求解能力。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Self improving agents that evolve their strategies over extended time scales",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.23942v1",
+      "source": "arxiv",
+      "title": "From Cognitive Architectures to Language Agents: A Mechanism-Level Review of Lineage, Convergence, and Migration Gaps",
+      "abstract": "Memory, planning, reflection, and tool use are often compared as feature labels, obscuring the control semantics that determine how an agent actually runs. This review connects ten historical cognitive architectures, eight language-agent runtime families, and forty-two mechanism-focused modern systems. We reconstruct each mechanism through state, control, transition, persistence, failure, learning, and resource governance, then code evidence relation (E1-E4) separately from migration depth (D0-D4). The resulting landscape is uneven. Modern agents have operationalized substantial parts of adaptive memory, failure recovery, dynamic team selection, workflow search, skill induction, resource scheduling, and uncertainty-conditioned action, although often through independent convergence rather than documented inheritance. The strongest remaining opportunities lie in couplings among mechanisms. Closest-baseline screening closes one proposed gap: GraSP already combines calibrated multi-skill selection, typed compilation, verification, bounded repair, and replanning or ReAct fallback. Five residual bundles remain: activation with latency and action utility; typed impasse with isolated substates and resolution compilation; bounded content competition with broadcast and admission learning; persistent intention with reconsideration and live method authority; and uncertainty with resource allocation, interruption, and stopping. We contribute a distinctive-mechanism catalog, an auditable evidence-depth framework, and a falsifiable agenda for testing these bundles as composable runtime invariants.",
+      "authors": [
+        "Haodi Fan",
+        "Zucong Lan"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-27T02:38:59+00:00",
+      "link": "https://arxiv.org/pdf/2607.23942v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "mechanism-level review covering planning, reflection, adaptive memory and skill induction in language-agent runtimes",
+      "llm_evidence_cn": "机制级综述覆盖规划、反思、自适应记忆与技能归纳等语言智能体运行时机制",
+      "llm_evidence": "机制级综述覆盖规划、反思、自适应记忆与技能归纳等语言智能体运行时机制",
+      "canonical_evidence": "机制级综述覆盖规划、反思、自适应记忆与技能归纳等语言智能体运行时机制",
+      "llm_tldr_en": "This review reconstructs mechanisms across cognitive architectures and language-agent runtimes, analyzing memory, planning, reflection, tool use and adaptation to map lineage and migration gaps.",
+      "llm_tldr_cn": "现有对智能体记忆、规划、反思和工具使用的比较常停留在特征标签层面，掩盖了控制语义差异。该综述连接10种历史认知架构、8类语言智能体运行时和42个机制级现代系统，从状态、控制、迁移、持久化、失败、学习和资源治理等维度重构机制，并分别编码证据关系与迁移深度。结果显示现代智能体在自适应记忆、失败恢复、技能归纳等方面已有大量实践但仍不平衡，为实现长期规划与自适应智能体提供了系统化路线图。",
+      "llm_tldr": "现有对智能体记忆、规划、反思和工具使用的比较常停留在特征标签层面，掩盖了控制语义差异。该综述连接10种历史认知架构、8类语言智能体运行时和42个机制级现代系统，从状态、控制、迁移、持久化、失败、学习和资源治理等维度重构机制，并分别编码证据关系与迁移深度。结果显示现代智能体在自适应记忆、失败恢复、技能归纳等方面已有大量实践但仍不平衡，为实现长期规划与自适应智能体提供了系统化路线图。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "agent capable of long term planning and adaptation",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.25891v1",
+      "source": "arxiv",
+      "title": "Messier: A High-Resolution Corpus for Cross-Benchmark Agent Evaluation",
+      "abstract": "Evaluating AI agents in interactive environments is hindered by fragmented tasks, scaffolds, verifiers, and scoring rules. Existing efforts focus on narrow settings, remain limited in scale, or require costly reruns, leaving much of the empirical record incomparable. We introduce Messier, a unified corpus of 957,253 records that span 30 benchmarks, 714 agents, 11,891 tasks, and 74,205 verifiers. Messier consolidates public benchmark scores and supplements them with five-agent runs across six underrepresented professional and scientific domains, including a recent legal benchmark. Each record is standardized by model, scaffold, environment, task, verifier, and aggregation rule, with SOC/NAICS classifications for occupational and industry analysis. Using this corpus, we show frontier progress is uneven across benchmark types, with \"function calling\" saturated, \"programming\" improving the fastest, and \"enterprise workflows\" remaining the most challenging. Furthermore, counterfactual rescoring shows that strict all-pass aggregation in multi-verifier tasks can obscure progress and artificially alter agent rankings. From these standardized records, we derive capability scales that align with Epoch's Evaluation Capability Index rankings at Spearman \\r{ho} = 0.81 and can be specialized by domain, occupation, action space, or verifier type. Messier provides a foundational, reusable infrastructure for agent capability scaling, benchmark auditing, and fine-grained analysis of evaluation failures.",
+      "authors": [
+        "Stefan Krsteski",
+        "Charlotte Meyer",
+        "Guillaume Allegre",
+        "Tony O'Halloran",
+        "Alexandre Sallinen"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.DB"
+      ],
+      "published": "2026-07-28T15:50:19+00:00",
+      "link": "https://arxiv.org/pdf/2607.25891v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "unified corpus for cross-benchmark agent evaluation supporting improvement research",
+      "llm_evidence_cn": "跨基准智能体评估语料库支撑改进研究",
+      "llm_evidence": "跨基准智能体评估语料库支撑改进研究",
+      "canonical_evidence": "跨基准智能体评估语料库支撑改进研究",
+      "llm_tldr_en": "Messier consolidates 957k records across 30 benchmarks, 714 agents and 11,891 tasks, enabling standardized cross-benchmark comparison and analysis of AI agents",
+      "llm_tldr_cn": "AI智能体评估因任务、脚手架、验证器与评分规则碎片化而难以比较，现有工作规模有限或需昂贵重跑。本文提出Messier，整合30个基准、714个智能体和11891个任务的高分辨率记录，并补充六个专业与科学领域的五智能体运行数据，统一标准化记录字段。该语料库为跨基准智能体比较与职业行业分析提供了基础，助力智能体研究与改进。",
+      "llm_tldr": "AI智能体评估因任务、脚手架、验证器与评分规则碎片化而难以比较，现有工作规模有限或需昂贵重跑。本文提出Messier，整合30个基准、714个智能体和11891个任务的高分辨率记录，并补充六个专业与科学领域的五智能体运行数据，统一标准化记录字段。该语料库为跨基准智能体比较与职业行业分析提供了基础，助力智能体研究与改进。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "autonomous agent research planning and improvement",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.27484v1",
+      "source": "arxiv",
+      "title": "Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents",
+      "abstract": "Reusable skills are becoming a standard interface for extending language agents with task procedures. Yet evaluators usually infer skill use from visible reasoning or the agent's own attribution. These signals show what the agent appears to use, not whether the skill changed its decision. We ask whether skill-augmented agents exhibit a \\textbf{Reasoning Backroom}, a systematic gap between stated skill use and intervention-measured influence. We introduce BACKTRACE, an evaluation framework that pairs each skill-conditioned answer with a matched no-skill counterfactual, intervenes on skill meaning, wording, identity, content, and assignment, and elicits attribution only after the answer is committed. We instantiate the framework as BACKROOMBench, a verified testbed spanning controlled logic and competition mathematics, multiple skill conditions, single-agent and multi-agent settings, and diverse model families. Our evaluation reveals a pervasive provenance failure. Across models and domains, stated skill use often remains stable while causal reliance and signed utility vary, producing both silent uptake and performative use. Behavioral effects follow procedural content more reliably than displayed skill identity, whereas stated attributions respond strongly to artifact availability. Observational detectors based on direct skill-use claims, text mentions, trace similarity, and an LLM judge do not identify which decisions actually depend on the skill. In multi-agent systems, skill influence can survive communication even after its source is lost, while no-skill teams still name skills and sources that were never supplied. These findings establish the Reasoning Backroom as a general AI provenance problem whose audit requires intervention.",
+      "authors": [
+        "Jinwei Hu",
+        "Yi Qi",
+        "Xinmiao Huang",
+        "Youcheng Sun",
+        "Yi Dong",
+        "Xiaowei Huang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.MA"
+      ],
+      "published": "2026-07-29T21:59:20+00:00",
+      "link": "https://arxiv.org/pdf/2607.27484v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "counterfactual evaluation framework for skill-augmented agents",
+      "llm_evidence_cn": "通过反事实干预评估技能增强智能体的技能真实影响",
+      "llm_evidence": "通过反事实干预评估技能增强智能体的技能真实影响",
+      "canonical_evidence": "通过反事实干预评估技能增强智能体的技能真实影响",
+      "llm_tldr_en": "Introduces BACKTRACE, an evaluation framework using matched no-skill counterfactuals and interventions to detect gaps between stated skill use and actual influence in language agents.",
+      "llm_tldr_cn": "可复用技能已成为语言智能体扩展任务流程的标准接口，但现有评估常依据可见推理或智能体自我归因推断技能使用，无法判断技能是否真正改变决策。本文提出BACKTRACE评估框架，将每个技能条件答案与匹配的无技能反事实配对，并对技能意义、措辞、身份、内容和指派进行干预，在答案提交后再收集归因。该框架旨在揭示技能使用声明与实际影响之间的推理幕后系统性差距，为技能增强智能体的可靠评估提供了新工具。",
+      "llm_tldr": "可复用技能已成为语言智能体扩展任务流程的标准接口，但现有评估常依据可见推理或智能体自我归因推断技能使用，无法判断技能是否真正改变决策。本文提出BACKTRACE评估框架，将每个技能条件答案与匹配的无技能反事实配对，并对技能意义、措辞、身份、内容和指派进行干预，在答案提交后再收集归因。该框架旨在揭示技能使用声明与实际影响之间的推理幕后系统性差距，为技能增强智能体的可靠评估提供了新工具。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.27929v1",
+      "source": "arxiv",
+      "title": "Meta-Task: Turning Terminal Task Synthesis into a Terminal Task for Scalable Agent Training",
+      "abstract": "Training terminal agents at scale requires diverse, verifiable terminal tasks and high-quality interaction trajectories, yet acquiring such data remains a significant challenge. Existing synthesis methods face two key limitations: (1) weak reliability caused by the disconnect between task generation and real execution, and (2) limited diversity and scalability due to dependence on existing repositories. We propose Meta-Task, a framework that redefines terminal task synthesis as a Terminal-Bench-format task itself: an agent operates within a real container environment to iteratively generate, execute, and verify tasks, so that synthesized components are checked for internal consistency and executability within the generation loop itself. Building upon this, we decouple the target task requirements along multiple dimensions, introduce a multi-phase mechanism that dynamically designs novel task specifications before producing the actual tasks, and incorporate optional external material support to enhance diversity and realism. We additionally apply LLM-as-Judge filtering to ensure the quality of the final training data. Experiments on Terminal-Bench 2.0 show that fine-tuning on only 3,221 Meta-Task synthesized trajectories achieves 22.5% and 31.8% Avg Pass@1 for Qwen3-14B and Qwen3-32B respectively, outperforming concurrent approaches with significantly less training data.",
+      "authors": [
+        "Zhihong Pan",
+        "Jiyuan He",
+        "Kai Zhang",
+        "Yupeng Han",
+        "Ze Liu",
+        "Yuze Zhao",
+        "Yongcong Ye",
+        "Zhaohua Yang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-30T09:41:08+00:00",
+      "link": "https://arxiv.org/pdf/2607.27929v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Uses an LLM agent in a container to iteratively synthesize and verify tasks, a technique for harnessing agents in complex environments",
+      "llm_evidence_cn": "在容器环境中让LLM智能体迭代生成并验证任务，属于复杂环境中利用智能体的技术",
+      "llm_evidence": "在容器环境中让LLM智能体迭代生成并验证任务，属于复杂环境中利用智能体的技术",
+      "canonical_evidence": "在容器环境中让LLM智能体迭代生成并验证任务，属于复杂环境中利用智能体的技术",
+      "llm_tldr_en": "Meta-Task turns terminal task synthesis into a Terminal-Bench-format task itself: an agent iteratively generates, executes, and verifies tasks in a real container, improving reliability and scalability of agent training data.",
+      "llm_tldr_cn": "大规模训练终端智能体需要多样化且可验证的任务和高质量交互轨迹，现有合成方法可靠性弱且依赖已有仓库。Meta-Task将终端任务合成本身定义为 Terminal-Bench 格式的任务：智能体在真实容器环境中迭代生成、执行并验证任务，从而在生成循环内检查组件的内部一致性与可执行性。该方法提升了任务合成的可靠性和多样性，为可扩展智能体训练提供了数据支撑。",
+      "llm_tldr": "大规模训练终端智能体需要多样化且可验证的任务和高质量交互轨迹，现有合成方法可靠性弱且依赖已有仓库。Meta-Task将终端任务合成本身定义为 Terminal-Bench 格式的任务：智能体在真实容器环境中迭代生成、执行并验证任务，从而在生成循环内检查组件的内部一致性与可执行性。该方法提升了任务合成的可靠性和多样性，为可扩展智能体训练提供了数据支撑。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.28033v1",
+      "source": "arxiv",
+      "title": "DataClawEval: A Benchmark for Data Engineering Agents in Real Industrial Harness",
+      "abstract": "Large language models (LLMs) and LLM-based agents are increasingly being deployed to automate complex workflows, promising to revolutionize data management and processing. However, existing benchmarks predominantly focus on simplified Text-to-SQL translation or data analysis, leaving the critical and complex domain of end-to-end data engineering largely unexplored. To bridge this gap, we introduce DataClawEval, the first comprehensive benchmark designed specifically to evaluate the end-to-end task completion capabilities of autonomous agents in real-world data engineering scenarios. Built upon production-grade code authored by professional enterprise data engineers, it comprises 100 rigorous, end-to-end tasks spanning five execution engines: PySpark, MySQL, HiveSQL, PrestoSQL/Trino, and FlinkSQL. Rather than non-deterministic LLM-as-a-judge scoring, each task is executed within a case-specific, isolated sandbox and graded by deterministic, rule-based scripts. Evaluating 16 frontier agents exposes critical limitations: The strongest model attains only 74.9 overall, and no single model dominates, as each excels on a different engine, revealing strict domain specialization rather than omnipotent proficiency. Thus, autonomous data engineering remains a formidable, unresolved challenge. We release our dataset, containerized environments, and deterministic evaluation scripts at https://github.com/Dicemy/DataClawEval/tree/master",
+      "authors": [
+        "Debin Meng",
+        "Jiaming Yang",
+        "Zefang Zong",
+        "Tengyue Xu",
+        "Haining Xie",
+        "Yang Li",
+        "Peng Chen"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-30T11:17:27+00:00",
+      "link": "https://arxiv.org/pdf/2607.28033v1",
+      "tags": [
+        "keyword:agent-LSH",
+        "keyword:agent-dist",
+        "keyword:agent-mix",
+        "keyword:moe-routing",
+        "query:agent-LSH",
+        "query:agent-dist",
+        "query:agent-mix"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "introduces a benchmark for evaluating autonomous data engineering agents in real industrial harness, relevant to harnessing LLM agents in complex environments",
+      "llm_evidence_cn": "提出在真实工业Harness中评测自主数据工程智能体的基准，与复杂环境中利用LLM智能体的需求相关",
+      "llm_evidence": "提出在真实工业Harness中评测自主数据工程智能体的基准，与复杂环境中利用LLM智能体的需求相关",
+      "canonical_evidence": "提出在真实工业Harness中评测自主数据工程智能体的基准，与复杂环境中利用LLM智能体的需求相关",
+      "llm_tldr_en": "Introduces DataClawEval, a benchmark with 100 end-to-end data engineering tasks in real industrial scenarios to evaluate autonomous agent capabilities, filling the gap beyond simplified Text-to-SQL and data analysis.",
+      "llm_tldr_cn": "针对现有基准多局限于简化Text-to-SQL或数据分析、缺乏端到端数据工程智能体评测的问题，本文提出DataClawEval，首个面向真实工业场景的数据工程智能体综合基准。基准包含100个跨五类执行引擎的端到端任务，基于企业级生产代码构建，用于评估自主智能体的完整任务完成能力。该基准为在复杂真实环境中验证和部署LLM智能体提供了可靠评测工具，可作为智能体harness研究的重要参考。",
+      "llm_tldr": "针对现有基准多局限于简化Text-to-SQL或数据分析、缺乏端到端数据工程智能体评测的问题，本文提出DataClawEval，首个面向真实工业场景的数据工程智能体综合基准。基准包含100个跨五类执行引擎的端到端任务，基于企业级生产代码构建，用于评估自主智能体的完整任务完成能力。该基准为在复杂真实环境中验证和部署LLM智能体提供了可靠评测工具，可作为智能体harness研究的重要参考。",
+      "llm_tags": [
+        "query:agent-lsh"
+      ],
+      "matched_query_tag": "query:agent-lsh",
+      "matched_query_text": "Techniques for harnessing large language model agents in complex environments",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

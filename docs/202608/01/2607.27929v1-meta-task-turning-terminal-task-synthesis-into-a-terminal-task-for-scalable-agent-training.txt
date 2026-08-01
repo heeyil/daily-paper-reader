@@ -1,0 +1,1228 @@
+Title: Meta-Task: Turning Terminal Task Synthesis into a Terminal Task for Scalable Agent Training
+
+URL Source: https://arxiv.org/pdf/2607.27929v1
+
+Published Time: Fri, 31 Jul 2026 00:47:38 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+## Meta-Task: Turning Terminal Task Synthesis into a Terminal Task for Scalable Agent Training 
+
+Zhihong Pan 1†, Jiyuan He 2, Kai Zhang 1B, Yupeng Han 1,Ze Liu 1, Yuze Zhao 1, Yongcong Ye 1, Zhaohua Yang 2
+
+1State Key Laboratory of Cognitive Intelligence, University of Science and Technology of China, 2Meituan 
+
+† Work done while interning at Meituan. B Corresponding author. 
+
+Correspondence: panzh@mail.ustc.edu.cn, hejiyuan@meituan.com, kkzhang08@ustc.edu.cn 
+
+Abstract 
+
+Training terminal agents at scale requires di-verse, verifiable terminal tasks and high-quality interaction trajectories, yet acquiring such data remains a significant challenge. Existing syn-thesis methods face two key limitations: (1) weak reliability caused by the disconnect be-tween task generation and real execution, and (2) limited diversity and scalability due to de-pendence on existing repositories. We propose 
+
+Meta-Task , a framework that redefines termi-nal task synthesis as a Terminal-Bench-format task itself: an agent operates within a real con-tainer environment to iteratively generate, exe-cute, and verify tasks, so that synthesized com-ponents are checked for internal consistency and executability within the generation loop itself. Building upon this, we decouple the target task requirements along multiple dimen-sions, introduce a multi-phase mechanism that dynamically designs novel task specifications before producing the actual tasks, and incor-porate optional external material support to enhance diversity and realism. We addition-ally apply LLM-as-Judge filtering to ensure the quality of the final training data. Experiments on Terminal-Bench 2.0 show that fine-tuning on only 3,221 Meta-Task synthesized trajecto-ries achieves 22.5% and 31.8% Avg Pass@1 for Qwen3-14B and Qwen3-32B respectively, outperforming concurrent approaches with sig-nificantly less training data. 
+
+1 Introduction 
+
+As the agentic capabilities of large language models (LLMs) continue to evolve, terminal interaction has emerged as one of the most critical competencies (Jimenez et al., 2024; Merrill et al., 2026). The practical effectiveness of CLI-based agent tools such as Claude Code (Anthropic, 2025), Codex CLI (OpenAI, 2025), and OpenClaw (OpenClaw, 2026) fundamentally depends on the underlying model’s ability to solve diverse terminal tasks. Terminal Bench Task Format    
+
+> instruction.md
+> environment /
+> solution /
+> Dockerfile
+> data/, configs
+> solve.sh
+> tests /
+> test_output.py
+> task.toml
+> Task description
+> Container definition
+> Env materials
+> Reference solution
+> Pytest verification
+> Metadata & Constraints
+> Build isolated
+> Environment
+> Agent Execution
+> Explore
+> & Plan Iterate &
+> Debug
+> Execute
+> commands
+> Multi-turn terminal interaction
+> Execution Pipeline
+> Verification
+> pytest check final state
+> Pass Fail
+
+Figure 1: Left: the file structure of a Terminal-Bench task package. Right: the evaluation workflow consist-ing of environment building, agent execution, and auto-mated verification. 
+
+Terminal-Bench (Merrill et al., 2026) provides a standard benchmark for evaluating such capabili-ties, spanning domains from software engineering to scientific computing. As shown in Figure 1, each task is defined by a tightly integrated pack-age including a task description, an environment definition, a reference solution, and verification tests. During evaluation, the agent iteratively in-teracts with the terminal inside an isolated con-tainer built from the task-defined environment to complete the task. Succeeding on this benchmark requires more than surface-level command gener-ation: the agent must interpret complex outputs, diagnose failures, and adaptively revise its strategy (Gandhi et al., 2026; Pi et al., 2026). Yet even ad-vanced proprietary models achieve only moderate scores, underscoring the fundamental difficulty of the challenge (Wu et al., 2026; Pi et al., 2026). Training such agentic terminal capabilities de-mands high-quality, verifiable, and diverse termi-nal tasks and interaction trajectories (Fan et al., 2026). Recent research on terminal task synthesis has primarily proceeded along two lines. The first mines task instances from real code repositories (Wu et al., 2026; Lin et al., 2026). While produc-ing executable environments, the resulting tasks remain largely confined to SWE-style (Jimenez arXiv:2607.27929v1 [cs.AI] 30 Jul 2026 et al., 2024; Wang et al., 2025a; Yang et al., 2026) bug fixes and issue resolution, exhibiting limited 
+
+diversity and scalability . Another line generates tasks through LLM-driven synthesis pipelines (Zhu et al., 2026; Pi et al., 2026; Fan et al., 2026). These methods typically synthesize different task com-ponents in separate stages without real-time ter-minal feedback, making it difficult to guarantee internal consistency and execution verifiability of the generated tasks. These limitations raise a cen-tral question: can we leverage the inherent agentic capabilities of LLMs to scalably generate terminal tasks that cover diverse domains and expression forms while maintaining task reliability? We observe a key fact: the task synthesis pro-cess itself, which involves gathering or processing relevant materials, designing problems, writing code and environment configurations, construct-ing verification tests, and iteratively checking con-sistency, is inherently a complex agentic termi-nal task. This observation inspires us to propose 
+
+Meta-Task : redefining terminal task synthesis as a Terminal-Bench-format terminal task (which we call a meta-task ), completed end-to-end by an agent inside a Docker container. Specifically, Meta-Task encapsulates each synthesis request as a standard Terminal-Bench-format task, containing an instruc-tion that defines the target task requirements and guides the agent through the creation workflow, a pre-configured Docker environment (with exam-ple tasks, optional external material support, and output templates), and tests that verify the gener-ated output. Within this environment, the agent au-tonomously explores examples, gathers materials, designs and implements a complete task package (instruction, Dockerfile, solution, tests), and itera-tively refines the output through a self-validation loop until all checks pass. This design yields three core advantages. (1) 
+
+Inherent execution grounding : the generation process is itself grounded in a real terminal environ-ment, where the agent contends with actual depen-dency installations, file operations, and test failures, substantially reducing the hallucination issues of pure LLM generation. (2) High scalability : the framework directly leverages the powerful agentic capabilities of LLMs for task synthesis, with a flex-ible architecture that supports diverse input materi-als and enables efficient batch generation and easy extension to new domains. (3) Natural compati-bility with advanced agent scaffolds : since meta-tasks follow the standard Terminal-Bench format, the framework can directly leverage state-of-the-art agent scaffolds (e.g., Claude Code (Anthropic, 2025), Codex CLI (OpenAI, 2025)) and benefit from their sophisticated context management, tool orchestration, and long-horizon planning capabili-ties (Bui, 2026; Meng et al., 2026). To further enhance the diversity, realism, and quality of synthesized data, we develop three com-plementary components. First, we decouple target task requirements along multiple dimensions and introduce a multi-phase synthesis mode that dy-namically designs novel task specifications, sub-stantially expanding synthesis coverage. Second, we provide optional external material support ,including a configurable search-and-download tool and support for pre-supplied resources, enabling the agent to ground synthesized tasks in real-world code and data. Third, we apply LLM-as-Judge fil-tering on sampled trajectories to ensure the quality of the final training data. In summary, our main contributions are as follows: • We propose Meta-Task, a framework that rede-fines terminal task synthesis as a Terminal-Bench-format terminal task. By having an agent com-plete task creation end-to-end inside a real con-tainer environment, we achieve inherent execu-tion grounding and high scalability. • We develop a decoupled diversity control mech-anism with multi-phase synthesis, optional ex-ternal material support, and LLM-as-Judge tra-jectory filtering, jointly enhancing task diversity, realism, and training data quality. • Fine-tuning on only 3,221 Meta-Task synthe-sized trajectories achieves 22.5% and 31.8% 
+
+Avg Pass@1 for Qwen3-14B and Qwen3-32B respectively on Terminal-Bench 2.0, outperform-ing concurrent approaches with significantly less training data. 
+
+2 Meta-Task Pipeline 
+
+2.1 Overview 
+
+As illustrated in Figure 2, the Meta-Task pipeline consists of three stages. Stage 1: Meta-Task Gen-eration (§2.2): each meta-task is constructed as a Terminal-Bench-format task package with a synthe-sis instruction, a Docker environment, and verifica-tion tests; diversity is achieved through decoupled dimension templates and a multi-phase mechanism that dynamically designs novel task specifications. 
+
+Stage 2: Agent Synthesis (§2.3): an agent exe-cutes the meta-task inside a Docker container, au-Stage1: Meta-Task Generation Stage2: Agent Synthesis Stage3: Quality Filtering                  
+
+> Multi-Phase
+> instruction.
+> md
+> environment solution tests task.toml
+> output
+> format check
+> output
+> template
+> example
+> task
+> download
+> tool
+> optional
+> material
+> seed topic seed
+> scenario
+> domain scenario difficulty
+> security
+> ml ...
+> emergency
+> narrative ...
+> medium
+> hard ...
+> Single-Phase
+> what how
+> •workflow
+> •output format
+> •best practice
+> •checklist
+> •$ domain
+> •$ scenario
+> •$ difficulty
+> •target file description
+> Meta-Task
+> meta task design
+> Execution Grounded Synthesis
+> docker container
+> explore
+> search &
+> download
+> task design
+> process &
+> implement
+> val idate &
+> refine
+> synthesis
+> agent
+> Generated Task same format
+> meta-task instruction
+> agent scaffold
+> tools materials
+> teacher model
+> 。。。
+> trajectory sampling
+> Execution Pass Filter
+> LLM as Judge
+> shortcut
+> insufficient learning
+> signal
+> 。。。
+> SFT
+> student model
+> high quality
+
+Figure 2: Overview of the Meta-Task pipeline. Stage 1 (Meta-Task Generation) : decoupled diversity dimensions (category, scenario, difficulty) are composed into a meta-task instruction via single-phase composition or multi-phase dynamic task specification design, paired with a pre-configured Docker environment. Stage 2 (Agent Synthesis) :an agent executes the meta-task inside a Docker container, exploring examples, searching real materials, designing and implementing new tasks, and iteratively self-validating until all checks pass. Stage 3 (Quality Filtering) : a teacher model samples trajectories on generated tasks; passed trajectories undergo LLM-as-Judge screening to produce the final SFT training data. 
+
+tonomously exploring, searching, designing, im-plementing, and iteratively self-validating until all checks pass. Stage 3: Quality Filtering (§2.4): a teacher model samples trajectories on generated tasks; passed trajectories undergo LLM-as-Judge screening to produce the final SFT training data. 
+
+2.2 Meta-Task Generation 2.2.1 Synthesis Instruction 
+
+The meta-task instruction is constructed by com-bining fixed and variable components (the full tem-plate is provided in Appendix F). The fixed compo-nents define how to synthesize, specifying target file descriptions, the synthesis workflow, output for-mat requirements, best practices (e.g., Dockerfile conventions, test design guidelines), and a self-validation checklist. The variable components 
+
+control what to synthesize: three independently selectable dimension templates covering the tech-nical domain and task pattern ideas (category), in-struction writing style (scenario), and complexity requirements (difficulty). At each generation, these variable parts are randomly selected and combined, with internal lists shuffled to prevent ordering bias. 
+
+2.2.2 Diversity Control Category (Technical Domain). We predefine 39 category templates covering a wide range of do-mains from low-level systems programming and network administration to high-level ML pipelines and cross-disciplinary tasks. Each template pro-vides domain-specific guidance including repre-sentative task patterns, recommended tools, and verification approaches. The sampling probability of each category is configurable, allowing flexible control over the domain distribution of generated tasks. 
+
+Scenario (Instruction Writing Style). We de-sign 10 scenario templates simulating diverse real-user communication patterns, from ultra-minimal one-liner goals ( minimal ) to structured require-ments ( structured_request ), workplace narratives (narrative ), and urgent on-call notes ( emergency ). This dimension captures the stylistic diversity of real-world terminal task descriptions. 
+
+Difficulty Level. Four difficulty levels ( easy, medium, hard, extreme ) are defined, each specify-ing expected knowledge depth, solution complexity, and an anti-pattern list of task types to avoid. These three dimensions are fully orthogonal, yielding 39 × 10 × 4 = 1 ,560 distinct base com-binations in single-phase mode (examples in Ap-pendix B). 
+
+Multi-Phase Synthesis. To transcend the prede-fined template space, we introduce a multi-phase mode. First, a lightweight meta-task instructs an agent to design a new (category, scenario) specifi-cation pair based on two seed signals: a topic seed 
+
+sampled from approximately 2,000 fine-grained technical topics, and a scenario constraint sampled from approximately 120 style descriptions. Then, the generated specifications are injected into the standard meta-task instruction, replacing the vari-able parts while keeping all fixed parts unchanged. This extends the effective diversity space to over 240,000 seed combinations, and since the agent can creatively interpret each seed, the achievable diversity is theoretically unbounded and trivially extensible by adding new topics. 
+
+2.2.3 Environment Configuration 
+
+Beyond the instruction, the Docker environment for each meta-task is pre-configured with: • Task skeleton template : a complete directory structure with all required files pre-created as placeholders, transforming generation into a structured content-filling task. • Example tasks : one task randomly sampled from a pool of 100 high-quality reference tasks (synthesized by Claude Opus 4.6 and manually verified), serving as a concrete format reference. • Search-and-download tool (optional): alightweight tool enabling the agent to retrieve real open-source materials from GitHub and Hug-gingFace during generation, grounding tasks in authentic development scenarios. • Pre-supplied materials (optional): domain-specific input data or resources provided directly in the environment when available. The remaining components are fixed: a base Dockerfile with common development tools and appropriate execution time limits. 
+
+2.3 Agent Synthesis 
+
+Once a meta-task is assembled, an agent is launched inside the built Docker container with a compatible scaffold (e.g., Claude Code (Anthropic, 2025)). The agent will explore the provided exam-ple and template to understand the expected format, 
+
+search for relevant real-world materials using the built-in tool, design a problem based on the gath-ered materials, and implement a complete task package (instruction, Dockerfile, solution, tests). The agent is also required to validate its output by executing the solution, running tests, and check-ing cross-component consistency, ensuring that the generated task is internally coherent, executable, and free of answer leakage. Since this entire pro-cess takes place within a real terminal environment with authentic stdout/stderr feedback, it fundamen-tally differs from approaches where generation and execution are separated or absent. 
+
+2.4 Quality Filtering 
+
+We instantiate the test script as an automated task completeness checker, which verifies the structural integrity and internal consistency of each synthe-sized task package, serving as a first-pass quality filter. We then use the teacher model to sample so-lution trajectories on the validated tasks and apply further quality filtering to obtain reliable training data. 
+
+Execution-based filtering. Only trajectories where the agent’s solution passes all verification tests are retained. 
+
+LLM-as-Judge filtering. The passed trajectories undergo further screening by an LLM reviewer, which identifies and removes trajectories where suggestive code annotations or solution leakage reduce task difficulty, or where trivially short inter-actions lack sufficient learning signal. The trajec-tories surviving both filtering layers constitute the final SFT training data (prompt in Appendix F). 
+
+2.5 Implementation and Data Statistics 2.5.1 Implementation Details 
+
+We use the open-source Qwen3.5-397B-A17B-FP8 as the backbone model throughout the pipeline. For task synthesis (Stage 2), we deploy it locally via vLLM (Kwon et al., 2023) and integrate it with the Claude Code (Anthropic, 2025) agent scaffold, which provides advanced context management and tool orchestration. We adapt the Harbor (Harbor Framework Team, 2026) scheduling framework to manage meta-task execution and output collection. For trajectory sampling, we use the Terminus-2 agent framework. In both stages, the model op-erates in non-thinking mode with temperature 0.7 following official recommendations. For quality filtering, we adopt trajectory-level LLM-as-Judge review using the same model in thinking mode. We choose trajectory-level over task-level filtering because evaluating isolated code fragments with-out full execution context makes it difficult for the judge model to reliably assess task quality, leading to false positives and missed issues. Trajectory-level filtering is more precise, targeting only trajec-tories where the agent actually exhibited undesir-able behavior. Property TerminalTraj TermiGen Nemotron-Terminal CLI-Gym SkillSynth Meta-Task                                                
+
+> (Wu et al., 2026) (Zhu et al., 2026) (Pi et al., 2026) (Lin et al., 2026) (Fan et al., 2026) (Ours) Real-world material Required ×Optional Required Required Optional Diversity control ×✓✓×◦✓
+> Execution grounded ◦◦×◦◦✓
+> Agent scaffold compatible ×××××✓
+> Quality filtering ✓◦◦✓◦✓
+> # Synthesized tasks 32.3k 3.5k 264.2k 1.6k 3.5k 15.0k # SFT trajectories 50.7k 3.3k 490.5k 0.3k 10.6k 3.2k
+
+Table 1: Comparison of terminal task synthesis approaches. ✓ = yes, × = no, ◦ = partial. 
+
+2.5.2 Data Statistics 
+
+Using our framework, we synthesize approximately 15,000 complete task packages in total, with a syn-thesis success rate above 85% on average across dif-ficulty settings, indicating that the synthesis stage itself is reliable. We then sample 14,040 trajec-tories on these tasks using the teacher model, of which 5,004 pass all verification tests (pass rate: 35.6%). Note that this pass rate measures how of-ten the teacher solves our tasks rather than how often synthesis succeeds, so its low value indirectly reflects the non-trivial difficulty of the synthesized tasks. After strict LLM-as-Judge quality filtering, 3,221 trajectories are retained as the final training data. We further run a decontamination check between our synthesized tasks and the Terminal-Bench test tasks, comparing every instruction pair by word-level n-gram overlap ( n = 3 , 5, 8), TF-IDF cosine similarity, and technical-entity matching. No pair is flagged as high risk: n-gram scores are essen-tially zero, and the highest-scoring pairs share only generic domain terms while differing entirely in goals, inputs, and required solutions, which we verified by manual inspection. 
+
+2.5.3 Comparison with Existing Approaches 
+
+Table 1 summarizes the key design differences be-tween Meta-Task and existing terminal task synthe-sis approaches. Compared to repository-centric ap-proaches (Wu et al., 2026; Lin et al., 2026) that are constrained by existing codebases, Meta-Task can synthesize tasks independently while optionally grounding them in real materials via a search tool. Unlike staged pipelines (Zhu et al., 2026; Pi et al., 2026; Fan et al., 2026) where task generation and execution verification are decoupled, our approach performs the entire synthesis within a live Docker container with iterative self-verification, ensuring internal consistency and eliminating hallucination issues inherent in pure generation without execu-tion grounding. The decoupled diversity control mechanism further provides explicit, composable control over task characteristics. Additionally, the standard Terminal-Bench format design ensures high scalability and natural compatibility with ad-vanced agent scaffolds. 
+
+3 Experiments 
+
+3.1 Experimental Setup Training and Evaluation. We use Qwen3-14B and Qwen3-32B (Yang et al., 2025) as our base models and perform supervised fine-tuning via LoRA (Hu et al., 2022) using the SWIFT frame-work (Zhao et al., 2025). We evaluate on Terminal-Bench 2.0 (Merrill et al., 2026) following the offi-cial evaluation protocol, employing Harbor (Har-bor Framework Team, 2026) as the orchestration framework together with Terminus-2 as the agent scaffold. All reported results are the mean over three independent runs. Full training and inference details are provided in Appendix A. 
+
+Baselines. We compare against three categories of systems. Closed-source models : we include leading proprietary systems spanning GPT-5.3-Codex, Claude Opus 4.6, Gemini 3 Pro, and other frontier models from the official Terminal-Bench leaderboard. Open-source models : we report re-sults for a range of open-source models including Qwen3.5-397B-A17B (our teacher model), GLM-5, DeepSeek-V3.2, and the Qwen3-14B/32B mod-els that serve as our fine-tuning backbones. Fine-tuned models : we compare with recent concurrent works on terminal task synthesis, including Ter-minalTraj (Wu et al., 2026), CLI-Gym (Lin et al., 2026), TermiGen (Zhu et al., 2026), Nemotron-Terminal (Pi et al., 2026) and SkillSynth (Fan et al., 2026). 
+
+3.2 Main Results 
+
+Table 2 presents the main results on Terminal-Bench 2.0. Fine-tuning on Meta-Task-synthesized data brings significant improvements over the base Model Size Scaffold Avg Pass (%) 
+
+Closed-Source 
+
+GPT-5.3-Codex – Terminus-2 64.7 †
+
+Claude Opus 4.6 – Terminus-2 62.9 †
+
+Gemini 3 Pro – Terminus-2 56.9 †
+
+Claude Sonnet 4.5 – Terminus-2 42.8 †
+
+GPT-5 – Terminus-2 35.2 †
+
+Gemini 2.5 Pro – Terminus-2 32.6 †
+
+Open-Source 
+
+GLM-5 744B Terminus-2 52.4 †
+
+Kimi K2.5 1T Terminus-2 43.2 †
+
+Minimax M2.5 229B Terminus-2 42.2 †
+
+DeepSeek-V3.2 685B Terminus-2 39.6 †
+
+GPT-OSS 120B Terminus-2 18.7 †
+
+Qwen3-Coder-480B-A35B 480B Terminus-2 23.9 †
+
+Qwen3.5-397B-A17B 397B Terminus-2 52.5 ∗
+
+Qwen3-14B (base) 14B Terminus-2 5.2 Qwen3-32B (base) 32B Terminus-2 4.1 
+
+Fine-tuned 
+
+TermiGen-32B (Zhu et al., 2026) 32B BashAgent 19.3 ∗
+
+LiberCoder-32B (Lin et al., 2026) 32B OpenHands 19.5 ∗
+
+LiberCoder-235B-A22B (Lin et al., 2026) 235B OpenHands 31.0 ∗
+
+TerminalTraj-14B (Wu et al., 2026) 14B Terminus-2 19.1 ∗
+
+TerminalTraj-32B (Wu et al., 2026) 32B Terminus-2 22.0 ∗
+
+Nemotron-Terminal-14B (Pi et al., 2026) 14B Terminus-2 20.2 ∗
+
+Nemotron-Terminal-32B (Pi et al., 2026) 32B Terminus-2 27.4 ∗
+
+SkillSynth-14B (Fan et al., 2026) 14B Terminus-2 19.9 ∗
+
+SkillSynth-32B (Fan et al., 2026) 32B Terminus-2 29.6 ∗
+
+Ours Meta-Task-14B 14B Terminus-2 22.5 Meta-Task-32B 32B Terminus-2 31.8 
+
+Table 2: Results on Terminal-Bench 2.0. † denotes results from the official leaderboard and ∗ denotes results cited from the respective original reports. 
+
+models: Qwen3-14B improves from 5.2% to 22.5% (+17.3) and Qwen3-32B from 4.1% to 31.8% (+27.7), validating the effectiveness of our synthe-sized training data. Notably, Meta-Task-32B even surpasses Qwen3-Coder-480B-A35B (23.9%), a model with over 15 × more parameters, demonstrat-ing that targeted terminal task training can compen-sate for a substantial gap in model scale. Compared with concurrent data synthesis and fine-tuning approaches, Meta-Task-32B (31.8%) outperforms Nemotron-Terminal-32B (27.4%) and TerminalTraj-32B (22.0%) at the same model scale, and closely approaches LiberCoder-235B (31.0%), which uses a model with over 7 × more total param-eters. For the 14B scale, Meta-Task-14B (22.5%) outperforms Nemotron-Terminal-14B (20.2%) and TerminalTraj-14B (19.1%). These results are achieved with only 3,221 training trajectories, sig-nificantly fewer than TerminalTraj (50.7K) and Nemotron-Terminal (490.5K), demonstrating the data efficiency of our approach. While frontier closed-source systems such as GPT-5.3-Codex (64.7%) and Claude Opus 4.6 (62.9%) still hold a significant lead, Meta-Task-32B (31.8%) approaches GPT-5 (35.2%) and Gem-0 1k 2k 3k     
+
+> Number of Training Trajectories
+> 0
+> 10
+> 20
+> 30
+> 40
+> Pass Rate (%)
+> 5.2
+> 11.2 16.1
+> 24.7
+> 18.7
+> 27.0
+> 22.5
+> 31.5
+> Qwen3-14B
+> Avg Pass@1
+> Pass@3
+> 01k 2k 3k
+> Number of Training Trajectories
+> 4.1
+> 9.0
+> 20.6
+> 31.5
+> 27.0
+> 38.2
+> 31.8
+> 42.7
+> Qwen3-32B
+> Avg Pass@1
+> Pass@3
+
+Figure 3: Scaling behavior of Meta-Task-synthesized data. Avg Pass@1 and Pass@3 are plotted against the number of training trajectories for both Qwen3-14B (left) and Qwen3-32B (right). 
+
+ini 2.5 Pro (32.6%), substantially narrowing the gap between small open-source fine-tuned models and full-scale proprietary systems. 
+
+3.3 Scaling Behavior 
+
+We investigate the scaling behavior of Meta-Task-synthesized data along three dimensions: data vol-ume, model size, and test-time compute (Pass@ k). We train both Qwen3-14B and Qwen3-32B on pro-gressively increasing subsets of the synthesized trajectories (0, 1000, 2000, 3221) and report Avg Pass@1 and Pass@3 at each scale. 0 20 40 60              
+
+> Proposal Acceptance Rate (%)
+> 35
+> 45
+> 55
+> 65
+> 75
+> Implementation Compliance (%)
+> Meta-Task
+> (Single-phase)
+> Meta-Task
+> (Multi-phase)
+> CLI-Gym
+> TerniGen
+> Nemotron-
+> Terminal
+> TerminalTraj
+> Better
+> (a) Task Quality Review
+> 010 20 30 40 50
+> Task Coverage (%)
+> Performance Optimization
+> Security Analysis
+> Data Transformation
+> Algorithm Design
+> Reverse Engineering
+> Monitoring & Observability
+> Configuration & Deployment
+> Data Parsing & Extraction
+> Debugging & Fixing
+> Testing & Verification
+> Analysis & Reporting
+> Building & Implementation
+> 12.8%
+> 13.9%
+> 17.0%
+> 17.4%
+> 24.7%
+> 26.0%
+> 27.4%
+> 29.1%
+> 31.4%
+> 42.6%
+> 45.5%
+> 48.2%
+> (b) Required Skill Coverage (c) Task Domain Distribution (t-SNE)
+> CS & Algorithms
+> Database & Data
+> Domain Apps
+> Finance
+> ML & AI
+> Media
+> Networking
+> Other
+> Scientific
+> Security
+> Software Eng
+> Systems & Infra
+> Text & NLP
+> Web
+> 010 20 30 40 50 60 70
+> Number of Interaction Turns
+> 0
+> 50
+> 100
+> 150
+> 200
+> 250
+> 300
+> 350
+> Count  N = 3,221
+> P25=12, P75=24
+> (d) Interaction Turn Distribution
+> Mean = 20.1
+> Median = 16
+
+Figure 4: Task quality, diversity, and trajectory analysis. (a) Task quality evaluation across synthesis methods (50 sampled tasks per method, scored by Claude Opus 4.6 on the Terminal-Bench Rubric). (b) Skill distribution across 3,221 tasks (multi-label). (c) t-SNE of task instructions by domain. (d) Distribution of interaction turns. 
+
+Configuration # Trajs Avg Pass@1 Pass@3 
+
+Passed only 5,004 28.5 39.3 Passed + Judge 3,221 31.8 42.7 
+
+Table 3: Effect of trajectory-level quality filtering (Qwen3-32B, Terminal-Bench 2.0). 
+
+As shown in Figure 3, three scaling trends emerge: (1) Data scaling : both models show con-sistent performance gains as training data volume increases, indicating that more synthesized trajec-tories continue to benefit model performance. (2) 
+
+Model scaling : the 32B model benefits more from the same data, achieving higher absolute perfor-mance and steeper improvement curves than 14B. (3) Test-time scaling : Pass@3 consistently outper-forms Pass@1, demonstrating that the fine-tuned models develop diverse problem-solving strategies benefiting from multiple attempts. 
+
+3.4 Ablation: Quality over Quantity 
+
+We conduct an ablation study to validate the ef-fectiveness of our quality filtering component on Qwen3-32B, comparing 5,004 trajectories that only pass execution tests against 3,221 trajectories that additionally undergo strict LLM-as-Judge quality filtering. As shown in Table 3, applying LLM-as-Judge filtering yields +3.3 Avg Pass@1 and +3.4 Pass@3 gains despite using fewer trajectories. The filtered trajectories primarily include cases where sugges-tive code annotations or overly complete expected-output files reduce task difficulty, causing the agent to take shortcuts, as well as trajectories with short interaction lengths that lack sufficient learning sig-nal. The LLM-as-Judge effectively identifies and removes these successful but low-quality trajecto-ries. This result confirms that trajectory quality matters more than quantity for training terminal agents, consistent with findings in CLI-Gym (Lin et al., 2026). 
+
+3.5 Task and Trajectory Analysis 
+
+We further analyze the quality of our synthesized tasks, their diversity, and the characteristics of the SFT trajectories (a concrete task example is pro-vided in Appendix E). Figure 4 presents the results across four complementary dimensions. 
+
+Task quality comparison. We assess synthe-sized task quality using the official Terminal-Bench review pipeline with Claude Opus 4.6 as the auto-mated reviewer, which includes a Proposal review 
+
+evaluating task ideas and an Implementation review 
+
+scoring the full task package against 19 criteria (e.g., verifiability, difficulty, novelty, anti-cheat ro-bustness). For each method, we randomly sam-ple 50 tasks. As shown in Figure 4(a), Meta-Task achieves the highest implementation compliance (66–72%) with strong proposal acceptance (54– 58%). CLI-Gym scores higher on proposal accep-tance (64%) but only 43% on implementation due to lacking solution scripts. Other methods score lower on both axes. The evaluation protocol is described in Appendix D. 
+
+Skill coverage. As shown in Figure 4(b), we cat-egorize required skills into 12 high-level compe-tency areas (multi-label). The distribution reveals that our synthesized tasks go far beyond the narrow bug-fixing pattern prevalent in repository-mined datasets: the skills are evenly spread across all categories, with specialized competencies such as Reverse Engineering (24.7%) and Security Analy-sis (13.9%) maintaining substantial representation alongside dominant ones like Building & Imple-mentation (48.2%). 
+
+Domain diversity. Figure 4(c) visualizes the task instruction embeddings via t-SNE, colored by 13 top-level technical domains. The embedding space Error Category Ratio Description         
+
+> Context Compaction Loss 47.3% Loses task constraints after context summarization, submitting incorrect solutions. Flawed Self-Verification 32.9% Inline checks pass but miss edge cases caught by the test suite. Step Budget Exhaustion 15.1% Explores multiple strategies without converging before the turn limit. Repetitive Strategy Loop 4.8% Repeats the same failing approach with minor variations.
+> Table 4: Error analysis of failed trajectories (model-attributable only).
+
+exhibits broad and uniform coverage with well-separated domain clusters. Notably, several do-mains manifest multiple distinct sub-clusters, indi-cating that our synthesis mechanisms produce di-verse instantiations within the same domain rather than repetitive variations. 
+
+Trajectory characteristics. Figure 4(d) shows the distribution of interaction turns across 3,221 filtered trajectories (mean=20, median=16). The majority of trajectories complete in 6–20 turns, re-flecting moderate-complexity tasks requiring plan-ning, execution, debugging, and verification. A sub-stantial long tail extends beyond 25 turns, provid-ing rich learning signal for long-horizon problem-solving. The absence of trivially short trajectories (fewer than 5 turns) confirms that our quality filter-ing effectively removes low-signal examples. 
+
+3.6 Error Analysis 
+
+To understand the remaining limitations, we an-alyze 146 model-attributable failed trajectories across 3 independent evaluation runs, excluding infrastructure errors and wall-clock timeouts (de-tailed analysis in Appendix C). As shown in Ta-ble 4, the dominant failure mode is Context Com-paction Loss (47.3%): as the trajectory grows, ear-lier observations are summarized away, causing the agent to lose critical task constraints. The sec-ond most common issue is Flawed Self-Verification (32.9%), where ad-hoc checks pass but miss edge cases caught by the actual test suite. Notably, 80.1% of all failures involve the agent marking the task as complete despite an incorrect solution, indicating that miscalibrated self-assessment is the primary weakness to address in future work. 
+
+4 Related Work 
+
+Terminal Agents. LLM-based agents that oper-ate through command-line interfaces have become a central paradigm for real-world task automation (Yao et al., 2023; Yang et al., 2024; Wang et al., 2025b; Anthropic, 2025; OpenAI, 2025). To sys-tematically assess these capabilities, a series of SWE-like benchmarks (Jimenez et al., 2024; Wang et al., 2025a; Yang et al., 2026; Zan et al., 2025; Chen et al., 2026) and terminal interaction bench-marks (Lin et al., 2018; Yang et al., 2023; Mer-rill et al., 2026) have been proposed to evaluate agents across diverse task domains. The practi-cal effectiveness of these systems fundamentally depends on the underlying model’s terminal capa-bilities (Cheng et al., 2026; Ren et al., 2026; Xia et al., 2025), and training such capabilities requires high-quality, verifiable, and diverse terminal task data. 
+
+Terminal Task Synthesis. Existing approaches follow two paradigms. The first extracts tasks from real-world codebases: TerminalTraj (Wu et al., 2026) scores and filters GitHub repositories at scale, and CLI-Gym (Lin et al., 2026) inverts healthy environments into faulty states. The sec-ond uses LLMs to synthesize tasks directly (Qin et al., 2023): TermiGen (Zhu et al., 2026) em-ploys a multi-agent framework for staged gener-ation, Nemotron-Terminal (Pi et al., 2026) com-bines dataset adaptation with skill-oriented syn-thesis, and SkillSynth (Fan et al., 2026) controls diversity through skill graph path sampling. Addi-tionally, SETA (Shen et al., 2026), Endless Termi-nals (Gandhi et al., 2026), and OpenClaw-rl (Wang et al., 2026) explore reinforcement learning based approaches, while Agent-World (Dong et al., 2026) and Meta-Harness (Lee et al., 2026) address envi-ronment synthesis and harness optimization respec-tively. 
+
+5 Conclusion 
+
+We proposed Meta-Task, a framework that rede-fines terminal task synthesis as a Terminal-Bench-format terminal task itself, where an agent operates end-to-end inside a Docker container to generate and self-validate complete task packages, achiev-ing inherent execution grounding and high scala-bility that address the key limitations of prior ap-proaches. Together with decoupled diversity con-trol, multi-phase synthesis, external material sup-port, and LLM-as-Judge trajectory filtering, Meta-Task jointly enhances task diversity, realism, and training data quality. Fine-tuning on only 3,221 synthesized trajectories yields strong performance on Terminal-Bench 2.0, outperforming concurrent approaches with significantly less data. 
+
+Limitations 
+
+Our work focuses exclusively on Linux-based ter-minal task synthesis within Docker containers. We have not yet extended the framework to other op-erating system ecosystems such as Windows or macOS, where different toolchains, shell environ-ments, and system APIs would require adapted environment configurations and verification ap-proaches. Additionally, while we demonstrate strong diversity through template-based control and multi-phase synthesis, the seed sources for diversity (topic lists, scenario constraints) are currently cu-rated manually. Incorporating broader seed sources from real-world developer activity, such as Stack Overflow questions, GitHub issue discussions, or technical documentation, could further expand the synthesis coverage. 
+
+References 
+
+Anthropic. 2025. Claude code: Best practices for agentic coding. https://www.anthropic.com/ engineering/claude-code-best-practices .Nghi DQ Bui. 2026. Building effective ai coding agents for the terminal: Scaffolding, harness, con-text engineering, and lessons learned. arXiv preprint arXiv:2603.05344 .Mouxiang Chen, Lei Zhang, Yunlong Feng, Xuwu Wang, Wenting Zhao, Ruisheng Cao, Jiaxi Yang, Ji-awei Chen, Mingze Li, Zeyao Ma, Hao Ge, Zong-meng Zhang, Zeyu Cui, Dayiheng Liu, Jingren Zhou, Jianling Sun, Junyang Lin, and Binyuan Hui. 2026. Swe-universe: Scale real-world verifiable environ-ments to millions. Preprint , arXiv:2602.02361. Daixuan Cheng, Shaohan Huang, Yuxian Gu, Huatong Song, Guoxin Chen, Li Dong, Wayne Xin Zhao, Ji-Rong Wen, and Furu Wei. 2026. Llm-in-sandbox elicits general agentic intelligence. arXiv preprint arXiv:2601.16206 .Guanting Dong, Junting Lu, Junjie Huang, Wanjun Zhong, Longxiang Liu, Shijue Huang, Zhenyu Li, Yang Zhao, Xiaoshuai Song, Xiaoxi Li, and 1 oth-ers. 2026. Agent-world: Scaling real-world envi-ronment synthesis for evolving general agent intelli-gence. arXiv preprint arXiv:2604.18292 .Zhiyuan Fan, Tinghao Yu, Yuanjun Cai, Jiangtao Guan, Yun Yang, Dingxin Hu, Jiang Zhou, Xing Wu, Zhuo Han, Feng Zhang, and 1 others. 2026. Toward scal-able terminal task synthesis via skill graphs. arXiv preprint arXiv:2604.25727 .Kanishk Gandhi, Shivam Garg, Noah D Goodman, and Dimitris Papailiopoulos. 2026. Endless terminals: Scaling rl environments for terminal agents. arXiv preprint arXiv:2601.16443 .Harbor Framework Team. 2026. Harbor: A framework for evaluating and optimizing agents and models in container environments. Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Liang Wang, Weizhu Chen, and 1 others. 2022. LoRA: Low-rank adaptation of large language models. In ICLR , vol-ume 1, page 3. Carlos E Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik Narasimhan. 2024. Swe-bench: Can language mod-els resolve real-world github issues? In International Conference on Learning Representations , volume 2024, pages 54107–54157. Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. 2023. Effi-cient memory management for large language model serving with pagedattention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles .Yoonho Lee, Roshen Nair, Qizheng Zhang, Kangwook Lee, Omar Khattab, and Chelsea Finn. 2026. Meta-harness: End-to-end optimization of model harnesses. 
+
+arXiv preprint arXiv:2603.28052 .Xi Victoria Lin, Chenglong Wang, Luke Zettlemoyer, and Michael D. Ernst. 2018. Nl2bash: A corpus and semantic parser for natural language interface to the linux operating system. Preprint , arXiv:1802.08979. Yusong Lin, Haiyang Wang, Shuzhe Wu, Lue Fan, Feiyang Pan, Sanyuan Zhao, and Dandan Tu. 2026. Cli-gym: Scalable cli task generation via agentic envi-ronment inversion. arXiv preprint arXiv:2602.10999 .Qianyu Meng, Yanan Wang, Liyi Chen, Qimeng Wang, Chengqiang Lu, Wei Wu, Yan Gao, Yi Wu, and Yao Hu. 2026. Agent harness for large language model agents: A survey. Preprints .Mike A Merrill, Alexander G Shaw, Nicholas Carlini, Boxuan Li, Harsh Raj, Ivan Bercovich, Lin Shi, Jeong Yeon Shin, Thomas Walshe, E Kelly Buchanan, and 1 others. 2026. Terminal-bench: Benchmarking agents on hard, realistic tasks in command line inter-faces. arXiv preprint arXiv:2601.11868 .OpenAI. 2025. Introducing codex. https://openai. com/index/introducing-codex/ .OpenClaw. 2026. Openclaw. https://github.com/ openclaw/openclaw . Open-source personal AI as-sistant, version 2026.3.8, accessed 2026-03-09. Renjie Pi, Grace Lam, Mohammad Shoeybi, Pooya Jan-naty, Bryan Catanzaro, and Wei Ping. 2026. On data engineering for scaling llm terminal capabilities. 
+
+arXiv preprint arXiv:2602.21193 .Yujia Qin, Shihao Liang, Yining Ye, Kunlun Zhu, Lan Yan, Yaxi Lu, Yankai Lin, Xin Cong, Xiangru Tang, Bill Qian, Sihan Zhao, Lauren Hong, Runchu Tian, Ruobing Xie, Jie Zhou, Mark Gerstein, Dahai Li, Zhiyuan Liu, and Maosong Sun. 2023. Toolllm: Fa-cilitating large language models to master 16000+ real-world apis. Preprint , arXiv:2307.16789. Jincheng Ren, Siwei Wu, Yizhi Li, Kang Zhu, Shu Xu, Boyu Feng, Ruibin Yuan, Wei Zhang, Riza Batista-Navarro, Jian Yang, and 1 others. 2026. A self-evolving framework for efficient terminal agents via observational context compression. arXiv preprint arXiv:2604.19572 .Qijia Shen, Jay Rainton, Aznaur Aliev, Ahmed Awelkair, Boyuan Ma, Zhiqi (Julie) Huang, Yuzhen Mao, Wendong Fan, Philip Torr, Bernard Ghanem, Changran Hu, Urmish Thakker, and Guohao Li. 2026. SETA: Scaling Environments for Terminal Agents. Lilin Wang, Lucas Ramalho, Alan Celestino, Phuc An-thony Pham, Yu Liu, Umang Kumar Sinha, Andres Portillo, Onassis Osunwa, and Gabriel Maduekwe. 2025a. Swe-bench++: A framework for the scal-able generation of software engineering benchmarks from open-source repositories. arXiv preprint arXiv:2512.17419 .Xingyao Wang, Boxuan Li, Yufan Song, Frank F Xu, Xi-angru Tang, Mingchen Zhuge, Jiayi Pan, Yueqi Song, Bowen Li, Jaskirat Singh, and 1 others. 2025b. Open-hands: An open platform for ai software developers as generalist agents. In International Conference on Learning Representations , volume 2025, pages 65882–65919. Yinjie Wang, Xuyang Chen, Xiaolong Jin, Mengdi Wang, and Ling Yang. 2026. Openclaw-rl: Train any agent simply by talking. arXiv preprint arXiv:2603.10165 .Siwei Wu, Yizhi Li, Yuyang Song, Wei Zhang, Yang Wang, Riza Batista-Navarro, Xian Yang, Mingjie Tang, Bryan Dai, Jian Yang, and 1 others. 2026. Large-scale terminal agentic trajectory generation from dockerized environments. arXiv preprint arXiv:2602.01244 .Chunqiu Steven Xia, Zhe Wang, Yan Yang, Yuxiang Wei, and Lingming Zhang. 2025. Live-swe-agent: Can software engineering agents self-evolve on the fly? arXiv preprint arXiv:2511.13646 .An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, and 1 others. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .John Yang, Carlos E Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao, Karthik Narasimhan, and Ofir Press. 2024. SWE-agent: Agent-computer interfaces enable automated software engineering. Advances in Neural Information Processing Systems , 37:50528– 50652. John Yang, Kilian Lieret, Carlos Jimenez, Alexander Wettig, Kabir Khandpur, Yanzhe Zhang, Binyuan Hui, Ofir Press, Ludwig Schmidt, and Diyi Yang. 2026. Swe-smith: Scaling data for software engineer-ing agents. Advances in Neural Information Process-ing Systems , 38. John Yang, Akshara Prabhakar, Karthik Narasimhan, and Shunyu Yao. 2023. Intercode: Standardizing and benchmarking interactive coding with execution feedback. Preprint , arXiv:2306.14898. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. React: Synergizing reasoning and acting in language models. Preprint , arXiv:2210.03629. Daoguang Zan, Zhirong Huang, Wei Liu, Hanwu Chen, Linhao Zhang, Shulin Xin, Lu Chen, Qi Liu, Xiaojian Zhong, Aoyan Li, and 1 others. 2025. Multi-swe-bench: A multilingual benchmark for issue resolving. 
+
+arXiv preprint arXiv:2504.02605 .Yuze Zhao, Jintao Huang, Jinghan Hu, Xingjun Wang, Yunlin Mao, Daoze Zhang, Zeyinzi Jiang, Zhikai Wu, Baole Ai, Ang Wang, and 1 others. 2025. Swift: a scalable lightweight infrastructure for fine-tuning. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 39, pages 29733–29735. Kaijie Zhu, Yuzhou Nie, Yijiang Li, Yiming Huang, Jialian Wu, Jiang Liu, Ximeng Sun, Zhenfei Yin, Lun Wang, Zicheng Liu, and 1 others. 2026. Ter-migen: High-fidelity environment and robust trajec-tory synthesis for terminal agents. arXiv preprint arXiv:2602.07274 .A Training and Inference Details 
+
+Fine-tuning. Table 5 lists the hyperparameters for LoRA fine-tuning. Both Qwen3-14B and Qwen3-32B are fine-tuned in non-thinking mode using the SWIFT framework (Zhao et al., 2025) on 8× A100 80GB GPUs with DeepSpeed ZeRO-3. 
+
+Hyperparameter Value 
+
+LoRA rank / alpha 64 / 128 LoRA dropout 0.05 LoRA target modules all linear layers Learning rate 1e-4 LR scheduler cosine (warmup 5%) Sequence length 40,960 Epochs 5Batch size (per device) 1Gradient accumulation 1Optimizer AdamW ( β1=0.9, β2=0.95) Weight decay 0.1 Max gradient norm 1.0 Precision BF16 
+
+Table 5: Fine-tuning hyperparameters. 
+
+Evaluation. During evaluation on Terminal-Bench 2.0, the fine-tuned models are served via vLLM (Kwon et al., 2023) in non-thinking mode with temperature 0.7, top-p 0.8, top-k 20, and pres-ence penalty 1.5. The agent interacts with the environment through a single headless terminal providing only JSON-formatted tool calls without additional harness or auxiliary tools. The context window token budget is measured using the Qwen3 tokenizer, with a maximum of 37,888 input tokens and 3,072 output tokens per turn. 
+
+B Diversity Control Examples 
+
+We present representative examples verbatim from our diversity control dimensions to illustrate the design philosophy behind each one. 
+
+B.1 Category Dimension 
+
+Table 6 lists all 39 predefined categories. Below we show one representative category specification in full as used in our framework. 
+
+Category: Database and SQL 
+
+Tasks involving database operations, SQL queries, schema design, query optimization, and database administration. 
+
+The examples below are for inspiration only. Be creative and design your own unique task! Task Pattern Ideas: 
+
+• Write and optimize complex SQL queries • Design database schemas for specific requirements • Implement database migrations and schema evolution • Implement stored procedures or triggers • Cross-database data migration (MySQL to PostgreSQL, etc.) 
+
+# Category # Category 
+
+1 Algorithm Design 21 Git Operations 2 API Design 22 Incident Response 3 Bioinformatics 23 Message Queues 4 Code Audit 24 ML Training 5 Code Golf 25 Monitoring 6 Code Migration 26 Networking 7 Compilation & Build 27 Optimization 8 Cryptanalysis 28 Physics & Simulation 9 Database Systems 29 Puzzle & Investigation 10 Data Processing 30 Scientific Computing 11 Debugging 31 Security & CTF 12 DevOps & CI/CD 32 Shell Scripting 13 Distributed ML 33 Software Engineering 14 Distributed Systems 34 System Administration 15 Env. & Dependencies 35 System Orchestration 16 File Operations 36 Testing & QA 17 Financial Engineering 37 Text Processing 18 FPGA & Hardware 38 Video & Multimedia 19 Functional Languages 39 Web Development 20 Games & Simulations 
+
+Table 6: Complete list of 39 category dimensions. 
+
+• Implement full-text search functionality • Time-series data management and queries • Implement database connection pooling • Data integrity validation and cleanup • Implement caching strategies with database backends 
+
+Skills & Tools (tag suggestions): Core: database , sql ,
+
+data-management , query-optimization ; Databases: sqlite ,
+
+postgresql , mysql , mongodb , redis ; Languages: sql ; Tools: sqlite3 ,
+
+psql , mysql-client , pgcli 
+
+Possible Input Data (be creative with environment files!): SQLite database files ( .sqlite , .db ); SQL dump files ( .sql ) with schema and data; Slow query logs for optimization tasks; Schema definition files (DDL scripts); CSV/JSON data for import tasks; Database configuration files; Index statistics and query plans 
+
+Verification Approaches: Verify query results match expected output; Check query performance (execution time, explain plan); Validate schema correctness (constraints, relationships); Test data integrity after migrations; Verify index usage in query plans; Check transaction handling (ACID compliance) 
+
+Remember : These are just starting points. Create database challenges that test SQL proficiency, query optimization skills, and understanding of database internals! 
+
+B.2 Scenario Dimension 
+
+Table 7 lists all 10 scenario styles. Below we show one representative scenario specification verbatim. 
+
+Scenario Description 
+
+Minimal Ultra-brief 1–3 sentences Structured Well-organized request with goal and context Narrative Workplace story with characters Emergency Urgent time-pressure style Creative Unusual or playful framing Casual Informal conversational tone Follow-up Continuation with new requirements Multi-request Multiple sub-tasks bundled Specification Formal specification style Terminal Dump Starts with pasted terminal output 
+
+Table 7: Complete list of 10 scenario styles. 
+
+Scenario: Narrative 
+
+For the instruction.md you generate, use a scenario-based narrative 
+
+style: 
+
+Key principles: 
+
+• Tell a story – Set up a realistic workplace situation • Use characters – “Your colleague Marcus”, “The intern”, “Sarah from the ops team” • Explain the situation – What’s happening and what needs to be done • Natural flow – Don’t use formal sections, write as connected paragraphs • Embedded requirements – Weave technical details into the narrative 
+
+Good example: 
+
+The data science team has been collecting sensor readings from 200 IoT devices across three warehouses. The raw data lives in /app/data/sensors/ – one Parquet file per day, going back 90 days. Lisa from the analytics team needs a consolidated dashboard-ready dataset by end of week. The problem is that the devices use three different firmware versions, each with slightly different data schemas (some use Celsius, others Fahrenheit; timestamp formats vary). Your job: build a pipeline that normalizes all the data into a consistent schema, identifies anomalous readings, and produces a clean daily-aggregated dataset at /app/output/dashboard.parquet. 
+
+Remember : Make it feel like a real workplace situation – not a formal specification, but a story with a clear deliverable. 
+
+B.3 Difficulty Dimension 
+
+We define four difficulty levels as shown in Table 8. In practice, we primarily use the hard and extreme 
+
+levels for task generation. Below we show the hard 
+
+level specification verbatim. 
+
+Level Skill Scope Solution Characteristics 
+
+Easy Single core tool/technique Clear input →process →output workflow Medium 2–3 tools combined with judgment calls Multi-step; agent must choose ap-proach based on discovery Hard Specialized domain expertise beyond basic programming Non-obvious path; difficulty from real materials, not artificial constraints Extreme Deep knowledge requiring active research of provided materials Discovery-driven; 3+ chained non-obvious insights 
+
+Table 8: Summary of difficulty level criteria. 
+
+Difficulty: Hard 
+
+Your task MUST meet ALL of the following criteria to qualify as HARD difficulty: 
+
+1. Specialized Knowledge Required: The task must require domain exper-tise that goes beyond basic programming (e.g., cryptographic algorithms, compiler internals, signal processing, bioinformatics). A general-purpose developer should NOT be able to solve it without learning new concepts. 
+
+2. Non-Obvious Solution Path: The solution must NOT be a straightfor-ward “read input → process → write output” pipeline. Require creative problem-solving, algorithm design, or reverse engineering. Include at least one step where the solver must discover or infer something not explicitly stated. 
+
+3. Difficulty from the Materials, Not Artificial Constraints: The chal-lenge should come from the inherent complexity of the real materials. Do NOT make tasks hard by just adding arbitrary time limits or format restrictions on top of a simple problem. 
+
+4. Multi-Stage Verification: Tests must verify multiple intermediate or final artifacts. Include at least 3 distinct verification checks. Verify both correctness AND constraints (performance, size, format). 
+
+5. Real-World Complexity: Model realistic scenarios with edge cases and error conditions. Include at least one “trap” that a naive implementation would fail on. The task should take an expert 30+ minutes to solve. 
+
+Anti-patterns to AVOID: Simple CRUD operations; Tasks solvable with a single library call; Problems with obvious, linear solutions; Basic ML training (MNIST-level tasks); Making a simple task “hard” by adding artificial constraints. 
+
+C Detailed Error Analysis 
+
+To understand the remaining failure modes of Meta-Task-32B, we manually inspect failed trajectories from our evaluation runs on Terminal-Bench 2.0. We exclude infrastructure errors (RuntimeError) and wall-clock timeouts (which reflect API infer-ence latency rather than model decisions), focusing on failures attributable to model behavior. We iden-tify four distinct error categories as follows. 
+
+Context Compaction Loss (47.3%). When the trajectory exceeds the 37,888-token context bud-get, the scaffold compacts earlier observations into summaries, causing the agent to lose critical task constraints or error history. The agent then submits solutions that violate forgotten specifications with high confidence. This is strongly correlated with compaction frequency: success rate drops from 54% (no compaction) to 31% (1–2 compactions) to 14% (6+ compactions). 
+
+Flawed Self-Verification (32.9%). The agent runs ad-hoc inline checks (e.g., python3 -c as-sertions, manual output inspection) that pass on simple cases, but misses edge cases caught by the actual test suite. The agent then marks the task as complete with false confidence. 
+
+Step Budget Exhaustion (15.1%). The agent ex-plores multiple strategies without converging on a correct solution before reaching the 1,000-step turn limit. This occurs primarily in tasks requir-ing specialized domain knowledge where initial approaches are fundamentally misguided. 
+
+Repetitive Strategy Loop (4.8%). The agent re-peats the same failing approach with only minor variations, unable to recognize the need for a fun-damentally different strategy. Unlike budget ex-haustion, these agents do not explore alternatives at all. Table 9 presents one representative failure for each category, extracted from our actual evaluation trajectories with exact step numbers and verifier outputs. 
+
+D Task Quality Evaluation Details 
+
+We employ Claude Opus 4.6 as an automated re-viewer following the official Terminal-Bench re-view pipeline. For each synthesis method, we ran-domly sample 50 tasks and conduct two types of review: 
+
+Proposal Review. The reviewer reads the task description and evaluates whether the task idea is likely to be accepted into Terminal-Bench based on the official Task Proposal Rubric, which requires Error Category / Task Trajectory Summary Verifier Output & Root Cause Context Compaction Loss 
+
+dna-assembly 
+
+> 221 steps, 11 compactions
+
+Agent reads primer design task (Step 2), it-eratively designs primers and computes melt-ing temperatures with oligotm (Steps 3–198). After 11 context compactions, marks com-plete (Step 221) and submits primers containing 
+
+GTTTAAAC NNN GGTCTCGTTAT... 
+
+Verifier: Primer must contain only A, T, C, G. 
+
+Cause: Agent retains BsaI site logic (using 
+
+NNN spacer) but loses the ATCG-only con-straint after repeated compaction. 
+
+Flawed Self-Verification 
+
+filter-js-from-html 
+
+> 23 steps, 0 compactions
+
+Agent builds an HTML XSS filter (Steps 8– 18) and tests inline with 5 self-chosen vectors (<script> , onclick , javascript: href). All pass. Marks complete at Step 23: “Filter thor-oughly tested and working.” 
+
+Verifier: assert 4 == 0 (4 vector groups failed). 
+
+Cause: Actual suite applies 400+ vec-tors with encoded JS, uncommon handlers (onscroll , ondataavailable ), and nested obfuscation. 
+
+Step Budget Exhaustion 
+
+polyglot-rust-c 
+
+> 1000 steps, 32 compactions
+
+Agent attempts a file valid in both Rust and C++ (Steps 1–1000). Oscillates: “Rust succeeded” (55 ×) vs. “C++ sees invalid code” (277 ×). Never marks complete. 
+
+Verifier: Never reached (step limit). 
+
+Cause: Two languages have conflicting syn-tax. Agent tries 15+ structural approaches but cannot satisfy both compilers simultane-ously. 
+
+Repetitive Strategy Loop 
+
+write-compressor 
+
+> 1000 steps, 7 compactions
+
+Agent works on compression task (Steps 1–194), then gets trapped in a terminal pager. Sends iden-tical C-cq escape sequence for 699 consecutive steps (Steps 199–1000). 
+
+Verifier: Never reached (step limit). 
+
+Cause: Correctly identifies stuck state but cycles the same keystrokes indefinitely, never trying :q! or spawning a new shell. 
+
+Table 9: Representative failure cases of Meta-Task-32B on Terminal-Bench 2.0. All step numbers and verifier messages are from actual evaluation runs. 
+
+tasks to be verifiable, well-specified, solvable, ap-propriately challenging, realistic, and outcome-verified. The reviewer outputs Accept, Uncertain, or Reject. 
+
+Implementation Review. The reviewer reads the full task package (instruction, Dockerfile, so-lution, tests, task.toml) and evaluates it against the 19-criterion Task Implementation Rubric. The 19 criteria cover: verifiable, well_specified, solv-able, difficult, novel, anti_cheat_robustness, in-teresting, agentic, functional_verification, out-come_verified, deterministic_reproducible, essen-tial_difficulty, instruction_clarity, solution_quality, environment_hygiene, test_instruction_alignment, reviewable, structured_data_schema, and typos. Each criterion is scored as PASS, FAIL, or NA. The implementation compliance rate reported in Figure 4(a) is the average PASS rate across all 19 criteria, reflecting the overall completeness and reliability of the synthesized task package. 
+
+E Synthesized Task Example 
+
+Figure 5 presents a representative synthesized task (Hindley-Milner type inference debugging, hard difficulty), showing the three core components of a task package from top to bottom: the task instruc-tion, the environment Dockerfile, and the verifica-tion tests. 
+
+F Prompt Templates 
+
+We present the key prompts used in the Meta-Task pipeline. The variable parts (category, scenario, difficulty) are illustrated in Appendix B. 
+
+F.1 Meta-Task Instruction Template 
+
+The meta-task instruction consists of fixed parts (defining the workflow, output structure, and vali-dation rules) and variable parts (category, scenario, difficulty). Figure 6 shows the fixed parts with variable placeholders marked as [...] .
+
+F.2 Multi-Phase Synthesis Prompt 
+
+In multi-phase mode (§2.2.2), a lightweight Phase 1 meta-task instructs an agent to dynamically de-sign a new (category, scenario) specification pair (Figure 7). The generated specifications are then injected into the standard meta-task instruction for Phase 2 synthesis. 
+
+F.3 Trajectory-Level LLM-as-Judge Prompt 
+
+The LLM-as-Judge reviews successful trajectories (Figure 8) to determine whether they demonstrate genuine problem-solving behavior suitable for SFT training. instruction.md 
+
+hey so i inherited this type inference project from a grad student who left the lab, and apparently they were implementing a hindley-milner type checker for our compiler class but never finished debugging it 
+
+the thing is at `/app/type_inference.py` and it's supposed to infer types for a simple ml-like language - you know, the standard let-polymorphism stuff with unification. there's also a `/app/syntax.py` with the AST definitions and `/app/parser.py` that turns s-expressions into AST nodes 
+
+**the problem: ** the type checker rejects some programs that should typecheck fine, and worse, it sometimes accepts programs that should be rejected. i think there are like 3-4 bugs scattered through the unification and generalization logic? 
+
+**what i need: ** fix `/app/type_inference.py` so it correctly implements hindley-milner type inference 
+
+**test cases that should work after fixing: **
+
+- simple identity function: `(lambda (x) x)` should have type `'a -> 'a` (polymorphic) 
+
+- polymorphic let: `(let id = (lambda (x) x) in (id (id 5)))` should typecheck and return `int` 
+
+- nested lambdas: `(lambda (f) (lambda (x) (f x)))` should get type `('a -> 'b) -> 'a -> 'b` 
+
+- function composition: `(lambda (f) (lambda (g) (lambda (x) (f (g x)))))` should work 
+
+- self-application should be rejected: `(lambda (x) (x x))` should fail (occurs check) 
+
+- type errors like `(+ 5 true)` should be caught 
+
+**the files: **
+
+- `/app/syntax.py` - AST node definitions (don't modify) 
+
+- `/app/parser.py` - S-expression parser (don't modify) 
+
+- `/app/type_inference.py` - the buggy type checker (FIX THIS) 
+
+- `/app/test_programs/` - some test programs to try 
+
+**output format: ** after fixing, running `python3 /app/type_inference.py /app/test_programs/ *.ml` should: 
+
+1. Print "Type: <type>" for each successful type inference 
+
+2. Print "Error: <message>" for type errors 
+
+3. Programs that should fail (like self-application) will show errors - that's correct behavior 
+
+the test programs in `/app/test_programs/` have comments saying what type they should infer or whether they should fail. just make the type checker actually correct? 
+
+Dockerfile 
+
+FROM python:3.11-slim 
+
+WORKDIR /app 
+
+# Install system dependencies 
+
+RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/ *
+
+# Copy all environment files 
+
+COPY syntax.py /app/syntax.py 
+
+COPY parser.py /app/parser.py 
+
+COPY type_inference.py /app/type_inference.py 
+
+COPY test_programs/ /app/test_programs/ 
+
+""" 
+
+Test suite for Hindley-Milner type inference engine. 
+
+Verifies correctness of the type inference implementation: 
+
+1. Simple types are inferred correctly 
+
+2. Polymorphic let-bindings work 
+
+3. Occurs check prevents infinite types 
+
+4. Type errors are properly rejected 
+
+""" 
+
+import sys 
+
+import os 
+
+import pytest 
+
+sys.path.insert(0, "/app") 
+
+def run_type_inference(source: str): 
+
+""" 
+
+Run the type inference engine on source code. 
+
+Returns (type_string, error_message) tuple. 
+
+""" 
+
+# Import fresh to get the fixed version 
+
+import importlib 
+
+import type_inference 
+
+import parser 
+
+import syntax 
+
+importlib.reload(type_inference) 
+
+importlib.reload(parser) 
+
+importlib.reload(syntax) 
+
+from type_inference import infer_type 
+
+return infer_type(source) 
+
+def test_identity_function(): 
+
+"""Identity function should have polymorphic type 'a -> 'a""" 
+
+source = "(lambda (x) x)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Expected success, got error: {error}" 
+
+assert type_str is not None 
+
+# Type should be a function type with same var on both sides 
+
+assert "->" in type_str, f"Expected function type, got: {type_str}" 
+
+def test_let_polymorphism(): 
+
+""" 
+
+Let-polymorphism: id used at multiple types should work. 
+
+(let id = (lambda (x) x) in (id (id 5))) 
+
+The identity function is applied to an int, so it should work. 
+
+""" 
+
+source = """ 
+
+(let id = (lambda (x) x) 
+
+in (id (id 5))) 
+
+""" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Let-polymorphism failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_nested_lambda(): 
+
+""" 
+
+Nested lambda: (lambda (f) (lambda (x) (f x))) 
+
+Should have type: ('a -> 'b) -> 'a -> 'b 
+
+""" 
+
+source = "(lambda (f) (lambda (x) (f x)))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Expected success, got error: {error}" 
+
+assert type_str is not None 
+
+# Should be a function type 
+
+assert "->" in type_str 
+
+def test_occurs_check_failure(): 
+
+""" 
+
+Self-application (lambda (x) (x x)) should fail occurs check. 
+
+This requires x : 'a -> 'b and x : 'a, leading to 'a = 'a -> 'b 
+
+""" 
+
+source = "(lambda (x) (x x))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is not None, "Self-application should fail (occurs check)" 
+
+assert type_str is None 
+
+def test_higher_order_function(): 
+
+""" 
+
+(lambda (x) (x 5)) is a higher-order function. 
+
+x must have type (int -> 'a) for some 'a. 
+
+So the whole thing has type ((int -> 'a) -> 'a). 
+
+""" 
+
+source = "(lambda (x) (x 5))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Expected success, got error: {error}" 
+
+assert "->" in type_str 
+
+def test_arithmetic(): 
+
+"""Arithmetic expressions should typecheck as int""" 
+
+source = "(+ 5 (- 3 1))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Arithmetic failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_if_expression(): 
+
+"""If expressions with int branches should have type int""" 
+
+source = """ 
+
+(if (< 5 10) 
+
+then 42 
+
+else 0) 
+
+""" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"If expression failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_function_composition(): 
+
+""" 
+
+Function composition: (lambda (f) (lambda (g) (lambda (x) (f (g x))))) 
+
+Should have type: ('b -> 'c) -> ('a -> 'b) -> 'a -> 'c 
+
+""" 
+
+source = "(lambda (f) (lambda (g) (lambda (x) (f (g x)))))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Composition failed: {error}" 
+
+assert "->" in type_str 
+
+def test_type_mismatch(): 
+
+""" 
+
+Adding int and bool should fail. 
+
+(+ 5 true) 
+
+""" 
+
+source = "(+ 5 true)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is not None, "Type mismatch should fail" 
+
+assert type_str is None 
+
+def test_if_condition_must_be_bool(): 
+
+""" 
+
+If with non-bool condition should fail. 
+
+(if 5 then 1 else 2) 
+
+""" 
+
+source = "(if 5 then 1 else 2)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is not None, "Non-bool if condition should fail" 
+
+assert type_str is None 
+
+def test_fresh_type_variables(): 
+
+""" 
+
+Multiple lambdas should get different type variables. 
+
+This tests that fresh_var() increments its counter. 
+
+""" 
+
+source1 = "(lambda (x) x)" 
+
+source2 = "(lambda (y) y)" 
+
+type1, err1 = run_type_inference(source1) 
+
+type2, err2 = run_type_inference(source2) 
+
+assert err1 is None and err2 is None 
+
+# Both should be function types 
+
+assert "->" in type1 and "->" in type2 
+
+def test_let_binding_basic(): 
+
+"""Basic let binding should work""" 
+
+source = "(let x = 5 in (+ x 1))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Let binding failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_nested_let(): 
+
+"""Nested let bindings should work""" 
+
+source = """ 
+
+(let x = 5 
+
+in (let y = 10 
+
+in (+ x y))) 
+
+""" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Nested let failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_comparison_operators(): 
+
+"""Comparison operators should return bool""" 
+
+source = "(< 5 10)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Comparison failed: {error}" 
+
+assert type_str == "bool", f"Expected bool, got: {type_str}" 
+
+def test_equality(): 
+
+"""Equality should work on ints and return bool""" 
+
+source = "(= 5 5)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Equality failed: {error}" 
+
+assert type_str == "bool", f"Expected bool, got: {type_str}" 
+
+def test_occurs_check_complex(): 
+
+""" 
+
+More complex occurs check test. 
+
+(lambda (f) (f f)) should fail because f would need type 'a -> 'b and 'a 
+
+""" 
+
+source = "(lambda (f) (f f))" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is not None, "Self-application in lambda should fail (occurs check)" 
+
+assert type_str is None 
+
+def test_boolean_literals(): 
+
+"""Boolean literals should have type bool""" 
+
+source = "true" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Boolean literal failed: {error}" 
+
+assert type_str == "bool", f"Expected bool, got: {type_str}" 
+
+def test_integer_literals(): 
+
+"""Integer literals should have type int""" 
+
+source = "42" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Integer literal failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_subtraction(): 
+
+"""Subtraction should work on ints""" 
+
+source = "(- 10 5)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Subtraction failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+def test_multiplication(): 
+
+"""Multiplication should work on ints""" 
+
+source = "( * 3 4)" 
+
+type_str, error = run_type_inference(source) 
+
+assert error is None, f"Multiplication failed: {error}" 
+
+assert type_str == "int", f"Expected int, got: {type_str}" 
+
+test_output.py Figure 5: A synthesized task example from Meta-Task. Top: the task instruction describing a buggy type checker to fix. Middle: the Dockerfile setting up the environment. Bottom: the pytest verification tests. Meta-Task Instruction (Fixed Parts) 
+
+# Task: Generate a Terminal-Based AI Agent Task 
+
+You are an expert in [CATEGORY] with deep knowledge of best practices, common patterns, and real-world challenges in this domain. Your task is to create a high-quality terminal-based task that tests an AI agent’s ability to solve practical problems in a containerized environment. 
+
+## 1. Reference 
+
+Study the following examples in /app/examples/ : [EXAMPLE_LIST] . Start by exploring these. The real example shows the expected format, structure, and quality level. Do not imitate the example’s content, topic, or problem design. Create something completely original. 
+
+## 2. System Architecture 
+
+Your generated task is a self-contained package used in three stages: • Synthesis Environment (current): You create task files in /app/output/ . You can run solve.sh and tests to validate your task. You do NOT have Docker permissions here. • Agent Execution Environment: Built using docker build -f environment/Dockerfile . The solving agent works here to complete instruction.md . Files from environment/ are COPYed into the container. Agent has full terminal access but limited time. • Test Verification: tests/ directory is mounted at /tests/ . test.sh runs pytest /tests/test_outputs.py and writes 1 (pass) or 0 (fail) to /logs/verifier/reward.txt .
+
+The task must be fully self-contained. A fresh environment is built from your Dockerfile alone. All input data, dependencies, config files, and code referenced in instruction.md must be present inside the built container — either COPYed from environment/ or generated during docker build .
+
+## 3. Output Structure — Generate a [DIFFICULTY] task in /app/output/ :
+
+/app/output/ |-- instruction.md # Task description (absolute paths) |-- task.toml # Metadata (difficulty, category, tags) |-- environment/ | |-- Dockerfile # FROM, WORKDIR, deps, data generation | +-- [data/scripts/...] # (Optional) Input files, configs |-- solution/ | +-- solve.sh # Reference solution (not shown to agent) +-- tests/ |-- test.sh # Runs pytest, writes reward +-- test_outputs.py # Pytest verification tests 
+
+File-by-file guidance: 
+
+• instruction.md — Task description; state the goal, not the solution; use absolute paths • task.toml — Fill in difficulty, category, and tags • environment/Dockerfile — All input data must be present after docker build 
+
+• solution/solve.sh — Reference solution proving solvability (hidden from solving agent) • tests/test_outputs.py — Pytest tests that verify the solution 
+
+## 4. Task Category: [CATEGORY_CONTENT] 
+
+## 5. Writing Style: [SCENARIO_CONTENT] 
+
+Critical rules for instruction.md :• Describe the goal, not the solution. State what the agent should produce or achieve. Don’t explain the approach or give step-by-step guidance. • Keep it concise. Match the scenario’s detail level. Look at the real examples for calibration. • Use light formatting. Plain text and simple bullet points. The instruction should read naturally. • Let the environment carry detail. Put complexity in environment files, not in the instruction text. The agent should explore to understand the full picture. 
+
+## 6. Difficulty Requirements: [DIFFICULTY_SECTION] 
+
+## 7. Dockerfile Best Practices 
+
+• NEVER use heredoc syntax (« EOF ) — causes Docker build failure. Use printf , echo , python3 -c , or COPY a file instead. • NEVER COPY solution/ or tests/ into the image — they are mounted at runtime. • Verify every COPY source exists under environment/ before finalizing. • Pin dependency versions when stability matters: pip install numpy==1.24.0 
+
+• Delete setup scripts after execution : RUN bash setup.sh && rm setup.sh 
+
+• Required base : FROM python:3.11-slim , WORKDIR /app , install procps 
+
+## 8. Task Construction Approaches 
+
+• Implement from scratch — Agent builds something new given a goal • Reverse engineer — Agent figures out what a binary, data file, or system does • Build / compile — Agent compiles a real project from source, resolving dependencies • Configure / deploy — Agent sets up a system or service • Analyze / extract — Agent analyzes data or files to produce derived output • Optimize — Working code provided, agent must make it faster/smaller • Migrate / convert — Agent converts code or data between formats/languages/versions • Debug / fix — Broken code provided, agent must find and fix the issue 
+
+## 9. Self-Validation (REQUIRED) 
+
+Before finishing, you MUST validate your task is solvable and consistent: 1. Execute your solution: bash /app/output/solution/solve.sh 
+
+2. Run tests to verify: pytest /app/output/tests/test_outputs.py -v 
+
+3. Verify consistency across all components: 
+
+• instruction ↔ solution: Does solve.sh actually accomplish what instruction.md asks? • instruction ↔ environment: Does Dockerfile provide all files/tools mentioned in instruction? • solution ↔ tests: Does solve.sh output match exactly what tests expect (paths, formats, values)? • tests ↔ instruction: Every test traces back to a requirement in instruction.md , and every requirement has a corresponding test. • No answer leakage: Re-read instruction.md as if you’re the solving agent — does it reveal the solution approach? • Tests are robust: Tests verify behavior through execution (run code, check results), not just string matching or grep. 4. Verify difficulty requirements — Re-read the Difficulty section and verify your task meets each criterion. 5. If any check fails, fix and repeat from Step 1. 
+
+6. Clean up — Remove any output files created during validation. 
+
+## 10. Final Checklist 
+
+• All 6 required files present in /app/output/ 
+
+• Solvability: solve.sh runs successfully and produces correct output • Tests pass: pytest test_outputs.py -v shows all tests green • Tests are general: any correct solution should pass, not just your specific solve.sh 
+
+• Output discoverable: the solving agent can figure out what to produce from instruction.md 
+
+• Self-contained: all paths, data, and dependencies exist inside the built container • Consistency: instruction ↔ solution ↔ tests ↔ environment all correctly aligned • Originality: task is genuinely different from examples • Dockerfile: no heredoc syntax, valid packages, all COPY sources exist • No answer leakage: instruction.md states the goal without revealing the solution approach • Instruction style: follows the Writing Style rules — concise, natural, scenario-appropriate • Difficulty: task genuinely meets [DIFFICULTY] criteria 
+
+Figure 6: Meta-Task synthesis instruction template (fixed parts). Variable placeholders [...] are filled with category, scenario, and difficulty specifications at each generation. 
+
+Phase 1: Generate a New Category and Scenario 
+
+You are a creative task designer. Your job is to generate a category template and a scenario template that will guide the creation of a terminal-based evaluation task where an AI agent works in a Linux Docker container, using the terminal to accomplish goals through code, commands, and tools. These tasks test an agent’s ability to plan, explore, and accomplish goals . Given a goal (sometimes vague), the agent must figure out how to achieve it by exploring the environment and making decisions on its own. 
+
+Target difficulty: $difficulty .
+
+$difficulty_requirements 
+
+Your task patterns and examples should reflect this difficulty level. Your output is a starting point that another agent will build on, so aim for diversity and creativity. 
+
+Your Topic: $topic 
+
+Generate a category template around this topic. Below is a reference category template (on a different topic) showing the format and level of detail to aim for: 
+
+$category_ref 
+
+Reference Scenario Template 
+
+Below is an example scenario template showing the format. Generate a new scenario template with a different style. 
+
+$scenario_ref 
+
+Your Task 
+
+Write your output to the file /app/phase1_output.md containing a new category (around the topic $topic ) and a new scenario. For the category: Build around $topic . Come up with diverse task patterns, tools, data types, and challenges specific to this topic. Use the reference above only for format guidance. 
+
+For the scenario: Your scenario must follow this constraint: 
+
+$scenario_constraint 
+
+Design a scenario template that produces instruction.md files matching the constraint above. The scenario should specify the writing style, detail level, tone, and information strategy. 
+
+Output format: 
+
+=== CATEGORY === ### Category: [Name] [Your category content] === SCENARIO === For the `instruction.md ` you generate, use a **[style name]** style: [Your scenario content] 
+
+Figure 7: Multi-phase synthesis prompt (Phase 1). The agent dynamically designs a new category and scenario specification from seed signals. 
+
+Trajectory Quality Review Prompt 
+
+System: You are a training data quality reviewer for AI agent trajectories. We are training an AI agent (via SFT) to solve terminal-based tasks in Docker containers. Each trajectory is a sequence of (observation, action) pairs. We want to keep only trajectories that teach GOOD problem-solving behavior. The core question: Does this trajectory demonstrate the kind of behavior we want the trained model to replicate? What Makes a GOOD Trajectory (keep): 
+
+• Understanding a problem through exploration and reasoning • Implementing solutions by writing its own code • Testing, diagnosing failures, and iterating with meaningful changes • Making progress through its own capability, not through information shortcuts 
+
+What Makes a BAD Trajectory (discard): 
+
+Shortcutting (agent avoids doing the actual work): 
+
+• Agent obtains answers from the environment rather than computing them — reading files that contain pre-computed results, answers, hints, or solution algorithms • Agent reads files with red-flag names (“solution”, “fixed”, “answer”, “expected_output”, “correct”, “bugfix”, “hint”, “cheat”) • Agent runs pre-existing scripts that produce the required output rather than writing its own implementation • Agent sees computed values in data files and directly uses them as output without independently deriving them • Agent reads source code comments that explicitly state the bug and correct fix (e.g., “BUG: should be X instead of Y”) 
+
+Fabrication (agent produces fake results): 
+
+• Agent claims to have verified or computed something but terminal shows it never ran • Agent produces specific numerical values with no derivation trace anywhere in the trajectory • Agent marks task complete despite terminal being stuck or non-functional • Agent writes “verification passed” when the actual test command failed or was never executed 
+
+Unproductive behavior (low learning signal): 
+
+• Agent repeats the same approach many times without meaningful adaptation • Agent sends >10 consecutive turns of empty commands, Ctrl+C/Ctrl+D without recovery • Agent tries the same general approach >15 times without strategy changes • Trajectory is too short to contain substantive work 
+
+Key Distinction: Reading input data that the agent needs to PROCESS (log files, databases, CSV data) is NOT contamina-tion. Reading reference documentation (API docs, library source code) is NOT contamination. The key test: does the file contain the ANSWER to what the agent is supposed to produce, or does it contain RAW DATA that the agent must still reason about? 
+
+Output: KEEP or DISCARD with brief justification. 
+
+Figure 8: Trajectory-level LLM-as-Judge quality review prompt for filtering SFT training data.

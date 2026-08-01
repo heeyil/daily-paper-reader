@@ -1,0 +1,1395 @@
+Title: Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents
+
+URL Source: https://arxiv.org/pdf/2607.27484v1
+
+Published Time: Fri, 31 Jul 2026 00:15:15 GMT
+
+Number of Pages: 21
+
+Markdown Content:
+# Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents 
+
+## Jinwei Hu 1, Yi Qi 2, Xinmiao Huang 1, Youcheng Sun 3, Yi Dong 1, Xiaowei Huang 1
+
+> 1
+
+School of Computer Science and Informatics, University of Liverpool, UK 
+
+> 2
+
+Department of Computer Science, University of Leeds, UK 
+
+> 3
+
+Department of Computer Science, Mohamed bin Zayed University of Artificial Intelligence, UAE 
+
+Abstract 
+
+Reusable skills are becoming a standard interface for extend-ing language agents with task procedures. Yet evaluators usu-ally infer skill use from visible reasoning or the agent’s own attribution. These signals show what the agent appears to use, not whether the skill changed its decision. We ask whether skill-augmented agents exhibit a Reasoning Backroom , a systematic gap between stated skill use and intervention-measured influence. We introduce Backtrace , an evaluation framework that pairs each skill-conditioned answer with a matched no-skill counterfactual, intervenes on skill meaning, wording, identity, content, and assignment, and elicits attri-bution only after the answer is committed. We instantiate the framework as BackroomBench , a verified testbed spanning controlled logic and competition mathematics, multiple skill conditions, single-agent and multi-agent settings, and diverse model families. Our evaluation reveals a pervasive provenance failure. Across models and domains, stated skill use often remains stable while causal reliance and signed utility vary, producing both silent uptake and performative use. Behavioral effects follow procedural content more reliably than displayed skill identity, whereas stated attributions respond strongly to artifact availability. Observational detectors based on direct skill-use claims, text mentions, trace similarity, and an LLM judge do not identify which decisions actually depend on the skill. In multi-agent systems, skill influence can survive com-munication even after its source is lost, while no-skill teams still name skills and sources that were never supplied. These findings establish the Reasoning Backroom as a general AI provenance problem whose audit requires intervention. 
+
+## Introduction 
+
+Reusable skills package instructions, procedures, and verifi-cation guidance that LLM agents can invoke when needed. They have become a practical interface for extending agents across software, cybersecurity, embodied, and reasoning tasks (Anthropic 2026; Hu et al. 2026b; Li et al. 2026). These skill-augmented agents produce not only answers but also reasoning traces, citations to retrieved procedures, and statements about which skills they believe they used. In prac-tice, these observable signals form a reasoning front room 
+
+through which developers and evaluators can monitor or test how an answer was produced (Wang et al. 2026; Hu et al. 2026a). Existing benchmarks reinforce this view by asking whether skills improve performance, are retrieved appropri-ately, or can be generated from experience (Cho, Kang, and Kim 2026; Liu et al. 2026; Zhou et al. 2026). Yet a central assumption behind this interface remains untested. Does the front room faithfully reveal which skill influenced the deci-sion, or do language agents exhibit a Reasoning Backroom ?The backroom can take several forms that look similar from the outside. A skill may change an answer but remain unacknowledged; it may be cited even though removing it changes nothing; or it may affect the decision in a way that is beneficial on some instances and harmful on others, despite an identical claim of use. Behavior may follow procedural content even when claimed use does not identify it. In a multi-agent system (MAS), the problem becomes harder as skill-shaped information passes through specialists, verifiers, and aggregators, allowing influence to survive after its source becomes ambiguous or reassigned. Neither final accuracy nor a plausible trace distinguishes these cases, and prior studies show that visible reasoning can omit or mislead behaviorally relevant inputs (Turpin et al. 2023; Paul et al. 2024; Hao et al. 2026; Arcuschin et al. 2025; Hu et al. 2026d). The evaluation problem is therefore not simply whether a skill is present or mentioned, but whether its stated role matches its causal effect on the decision. We investigate this question with Backtrace , a framework for evaluating causal skill attribution without claiming direct access to a model’s internal mechanism. Backtrace com-mits an answer before eliciting attribution, pairs each skill-conditioned run with a matched no-skill counterfactual, and intervenes on semantics, rules, names, content, assignment, and communication. These comparisons separate whether a skill changes the answer, whether that change helps or harms, and whether the system’s stated skill use matches that depen-dence. We instantiate the framework as BackroomBench 
+
+based on Logic and MATH problems (Saparov and He 2023; Hendrycks et al. 2021), seven frozen skill conditions, and matched single-agent and role-structured evaluations across twelve model variants. Logic provides rule chains and an-swers known by construction; Mathematics tests transfer to a natural domain. Our audit finds that the Reasoning Backroom is perva-sive rather than an isolated model failure. Across the tested models, interventions, reasoning depths, domains, and orga-nizations, observable claims often remain stable while causal reliance and signed utility vary. Agents silently absorb some skills, confidently cite inert ones, and follow procedural con-arXiv:2607.27484v1 [cs.AI] 29 Jul 2026 tent without identifying the active component. In MAS, the separation widens as influence survives communication af-ter its source is lost, agents misidentify which teammate mattered, and no-skill teams name skills and sources that were never supplied. These mismatches persist under natu-ral Mathematics tasks and are not resolved by detectors built from visible traces or explicit skill-use claims. An apparently coherent front room can therefore misstate whether, how, and through whom an external capability shaped a decision. The Reasoning Backroom is a general AI provenance problem whose causal claims require intervention. Our contributions are summarized as below: 
+
+• We formalize the Reasoning Backroom as an evaluation problem and characterize its individual and distributed manifestations, such as silent uptake, performative use, propagation, laundering, and contribution mismatch. 
+
+• We introduce Backtrace and BackroomBench , com-bining controlled skill interventions with post-decision attribution and paired single-agent/MAS configuration. 
+
+• We establish twelve-model Logic and six-model cross-domain evidence that observable reasoning and stated skill use do not faithfully identify the magnitude, direc-tion, or source of skill influence without intervention. 
+
+## Related Work 
+
+The Rise of Agent Skills. Large language model agents increasingly extend their competence through external, reusable artifacts rather than parameter updates alone. Early tool-learning systems taught models to decide which APIs to invoke and how to compose calls for complex instructions (Schick et al. 2023; Qin et al. 2024). A parallel line of work moved procedural knowledge itself outside model weights. Reflexion retains linguistic feedback in episodic memory, ExpeL distills experience into reusable natural-language in-sights, AutoGuide extracts context-aware guidelines from offline trajectories, and TAPAS synthesizes executable pro-grams that adapt an agent to changing environments (Shinn et al. 2023; Zhao et al. 2024; Fu et al. 2024; Hu et al. 2026b). Although these artifacts differ in representation, they es-tablish a common design pattern in which an agent stores acquired procedures and selectively reuses them on later tasks. Contemporary platforms implement this pattern as named skills that package instructions, applicability condi-tions, scripts, and supporting resources for inference-time invocation (Anthropic 2026). A skill therefore occupies a distinct role. A tool defines an available action, whereas a skill specifies procedural knowledge for deciding when and how that action should be used. Unlike an ephemeral prompt, a skill also has a stable identity and can be retrieved, revised, shared, and transferred between agents, making skills a prac-tical unit of agent capability (Li et al. 2026). 
+
+Agent Evaluation. Agent evaluation has expanded with this ecosystem. General benchmarks measure end-to-end task success across heterogeneous interactive environments, enterprise knowledge work, and open-ended computer use (Liu et al. 2024; Drouin et al. 2024; Xie et al. 2024). Tool-centered evaluations further test whether models can retrieve and execute APIs, benefit from tools and feedback over mul-tiple turns, or complete the component stages of tool use such as planning, retrieval, reasoning, and review (Qin et al. 2024; Wang et al. 2024; Chen et al. 2024). Recent skill-specific benchmarks ask whether supplied skill files improve outcomes and whether agents retrieve the appropriate arti-fact from a library (Li et al. 2026; Cho, Kang, and Kim 2026). Together, these evaluations cover realistic tasks and fine-grained agent stages, but their evidence centers on ca-pability: task completion shows success, component scores locate failures, and retrieval confirms availability or selec-tion. None establishes whether an answer counterfactually depended on skill content, whether that influence helped or harmed, or whether stated use matched it. We address this gap by testing the causal influence of external artifacts as part of execution provenance (Wang et al. 2026; Hu et al. 2026c). Unlike CoT faithfulness, which audits whether a generated rationale reflects the prediction process, skill provenance au-dits whether an external reusable artifact changed the deci-sion and whether its identity and source are recovered. 
+
+## Problem Formulation 
+
+Skill-Augmented Decision Process 
+
+Let X be the instance space and let x ∈ X have a verifier-approved target y∗. We audit a frozen skill family s under conditions indexed by v ∈ V . The artifact supplied in condi-tion v is sv , with s∅ = ∅ denoting the no-skill condition. Let 
+
+π = ( πans , π attr ) denote the frozen agent system, where πans 
+
+is its answer channel and πattr is its post-decision attribu-tion channel. The execution context ω collects all non-target factors held fixed within a comparison, including the model, prompt frame, decoding policy, system organization, and ran-dom state when it is controllable. The answer channel first produces a visible reasoning trace τv and free-form answer 
+
+ˆyv ,       
+
+> (τv,ˆyv) = πans (x, s v;ω).(1)
+
+Only after the answer is committed does the agent produce a structured attribution response         
+
+> qv=πattr (x, s v, τ v,ˆyv;ω).(2)
+
+This ordering prevents the attribution request from affecting the decision it is meant to describe. Let ν be the deterministic domain normalizer, let dv (x; ω) = ν(ˆ yv ) be the normalized decision, and let d∗ = ν(y∗) be the normalized target. We write dv when the instance and execution context are clear and suppress ω from subsequent per-instance quantities. A validated extraction function g maps qv to       
+
+> g(qv) =  av(s, x ),ˆpv(s, x ),(3)
+
+where av ∈ { 0, 1} records whether the system claims to have used the provided skill and ˆpv records its claimed provenance. Provenance is the skill identity in a single-agent system and the skill-source pair in a multi-agent system. 
+
+The Reasoning Front Room 
+
+Definition 1 (Reasoning front room) The reasoning front room for condition v is the observable record      
+
+> Fv(x) =  τv, d v, q v
+> .(4)
+
+The front room contains all signals available to an observation-only audit. It shows the answer, exposed reason-ing, and credited skill, but not whether the answer depended on that skill. Accuracy is likewise insufficient because it eval-uates the outcome rather than its cause. 
+
+The Intervention-Defined Reasoning Backroom 
+
+We identify answer-level dependence by coupling the skill-conditioned decision dv (x; ω) with the no-skill decision 
+
+d∅(x; ω) under the same execution context. For any proposi-tion P , let ⊮[P ] equal one when P is true and zero otherwise. The intervention defines causal reliance and signed utility as               
+
+> rv(s, x ) = ⊮[dv̸=d∅],uv(s, x ) = ⊮[dv=d∗]−⊮[d∅=d∗].(5)
+
+Reliance records decision change. Signed utility records whether it helps or harms and is zero otherwise. This answer-level measure is conservative. When rv = 0 , deletion pre-serves the normalized answer, but the skill may still alter latent computation. 
+
+Definition 2 (Reasoning backroom) The reasoning back-room is the intervention-defined state      
+
+> Bv(x) =  rv(s, x ), u v(s, x ).(6)
+
+This definition does not claim access to the model’s private computation. It isolates a behavioral fact unavailable from a single visible trace. A Reasoning Backroom failure oc-curs when the front-room claim disagrees with intervention-defined dependence,         
+
+> mv(s, x ) = ⊮[av(s, x )̸=rv(s, x )] .(7)
+
+The pair (rv , a v ) induces four instance-level states. (1 , 1) is 
+
+faithful explicit use , and (0 , 0) is correct rejection . (1 , 0) is 
+
+silent uptake , where the artifact changes the answer without being claimed. (0 , 1) is performative use , where the arti-fact is claimed despite having no answer-level effect. The utility variable uv further establishes whether any measured dependence helps or harms the decision. 
+
+Distributed Reasoning Backrooms 
+
+A multi-agent system is Σ = ( V, E, σ ), where V is the agent set, E is the message topology, and σ(w) is the skill set assigned to agent w ∈ V . Suppose a designated source agent 
+
+j ∈ V receives sv . Let dΣ 
+
+> v
+
+denote the team’s final decision and let dΣ 
+
+> v, −(j,s )
+
+denote the matched decision after removing only sv from σ(j). Cross-agent reliance is      
+
+> rΣ
+> v(s, j, x ) = ⊮
+> h
+> dΣ
+> v̸=dΣ
+> v, −(j,s )
+> i
+> .(8)
+
+When rΣ 
+
+> v
+
+= 1 , skill influence has propagated from its source into the team decision. The corresponding causal provenance is pv = ( sv , j ). The final attribution response instead exposes the claimed provenance ˆpv . We define the instance-level laun-dering indicator as         
+
+> ℓv(s, j, x ) = rΣ
+> v(s, j, x )⊮[ˆ pv(s, x )̸= ( sv, j )] .(9)
+
+Skill laundering therefore describes a decision that remains sensitive to the source skill even though the team fails to recover its identity and origin. For any agent w ∈ V , let 
+
+dΣ 
+
+> v, −w
+
+be the matched team decision after removing w while preserving the remaining organization. Agent-removal coun-terfactuals define the causal contribution profile         
+
+> cv(w, x ) = ⊮
+> h
+> dΣ
+> v̸=dΣ
+> v, −w
+> i
+> ,w∈V. (10)
+
+Disagreement between this profile and the team’s stated di-vision of labor is contribution mismatch . These definitions separate skill influence, effect direction, and provenance be-fore benchmark aggregation. 
+
+## Methodology 
+
+We propose Backtrace , a causal evaluation framework that tests and evaluates claimed skill use against intervention-measured influence. BackroomBench instantiates it over tasks, frozen artifacts, intervention conditions, system or-ganizations, and scoring code. Separating framework from benchmark enables the same audit across skills and domains. 
+
+Backtrace Audit Protocol 
+
+Given a frozen system, task distribution, and named skill, 
+
+Backtrace asks whether changing that artifact changes the decision and whether subsequent attribution identifies the influence. It requires a stable answer normalizer or verifier but no access to model internals. Every comparison fixes the task instance, model, prompt frame, decoding policy, and organization while varying only the skill or its assignment. 
+
+Paired execution. For each instance, the audit records the no-skill and every skill-conditioned decision before asking about attribution. Once each answer is committed, a schema-constrained query elicits claimed skill use and, for teams, its source role; the no-skill run uses the same schema to expose unsupported provenance. We then join these records by instance to measure utility, answer sensitivity, attribution, and provenance. 
+
+Skill interventions. To isolate which aspect of a supplied skill drives a decision, we construct matched interventions that vary its presence, wording, displayed identity, and pro-cedural content while holding the task and system fixed. Re-moving the artifact defines the shared no-skill counterfactual; six skill-bearing variants probe distinct artifact properties, as Table 1 summarizes. Appendix A gives a concrete example and its cross-domain counterpart. 
+
+Validation and scoring. Answer and attribution parsers validate each record before scoring. We allow at most one format-only repair, which cannot re-solve the task. Unre-solved final answers count as incorrect for accuracy; causal and attribution metrics exclude invalid pairs and report their denominators. All conditions for a model share the backend, decoding policy, context budget, and generation budget. Ap-pendix A gives the algorithm, design assumptions, recovery policy, and execution settings. 
+
+BackroomBench construction. BackroomBench in-stantiates the audit with 300 controlled PrOntoQA-style Logic problems (Saparov and He 2023), 283 natural MATH-500 problems (Hendrycks et al. 2021), seven intervention Condition Intervention Preserved control Identified behavior None delete the skill artifact task, system, and organization paired counterfactual baseline Correct supply the valid domain procedure task and system utility and answer reliance Paraphrase rewrite without changing meaning procedural semantics stability to surface wording Misleading permit reverse rule application name and remaining scaffold literal execution versus selective use Name swap relabel the correct procedure procedural body whether effects survive relabeling Content swap replace the body under the correct name displayed identity whether effects follow content Irrelevant supply a complete other-domain procedure artifact structure hidden effects and citation discipline 
+
+Table 1: Backtrace skill interventions and the artifact property isolated by each contrast. conditions, and matched single- and multi-agent organiza-tions. Logic balances five proof depths; reversing one desig-nated rule leads into a checker-verified wrong-answer chain, so we can test whether agents follow misleading skill con-tent. Mathematics tests the same gap without a constructed trigger. Frozen artifacts and identical instances are reused across models and organizations to avoid task-selection con-founds. Appendix A details generation, sampling, schemas, verification, and roles. 
+
+Evaluation Metrics 
+
+Let Nall denote the full predeclared cohort. For a skill-bearing condition v, Iv contains instances with normalized skill and no-skill answers and a valid attribution record, and 
+
+Nv = |I v |. Accuracy uses Nall , while causal and attribution metrics use Nv ; distributed metrics use their reported valid intersections. This aggregation separates whether the artifact changes the answer, whether that change helps, and whether stated skill use matches the dependence. 
+
+Reliance, attribution, and utility. The reliance rate and observable attribution rate are 
+
+Rv = 1
+
+Nv
+
+X
+
+> i∈I v
+
+rv (s, x i), Av = 1
+
+Nv
+
+X
+
+> i∈I v
+
+av (s, x i). (11) 
+
+Both are descriptive. High reliance can reflect helpful guid-ance or harmful interference, while high attribution can re-flect faithful use or indiscriminate citation. Let zv (i) = 
+
+⊮[dv (xi) = d∗ 
+
+> i
+
+] when the answer parses and zv (i) = 0 
+
+otherwise. Accuracy is Acc v = N −1all 
+
+PNall  
+
+> i=1
+
+zv (i), where 
+
+d∗ 
+
+> i
+
+= ν(y∗ 
+
+> i
+
+), and Acc ∅ is defined analogously. We present their signed difference alongside reliance and attribution, 
+
+∆Acc v = Acc v − Acc ∅ = 1
+
+Nall 
+
+> Nall
+
+X
+
+> i=1
+
+ zv (i) − z∅(i). (12) 
+
+Attribution fidelity. For a fixed condition, let nra count instances with reliance r and attribution a. The Backroom Gap is the empirical disagreement rate 
+
+Γv = n10 + n01 
+
+Nv
+
+= 1
+
+Nv
+
+X
+
+> i∈I v
+
+mv (s, x i). (13) 
+
+Lower Γ is better. Its two directions are summarized by the silent-uptake rate and performative-use rate 
+
+SUR = n10 
+
+n10 + n11 
+
+, PUR = n01 
+
+n01 + n11 
+
+, (14) 
+
+when their denominators are nonzero. SUR and PUR are conditional error rates and do not add to Γ.We summarize overlap between measured reliance and claimed use with Attribution Fidelity Score. For two non-negative values, HMean( z1, z 2) = 2 z1z2/(z1 + z2) denotes their harmonic mean whenever the denominator is positive. 
+
+AFS = 2n11 
+
+2n11 + n10 + n01 
+
+= HMean(1 − SUR , 1 − PUR) .
+
+(15) 
+
+AFS ranges from 0 to 1 and is higher-is-better. It is un-defined when neither reliance nor attribution occurs. Unlike an aggregate of performance and attribution, AFS does not reward a skill merely for changing many answers. 
+
+Distributed attribution. For the designated source agent 
+
+j and a valid distributed intersection of size N , we define cross-agent propagation, laundering, provenance recovery, and false provenance as 
+
+CAP v = 1
+
+N
+
+X
+
+> i
+
+rΣ 
+
+> v
+
+(s, j, x i),
+
+LR v = 1
+
+N
+
+X
+
+> i
+
+ℓv (s, j, x i),
+
+PR v = 1
+
+N
+
+X
+
+> i
+
+⊮[ˆ pv (s, x i) = ( sv , j )] ,
+
+FPR = 1
+
+N
+
+X
+
+> i
+
+⊮[q∅ 
+
+> i
+
+names any skill or source ].
+
+(16) 
+
+Here LR is the joint rate at which the source skill changes the team decision but final attribution misses its skill–source pair. Hence LR v ≤ CAP v ; LR is not 1 − PR because PR also evaluates causally inactive instances. The variable q∅
+
+> i
+
+denotes the no-skill attribution response, so FPR captures unsupported skill naming rather than false recovery of sv
+
+specifically. To compare organizations on the same skill and paired cohort, we use OE v = CAP v − Rv . Positive val-ues denote amplification of answer sensitivity and negative values attenuation. We compare the intervention-based con-tribution vector cv (xi) = ( cv (w, x i)) w∈V against the team’s stated roles. 
+
+## Experiments 
+
+Experimental Setup 
+
+Models and domains. We evaluate Qwen2.5-Instruct and DeepSeek-R1-Distill-Qwen at 7B, 14B, and 32B (Qwen et al. 2025; Guo et al. 2025), together with the nano and mini vari-ants of GPT-4.1, GPT-5, and GPT-5.4. All twelve models run the 300-instance Logic audit under the shared no-skill base-line and six skill-bearing conditions. A additional six-model 2 4 6 8 10 
+
+Proof depth                                                 
+
+> Qwen2.5-7B
+> Qwen2.5-14B
+> Qwen2.5-32B
+> R1-Distill-7B
+> R1-Distill-14B
+> R1-Distill-32B
+> GPT-4.1-nano
+> GPT-4.1-mini
+> GPT-5-nano
+> GPT-5-mini
+> GPT-5.4-nano
+> GPT-5.4-mini
+> .67 .58 .42 .32 .18
+> .88 .83 .73 .57 .68
+> .82 .88 .75 .77 .73
+> .52 .58 .43 .40 .40
+> .80 .80 .68 .53 .60
+> .83 .88 .75 .62 .58
+> .83 .67 .50 .53 .40
+> .98 .95 .95 .95 .93
+> .97 .92 .88 .80 .70
+> 1.00 .98 1.00 1.00 .98
+> .93 .92 .92 .83 .82
+> .95 .85 .85 .77 .63
+
+(a) Task accuracy     
+
+> 246810
+
+Proof depth                                                 
+
+> .28 .28 .18 .37 .33
+> .23 .27 .35 .23 .37
+> .12 .15 .20 .33 .25
+> .33 .35 .32 .42 .49
+> .22 .27 .41 .42 .33
+> .20 .14 .15 .19 .31
+> .35 .35 .40 .38 .42
+> .05 .05 .07 .15 .12
+> .05 .10 .13 .32 .37
+> .00 .02 .00 .00 .02
+> .67 .53 .55 .58 .48
+> .63 .53 .48 .68 .45
+
+(b) Causal reliance (R)     
+
+> 246810
+
+Proof depth                                                 
+
+> 1.00 1.00 .98 1.00 1.00
+> 1.00 1.00 1.00 1.00 1.00
+> 1.00 1.00 1.00 1.00 1.00
+> .98 .95 .98 .98 1.00
+> .98 1.00 1.00 1.00 .98
+> 1.00 1.00 1.00 1.00 1.00
+> 1.00 .98 .98 1.00 1.00
+> 1.00 .98 1.00 1.00 1.00
+> .98 .97 1.00 .97 .88
+> 1.00 1.00 1.00 1.00 1.00
+> 1.00 1.00 1.00 1.00 1.00
+> 1.00 1.00 1.00 1.00 1.00
+
+(c) Claimed use (A)      
+
+> 0.0 0.2 0.4 0.6 0.8 1.0
+
+Rate Figure 1: Correct-skill results across Logic proof depths (60 instances per depth). intersection runs both the complete 283-problem Mathemat-ics audit for generalization analysis. 
+
+Paired evaluation. Each skill-conditioned answer is paired by instance with the same no-skill answer, normalized to a domain-specific decision. After the decision is committed, the agent identifies which supplied skill it used. The all-condition tables jointly present signed utility ∆Acc and At-tribution Fidelity Score (AFS). The former captures whether a skill helps or harms, while the latter measures instance-level alignment between intervention-defined reliance and claimed use. The depth analysis reports accuracy, causal reliance R,and claimed use A separately. Accuracy retains every termi-nal generation, whereas reliance and attribution metrics use valid parsed pairs and report their effective denominators. All conditions within a model-domain comparison share the same prompt frame, backend, decoding policy, and budgets. Each condition covers its full predeclared cohort; conclu-sions rely on paired patterns repeated across models and conditions. Appendix A gives execution details. Complete metric decompositions appear in Appendix H; further con-trols are organized by RQ thereafter. 
+
+RQ1: Do Agents Exhibit a Reasoning Backroom? 
+
+Logic. Skill-augmented agents exhibit a clear Reason-ing Backroom. Figure 1 shows nearly saturated correct-skill attribution even as accuracy and removal-defined reliance vary across models and proof depths. This decomposition directly reveals stable claims despite changing causal depen-dence. Table 2 extends the comparison across all interven-tions with AFS. Its sharp variation shows that claimed use tracks reliance unreliably, even under the same valid proce-dure. Silent uptake under swapped and irrelevant artifacts further shows that the mismatch runs in both directions. It also persists under paraphrased and misleading artifacts, so it is not specific to identity or content swaps. Crucially, joint elicitation leaves attribution at .98 –1.00 ; even at perfect base-line accuracy, eight models claim use despite zero deletion reliance. Thus neither query order nor task failure explains the observed saturation (Appendix E). 
+
+Generalization to Mathematics. The Reasoning Back-room generalizes from controlled Logic to natural Math-ematics. Table 3 shows the same separation without a con-structed trigger. No model–condition pair exceeds .43 AFS, and low fidelity spans valid, paraphrased, altered, and irrel-evant artifacts. The result is therefore neither created by an adversarial condition nor explained by average performance shifts. What transfers is a direct failure of claimed use to dis-tinguish decisions that change with the skill from those that do not. Together, the two domains establish the Backroom as a recurring property of skill attribution across controlled and natural tasks, rather than a quirk of one benchmark con-struction. 
+
+RQ2: What Determines Skill Influence? 
+
+Procedural content, rather than wording or displayed iden-tity, carries most skill influence. In Table 2, paraphrasing the procedure or changing its name largely preserves the direc-tion and magnitude of the correct-skill effect across model rows. Replacing the body under the original name breaks that correspondence and collapses the largest gains. Com-paring Name swap, which preserves content, with Content swap, which preserves identity, shows that the procedural Correct Paraphrase Misleading Name swap Content swap Irrelevant Model Base ∆Acc AFS ↑ ∆Acc AFS ↑ ∆Acc AFS ↑ ∆Acc AFS ↑ ∆Acc AFS ↑ ∆Acc AFS ↑                                                                                                                                                            
+
+> Qwen -7B .48 -.05 .45 -.03 .53 -.01 .50 +.02 .51 -.01 .47 -.02 .53
+> Qwen -14B .57 +.17 .45 +.14 .49 +.15 .47 +.16 .45 +.01 .38 +.01 .00
+> Qwen -32B .79 .00 .35 +.03 .33 .00 .36 +.03 .34 -.01 .30 -.02 .28
+> DSR1 -7B .47 -.01 .54 +.02 .53 +.01 .54 -.03 .45 +.01 .53 +.05 .44
+> DSR1 -14B .68 .00 .50 +.04 .48 .00 .51 +.01 .52 -.04 .37 -.10 .29
+> DSR1 -32B .71 +.03 .33 +.05 .31 +.02 .26 +.04 .26 +.01 .29 -.03 .31
+> GPT-4.1 -nano .58 .00 .55 +.02 .54 -.01 .50 +.01 .48 -.03 .57 -.07 .52
+> GPT-4.1 -mini .94 +.02 .15 +.02 .14 +.03 .11 +.02 .15 .00 .13 -.02 .03
+> GPT-5 -nano .86 -.01 .30 -.05 .34 -.01 .34 -.01 .32 -.02 .22 +.01 .20
+> GPT-5 -mini 1.00 -.01 .01 -.01 .02 -.19 .31 -.01 .02 .00 .01 -.01 .00
+> GPT-5.4 -nano .39 +.49 .72 +.47 .69 +.46 .69 +.43 .65 +.07 .18 +.02 .17
+> GPT-5.4 -mini .29 +.52 .72 +.56 .74 +.50 .70 +.50 .69 -.01 .24 .00 .19
+
+Table 2: Logic single-agent results across all skill interventions (300 instances per condition).                                                                                           
+
+> Correct Paraphrase Misleading Name swap Content swap Irrelevant Model Base ∆Acc AFS ↑∆Acc AFS ↑∆Acc AFS ↑∆Acc AFS ↑∆Acc AFS ↑∆Acc AFS ↑
+> Qwen -14B .78 .00 .26 -.01 .29 -.02 .32 -.02 .29 .00 .23 -.01 .00
+> Qwen -32B .77 -.02 .27 -.02 .25 +.02 .29 .00 .29 .00 .22 .00 .00
+> DSR1 -14B .84 +.03 .20 +.03 .18 +.05 .14 +.02 .17 .00 .18 +.03 .22
+> GPT-4.1 -mini .86 -.01 .17 .00 .16 .00 .14 -.01 .11 .00 .11 .00 .00
+> GPT-5 -mini .87 .00 .14 -.02 .11 .00 .11 +.01 .14 +.01 .11 -.01 .18
+> GPT-5.4 -nano .78 +.01 .33 +.04 .27 +.01 .31 +.05 .26 +.02 .27 +.02 .43
+
+Table 3: Mathematics single-agent results across all skill interventions (283 instances per condition). body drives the behavioral effect. AFS remains low under the identity controls, showing that claimed use does not identify which artifact component changed the decision. 
+
+Model-specific execution determines whether that con-tent helps, harms, or cancels out. Misleading preserves the scaffold but permits reverse rule application into a verified wrong-answer path. Most models nevertheless retain a profile close to the correct procedure, whereas GPT-5-mini converts the same intervention into systematic harm. Figure 2 explains this divergence: comparable amounts of answer change can be dominated by helpful flips, harmful flips, or opposing flips that cancel in aggregate. Agents therefore do not apply a skill as an all-or-nothing capability. This pattern is consistent with selective application or over-extension. Procedural content constrains available influence, while model-specific execu-tion determines its direction. Because ∆Acc is the signed balance of helpful and harmful flips, near-zero utility can conceal substantial decision churn. 
+
+RQ3: Can MAS Preserve Skill Provenance? 
+
+Skill influence can propagate while its causal provenance is lost. In Table 4, LR is often nearly as large as CAP across both domains. Because LR counts propagation events whose exact skill–source pair is not recovered, the gap between CAP and LR is the propagated influence whose provenance survives. For most systems this gap is negligible: the source skill changes the team decision, yet the team fails to iden-tify it afterward. Conversely, GPT-5-mini frequently names a source on Logic although source-skill removal rarely changes the decision. When influence persists but the named skill or source is wrong, this is skill laundering.                           
+
+> Logic Mathematics Model CAP LR PR FPR CAP LR PR FPR
+> Qwen -14B .33 .33 .01 1.00 .13 .13 .00 1.00
+> Qwen -32B .25 .20 .17 1.00 .17 .16 .01 1.00
+> DSR1 -14B .39 .39 .00 .97 .15 .15 .00 .77
+> GPT-4.1 -mini .03 .03 .08 1.00 .11 .09 .20 1.00
+> GPT-5 -mini .01 .00 .71 1.00 .09 .09 .01 .99
+> GPT-5.4 -nano .11 .11 .07 1.00 .17 .17 .00 .99
+
+Table 4: Multi-agent results on 150 Logic and 142 Mathe-matics instances; LR is propagated influence without exact skill–source recovery. 
+
+A plausible source attribution is not causal evidence. 
+
+Skill naming remains pervasive in no-skill teams throughout Table 4, showing that a coherent provenance narrative can arise without any supplied artifact. High FPR directly mea-sures unsupported provenance construction when no skill or source exists. Together, LR close to CAP and pervasive FPR expose a two-sided failure. Teams lose provenance when influence is present, yet construct it when no artifact was 100 50 0 50 100 150           
+
+> Answer flips (count)
+> Qwen2.5-7B
+> Qwen2.5-14B
+> Qwen2.5-32B
+> R1-Distill-7B
+> R1-Distill-14B
+> R1-Distill-32B
+> GPT-4.1-nano
+> GPT-4.1-mini
+> GPT-5-nano
+> GPT-5-mini
+> GPT-5.4-nano
+> GPT-5.4-mini
+> (a) Correct skill
+> 100 50 050 100 150
+> Answer flips (count)
+> (b) Misleading skill
+> 100 50 050 100 150
+> Answer flips (count)
+> (c) Irrelevant skill
+> Flips toward correct
+> Flips toward wrong
+
+Figure 2: Logic answer-flip directions relative to paired no-skill runs; right bars improve correctness and left bars reduce it. 
+
+Figure 3: Organization effects for the six shared systems with a broken y-axis. Error bars show 95% paired-bootstrap intervals; lines connect domains within each model. supplied. Figure 3 shows that team organization can am-plify or attenuate skill sensitivity, with values near zero pre-serving the single-agent effect. Distribution attenuates some Logic effects, mildly amplifies others, and yields no clear Mathematics shift. Thus teams do not consistently amplify single-agent effects. Provenance is lost whether organization amplifies or attenuates the effect. The distributed Backroom is therefore an AI-provenance failure, not merely a commu-nication effect. 
+
+RQ4: Can Observation Replace Intervention? 
+
+The tested visible signals do not reliably identify whether a skill changed an agent’s decision. Table 5 compares four observational signals against deletion-defined reliance. Al-though they flag runs at very different rates, their precision remains near the .34 prevalence of reliance. At this base rate, a flagged run is no more likely than an average run to show actual reliance. Explicit attribution achieves high recall by la-beling almost every run, while direct mentions flag few runs and miss most reliance events. Semantic similarity and the LLM judge fall between these extremes without better sepa-rating reliance from non-reliance. Thus prediction frequency changes across signals, but the ability to identify reliance does not, because a single execution lacks the counterfactual decision. 
+
+Observable signal Prec. Recall F1 Pos. rate Explicit attribution .32 .90 .47 .95 Skill mention .37 .08 .13 .07 Trace–skill similarity .31 .45 .37 .49 LLM judge .31 .69 .43 .76 
+
+Table 5: Observational detectors of deletion-defined skill reliance on 3,600 Logic runs. 
+
+Performance does not reveal whether a skill changed the decision. Outcome improvement already requires a paired no-skill result and records only the net beneficial effect. It misses harmful and correctness-preserving answer changes and can vanish when helpful and harmful flips cancel, as Figure 2 demonstrates. The detectors in Table 5 observe only one execution and cannot determine whether a skill changed a particular decision. Confirming dependence requires in-tervention. 
+
+## Conclusion 
+
+We evaluate whether skill-augmented agents expose the causal influence of external procedures in single- and multi-agent systems. We find a pervasive Reasoning Backroom: attribution diverges from decision dependence, effects fol-low procedural content rather than displayed identity, and propagated influence loses provenance. Our interventions test whether the claimed skill and source actually changed the decision. Our answer-level audit cannot recover inter-nal mechanisms or exclude equivalent pretrained procedures, and covers only frozen textual skills, two domains, selected systems, and mostly deterministic executions. Future work should audit adaptive, long-lived agents. References 
+
+Anthropic. 2026. Agent Skills. https://platform.claude.com/ docs/en/agents-and-tools/agent-skills/overview. Accessed 2026-07. Arcuschin, I.; Janiak, J.; Krzyzanowski, R.; Rajamanoharan, S.; Nanda, N.; and Conmy, A. 2025. Chain-of-Thought Rea-soning in the Wild is not Always Faithful. In Workshop on Reasoning and Planning for Large Language Models .Chen, Z.; Du, W.; Zhang, W.; Liu, K.; Liu, J.; Zheng, M.; Zhuo, J.; Zhang, S.; Lin, D.; Chen, K.; et al. 2024. T-eval: Evaluating the tool utilization capability of large language models step by step. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 9510–9529. Cho, H.; Kang, R.; and Kim, Y. 2026. SkillRet: A large-scale benchmark for skill retrieval in LLM agents. arXiv preprint arXiv:2605.05726 .Drouin, A.; Gasse, M.; Caccia, M.; Laradji, I. H.; Del Verme, M.; Marty, T.; Vazquez, D.; Chapados, N.; and Lacoste, A. 2024. WorkArena: How Capable are Web Agents at Solving Common Knowledge Work Tasks? In International Confer-ence on Machine Learning , 11642–11662. PMLR. Fu, Y.; Kim, D.-K.; Kim, J.; Sohn, S.; Logeswaran, L.; Bae, K.; and Lee, H. 2024. Autoguide: Automated generation and selection of context-aware guidelines for large language model agents. Advances in Neural Information Processing Systems , 37: 119919–119948. Guo, D.; Yang, D.; Zhang, H.; Song, J.; Wang, P.; Zhu, Q.; Xu, R.; Zhang, R.; Ma, S.; Bi, X.; et al. 2025. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 .Hao, Y.; Chen, L.; Emami, A.; and Ho, J. C. 2026. Reasoning Traces Shape Outputs but Models Won’t Say So. In Liakata, M.; Moreira, V. P.; Zhang, J.; and Jurgens, D., eds., Pro-ceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 42852– 42878. San Diego, California, United States: Association for Computational Linguistics. ISBN 979-8-89176-390-6. Hendrycks, D.; Burns, C.; Kadavath, S.; Arora, A.; Basart, S.; Tang, E.; Song, D.; and Steinhardt, J. 2021. Measuring Mathematical Problem Solving With the MATH Dataset. In 
+
+Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track (Round 2) .Hu, J.; Dong, Y.; Sun, Y.; and Huang, X. 2026a. SkillFuzz: Fuzzing Skill Composition for Implicit Intents Discovery in Open Skill Marketplaces. arXiv preprint arXiv:2607.02345 .Hu, J.; Dong, Y.; Sun, Y.; and Huang, X. 2026b. Tapas Are Free! Training-Free Adaptation of Programmatic Agents via LLM-Guided Program Synthesis in Dynamic Environ-ments. Proceedings of the AAAI Conference on Artificial Intelligence , 40(35): 29477–29485. Hu, J.; Huang, X.; He, Q.; Sun, Y.; Dong, Y.; and Huang, X. 2026c. Responsible Agentic AI Requires Explicit Prove-nance. arXiv:2605.17169. Hu, J.; Huang, X.; Sun, Y.; Dong, Y.; and Huang, X. 2026d. Lying with Truths: Open-Channel Multi-Agent Collusion for Belief Manipulation via Generative Montage. In Liakata, M.; Moreira, V. P.; Zhang, J.; and Jurgens, D., eds., Proceedings of the 64th Annual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , 5979–5996. San Diego, California, United States: Association for Computa-tional Linguistics. ISBN 979-8-89176-390-6. Li, X.; Liu, Y.; Chen, W.; You, B.; Di, Z.; He, Y.; Zheng, S.; Choe, K. W.; Sun, J.; Wang, S.; et al. 2026. SkillsBench: Benchmarking how well agent skills work across diverse tasks. arXiv preprint arXiv:2602.12670 .Liu, X.; Yu, H.; Zhang, H.; Xu, Y.; Lei, X.; Lai, H.; Gu, Y.; Ding, H.; Men, K.; Yang, K.; et al. 2024. Agentbench: Evaluating llms as agents. In International Conference on Learning Representations , volume 2024, 52989–53046. Liu, Y.; Ji, J.; An, L.; Jaakkola, T.; Zhang, Y.; and Chang, S. 2026. How Well Do Agentic Skills Work in the Wild: Benchmarking LLM Skill Usage in Realistic Settings. arXiv:2604.04323. Paul, D.; West, R.; Bosselut, A.; and Faltings, B. 2024. Mak-ing reasoning matter: Measuring and improving faithfulness of chain-of-thought reasoning. In Findings of the Association for Computational Linguistics: EMNLP 2024 , 15012–15032. Qin, Y.; Liang, S.; Ye, Y.; Zhu, K.; Yan, L.; Lu, Y.; Lin, Y.; Cong, X.; Tang, X.; Qian, B.; et al. 2024. Toolllm: Facilitat-ing large language models to master 16000+ real-world apis. In International Conference on Learning Representations ,volume 2024, 9695–9717. Qwen; :; Yang, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.; Yu, B.; Li, C.; Liu, D.; Huang, F.; Wei, H.; Lin, H.; Yang, J.; Tu, J.; Zhang, J.; Yang, J.; Yang, J.; Zhou, J.; Lin, J.; Dang, K.; Lu, K.; Bao, K.; Yang, K.; Yu, L.; Li, M.; Xue, M.; Zhang, P.; Zhu, Q.; Men, R.; Lin, R.; Li, T.; Tang, T.; Xia, T.; Ren, X.; Ren, X.; Fan, Y.; Su, Y.; Zhang, Y.; Wan, Y.; Liu, Y.; Cui, Z.; Zhang, Z.; and Qiu, Z. 2025. Qwen2.5 Technical Report. arXiv:2412.15115. Saparov, A.; and He, H. 2023. Language Models Are Greedy Reasoners: A Systematic Formal Analysis of Chain-of-Thought. In The Eleventh International Conference on Learning Representations .Schick, T.; Dwivedi-Yu, J.; Dessì, R.; Raileanu, R.; Lomeli, M.; Hambro, E.; Zettlemoyer, L.; Cancedda, N.; and Scialom, T. 2023. Toolformer: Language models can teach themselves to use tools. Advances in neural information processing systems , 36: 68539–68551. Shinn, N.; Cassano, F.; Gopinath, A.; Narasimhan, K.; and Yao, S. 2023. Reflexion: Language agents with verbal re-inforcement learning. Advances in neural information pro-cessing systems , 36: 8634–8652. Turpin, M.; Michael, J.; Perez, E.; and Bowman, S. 2023. Language models don’t always say what they think: Unfaith-ful explanations in chain-of-thought prompting. Advances in Neural Information Processing Systems , 36: 74952–74965. Wang, X.; Wang, Z.; Liu, J.; Chen, Y.; Yuan, L.; Peng, H.; and Ji, H. 2024. Mint: Evaluating llms in multi-turn interaction with tools and language feedback. In International Con-ference on Learning Representations , volume 2024, 32593– 32627. Wang, Y.; Zhang, J.; Cai, T.; Liu, Z.; Sun, Q.; Sun, Z.; Wu, Z.; Dong, M.; Zheng, M.; Yin, X.; and Zhu, Y. 2026. From Agent Traces to Trust: A Survey of Evidence Tracing and Execution Provenance in LLM Agents. arXiv:2606.04990. Xie, T.; Zhang, D.; Chen, J.; Li, X.; Zhao, S.; Cao, R.; Hua, T. J.; Cheng, Z.; Shin, D.; Lei, F.; et al. 2024. Osworld: Benchmarking multimodal agents for open-ended tasks in real computer environments. Advances in Neural Informa-tion Processing Systems , 37: 52040–52094. Zhao, A.; Huang, D.; Xu, Q.; Lin, M.; Liu, Y.-J.; and Huang, G. 2024. Expel: Llm agents are experiential learners. In Pro-ceedings of the AAAI Conference on Artificial Intelligence ,volume 38, 19632–19642. Zhou, Y.; Zhang, Z.; Cheng, Z.; Zhang, S.; Lan, Q.; Chen, Z.; Yang, Z.; Chen, R.; Wang, H.; Hu, S.; et al. 2026. Skill-genbench: Benchmarking skill generation pipelines for llm agents. arXiv preprint arXiv:2605.18693 .A Detailed Audit Protocol 
+
+The Backtrace audit operationalizes a causal comparison without treating a model’s visible rationale as ground truth. It stores decisions and attribution responses as separate records, validates both channels, and computes attribution only after every skill condition has been paired with the same no-skill counterfactual. In Algorithm 1, i indexes instances and v indexes inter-vention conditions. For any per-instance quantity zv (xi), the shorthand zvi places the instance in the subscript and the condition in the superscript. The fixed execution context ω is omitted. The flag f ∅ 
+
+> i
+
+equals one when the no-skill attribution response for instance i names any skill or source. 
+
+Backtrace Design Commitments 
+
+Four commitments bound the causal interpretation. Identifia-bility holds the instance, model, prompt frame, decoding pol-icy, and organization fixed while changing only the audited artifact or its assignment. Decision verifiability compares normalized task decisions rather than lexical differences be-tween free-form outputs. Semantic control uses meaning-preserving and identity-swapping variants to distinguish pro-cedural content from wording and labels. Attribution hygiene 
+
+commits the decision before eliciting claimed skill use, pre-venting the attribution query from changing the answer it describes. The design can extend to tool permissions, param-eters, composition, or memory only when every new contrast has a predeclared interpretation and preserves all non-target inputs. 
+
+BackroomBench Construction Details 
+
+Controlled logic track. We generate 300 first-order tax-onomy problems in the style of PrOntoQA (Saparov and He 2023) with seed 20260715. The set is balanced across proof depths {2, 4, 6, 8, 10 } with 60 instances at each depth and balanced truth labels. Fictional vocabulary limits re-call shortcuts, every label is provable by construction, and every instance stores a gold proof. Three distractor chains terminate in the opposite polarity and connect to the main chain. Forward-only application remains valid, while re-versing a designated cross-link enters a constructed wrong-answer chain. A symbolic checker verifies the label, proof, and corruption target for every instance. 
+
+Natural mathematics track. We select 283 competition problems from MATH-500 (Hendrycks et al. 2021), strat-ified over difficulty levels 1 through 5. The subset is fixed before inference by shuffling within each level with seed 20260715 and taking up to 60 problems per level. Final ex-pressions are normalized before pairing. Unlike the synthetic logic track, these human-authored problems do not guarantee that a supplied procedure is needed on every instance. They test whether the attribution gap persists when skills interact with heterogeneous natural problems rather than a known construction. 
+
+Frozen skill library. Each artifact contains a stable display name, purpose, applicability conditions, procedure, prohib-ited shortcuts, and expected output format. It never contains an instance answer. The logic library covers forward chain-ing, contradiction checking, and invalid-inference avoidance. The mathematics library provides problem decomposition and independent verification. The irrelevant condition sup-plies a complete but task-inapplicable skill from the frozen library rather than a nonsensical prompt. Every artifact is frozen before evaluation and reused across all models and organizations. 
+
+Concrete Intervention Example 
+
+Table 6 illustrates the complete Logic intervention family using the frozen Forward Chaining artifact. The displayed name is only the visible skill header, while the procedure supplied beneath it may differ. Contradiction Checking is not an intervention category, but a sibling verification skill in the frozen Logic library. Given a candidate answer, it at-tempts to derive the candidate’s negation from the same facts and forward rules, revising the answer when the negation is derivable and otherwise retaining it. The two swap conditions deliberately separate visible identity from procedural con-tent. Name swap preserves the Forward Chaining procedure under the Contradiction Checking header, whereas Content swap preserves the Forward Chaining header but supplies the Contradiction Checking procedure. Their comparison tests whether behavioral influence follows the supplied procedure rather than the displayed identity, and whether claimed use tracks that change. The remaining conditions isolate skill absence, meaning-preserving wording, a corrupted procedu-ral constraint, and a complete but inapplicable procedure. Mathematics applies the same contrasts to Problem Decom-position. Algorithm 1: The Backtrace paired audit protocol 
+
+Input Frozen system π, pairs {(xi, y ∗ 
+
+> i
+
+)}Ni=1 , conditions V
+
+Output Paired decisions, attributions, provenance, and ag-gregate metrics  
+
+> 1:
+
+for i = 1 to N do  
+
+> 2:
+
+d∗ 
+
+> i
+
+← ν(y∗ 
+
+> i
+
+) 
+
+> 3:
+
+(τ ∅ 
+
+> i
+
+, ˆy∅ 
+
+> i
+
+) ← πans (xi, ∅) 
+
+> 4:
+
+d∅ 
+
+> i
+
+← ν(ˆ y∅ 
+
+> i
+
+) 
+
+> 5:
+
+Commit d∅ 
+
+> i
+
+, then elicit and validate q∅ 
+
+> i
+> 6:
+
+f ∅ 
+
+> i
+
+← ⊮[q∅ 
+
+> i
+
+names any provenance ] 
+
+> 7:
+
+for v ∈ V \ { ∅} do  
+
+> 8:
+
+(τ vi , ˆyvi ) ← πans (xi, s v ) 
+
+> 9:
+
+dvi ← ν(ˆ yvi ) 
+
+> 10:
+
+Commit dvi , then elicit and validate qvi 
+
+> 11:
+
+(avi , ˆpvi ) ← g(qvi ) 
+
+> 12:
+
+rvi ← ⊮[dvi̸ = d∅ 
+
+> i
+
+] 
+
+> 13:
+
+uvi ← ⊮[dvi = d∗ 
+
+> i
+
+] − ⊮[d∅ 
+
+> i
+
+= d∗ 
+
+> i
+
+] 
+
+> 14:
+
+end for  
+
+> 15:
+
+end for  
+
+> 16:
+
+Join paired records and count the four (r, a ) states  
+
+> 17:
+
+return Utility, reliance, attribution, fidelity, and prove-nance metrics 
+
+Organizations. Single-agent and multi-agent tracks reuse the same instances and skill variants. The multi-agent track Condition Displayed name Supplied procedure and intervention None – provide no skill block while preserving the task and execution context Correct Forward Chaining supply the original one-way forward-chaining procedure Paraphrase Forward Chaining supply a meaning-preserving rewrite of the same procedure Misleading Forward Chaining retain the scaffold but add a corrupted rule permitting reverse application from B to A Name swap Contradiction Checking supply the Forward Chaining procedure but display Contradiction Checking Content swap Forward Chaining supply the Contradiction Checking procedure but display Forward Chaining Irrelevant Problem Formalization supply a complete but inapplicable procedure from the frozen library 
+
+Table 6: Concrete realization of the Logic intervention family. deterministically takes every other instance from each frozen ordered cohort, yielding 150 Logic and 142 Mathematics in-stances; the same identifiers are reused across systems and paired single-agent comparisons. Logic teams assign fact, rule, verifier, and aggregator roles. Mathematics teams use solver, verifier, and aggregator roles. The primary distributed treatment assigns the audited skill only to its designated source while all agents exchange ordinary natural-language messages. Source-skill removal measures propagation, mes-sage interventions test whether influence survives transmis-sion, and agent-removal counterfactuals recover a causal con-tribution profile. This paired construction prevents task se-lection from being confounded with system organization. 
+
+Execution environment. Local checkpoints are served with vLLM in bfloat16 on three NVIDIA A100-PCIE GPUs with 40 GB memory each. The 32B checkpoints use ten-sor parallelism over two GPUs. Local inference uses greedy decoding. API requests set temperature to zero when the endpoint accepts that parameter and otherwise retain the provider-required default. The original runs use an 8192-token context window, while bounded corrective runs for truncated long reasoning use up to 24,576 tokens. Logic al-locates 1024 output tokens to standard local models and up to 6144 to long-reasoning corrective runs. Mathematics al-locates 2048 tokens to Qwen models and up to 8192 to long-reasoning DSR1 and GPT variants. Every condition within a model-domain audit uses the same backend and budget. Exact model revisions, commands, budgets, and recovery events are retained in the run manifests. 
+
+Uncertainty details. The presented rates use one deter-ministic decoding path per condition. Paired-bootstrap inter-vals elsewhere in the evaluation use 10,000 instance resam-ples and quantify instance uncertainty rather than serving variance. 
+
+Paired execution. For each instance, the None decision is generated once and reused as the baseline for every supplied artifact. This shared baseline makes each contrast differ only in the audited skill condition and prevents different compar-ison sets from producing artificial differences between vari-ants. Instance identifiers, the model revision, prompt frame, organization, decoding settings, context budget, and output budget are frozen before inference. 
+
+Post-decision attribution. The attribution question is ab-sent from the answer turn. The system first commits its rea-soning trace and final decision, after which a separate request asks the system to identify the skills it used and their prove-nance. This ordering prevents the attribution request from changing the decision it is intended to describe. The None condition uses the same downstream attribution schema, so any named skill or source becomes a directly observable false-provenance event. 
+
+Validation and recovery. The domain parser maps each answer to a verifier representation, and the attribution parser maps each claimed name to the artifact list supplied in that run. Case and formatting are normalized without changing semantic content. Malformed telemetry receives at most a bounded format-only repair request that forbids re-solving. If validation still fails, the terminal generation remains in the condition file. Accuracy counts an unresolved answer as in-correct, whereas reliance, attribution, and four-state metrics exclude pairs lacking normalized answers or valid attribu-tion records. Scoring still requires the None record and every required supplied-condition instance identifier; summaries expose answer and attribution parse rates together with each effective denominator. 
+
+Effective sample coverage. The final corrective Logic runs contain all 300 predeclared instance identifiers per condition. Answer parse rates span .99 –1.00 for DSR1-7B, .88 –.97 for DSR1-14B, and .78 –.87 for DSR1-32B; attribution-record parse rates span .99 –1.00 , .77 –.97 , and .76 –.86 , respectively. Both GPT-5.4 variants attain a 1.00 Logic answer-parse rate in the no-skill baseline and all six skill conditions, so their low baseline accuracy reflects valid normalized decisions rather than formatting failure. A truth-independent marginal bias alone would score .50 on the balanced labels. Instead, GPT-5.4-nano answers False on 113 of 150 gold-False and 145 of 150 gold-True instances; GPT-5.4-mini does so on 59 and 123, respectively. Their .39 and .29 accuracies thus reflect label-conditioned error asymmetry among valid out-puts, not label skew alone. This pattern is consistent with the benchmark’s verified opposite-polarity distractor paths, but does not by itself identify which path a model followed. The large gains under Correct, Paraphrase, and Name swap restore correct decisions rather than recover unparsed an-swers; Content swap and Irrelevant do not yield comparable gains, keeping the contrast content-sensitive. The DSR1-14B Mathematics rerun contains all 283 identifiers and reaches 
+
+.95 –.99 answer parsing and .85 –.97 attribution-record pars-ing. Consequently, task accuracy retains the complete prede-clared cohort, while causal and attribution statistics expose the valid paired cohort rather than silently treating truncated generations as parsed observations. 
+
+Multi-agent adaptation. For a team, π in Algorithm 1 de-notes the entire frozen organization rather than one model call. The ordinary run assigns the skill only to its designated source. The paired source-removal run deletes that artifact from the source while preserving the role graph and mes-sages. The final attribution response must name both the skill and its source to count as provenance recovery. Agent-removal and message interventions are executed as additional paired conditions, leaving the scoring loop unchanged. 
+
+Interpretation boundary. The algorithm identifies an-swer sensitivity to a controlled artifact. It does not claim to reconstruct private token-level computation or that every possible attribution query must behave identically. Our con-clusions concern the fixed post-decision attribution channel tested here. Residual backend nondeterminism can introduce answer variation even under fixed settings, so the released records retain model versions, decoding configurations, and all paired outputs needed to audit this assumption. 
+
+Worked Audit Examples 
+
+The following examples come from the released per-instance records. We preserve instance identifiers, normalized deci-sions, and structured attribution fields; task contexts and traces are abridged only by removing unrelated rules and repetition. 
+
+Silent uptake. For Qwen -14B on logicv2-d2-t-017 ,the verified proof is Alex → numpus → lorpusoid → shum-pusling → loud, so the gold answer is True.     
+
+> No skill: Answer: False .
+> Problem Formalization supplied: Answer: True .
+
+The post-decision attribution lists no used skill and places Problem Formalization in the unused set. The artifact nev-ertheless changes the normalized decision and corrects the answer. Thus rv = 1 , av = 0 , and uv = +1 , which is a silent-uptake event. The claim is answer-level sensitivity to the supplied artifact, not that the agent internally executed a quantitative formalization procedure. 
+
+Skill laundering. For the Qwen -14B team on 
+
+logicv2-d4-t-012 , only the rule specialist re-ceives Forward Chaining. The verified path is Fae →
+
+rompusling → tumpusoid → shumpusoid → lempusette →
+
+grimpusoid → rough.              
+
+> Source-skill removal: the rule specialist adds an unsupported rompusling →rompusoid step; the team answers False.
+> Forward Chaining at the rule specialist: the specialist fol-lows the verified path; the team answers True.
+> Final attribution: most influential agent =rule ; named skills ={logical reasoning ,derivation }; skill source =rule .
+
+Removing the source skill flips the team decision, so rΣ 
+
+> v
+
+= 1 .The final response retains the source role but replaces the exact artifact identity with generic descriptions, hence ˆpv̸ =(Forward Chaining , rule ) and ℓv = 1 . This instance shows why naming a plausible contributor is weaker than recovering joint skill provenance. 
+
+## B Relation to Chain-of-Thought Faithfulness 
+
+CoT faithfulness and skill provenance share an interventionist motivation but test different claims. CoT work asks whether a model-generated, instance-specific rationale reflects the fac-tors or computation that drove its prediction (Turpin et al. 2023; Paul et al. 2024; Arcuschin et al. 2025; Hao et al. 2026). Our target is the relationship between an externally supplied, reusable artifact and the resulting decision. We ask whether changing that artifact changes the answer and whether the system preserves its identity and source when attributing the decision. The distinction is between explanation faithfulness and execution provenance. The first treats visible reasoning as evidence about a prediction process. The second treats a named capability artifact as an auditable input whose causal influence and provenance can be tested even when the visible trace is incomplete or misleading. Table 7 summarizes these differences. 
+
+Why the two failure modes are independent. A faithful CoT can still support false skill provenance. The trace may accurately expose the derivation while the agent credits a named skill whose removal leaves the answer unchanged. Conversely, a trace may omit intermediate reasoning even when skill deletion flips the answer and the agent correctly names the artifact and its source. Thus neither axis entails the other. Our four attribution states test agreement between artifact-level decision dependence and stated skill use; they do not relabel trace quality as skill faithfulness. 
+
+What artifact-level intervention enables. A skill exists independently of the trace and recurs across instances. This permits matched deletion to measure answer sensitivity, help-ful and harmful flips to separate dependence from utility, and crossed name and content interventions to identify whether behavior follows procedural semantics or displayed iden-tity. Stable artifacts can also be moved between agents. Source removal, reassignment, and agent removal therefore test whether influence propagates, whether its origin is pre-served, and whether attributed contributors match causal contributors. These questions have no required answer in a trace-only audit because a fluent rationale can reproduce a procedure without establishing which provisioned artifact supplied it. 
+
+Relation to multi-agent deception. Work on unfaithful reasoning and multi-agent belief manipulation demonstrates that visible text can conceal influential cues or strategi-cally assemble truthful statements into a misleading account (Turpin et al. 2023; Hu et al. 2026d). Our distributed result does not require strategic collusion, deceptive intent, or a false message. Skill laundering is defined behaviorally in or-dinary task execution. Source-skill removal changes the team decision while the final attribution misses their joint identity. Skill-based provenance in no-skill teams further separates a plausible source narrative from actual provisioning. The Aspect CoT faithfulness Skill provenance in this work Claim under test Whether a visible rationale reflects what drove one prediction Whether a supplied skill changed a decision and its stated identity and source match that influence Audited object A generated, instance-bound trace or an input cue A persistent external artifact and, in a team, its assign-ment Counterfactuals Perturb cues or generated reasoning and observe the prediction Delete, paraphrase, corrupt, rename, substitute, or reas-sign the skill while holding the task and system fixed Population target Per-instance rationale faithfulness, then aggregated An artifact-level influence profile over matched in-stances, including beneficial and harmful effects Multi-agent target Whether visible debate or messages preserve influ-ential information Propagation, loss of the skill and source association, and mismatch between stated and intervention-measured contributors Interpretation Evidence about explanation or trace validity Evidence about capability provisioning, attribution, and execution provenance 
+
+Table 7: CoT faithfulness and skill provenance test complementary causal claims. contribution is therefore an audit of execution provenance, not a detector of deception. 
+
+Complementary scope. The artifact-level design provides a directly manipulable intervention target, not access to private reasoning. An unchanged answer cannot exclude an equivalent procedure learned during pretraining, and a changed answer identifies sensitivity under the fixed context rather than a token-level mechanism. CoT audits remain nec-essary when the scientific question concerns the truthfulness or completeness of the rationale itself. Used together, the two evaluations can distinguish whether a system exposes its reasoning process from whether it correctly accounts for an external capability’s contribution. 
+
+## C Additional Analysis for RQ2 
+
+Meaning-preserving and identity controls. Figure 4completes the six-condition directional audit. Paraphrase largely preserves the beneficial profile of the correct arti-fact: GPT-5.4-nano and GPT-5.4-mini produce 150/8 and 169/6 helpful/harmful flips, respectively. Name swap re-mains similarly asymmetric at 136/8 and 155/4, showing that these gains are not tied to the displayed name. Content swap sharply weakens the same pattern: the corresponding counts fall to 26/6 and 19/22. Under an equal-direction null, exact two-sided binomial tests reject symmetry for Paraphrase and Name swap in both models (all p < 3.6×10 −31 ) and for GPT-5.4-nano Content swap ( p = 5 .4×10 −4), but not GPT-5.4-mini Content swap ( p = .755 ). These tests formalize flip directionality rather than serving variance. The crossed inter-vention identifies the procedural body, rather than wording or identity alone, as the component carrying the large behav-ioral effect. 
+
+Cancellation hidden by aggregate utility. Near-zero 
+
+∆Acc does not imply that an artifact was behaviorally in-ert. Under Content swap, Qwen2.5-7B produces 42 helpful and 46 harmful flips, DSR1-7B produces 56 and 67, and GPT-4.1-nano produces 54 and 63. The opposing changes nearly cancel in aggregate even though many individual de-cisions differ from the no-skill baseline. Reading Figure 4 with Table 2 therefore separates three quantities that cannot substitute for one another: whether the artifact changes an answer, whether the change helps, and whether the agent attributes the decision to that artifact. 
+
+Depth robustness under stress skills. Figure 5 tests whether the Backroom is confined to one difficulty level. Under the misleading skill, eleven models vary in R by at least .10 across proof depths, with a median range of .17 ,while every model keeps A within .05 , with a median range of zero. The corrupted procedure therefore becomes more or less behaviorally active as reasoning depth changes without a matching shift in attribution. The irrelevant condition shows both directions of failure. Qwen-14B and GPT-5-mini at-tribute no use at any depth despite changing reliance, whereas GPT-5.4-mini attributes use throughout although R remains only .08 –.15 . The mismatch is therefore stable across prede-clared depth strata rather than driven by a single task regime. 
+
+## D Additional Analysis for RQ3 
+
+This section expands the cross-domain result in Table 4. It reports the complete Logic cohort and then separates orga-nization effects and role contribution. These controls explain how the distributed Backroom manifests without changing the main causal claim. 
+
+Contribution mismatch. Let Kv be the valid agent-removal cohort, Jv the skill runs with a valid reported most-influential specialist ˆwv,i , and W = {fact , rule , verifier }
+
+the removable Logic roles. We aggregate the instance-level contribution profile as               
+
+> ¯cv(w) = 1
+> |K v|
+> X
+> i∈K v
+> cv(w, x i),w⋆v= arg max
+> w∈W ¯cv(w),
+> Mism v=1
+> |J v|
+> X
+> i∈J v
+> ⊮[ ˆ wv,i ̸=w⋆v].
+> (17)
+
+Exact ties use the fixed role order fact, rule, verifier. Thus Mism. compares each valid report with the cohort-level top causal contributor rather than selecting a possibly non-unique top role per instance. 
+
+Laundering across the full cohort. Table 8 shows that the cross-domain subset is not selected for unusually poor prove-100 50 0 50 100 150           
+
+> Answer flips (count)
+> Qwen2.5-7B
+> Qwen2.5-14B
+> Qwen2.5-32B
+> R1-Distill-7B
+> R1-Distill-14B
+> R1-Distill-32B
+> GPT-4.1-nano
+> GPT-4.1-mini
+> GPT-5-nano
+> GPT-5-mini
+> GPT-5.4-nano
+> GPT-5.4-mini
+> (a) Paraphrase
+> 100 50 050 100 150
+> Answer flips (count)
+> (b) Name swap
+> 100 50 050 100 150
+> Answer flips (count)
+> (c) Content swap
+> Flips toward correct
+> Flips toward wrong
+
+Figure 4: Logic answer-flip directions for the remaining controls; right bars improve correctness and left bars reduce it. 
+
+Model CAP LR PR FPR Mism. 
+
+Qwen -7B .34 .34 .00 1.00 .50 
+
+Qwen -14B .33 .33 .01 1.00 .02 
+
+Qwen -32B .25 .20 .17 1.00 .93 
+
+DSR1 -7B .28 .28 .00 .59 .58 
+
+DSR1 -14B .39 .39 .00 .97 .89 
+
+DSR1 -32B .35 .33 .04 .95 .03 
+
+GPT-4.1 -nano .30 .29 .03 1.00 .99 
+
+GPT-4.1 -mini .03 .03 .08 1.00 .57 
+
+GPT-5 -nano .13 .09 .31 .99 .72 
+
+GPT-5 -mini .01 .00 .71 1.00 .97 
+
+GPT-5.4 -nano .11 .11 .07 1.00 .16 
+
+GPT-5.4 -mini .20 .13 .30 1.00 .69 
+
+Table 8: Complete Logic multi-agent audit under ordinary messages; Mism. compares attributed and intervention-based top contributors. nance. Eleven of twelve Logic systems exhibit skill launder-ing. For Qwen-7B, Qwen-14B, DSR1-7B, and DSR1-14B, LR equals CAP, so every observed propagation event loses the correct source under ordinary messages. GPT-5-mini gives the complementary failure. PR is .71 while CAP is only .01 . Source recovery and causal propagation are there-fore not equivalent properties. 
+
+Organization is not a universal amplifier. Figure 3compares each distributed system with its model-matched single-agent audit. Logic effects range from −.47 to +.05 .GPT-5.4-nano shows decisive attenuation ( −.47 , 95% CI 
+
+[−.55 , −.37] ), while both positive Qwen estimates cross zero. Every Mathematics interval also crosses zero. Multi-agent organization can therefore amplify or attenuate the same skill, but the direction is model- and domain-dependent. This heterogeneity is why the main result concerns prove-nance loss after measured propagation rather than claiming universal amplification. 
+
+Attributed roles need not be causal contributors. The final column of Table 8 compares the most influential role named by the team with agent-removal counterfactuals. Con-tribution mismatch ranges from .02 to .99 . Qwen-32B and GPT-4.1-nano almost always name a role other than the intervention-based top contributor, whereas Qwen-14B and DSR1-32B are closely aligned. Role descriptions therefore cannot substitute for removal-based contribution estimates, even when a team returns a complete provenance record. 
+
+## E Additional Analysis for RQ1 and RQ4 
+
+Detector construction. Table 5 treats paired deletion re-liance rv as the target and evaluates signals available from the ordinary skill-conditioned run alone. Explicit attribu-tion uses the extracted skill-use bit av . Skill mention re-quires the phrase forward chain in the visible reasoning trace. 
+
+Trace–skill similarity compares embeddings of the trace and skill body using a per-model median threshold. LLM judge 
+
+receives the skill and visible reasoning trace and predicts whether the procedure affected the answer. Precision mea-sures how often a positive detector prediction coincides with 
+
+rv = 1 ; recall measures how many reliance events it recov-ers. The target prevalence is .34 , so precision near this value indicates little discrimination despite apparently high recall. 
+
+Why outcome improvement is not an observational de-tector. For reference, labeling only wrong-to-correct flips 2 4 6 8 10 
+
+Proof depth 
+
+Qwen2.5-7B 
+
+Qwen2.5-14B 
+
+Qwen2.5-32B 
+
+R1-Distill-7B 
+
+R1-Distill-14B 
+
+R1-Distill-32B 
+
+GPT-4.1-nano 
+
+GPT-4.1-mini 
+
+GPT-5-nano 
+
+GPT-5-mini 
+
+GPT-5.4-nano 
+
+GPT-5.4-mini 
+
+.70 .58 .42 .33 .33 
+
+.80 .85 .72 .58 .67 
+
+.83 .90 .70 .72 .78 
+
+.53 .55 .45 .47 .40 
+
+.83 .72 .72 .55 .60 
+
+.78 .78 .78 .62 .65 
+
+.75 .65 .43 .53 .50 
+
+1.00 .98 .97 .90 .98 
+
+.93 .90 .87 .85 .72 
+
+.92 .90 .68 .77 .78 
+
+.92 .93 .85 .83 .75 
+
+.93 .80 .78 .70 .70 
+
+(a) Misleading: Task accuracy 
+
+2 4 6 8 10 
+
+Proof depth 
+
+.28 .25 .30 .42 .40 
+
+.23 .35 .37 .25 .32 
+
+.13 .13 .22 .32 .28 
+
+.25 .28 .42 .48 .43 
+
+.18 .33 .36 .40 .45 
+
+.18 .16 .12 .11 .19 
+
+.27 .30 .28 .43 .40 
+
+.03 .02 .05 .13 .07 
+
+.12 .12 .17 .28 .43 
+
+.08 .10 .32 .23 .22 
+
+.58 .52 .52 .52 .48 
+
+.65 .55 .48 .52 .52 
+
+(b) Misleading: Causal reliance (R) 
+
+2 4 6 8 10 
+
+Proof depth 
+
+1.00 1.00 1.00 1.00 1.00 
+
+1.00 1.00 1.00 1.00 1.00 
+
+1.00 1.00 1.00 1.00 1.00 
+
+.98 .95 1.00 1.00 .97 
+
+1.00 1.00 1.00 1.00 1.00 
+
+1.00 1.00 1.00 1.00 1.00 
+
+1.00 1.00 1.00 1.00 1.00 
+
+1.00 1.00 1.00 .98 .98 
+
+.98 .98 .98 .97 .95 
+
+1.00 1.00 1.00 1.00 .98 
+
+1.00 1.00 1.00 1.00 1.00 
+
+1.00 1.00 1.00 1.00 1.00 
+
+(c) Misleading: Claimed use (A) 
+
+2 4 6 8 10 
+
+Proof depth 
+
+Qwen2.5-7B 
+
+Qwen2.5-14B 
+
+Qwen2.5-32B 
+
+R1-Distill-7B 
+
+R1-Distill-14B 
+
+R1-Distill-32B 
+
+GPT-4.1-nano 
+
+GPT-4.1-mini 
+
+GPT-5-nano 
+
+GPT-5-mini 
+
+GPT-5.4-nano 
+
+GPT-5.4-mini 
+
+.73 .67 .32 .37 .23 
+
+.72 .63 .55 .45 .57 
+
+.92 .82 .70 .70 .68 
+
+.70 .53 .57 .40 .40 
+
+.68 .68 .55 .55 .43 
+
+.78 .70 .67 .57 .67 
+
+.75 .67 .40 .35 .42 
+
+.97 .97 .93 .88 .83 
+
+.95 .93 .88 .87 .73 
+
+1.00 1.00 1.00 1.00 .97 
+
+.35 .43 .43 .45 .42 
+
+.27 .30 .33 .22 .30 
+
+(d) Irrelevant: Task accuracy 
+
+2 4 6 8 10 
+
+Proof depth 
+
+.28 .42 .45 .53 .53 
+
+.23 .37 .35 .32 .30 
+
+.12 .15 .30 .35 .32 
+
+.35 .40 .43 .35 .37 
+
+.27 .33 .37 .30 .46 
+
+.18 .11 .18 .21 .17 
+
+.27 .28 .38 .45 .45 
+
+.07 .07 .08 .17 .18 
+
+.07 .08 .17 .23 .42 
+
+.00 .00 .00 .00 .03 
+
+.12 .02 .10 .17 .08 
+
+.15 .08 .10 .10 .08 
+
+(e) Irrelevant: Causal reliance (R) 
+
+2 4 6 8 10 
+
+Proof depth 
+
+.77 .68 .63 .68 .67 
+
+.00 .00 .00 .00 .00 
+
+.28 .25 .20 .20 .23 
+
+.58 .72 .72 .65 .72 
+
+.13 .11 .24 .21 .27 
+
+.91 .89 .89 .90 .83 
+
+1.00 1.00 .92 .97 .90 
+
+.07 .07 .08 .18 .05 
+
+.32 .18 .18 .27 .20 
+
+.00 .00 .00 .00 .00 
+
+.95 1.00 .92 .88 1.00 
+
+1.00 1.00 1.00 1.00 1.00 
+
+(f) Irrelevant: Claimed use (A) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+Rate Figure 5: Depth-resolved Logic results under misleading and irrelevant skills. as skill use gives precision 1.00 , recall .61 , F1 .76 , and a positive rate of .20 . This construction is precise by defini-tion: it compares the skill-conditioned decision with both the no-skill decision and the gold answer. It is therefore an intervention-based diagnostic rather than a cheaper alter-native to Backtrace . Moreover, it omits correct-to-wrong and same-correctness answer changes, both of which remain evidence that the artifact influenced the decision. The com-parison shows why neither accuracy gain nor a detector built from one visible run can replace the paired reliance target. 
+
+Attribution-position control. The main protocol commits an answer before requesting attribution so that the attribution query cannot alter the decision it describes. As a control, we instead elicit the answer and attribution in one generation. Table 9 shows that attribution remains .98 –1.00 across the twelve models, while conditional performative-use rates dif-fer from the separated protocol by less than .02 at the median and at most .10 . The pervasive positive attribution signal is therefore not an artifact of asking a second question after the answer. 
+
+Redundant-assignment control. The same table com-pares the primary asymmetric organization, in which one specialist holds the skill, with a redundant organization that supplies it to every specialist. Redundancy can increase or de-crease CAP, and it does not consistently recover provenance. DSR1-7B doubles CAP from .28 to .56 while PR remains zero; Qwen-32B and GPT-5-nano instead lose provenance despite similar CAP. Provenance loss is therefore not an ar-tifact of hiding the skill from most team members. 
+
+Saturated-performance control. We repeat the audit on 200 shallow Logic instances without adversarial traps. The skill library, intervention conditions, normalization, and at-tribution extraction remain unchanged. Table 10 reports the main twelve-model cohort. Eight models reach 1.00 baseline and correct-skill accuracy; for all eight, deletion changes no answer, yet their performative-use rate is 1.00 . The irrelevant-skill attribution rate simultaneously ranges from zero to one. Attribution failure therefore persists when ordinary task error has largely disappeared and cannot be reduced to confusion on difficult instances. 
+
+## F Prompt and Output Schemas 
+
+Decision channel. Logic prompts request a derivation fol-lowed by exactly Answer: True or Answer: False .Mathematics prompts request a final \boxed{...} expres-sion. The Logic normalizer maps only the terminal Boolean field, while the Mathematics normalizer canonicalizes equiv-alent numeric and symbolic expressions before matching. Reasoning text is retained for observational baselines but never determines the intervention target. 
+
+Attribution channel. After storing the decision, a separate turn lists the exact display names available in that condition and requests the schema   
+
+> {"used_skills": ["..."], "unused_skills": ["..."]}.
+
+The request forbids re-solving or revising the answer. Names are matched case-insensitively against the supplied artifact list; an unknown name, a missing required field, or a non-list value fails validation. The None condition uses the same schema with an empty supplied list, so any named artifact is a false-attribution event. 
+
+Distributed provenance. The team-level schema addition-ally records the most influential agent, the skills used in the pipeline, and the agent that supplied each named skill. Full provenance recovery requires both the correct artifact and its designated source. Naming the artifact without the source does not count as recovery. All fields are elicited only after the aggregator commits the team decision. 
+
+Repair and missing outputs. A malformed attribution record receives at most one format-only repair request con-taining the invalid text and target schema; the request ex-plicitly forbids new reasoning or answer revision. If repair fails, the terminal generation remains available for coverage accounting. Accuracy treats an unresolved decision as incor-rect, while paired causal and attribution metrics omit records lacking either a normalized decision or a valid attribution ob-ject. 
+
+## G Validity and Scope 
+
+What the intervention identifies. Backtrace identifies whether changing a supplied artifact changes a normalized decision under a fixed execution context. It does not expose private token-level computation, and an unchanged answer cannot rule out use of a similar procedure learned during pretraining. The conclusions therefore concern artifact-level causal sensitivity and its observable attribution, not a com-plete reconstruction of internal reasoning. 
+
+Domain and decoding boundaries. The Logic track guar-antees verified proofs and decision-relevant traps but remains synthetic. Mathematics supplies heterogeneous human-authored problems, yet no construction guarantees that ev-ery problem requires the provided procedure. Greedy local decoding and temperature-zero API calls where supported measure one execution path per condition and do not esti-mate serving variance. Near-chance regimes may also am-plify sensitivity to small prompt changes, which is why di-rectional interpretations use helpful and harmful flips rather than reliance alone. 
+
+Conditional metrics and coverage. SUR is defined only when reliance events exist, and PUR only when attribution events exist; an empty denominator is a structural property rather than evidence of fidelity. Accuracy retains every ter-minal generation, whereas R, A, Γ, SUR, PUR, and AFS use valid paired decisions and attribution objects. Effective coverage and parse rates are exposed rather than imputing missing observations. 
+
+## H Complete Single-Agent Results 
+
+The main tables retain the compact ∆Acc –AFS view needed for comparison. The following tables provide every aggregate Integrated attribution CAP PR Model A PUR Asym. Redun. Asym. Redun.                                                                         
+
+> Qwen -7B 1.00 .70 .34 .47 .00 .01
+> Qwen -14B 1.00 .73 .33 .33 .01 .03
+> Qwen -32B 1.00 .80 .25 .23 .17 .10
+> DSR1 -7B 1.00 .53 .28 .56 .00 .00
+> DSR1 -14B 1.00 .59 .39 .43 .00 .07
+> DSR1 -32B .98 .70 .35 .38 .04 .17
+> GPT-4.1 -nano .99 .65 .30 .39 .03 .25
+> GPT-4.1 -mini 1.00 .93 .03 .02 .08 .18
+> GPT-5 -nano 1.00 .85 .13 .17 .31 .19
+> GPT-5 -mini 1.00 1.00 .01 .01 .71 .60
+> GPT-5.4 -nano 1.00 .45 .11 .15 .07 .01
+> GPT-5.4 -mini 1.00 .45 .20 .14 .30 .43
+
+Table 9: Attribution-position and skill-assignment ablations on Logic.                                                                   
+
+> Correct Irrel. Model Base Acc RPUR A
+> Qwen -7B 1.00 1.00 .00 1.00 .94
+> Qwen -14B 1.00 1.00 .00 1.00 .00
+> Qwen -32B 1.00 1.00 .00 1.00 .18
+> DSR1 -7B .92 .93 .10 .91 .66
+> DSR1 -14B .99 .99 .00 1.00 .10
+> DSR1 -32B 1.00 1.00 .00 1.00 .56
+> GPT-4.1 -nano 1.00 .99 .01 .99 1.00
+> GPT-4.1 -mini 1.00 1.00 .00 1.00 .04
+> GPT-5 -nano 1.00 1.00 .00 1.00 .42
+> GPT-5 -mini 1.00 1.00 .00 1.00 .00
+> GPT-5.4 -nano 1.00 .99 .01 .99 .51
+> GPT-5.4 -mini 1.00 1.00 .00 1.00 1.00
+
+Table 10: Saturated-performance control on 200 shallow Logic instances. metric for all model–condition pairs. R and A are descrip-tive rates; Γ, SUR, and PUR quantify attribution error; AFS measures overlap between reliance and attribution. A dash marks a conditional rate whose denominator is empty. 
+
+AFS under saturated attribution. When every instance is attributed and SUR is zero, AFS reduces algebraically to 2R/ (1 + R). This is the limiting case of indiscriminate attribution: the score reports overlap with the varying reliance set rather than supplying a second causal signal. It does not characterize the full evaluation. Across the 108 model– condition cells below, 58 have nonzero SUR, including 17 of 18 Irrelevant, 14 of 18 Content swap, and 10 of 18 Name swap cells. AFS is therefore a compact agreement summary; causal evidence remains the paired reliance variable that it compares with attribution. Logic: Correct Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -7B .43 -.05 .29 1.00 .71 .00 .71 .45 
+
+Qwen -14B .74 +.17 .29 1.00 .71 .00 .71 .45 
+
+Qwen -32B .79 .00 .21 1.00 .79 .00 .79 .35 
+
+DSR1 -7B .47 -.01 .38 .98 .62 .04 .62 .54 
+
+DSR1 -14B .68 .00 .33 .99 .66 .00 .67 .50 
+
+DSR1 -32B .73 +.03 .20 1.00 .80 .00 .80 .33 
+
+GPT-4.1 -nano .59 .00 .38 .99 .61 .00 .62 .55 
+
+GPT-4.1 -mini .95 +.02 .09 1.00 .92 .04 .92 .15 
+
+GPT-5 -nano .85 -.01 .19 .97 .82 .11 .82 .30 
+
+GPT-5 -mini .99 -.01 .01 1.00 .99 .00 .99 .01 
+
+GPT-5.4 -nano .88 +.49 .56 1.00 .44 .00 .44 .72 
+
+GPT-5.4 -mini .81 +.52 .56 1.00 .44 .00 .44 .72 
+
+Table 11: Complete Logic results for the correct condition. 
+
+Logic: Paraphrase Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -7B .46 -.03 .36 1.00 .64 .00 .64 .53 
+
+Qwen -14B .71 +.14 .32 1.00 .68 .00 .68 .49 
+
+Qwen -32B .81 +.03 .20 1.00 .80 .00 .80 .33 
+
+DSR1 -7B .49 +.02 .36 .96 .63 .04 .64 .53 
+
+DSR1 -14B .73 +.04 .31 1.00 .69 .00 .69 .48 
+
+DSR1 -32B .76 +.05 .18 1.00 .82 .00 .82 .31 
+
+GPT-4.1 -nano .60 +.02 .37 1.00 .63 .00 .63 .54 
+
+GPT-4.1 -mini .96 +.02 .07 1.00 .93 .00 .93 .14 
+
+GPT-5 -nano .82 -.05 .23 .96 .78 .13 .79 .34 
+
+GPT-5 -mini .99 -.01 .01 1.00 .99 .00 .99 .02 
+
+GPT-5.4 -nano .86 +.47 .53 1.00 .47 .00 .47 .69 
+
+GPT-5.4 -mini .84 +.56 .58 1.00 .42 .00 .42 .74 
+
+Table 12: Complete Logic results for the paraphrase condition. 
+
+Logic: Misleading Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -7B .47 -.01 .33 1.00 .67 .00 .67 .50 
+
+Qwen -14B .72 +.15 .30 1.00 .70 .00 .70 .47 
+
+Qwen -32B .79 .00 .22 1.00 .78 .00 .78 .36 
+
+DSR1 -7B .48 +.01 .37 .98 .62 .02 .62 .54 
+
+DSR1 -14B .68 .00 .34 1.00 .66 .00 .66 .51 
+
+DSR1 -32B .72 +.02 .15 1.00 .85 .00 .85 .26 
+
+GPT-4.1 -nano .57 -.01 .34 1.00 .66 .00 .66 .50 
+
+GPT-4.1 -mini .97 +.03 .06 .99 .94 .06 .94 .11 
+
+GPT-5 -nano .85 -.01 .22 .98 .79 .08 .79 .34 
+
+GPT-5 -mini .81 -.19 .19 1.00 .81 .02 .81 .31 
+
+GPT-5.4 -nano .86 +.46 .52 1.00 .48 .00 .48 .69 
+
+GPT-5.4 -mini .78 +.50 .54 1.00 .46 .00 .46 .70 
+
+Table 13: Complete Logic results for the misleading condition. Logic: Name swap Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -7B .50 +.02 .34 .98 .65 .01 .66 .51 
+
+Qwen -14B .73 +.16 .31 .71 .56 .26 .68 .45 
+
+Qwen -32B .82 +.03 .21 1.00 .79 .00 .79 .34 
+
+DSR1 -7B .44 -.03 .37 .65 .56 .37 .65 .45 
+
+DSR1 -14B .70 +.01 .36 .88 .60 .11 .63 .52 
+
+DSR1 -32B .75 +.04 .15 .94 .80 .03 .85 .26 
+
+GPT-4.1 -nano .59 +.01 .34 .87 .62 .14 .67 .48 
+
+GPT-4.1 -mini .96 +.02 .08 1.00 .92 .00 .92 .15 
+
+GPT-5 -nano .86 -.01 .21 .86 .73 .18 .80 .32 
+
+GPT-5 -mini .99 -.01 .01 1.00 .99 .00 .99 .02 
+
+GPT-5.4 -nano .82 +.43 .48 1.00 .52 .00 .52 .65 
+
+GPT-5.4 -mini .79 +.50 .53 1.00 .47 .00 .47 .69 
+
+Table 14: Complete Logic results for the name swap condition. 
+
+Logic: Content swap Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -7B .47 -.01 .32 .96 .68 .05 .69 .47 
+
+Qwen -14B .58 +.01 .26 .97 .76 .08 .76 .38 
+
+Qwen -32B .78 -.01 .18 1.00 .82 .02 .82 .30 
+
+DSR1 -7B .48 +.01 .40 .79 .56 .21 .60 .53 
+
+DSR1 -14B .64 -.04 .32 .30 .39 .64 .61 .37 
+
+DSR1 -32B .72 +.01 .16 .65 .58 .28 .82 .29 
+
+GPT-4.1 -nano .55 -.03 .40 .99 .60 .00 .60 .57 
+
+GPT-4.1 -mini .93 .00 .09 .97 .92 .19 .93 .13 
+
+GPT-5 -nano .85 -.02 .20 .63 .65 .56 .86 .22 
+
+GPT-5 -mini 1.00 .00 .00 1.00 1.00 .00 1.00 .01 
+
+GPT-5.4 -nano .46 +.07 .11 .85 .79 .19 .90 .18 
+
+GPT-5.4 -mini .28 -.01 .14 1.00 .86 .00 .86 .24 
+
+Table 15: Complete Logic results for the content swap condition. 
+
+Logic: Irrelevant Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -7B .46 -.02 .44 .69 .53 .32 .56 .53 
+
+Qwen -14B .58 +.01 .31 .00 .31 1.00 – .00 
+
+Qwen -32B .76 -.02 .25 .23 .35 .73 .71 .28 
+
+DSR1 -7B .52 +.05 .38 .68 .59 .39 .66 .44 
+
+DSR1 -14B .58 -.10 .35 .19 .38 .78 .59 .29 
+
+DSR1 -32B .68 -.03 .17 .89 .73 .06 .82 .31 
+
+GPT-4.1 -nano .52 -.07 .37 .96 .64 .06 .64 .52 
+
+GPT-4.1 -mini .92 -.02 .11 .09 .20 .97 .96 .03 
+
+GPT-5 -nano .87 +.01 .19 .23 .34 .78 .81 .20 
+
+GPT-5 -mini .99 -.01 .01 .00 .01 1.00 – .00 
+
+GPT-5.4 -nano .42 +.02 .10 .95 .87 .10 .91 .17 
+
+GPT-5.4 -mini .28 .00 .10 1.00 .90 .00 .90 .19 
+
+Table 16: Complete Logic results for the irrelevant condition. Mathematics: Correct Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -14B .78 .00 .15 .98 .83 .00 .85 .26 
+
+Qwen -32B .76 -.02 .15 .96 .81 .00 .84 .27 
+
+DSR1 -14B .87 +.03 .10 .87 .78 .04 .89 .20 
+
+GPT-4.1 -mini .86 -.01 .09 .99 .90 .00 .91 .17 
+
+GPT-5 -mini .88 .00 .07 .99 .92 .00 .93 .14 
+
+GPT-5.4 -nano .79 +.01 .20 1.00 .81 .02 .81 .33 
+
+Table 17: Complete Mathematics results for the correct condition. 
+
+Mathematics: Paraphrase Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -14B .77 -.01 .17 .99 .82 .00 .83 .29 
+
+Qwen -32B .77 -.02 .14 .95 .82 .03 .85 .25 
+
+DSR1 -14B .87 +.03 .09 .80 .73 .08 .90 .18 
+
+GPT-4.1 -mini .87 .00 .10 .98 .90 .11 .91 .16 
+
+GPT-5 -mini .87 -.02 .07 .99 .94 .11 .94 .11 
+
+GPT-5.4 -nano .82 +.04 .16 1.00 .84 .00 .84 .27 
+
+Table 18: Complete Mathematics results for the paraphrase condition. 
+
+Mathematics: Misleading Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -14B .76 -.02 .18 .98 .80 .00 .81 .32 
+
+Qwen -32B .80 +.02 .17 .95 .79 .02 .83 .29 
+
+DSR1 -14B .89 +.05 .07 .89 .83 .10 .93 .14 
+
+GPT-4.1 -mini .86 .00 .07 .99 .92 .00 .93 .14 
+
+GPT-5 -mini .88 .00 .06 .99 .93 .00 .94 .11 
+
+GPT-5.4 -nano .79 +.01 .18 1.00 .82 .00 .82 .31 
+
+Table 19: Complete Mathematics results for the misleading condition. 
+
+Mathematics: Name swap Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -14B .76 -.02 .16 .93 .78 .04 .83 .29 
+
+Qwen -32B .78 .00 .17 .99 .82 .00 .83 .29 
+
+DSR1 -14B .86 +.02 .08 .88 .80 .00 .91 .17 
+
+GPT-4.1 -mini .85 -.01 .07 .97 .93 .20 .94 .11 
+
+GPT-5 -mini .88 +.01 .07 .99 .92 .00 .93 .14 
+
+GPT-5.4 -nano .83 +.05 .16 .99 .85 .04 .85 .26 
+
+Table 20: Complete Mathematics results for the name swap condition. 
+
+Mathematics: Content swap Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -14B .78 .00 .17 .74 .70 .36 .86 .23 
+
+Qwen -32B .77 .00 .14 .93 .84 .17 .87 .22 
+
+DSR1 -14B .84 .00 .09 .57 .54 .33 .90 .18 
+
+GPT-4.1 -mini .87 .00 .07 .95 .91 .16 .94 .11 
+
+GPT-5 -mini .88 +.01 .06 .99 .93 .06 .94 .11 
+
+GPT-5.4 -nano .80 +.02 .16 1.00 .84 .00 .84 .27 
+
+Table 21: Complete Mathematics results for the content swap condition. Mathematics: Irrelevant Model Acc ∆Acc R A Γ SUR PUR AFS 
+
+Qwen -14B .77 -.01 .18 .00 .18 1.00 – .00 
+
+Qwen -32B .78 .00 .13 .00 .13 1.00 – .00 
+
+DSR1 -14B .87 +.03 .11 .55 .52 .35 .87 .22 
+
+GPT-4.1 -mini .86 .00 .07 .00 .07 1.00 – .00 
+
+GPT-5 -mini .87 -.01 .10 .13 .19 .78 .84 .18 
+
+GPT-5.4 -nano .80 +.02 .19 .49 .39 .23 .70 .43 
+
+Table 22: Complete Mathematics results for the irrelevant condition.

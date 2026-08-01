@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-31</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-01</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 13 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>8</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-31 22:23:23 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-01 21:34:21 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共梳理23篇论文，精读9篇、速读14篇，重点关注LLM智能体控制与自我进化。最值得看的是以控制论视角管理冻结智能体上下文组装，以及SkillMentor通过盲点诊断实现智能体自我进化。下一步可关注FAVA形式化权限验证与PAUSE个人助手基准，为实际部署打基础。</p>
+<p>今日精读聚焦搜索智能体图结构框架与多智能体在线记忆机制，共13篇论文。最值得看的是《Harness-G》（9.0）用图结构编排搜索智能体，以及《Σ-Mem》（9.0）为多智能体系统提供可靠性记忆。建议优先精读这两篇，能快速把握智能体搜索与协作的最新结构化方案。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">9 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Context Assembly as the Controlled Variable: A Control-Theoretic View of Harness Policies for Frozen LLM Agents">Context Assembly as the Controlled Variable: A Control-Theoretic View of Harness Policies for Frozen LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="SkillMentor: LLM Agent Self-Evolution via Learning Blind-Spot Diagnosis">SkillMentor: LLM Agent Self-Evolution via Learning Blind-Spot Diagnosis</span></li><li><span class="dpr-home-dashboard-paper-title" title="SKIMIX: Multi-Agent Harness-Time Scaling with Skill Mixture for Dynamic Harness Engineering">SKIMIX: Multi-Agent Harness-Time Scaling with Skill Mixture for Dynamic Harness Engineering</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Harness-G: A Graph-Structured Harness for Search Agents">Harness-G: A Graph-Structured Harness for Search Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="$Σ$-Mem: An Online Reliability Memory for LLM-based Multi-Agent Systems">$Σ$-Mem: An Online Reliability Memory for LLM-based Multi-Agent Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="AgentRadio: Passive Awareness for Long-Horizon Multi-Agent Collaboration">AgentRadio: Passive Awareness for Long-Horizon Multi-Agent Collaboration</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>2</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>8</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">14 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="FAVA: Formal Authorization for Verified Agents with Evidence-Backed Permission Graphs">FAVA: Formal Authorization for Verified Agents with Evidence-Backed Permission Graphs</span></li><li><span class="dpr-home-dashboard-paper-title" title="PAUSE: A User-Centric Benchmark for Personal AI Assistants in Unified Service Environments">PAUSE: A User-Centric Benchmark for Personal AI Assistants in Unified Service Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Bridging Inference-Time Scaling and Episodic Memory with Action-Centric Graphs">Bridging Inference-Time Scaling and Episodic Memory with Action-Centric Graphs</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="From Cognitive Architectures to Language Agents: A Mechanism-Level Review of Lineage, Convergence, and Migration Gaps">From Cognitive Architectures to Language Agents: A Mechanism-Level Review of Lineage, Convergence, and Migration Gaps</span></li><li><span class="dpr-home-dashboard-paper-title" title="Messier: A High-Resolution Corpus for Cross-Benchmark Agent Evaluation">Messier: A High-Resolution Corpus for Cross-Benchmark Agent Evaluation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents">Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>14</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span></div>
 </section>
 </div>
 
