@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-01</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-02</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 13 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>8</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-01 21:34:21 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-02 21:35:59 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读聚焦搜索智能体图结构框架与多智能体在线记忆机制，共13篇论文。最值得看的是《Harness-G》（9.0）用图结构编排搜索智能体，以及《Σ-Mem》（9.0）为多智能体系统提供可靠性记忆。建议优先精读这两篇，能快速把握智能体搜索与协作的最新结构化方案。</p>
+<p>今日8篇论文聚焦AI智能体效率与安全性，精读重点为成本感知工具决策与GUI视觉扩展。</p>
+<p>最值得看：工具获取需权衡成本而非仅看分数；GUI智能体通过视觉状态转换实现规模化。</p>
+<p>建议关注智能体安全（道德风险）与视觉模型蒸馏方向，并优先精读高分两篇。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">8 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Harness-G: A Graph-Structured Harness for Search Agents">Harness-G: A Graph-Structured Harness for Search Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="$Σ$-Mem: An Online Reliability Memory for LLM-based Multi-Agent Systems">$Σ$-Mem: An Online Reliability Memory for LLM-based Multi-Agent Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="AgentRadio: Passive Awareness for Long-Horizon Multi-Agent Collaboration">AgentRadio: Passive Awareness for Long-Horizon Multi-Agent Collaboration</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Scores Are Not Decisions: Cost-Aware Stopping for Tool Acquisition in LLM Agents">Scores Are Not Decisions: Cost-Aware Stopping for Tool Acquisition in LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Scaling GUI Agents with Visual State Transitions">Scaling GUI Agents with Visual State Transitions</span></li><li><span class="dpr-home-dashboard-paper-title" title="Cyber-Capable AI Agents: Vulnerabilities, Evaluation Containment, and Defensive Response">Cyber-Capable AI Agents: Vulnerabilities, Evaluation Containment, and Defensive Response</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>8</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>4</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="From Cognitive Architectures to Language Agents: A Mechanism-Level Review of Lineage, Convergence, and Migration Gaps">From Cognitive Architectures to Language Agents: A Mechanism-Level Review of Lineage, Convergence, and Migration Gaps</span></li><li><span class="dpr-home-dashboard-paper-title" title="Messier: A High-Resolution Corpus for Cross-Benchmark Agent Evaluation">Messier: A High-Resolution Corpus for Cross-Benchmark Agent Evaluation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents">Skill Use or Skill Theater? Evaluating the Reasoning Backroom in Skill-Augmented Language Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Self-Boosting Vision-Language Models with Noisy Student On-Policy Self-Distillation">Self-Boosting Vision-Language Models with Noisy Student On-Policy Self-Distillation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Moral Hazard in Multi-Agent Language Models">Moral Hazard in Multi-Agent Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Agent Skills Matter: Inferring Proprietary Skills from Execution Trajectories">Agent Skills Matter: Inferring Proprietary Skills from Execution Trajectories</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>4</strong></span></div>
 </section>
 </div>
 
