@@ -1,0 +1,400 @@
+Title: TransMem: Transforming Hidden States into Memory for Large Language Models
+
+URL Source: https://arxiv.org/pdf/2607.29032v1
+
+Published Time: Mon, 03 Aug 2026 00:27:10 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# TransMem: Transforming Hidden States into Memory for Large Language Models 
+
+# Haodong Lei 1,2 , Junming Liu 2, Yirong Chen 2, Pinlong Cai 2, Botian Shi 2, Ding Wang 2∗, Hongsong Wang 1∗
+
+> 1
+
+Southeast University, Nanjing, Jiangsu, China 
+
+> 2
+
+Shanghai Artificial Intelligence Laboratory, Shanghai, China leihaodong@seu.edu.cn, hongsongwang@seu.edu.cn 
+
+Abstract 
+
+Large language model (LLM) agents increasingly operate over long interaction histories, where effective reasoning requires identifying and exploiting task-relevant evidence distributed across past observations and actions. However, useful infor-mation encoded in previously computed representations is of-ten underutilized during subsequent generation. We propose 
+
+TransMem , a lightweight inference-time parametric mem-ory module that transforms sparse historical hidden states from a frozen LLM backbone into reusable memory repre-sentations. TransMem uses a lightweight gating network to dynamically apply the latent intervention to the current hid-den states, without repeatedly encoding the preceding con-text. To learn transferable memory utilization rather than task-specific knowledge, we introduce evidence-conditioned self-distillation. A memory-augmented student processes the full context and matches the predictive distribution of an evidence-only teacher that shares the same frozen backbone. Exper-iments on LoCoMo, HotpotQA, and MemoryAgentBench demonstrate consistent improvements across different model architectures and scales. TransMem yields gains of 11.58– 29.25 F1 on LoCoMo and 10.20–13.03 F1 on HotpotQA, while improving the average MemoryAgentBench accuracy from 29.54% to 40.00%. These results establish sparse his-torical hidden states as an effective and efficient memory sub-strate for long-context LLM agents. Our code is available at https://github.com/Haodong-Lei-Ray/TransMem. 
+
+# Introduction 
+
+Large language models (LLMs) are increasingly expected to support sustained interactions over long contexts, particularly in applications such as coding agents (Yang et al. 2024), long-horizon agent systems (Shi et al. 2026; Yu et al. 2026a), and complex reasoning (Agashe et al. 2025). The crucial information needed to answer a query may be distributed across a long interaction history or document (Wu et al. 2025). The challenge is therefore not merely to accept longer inputs, but to identify and exploit the evidence that matters for the current prediction (Du et al. 2025). A straightforward response is to enlarge the context win-dow or scale the backbone model (Ding et al. 2024; Zhao 
+
+> ∗
+
+Corresponding author. Copyright © 2027, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 
+
+et al. 2025). However, model predictions can be sensitive to the position of relevant evidence, and long-context reason-ing often degrades when useful information is distant from the generation point (Liu et al. 2024; Hsieh et al. 2024). External memory addresses this limitation by summarizing, retrieving, or storing information outside the current com-putation (Lei et al. 2026a; Yang et al. 2026). Parametric memory encodes information into auxiliary latent spaces, which helps mitigate limitations imposed by the native com-putational structure of Transformers (Wei et al. 2026; Lei et al. 2026b). These mechanisms are useful when informa-tion must persist across tasks or sessions. However, they do not directly address a distinct test-time problem, which is how an LLM can better exploit the representations already computed for the current long context. Based on this question, we observe two properties of causal transformers. (1) Hidden states naturally aggregate information from their preceding tokens (Li et al. 2024; DeepSeek-AI et al. 2025). As shown in Figure 1(a), a hidden state near the end of a context segment can therefore serve as a compact representation of that segment and its prefix. 
+
+(2) These representations are position-sensitive. Because attention tends to favor nearby tokens (Liu et al. 2024), rep-resentations formed at different positions preserve different parts of the context with different fidelity. This effect be-comes more pronounced as the context length increases. As illustrated in Figure 1(b), even when the information most relevant to the query appears earlier in the context, the Trans-former may still assign higher attention scores to more recent tokens. Consequently, information from a long context is dis-tributed across hidden states at different positions, rather than being fully retained by representations near the current gen-eration position. These properties suggest that a small set of strategically selected hidden states can provide complemen-tary views of a long input, without recomputing the entire long context as another memory. Consequently, substantial task-relevant information may remain latent in previously computed hidden states but underutilized during subsequent generation. Based on these observations, we propose TransMem, an inference-time parametric memory module that transforms sparse historical hidden states into task-specific memory representations to enhance long-context reasoning. Rather than learning to store particular knowledge representations, arXiv:2607.29032v1 [cs.MA] 31 Jul 2026 Figure 1: Two properties of contextual representations in LLMs. (a) Hidden states aggregate preceding context . Owing to the autoregressive computation of causal Transformers, each hidden state is computed from its preceding tokens. Consequently, later hidden states can serve as contextual representations of the preceding sequence. (b) Transformer representations are region-sensitive. Excluding the initial sink position, evidence appearing later in the context generally receives higher attention, reflecting a recency bias. TransMem learns the memory capability itself through an evidence-conditioned self-distillation training method. Specifically, it learns how to extract useful information from existing hidden states to answer the current query. As a result, TransMem does not memorize knowledge tied to a specific long context, but instead acquires a general capability for processing and reasoning over long contexts. It offers a scal-able route toward improving memory capacity independently of the backbone model size. Our contributions are summarized as follows: 
+
+• We propose TransMem, a lightweight inference-time parametric memory module that transforms previously computed sparse hidden states from a frozen LLM back-bone into reusable memory representations. 
+
+• We introduce an evidence-conditioned self-distillation 
+
+training method. By exposing the teacher and student to different input contexts, the parameterized memory module learns to recover evidence-conditioned predic-tions from full long contexts. 
+
+• Extensive experiments on LoCoMo (Maharana et al. 2024), HotpotQA (Yang et al. 2018), and MemoryA-gentBench (Hu, Wang, and McAuley 2026) have shown consistent improvement on long-context reasoning across backbone architectures and scales. 
+
+# Related Work 
+
+External Memory for LLMs 
+
+The integration of long-term memory mechanisms (Zhang et al. 2025b; Srivastava et al. 2026) marks a fundamen-tal paradigm shift in the evolution of LLM agents (Zhang et al. 2025b). Early frameworks like MemGPT (Packer et al. 2024) pioneered operating-system-inspired paging and seg-mentation to manage extended contexts. Building upon this, scalable architectures like Mem0 (Chhikara et al. 2025) dy-namically consolidate memory states to mitigate the severe limitations of fixed context windows. Retrieval-augmented memory systems frequently suffer from critical information omissions and semantic noise (Latimer et al. 2025). To ad-dress this issue, recent studies have explored iterative re-trieval paradigms, including MemCoT (Lei et al. 2026a), MemEvolve (Zhang et al. 2025a), SimpleMem (Liu et al. 2026), and ReasoningBank (Ouyang et al. 2026). These approaches substantially improve retrieval accuracy by en-abling progressive evidence refinement and adaptive mem-ory exploration. However, they often suffer from limited ro-bustness and increased computational overhead due to the re-peated retrieval process (Srivastava, Cao, and Wang 2025). Moreover, these methods fundamentally do not eliminate the information loss introduced during memory extraction. Instead, they remain vulnerable to premature termination within the retrieval loop, which can prevent the model from locating the necessary evidence and ultimately lead to re-trieval failure. 
+
+Parametric Memory for LLMs 
+
+Compared with memory mechanisms that store informa-tion in external knowledge repositories, parameterized mem-ory provides a more expressive representation space by di-rectly encoding knowledge into model parameters. There-fore, it represents a more advanced paradigm for enhanc-ing the memory capacity of LLMs. Early attempts along this direction typically employ auxiliary models to explic-itly or implicitly encode additional information, including MeMo (Quek et al. 2026), MemVerse (Liu et al. 2025), Memory Decoder (Cao et al. 2025), MemSifter (Tan et al. 2026), MEMTS (Yu et al. 2026b), and Mem-π (Wang et al. 2026). More sophisticated approaches instead design special-ized architectures that introduce dedicated representations to enhance long-context reasoning capabilities (Zhang, Fu, and Yan 2025; Ji et al. 2026). For example, DRIFT (Xie and Wang 2026) reveals that the last-layer feature may already contain highly compressed information from long contexts, suggest-ing that intermediate representations can serve as effective memory carriers. Meanwhile, the decoupling of memory ca-pability from reasoning capability has emerged as an in-creasingly important research direction. MLPMemory (Wei et al. 2026) maps last-layer features into a latent distribution to inject long-context reasoning ability, while δ-mem (Lei et al. 2026b) adopts a heterogeneous delta-network architec-ture to incorporate long-context reasoning capabilities into layer-wise representations. 
+
+# Method 
+
+In this section, we present the TransMem framework, includ-ing its inference and training procedures. Figure 2 provides an overview of the framework. During inference, the frozen backbone performs its standard forward computation, while TransMem abstracts a small set of historical hidden states into a memory shift. This shift influences current output hid-den states to better preserve key information from long con-texts. We train TransMem through self-distillation to recover the predictive distribution of a teacher model conditioned on gold evidence, enabling the memory module to preserve crucial information while suppressing contextual noise. 
+
+Preliminaries 
+
+During the prefill stage, the input long context is denoted as C. Let Q ⊆ C denote the question and E ⊆ C denote the evidence that supports the answer. At position t, the tokenized input is x1: t = [ C; A≤t], where C = x1: L is the long context and A≤t = ( yL+1 , . . . , y t) is the generated answer prefix. The next token is yt+1 . The hidden states produced by the 
+
+K-th layer for x1: t are: 
+
+hK 
+
+> 1: t
+
+= [ HC ; HA] = [ hK
+
+> 1: L
+
+; hKL+1: t], (1) where hKt ∈ R1×d, with d denoting the hidden dimension of the frozen backbone model. The context features HC are computed during prefill, during which TransMem does not intervene in generation. With the KV cache, each layer only needs to receive the final hidden state at each decoding step. In a standard LLM forward pass, transformer layer K + 1 produces the hidden state of the next layer as 
+
+hK+1  
+
+> t
+
+= f K+1  
+
+> θ
+
+(hKt ), (2) where f K+1  
+
+> θ
+
+represents the (K + 1) -th Transformer block. 
+
+Evidence-Conditioned Self-distillation Training 
+
+We train TransMem with self-distillation. Our goal is to im-prove the ability of LLMs to identify and exploit query-relevant evidence from long contexts. Therefore, instead of training the model to memorize the entire context, we aim to encourage the model to suppress irrelevant information and focus on evidence that supports the answer. To achieve this goal, we construct the teacher by providing only the ev-idence E and query Q. Since the teacher has access to the evidence without irrelevant context noise, its output distribu-tion represents a great behavior on evidence. In contrast, the student is equipped with learnable TransMem. It receives the full context C and learns to recover the teacher’s evidence-conditioned predictions through distillation. The teacher runs the frozen backbone on (E, Q ), while the student runs the TransMem-augmented backbone on C.The teacher generates the answer trajectory A, and the stu-dent follows its answer prefix during teacher forcing. Both paths share the same frozen LLM backbone, so no separate teacher model is introduced. Let pT (· | A<i , E, Q ) denote the teacher distribution along its answer trajectory. A student model augments the frozen backbone with TransMem and produces pS (· | A<i , C ). As shown in Figure 2(b), the train-ing objective is the forward KL divergence at the language model output. We optimize the TransMem module by mini-mizing the forward KL divergence between the teacher and student distributions: 
+
+LSD = 1
+
+|A|
+
+> |A|
+
+X
+
+> i=1
+
+KL( pT (· | A<i , E, Q ) ∥ pS (· | A<i , C )) .
+
+(3) Since the teacher provides soft supervision, we use the teacher distribution as the target distribution. The student distribution is read through the frozen language model head. Gradients from Eq. (3) pass through the frozen upper layers into every lower TransMem module. The backbone receives no parameter updates, while each correction is optimized for its final token-level effect. A correction at layer K changes the input distribution of every higher layer. Training modules against independently cached layer targets therefore creates a mismatch once lower-layer corrections become active. In-loop training keeps the frozen backbone in the computation graph and optimizes all memory modules jointly. The resulting upper-layer states in-clude the corrections from every active lower module (Zhang et al. 2026). 
+
+Inference with TransMem 
+
+The TransMem module at the K-th layer consists of a Trans-former block f Km , a learnable projection W K 
+
+> ∆
+
+, and a learnable gating network f Kg .TransMem applies its correction only while generating 
+
+A≤t. Once hKt is obtained, we divide HC into segments of size n and use the final hidden state of each segment as a memory feature. This gives HM = hKn , h K
+
+> 2n
+
+, ..., h KL . The size of HM remains small, with the optimal value being only 5, which ensures the sparsity of the memory representation. As illustrated in Figure 2(a), we feed HM and HA into TransMem. They first undergo standard autoregressive at-tention to produce the memory feature hm from the different segments. A learnable projection W K 
+
+> ∆
+
+∈ Rd×d then trans-forms hm into the final memory shift ∆hm. The complete process is 
+
+hm = f Km (HM , h A
+
+> 1: t
+
+), (4) 
+
+∆h = W K 
+
+> ∆
+
+hm. (5) Not every memory shift ∆h is useful, and noisy shifts may adversely affect the output. Therefore, we use the learnable gating network f Kg to scale the memory shift. Specifically, 
+
+gm = f Kg (hm) = α · σ
+
+ Wg hm
+
+τ
+
+
+
+, (6) where σ(x) = 11+ e−x , α = 2 , τ is gate temperature, and 
+
+Wg ∈ Rd×d is learnable gate weight. The core correction Figure 2: The overall architecture of the TransMem framework. (a) Inference with TransMem. TransMem is applied after the frozen LLM backbone produces the hidden states at the K-th layer. The selected historical hidden states are transformed into memory representations by the TransMem module. (b) Evidence-conditioned self-distillation. The student model consists of the frozen LLM backbone augmented with TransMem and receives the full long context C. The teacher model shares the same frozen backbone parameters but receives only the evidence E and question Q, providing an evidence-conditioned supervision signal. The student is trained to recover the teacher prediction distribution from the full long context. formula is ˆhKt = hKt + gm ⊙ ∆h, (7) where t ≥ L + 1 , indicating that the memory correction is applied only during answer generation. Inference with the TransMem memory correction then becomes: 
+
+hK+1  
+
+> t
+
+= f K+1  
+
+> θ
+
+(ˆhKt ). (8) Therefore, our method enhances long-context reasoning through a lightweight network without extensively recom-puting long text segments. Our method does not store ad-ditional information from the preceding context. Instead, its contextual awareness relies on the already computed vectors in HM . The features in HM can serve as memory because of the computational properties of a transformer. In particular, 
+
+hKL encodes transformed information from x1: L and there-fore acts as a feature representation of that prefix. A similar operation can also be found in EAGLE (Li et al. 2024) and DeepSeek MTP (DeepSeek-AI et al. 2025). In this sense, the method parameterizes part of the trans-former’s memory capability in an independent network. It therefore takes a further step toward separating the reasoning and memory capabilities of an LLM. TransMem is not applied to all layers. Empirically, we find that inserting memory modules into only the last four layers of the LLM is sufficient to achieve strong performance. It further makes our method more lightweight. Furthermore, unlike existing latent memory methods, TransMem is in-voked only when the model begins generating the answer sequence A. This sparse inference strategy further reduces the additional computation. To construct sparse memory representations, we adopt a dynamic segmentation strategy. Specifically, we partition the long context into B segments and set the segment length to 
+
+n = LB . We note that this choice is not necessarily optimal, and the segment length can be adapted to different tasks or application scenarios. When the long context C exceeds the maximum context window of the frozen backbone model, we adopt a chunk-wise memory extraction strategy. Specifically, C is divided into S chunks according to the backbone context window, denoted as {C1, . . . , C S }. Each chunk independently pro-duces a sparse memory representation HiM . During answer generation, the final memory is formed by aggregating all chunk-level memories: 
+
+HM = Concat( H1 
+
+> M
+
+, . . . , H SM ).
+
+This strategy enables TransMem to exploit information be-yond the backbone context window while introducing only a small amount of additional computation. 
+
+# Experiments 
+
+Experimental Setup 
+
+Evaluation and Benchmarks. We evaluate both general reasoning ability and memory effectiveness. We evaluate multi-hop question answering performance on the Hot-potQA test set (Yang et al. 2018), which assesses multi-hop reasoning. Memory effectiveness is evaluated on LoCoMo (Maharana et al. 2024) and MemoryAgentBench (Hu, Wang, and McAuley 2026), which measure the retention, retrieval, and use of information over extended interaction histories. LoCoMo contains contexts with an average length of approximately 16K tokens, making it suitable for evaluating long-context reasoning capabilities. In contrast, MemoryAgentBench includes many scenarios with context lengths exceeding 256K tokens, providing a more challeng-ing evaluation of latent-space memory utilization. Following mem0 (Chhikara et al. 2025), we exclude the adversarial question category from LoCoMo. LoCoMo comprises 841 single-hop (SH), 282 multi-hop (MH), 96 open-domain (OD), and 321 temporal (TP) reasoning challenges. 
+
+Baselines. We compare TransMem with representative memory approaches based on different memory mecha-nisms, including external memory and parametric memory methods. For external memory methods, we include BM25 RAG (Lewis et al. 2020), which retrieves relevant passages from historical contexts and appends them to the input, LLMLingua-2 (Pan et al. 2024), which compresses long contexts into shorter textual representations, MemoryBank (Zhong et al. 2024), Memory-R1-GRPO (Yan et al. 2026) and TriMem (Sun et al. 2026), which maintain historical information as retrievable textual memories. For parametric memory methods, we compare with Context2LoRA (Back et al. 2026), MemGen (Zhang, Fu, and Yan 2025), MLP Memory (Wei et al. 2026) and δ-Mem (Lei et al. 2026b), which introduce additional trainable components to encode or transform contextual information into memory represen-tations. All experiments are conducted with a fixed random seed of 42. 
+
+Implementation Details. To evaluate the generality of TransMem, we conduct experiments on LLM backbones with different architectures and parameter scales, includ-ing Qwen3-4B-Instruct (Qwen Team 2025b), Qwen2.5-14B-Instruct (Qwen Team 2025a), and Llama3.1-8B-Instruct (Grattafiori et al. 2024). TransMem is a learnable memory component, which is trained only on the HotpotQA training set. We follow the same data processing strategy as AgeMem (Yu et al. 2026c) to ensure the effective utiliza-tion of the HotpotQA training set. Notably, we ensure that the HotpotQA training set contains no content overlapping with the test set, thereby avoiding unfair performance gains due to test-set leakage. TransMem is inserted into the final four transformer layers of the student LLM model. Its trans-former block consists of a single layer that follows the Qwen3 transformer architecture. Training uses one NVIDIA A100 Tensor Core GPU and 15 gradient accumulation steps per rank, resulting in a global batch size of 30. 
+
+Main Results 
+
+We evaluate TransMem on models with different scales and architectures. As shown in Table 1, TransMem consis-tently improves long-context reasoning performance across all evaluated models. On LoCoMo, it achieves relative im-provements of at least 27% over the corresponding backbone models. On HotpotQA, TransMem yields relative EM im-provements of approximately 14%. We further observe that the effectiveness of TransMem may depend on the underly-ing capability of the backbone model. For example, although Qwen3-4B-Instruct has fewer parameters than Qwen2.5-14B-Instruct, its more advanced architecture enables com-parable performance on LoCoMo. Moreover, TransMem demonstrates robustness to substantial changes in the back-bone architecture. Although Llama3.1-8B-Instruct does not achieve performance comparable to the other two backbones, the transformer block within TransMem adopts the more ad-vanced Qwen3 architecture, allowing it to achieve an F1 score of 51.64 on LoCoMo and 71.63 on HotpotQA. These results are comparable to those of Qwen2.5-14B-Instruct with a larger parameter scale. As shown in Table 2, we further evaluate TransMem on Memory Agent Bench, which contains substantially longer contexts than LoCoMo, with many examples exceeding 256K tokens. Since TransMem reuses historical hidden represen-tations that have been truncated from the current context window, it can preserve information beyond the effective context length of the backbone model. As a result, it con-sistently improves performance across different memory set-tings, demonstrating that the proposed memory mechanism remains effective under ultra-long-context reasoning. Notably, although TransMem is trained only on the Hot-potQA training set, it generalizes effectively to both LoCoMo and Memory Agent Bench. This phenomenon demonstrates that the learned memory capability transfers well across di-verse long-context reasoning tasks, rather than memorizing knowledge specific to the HotpotQA dataset. 
+
+Ablation Studies 
+
+To investigate the contribution of each component in Trans-Mem, we conduct an ablation study by removing individual modules. As shown in Table 3, the results demonstrate that the proposed transformer block is the primary contributor to the overall performance of TransMem. Although the Gating Network provides a relatively modest improvement in the overall score, it yields a noticeably larger gain on multi-hop reasoning. This observation suggests that the gating mecha-nism facilitates the retrieval and utilization of relevant mem-ory representations, thereby improving the model’s ability to exploit stored information during complex reasoning. Table 1: Main benchmark results comparing different memory mechanisms. Model LoCoMo HotpotQA Avg. Multi-Hop Temporal OpenDomain Single-Hop EM F1 Qwen3-4B-Instruct 40.79 38.39 32.89 10.77 48.05 42.35 56.00 
+
+External Memory 
+
++ BM25 RAG 36.68 -4.11 38.12 -0.27 20.34 -12.55 9.99 -0.78 45.47 -2.58 40.35 -2.00 52.83 -3.17 
+
++ LLMLingua-2 40.98 +0.19 39.07 +0.68 30.13 -2.76 10.98 +0.21 49.19 +1.14 36.93 -5.42 50.03 -5.97 
+
++ MemoryBank 38.14 -2.65 37.88 -0.51 21.76 -11.13 13.35 +2.58 47.31 -0.74 39.16 -3.19 51.25 -4.75 
+
+Parametric Memory 
+
++ Context2LoRA 48.11 +7.32 37.95 -0.44 34.99 +2.10 16.75 +5.98 60.11 +12.06 37.85 -4.50 50.88 -5.12 
+
++ MemGen 40.05 -0.74 32.93 -5.46 33.30 +0.41 12.67 +1.90 48.13 +0.08 5.36 -36.99 16.27 -39.73 
+
++ MLP Memory 40.21 -0.58 32.87 -5.52 21.72 -11.17 13.81 +3.04 52.75 +4.70 44.92 +2.57 59.23 +3.23 
+
++ δ-Mem 46.53 +5.74 42.14 +3.75 37.20 +4.31 13.35 +2.58 55.36 +7.31 49.41 +7.06 63.66 +7.66 
+
++ TransMem (Ours) 54.11 +13.32 52.04 +13.65 45.62 +12.73 20.64 +9.87 61.87 +13.82 48.55 +6.20 66.20 +10.20 
+
+Qwen2.5-14B-Instruct 42.74 32.59 27.36 13.50 55.35 50.75 60.20 
+
+External Memory 
+
++ BM25 RAG 42.25 -0.49 32.17 -0.42 30.77 +3.41 23.21 +9.71 52.19 -3.16 50.46 -0.29 61.2 +1.00 
+
++ LLMLingua-2 43.43 +0.69 34.12 +1.53 31.15 +3.79 19.48 +5.98 53.98 -1.37 45.45 -5.30 59.10 -1.10 
+
++ MemoryBank 44.64 +1.90 34.50 +1.91 44.70 +17.34 23.86 +10.36 50.39 -4.96 46.66 -4.09 58.51 -1.69 
+
+Parametric Memory 
+
++ Context2LoRA 48.28 +5.54 35.16 +2.57 28.34 +0.98 17.23 +3.73 63.85 +8.50 48.15 -2.60 59.98 -0.22 
+
++ MemGen 43.64 +0.90 29.36 -3.23 29.47 +2.11 17.54 +4.04 56.83 +1.48 10.56 -40.19 21.45 -38.75 
+
++ MLP Memory 45.33 +2.59 35.65 +3.06 25.46 -1.90 21.39 +7.89 58.90 +3.55 47.35 -3.40 58.84 -1.36 
+
++ δ-Mem 47.83 +5.09 34.99 +2.40 27.47 +0.11 27.37 +13.87 62.25 +6.90 51.38 +0.63 65.36 +5.16 
+
++ TransMem (Ours) 54.32 +11.58 41.20 +8.61 41.44 +14.08 30.38 +16.88 66.38 +11.03 58.01 +7.26 72.34 +12.14 
+
+Llama3.1-8B-Instruct 22.39 20.30 19.42 25.86 23.84 49.77 58.60 
+
+External Memory 
+
++ BM25 RAG 19.25 -3.14 12.28 -8.02 11.58 -7.84 31.02 +5.16 23.18 -0.66 44.95 -4.82 55.12 -3.48 
+
++ MemoryBank 23.53 +1.14 23.31 +3.01 13.01 -6.41 31.05 +5.19 26.77 +2.93 50.15 +0.38 65.97 +7.37 
+
++ SimpleMem 27.47 +5.08 30.44 +10.14 18.77 -0.65 31.23 +5.37 29.37 +5.53 52.06 +2.29 66.15 +7.55 
+
++ Memory-R1-GRPO 26.84 +4.45 32.87 +12.57 16.72 -2.70 8.81 -17.05 30.75 +6.91 48.54 -1.23 62.15 +3.55 
+
++ TriMem 38.70 +16.31 34.56 +14.26 32.36 +12.94 32.71 +6.85 43.20 +19.36 55.36 +5.59 68.11 +9.51 
+
+Parametric Memory 
+
++ δ-Mem 46.21 +23.82 36.64 +16.34 31.28 +11.86 24.87 -0.99 57.56 +33.72 56.27 +6.50 69.47 +10.87 
+
++ TransMem (Ours) 51.64 +29.25 47.27 +26.97 37.29 +17.87 28.69 +2.83 61.21 +37.37 56.57 +6.80 71.63 +13.03 
+
+Further Study 
+
+Efficiency. To evaluate the efficiency of TransMem, we measure the additional computational cost and inference la-tency under different context lengths and latent memory con-figurations. We report the additional latency introduced by the memory module, excluding the frozen backbone prefill computation. As shown in Figure 3(a), we compare the addi-tional inference costs of TransMem, δ-Mem, and MLPMem-ory on Qwen3-4B-Instruct as the context length increases from 10K to 100K tokens. δ-mem introduces an approxi-mately linear increase in computational overhead, where ev-ery additional 10k tokens in the latent memory leads to nearly 100 GFLOPs of extra computation. Although this overhead remains relatively small compared with the backbone model, the computational cost of TransMem is independent of the context length and only depends on the number of selected memory slots B, equivalently |HM |. Therefore, TransMem maintains a constant computational overhead regardless of the input context length. Moreover, since TransMem is in-serted into only a subset of backbone layers rather than all layers, its computational cost remains lower than δ-mem even with a 10k-token context. TransMem also achieves lower inference latency, as shown in Figure 3(b). Unlike methods that repeatedly encode his-torical memory representations, TransMem performs sparse memory computation only during answer generation with-out additional processing of previous contexts. Therefore, increasing the context length does not introduce additional inference latency, demonstrating the scalability of TransMem for long-context reasoning. 
+
+Insertion Depth. We further investigate the impact of in-serting TransMem at different layers. As illustrated in Table 4, we find that increasing the number of inserted layers does not always lead to better performance, and earlier inserted layers are not necessarily beneficial. The Last-2 to Last-8 settings denote inserting TransMem into the last 2 to 8 lay-Table 2: Results on Memory Agent Bench comparing differ-ent memory mechanisms.                                                     
+
+> Model Avg. AR TTL LRU SF Qwen3-4B-Instruct 29.54 35.30 26.14 47.08 14.37
+> External Memory
+> + BM25 RAG 24.43 32.20 9.74 37.86 15.00 + LLMLingua-2 15.63 21.45 1.43 38.45 8.62 + MemoryBank 17.65 22.65 7.67 36.36 9.88
+> Parametric Memory
+> + Context2LoRA 32.53 40.00 29.86 25.15 17.75 + MemGen 29.61 34.85 28.45 44.30 14.38 + MLP Memory 28.80 35.35 26.00 31.19 14.38 +δ-Mem 38.85 44.40 47.29 41.55 17.00 +TransMem (Ours) 40.00 41.60 54.64 36.19 24.00
+
+Table 3: Module Ablation Results on LoCoMo with Qwen3-4B-Instruct as the backbone.                     
+
+> Model Avg. MH TP OD SH
+> TransMem 54.11 52.04 45.62 20.64 61.87
+> w/o Gating Network 53.09 48.04 45.09 21.57 61.45 w/o Transformer Block 40.79 38.39 32.89 10.77 48.05
+
+ers of the backbone, respectively. Since Qwen3-4B-Instruct contains 36 layers, the Middle settings insert TransMem into selected intermediate layers. We observe that inserting Trans-Mem into the last four layers achieves the best performance, particularly on the Multi-Hop task. Compared with inserting TransMem into only the last two layers, Last-4 provides more effective memory enhancement. However, further increasing the number of inserted layers to Last-8 does not bring ad-ditional improvements. Similarly, inserting TransMem into layers 28 to 31 does not provide noticeable gains. Over-all, inserting TransMem into the last layers generally yields better performance than inserting it into the middle layers. Earlier insertion locations may tend to provide weaker im-provements, suggesting that effective memory formation may occur primarily in deeper layers. 
+
+Training Method. In addition to evidence-conditioned self-distillation (ECSD), we explored supervised fine-tuning (SFT) (Ouyang et al. 2022) and two subsequent policy-optimization objectives. As illustrated in Table 5, direct SFT on golden answers performs substantially worse than Table 4: LoCoMo F1 under different TransMem injection depths and layer positions. Experiments are conducted on Qwen3-4B-Instruct. 
+
+Model Avg. MH TP OD SH 
+
+Last-2 53.14 49.91 44.70 18.35 61.41 Last-4 54.11 52.04 45.62 20.64 61.87 
+
+Last-8 53.27 50.29 44.31 20.44 61.43 Middle 28-31 52.85 50.18 43.74 20.07 60.96 Middle 22-25 52.32 47.24 43.26 20.67 61.09 Middle 18-21 51.54 45.18 44.48 20.17 59.96 Middle 12-16 51.11 44.00 42.92 20.57 60.11 
+
+Figure 3: Efficiency comparison in terms of computation cost and inference latency. (a) Additional computational cost introduced by the memory module, shown on a logarithmic scale. (b) Average additional inference latency introduced by the memory module. Table 5: Effect of different training objectives on LoCoMo 
+
+F1. Experiments are conducted on Qwen3-4B-Instruct. All training sets are from HotpotQA. 
+
+Method Avg. MH TP OD SH 
+
+SFT 48.82 47.06 40.66 19.45 55.89 GRPO 53.18 51.36 43.92 17.42 61.40 OPD 52.80 51.17 45.01 18.96 60.19 ECSD 54.11 52.04 45.62 20.64 61.87 
+
+ECSD. Starting from the SFT checkpoint, both on-policy distillation (OPD) (Li et al. 2026) and group relative pol-icy optimization (GRPO) (Shao et al. 2024) improve cross-domain LoCoMo performance, reaching 52.80 and 53.18 F1, respectively. However, neither matches ECSD, which achieves 54.11 F1. The best GRPO variant reaches 53.18 
+
+F1, compared with 54.11 for ECSD. This result suggests that answer-level reinforcement learning does not compensate for a weaker memory-representation objective: ECSD’s token-level supervision from a privileged-evidence teacher remains important for learning the TransMem module. 
+
+# Conclusion 
+
+We propose TransMem, a lightweight parametric memory module that improves test-time long-context reasoning with-out explicit memory construction or backbone scaling. Trans-Mem transforms sparse, position-sensitive historical hid-den states into reusable memory representations and in-jects them into current reasoning. Evidence-conditioned self-distillation trains the module to recover an evidence-only teacher’s predictions from full contexts. Experiments on Lo-CoMo, MemoryAgentBench, and HotpotQA show consistent gains across backbones with sparse memory representations and context-independent overhead, supporting efficient de-coupling of memory capability from backbone reasoning capacity. Future work will explore adaptive MoE memory extensions for TransMem and applications to long-horizon agent scenarios. Appendix More Experiments 
+
+Effect of the Train Set 
+
+We next compare different training corpora while fixing the student to Qwen3-4B and inserting dynamically gated Trans-Mem modules into its last four layers. We evaluate all check-points on the same 1,540 questions from LoCoMo and report token-level F1 in Table 6. The HotpotQA–LongMemEval mixture reaches 53.95 F1,only 0.16 points below the main HotpotQA recipe. In con-trast, aggressively downsampling HotpotQA and adding the small LoCoMo-train split reduces overall F1 to 51.80, with the largest degradation on temporal questions. The last train set contains 84 LoCoMo questions that also occur in the full evaluation set; removing them at evaluation gives 51.87 F1,essentially the same conclusion. Hence, the decrease is not explained by evaluation overlap. Since the last recipe changes both corpus composition and the number of HotpotQA ex-amples, the results do not show that LoCoMo supervision is intrinsically harmful; rather, this particular mixture provides no improvement. Table 6: LoCoMo F1 with different training corpora for Qwen3-4B TransMem. HQA, LME, and LoCoMo-T denote HotpotQA, LongMemEval, and LoCoMo-train. MH, Temp., Open, and SH denote multi-hop, temporal, open-domain, and single-hop questions. Train set Overall MH Temp. Open SH HQA 54.11 52.04 45.62 20.64 61.87 HQA + LME 53.95 50.40 45.54 21.85 62.02 
+
+15% HQA + LME + LoCoMo-T 51.80 50.53 37.20 19.13 61.53 
+
+Gate Parameterization 
+
+We compare three gate parameterizations on Qwen3-4B with the Last-4 configuration, keeping HotpotQA as the train set. Let z = Wg hm/τ . Besides a fixed residual scale, we evaluate the non-negative centered sigmoid used by our main model, 
+
+g = 2 σ(z), and a signed alternative, g = 3 σ(z) − 1. The latter can suppress the residual with a negative correction. Table 7: LoCoMo F1 under different gate parameterizations. All dynamic gates are initialized at g = 1 .Gate Overall MH Temp. Open SH 
+
+g = 1 53.09 48.04 45.09 21.57 61.45 
+
+g = 2 σ(z) 54.11 52.04 45.62 20.64 61.87 
+
+g = 3 σ(z) − 1 54.01 51.47 45.87 20.87 61.76 Both learned gates improve over the fixed residual scale. The main 2σ(z) gate performs best overall, improving the fixed-gate model by 0.46 F1 points. Allowing negative cor-rections does not provide an additional benefit: 3σ(z) − 1
+
+Table 8: HotpotQA results (%) with Qwen3-4B-Instruct (the 2507 checkpoint). The first five rows use Final-hidden and report Exact Match/Contains (E/C) on the archived 128-example split; LTM is the number of Transformer blocks inside its single memory module. The final row gives the main TransMem result under the paper’s official EM/ F1 pro-tocol and is included as a reference rather than a directly controlled comparison. Method Memory layout Train set HQA score Final-hidden LTM = 4 HQA+LME 39.8/50.8 Final-hidden LTM = 2 HQA 39.1/50.8 Final-hidden LTM = 2 HQA+LME 39.1/48.4 Final-hidden LTM = 4 LME 36.7/50.0 Final-hidden LTM = 2 LME 38.3/52.3    
+
+> TransMem (Ours) Last-4 HQA 48.55/66.20
+
+is 0.10 points below the main parameterization, although it attains the best temporal score. We therefore use 2σ(z) for its slightly stronger overall result and its simpler non-negative modulation. 
+
+Early Final-Hidden TransMem 
+
+Before introducing layer-wise injection, we studied a final-hidden variant that applies a single TransMem module after the backbone’s final normalization and before the language-model head. Unlike the current method, the module itself contains either two or four Transformer blocks, denoted by 
+
+LTM . It uses a fixed residual scale and has no learned gate. Table 8 summarizes this early architecture on held-out Hot-potQA examples. Changing the internal depth from two to four does not yield a consistent improvement on HotpotQA. The two mixed-corpus configurations with LTM = 4 and LTM = 2 also differ in training duration, so they should not be interpreted as a strictly controlled depth comparison. More broadly, these results suggest that merely scaling up the memory parameters at a single final-hidden location has limited effect. This obser-vation motivated the current design: instead of concentrating capacity at one location, we inject small memory modules at multiple LLM layers so that memory corrections can interact with different stages of the backbone computation. 
+
+Additional Hidden-State Supervision 
+
+We also tested whether directly matching the teacher’s final-layer feature improves knowledge transfer. In addition to the self-distillation objective, the Last-4 model was trained with 
+
+L = LSD + β H′ 
+
+> last
+
+− Htea last  
+
+> 22
+
+.
+
+Here, H′ 
+
+> last
+
+is the answer-position feature from the student LLM’s final layer after the TransMem update, and Htea last 
+
+is the corresponding final-layer feature produced by the privileged-evidence teacher. The prime therefore denotes the TransMem-updated student representation. All variants use Qwen3-4B and the same QASPER–HotpotQA multi-domain train set. Hidden-state supervision provides no benefit in this abla-tion: every β > 0 setting performs below the no-regression Table 9: LoCoMo F1 when adding hidden-state regression to the self-distillation objective. All rows use the Qwen3-4B Last-4 architecture. 
+
+β Overall MH Temp. Open SH 0 54.11 52.04 45.62 20.64 61.87 
+
+0.3 51.91 46.94 44.12 19.16 60.28 1.0 52.18 46.38 44.26 19.29 60.90 3.0 51.79 45.29 43.62 20.89 60.62 Table 10: Feature-source ablation for Qwen3-4B Last-4 TransMem. Variant Source state Added to LoCoMo F1
+
+Default HK HK 54.11 
+
+Before HK−1 HK 53.92 variant ( β = 0 ). One likely explanation is that the output-distribution objective already supplies the task-relevant be-havioral signal, whereas imposing additional Euclidean alignment over-constrains the student’s hidden space. In other words, supervising hidden states too strongly may restrict functionally equivalent representations without improving cross-domain memory use. 
+
+TransMem Feature Source 
+
+Our default Last-4 model computes the memory update for LLM layer K from the output HK of that layer. We compare it with transmem-before , which computes the same update from the layer input HK−1 while still adding the resulting residual to HK . All other architectural and training choices remain unchanged. Reading the post-block state is 0.19 F1 points better, al-though the small gap indicates that TransMem is not highly sensitive to this choice. We retain HK because it exposes each memory module to the representation already trans-formed by its corresponding LLM layer. 
+
+Gate Statistics on Qwen3-4B 
+
+Table 11 compares the learned gate distributions under ar-chitectural, parameterization, and train-set changes. Every experiment in this table uses Qwen3-4B. The reported mean and standard deviation aggregate validation answer posi-tions across all injected layers; because the gate is token-dependent, they are descriptive statistics rather than fixed model parameters. The Last-4 and Last-8 models learn qualitatively different global scales: Last-4 mildly amplifies memory updates on av-erage, whereas Last-8 suppresses them. The signed gate and transmem-before variants remain close to the main model. Training on the much smaller LME–LoCoMo mixture pro-duces a high-mean, low-variance gate and a lower F1 despite containing target-domain examples, consistent with overfit-ting rather than improved memory use. Table 11: Gate statistics and LoCoMo F1 for Qwen3-4B. HQA, LME, and LoCoMo-F denote HotpotQA, Long-MemEval, and the full LoCoMo train set. Setting Train set Gate μ/σ F1
+
+Last-4 HQA 2σ(z) 1.137/0.384 54.11 
+
+Last-8 HQA 2σ(z) 0.605/0.319 53.27 Last-4 HQA 3σ(z) − 1 1.200/0.398 54.01 Last-4 (before) HQA 2σ(z) 1.237/0.313 53.92 Last-4 LME+ LoCoMo-F 2σ(z) 1.561/0.143 50.68 
+
+Layer-Wise Gate Behavior 
+
+Aggregate statistics hide a consistent division of labor among the four injected layers. Figure 4 reports the token-level gate distribution for the main Qwen3-4B Last-4 checkpoint on 128 in-domain HotpotQA development questions and a 386-question cross-domain LoCoMo diagnostic subset. 
+
+Figure 4: Layer-wise gate values for Qwen3-4B Last-4 Trans-Mem. Curves show means and shaded regions show one stan-dard deviation across answer tokens. The dashed line is the fixed residual scale g = 1 .The gate forms a monotonic amplification-to-suppression profile: Layer 32 strongly amplifies the TransMem update, Layers 33–34 progressively reduce it, and Layer 35 sup-presses the direct intervention. More importantly, the same profile is preserved on LoCoMo. The corresponding means from Layers 32 to 35 are 1.618 , 1.332 , 0.975 , 0.610 on Hot-potQA and 1.472 , 1.298 , 0.996 , 0.599 on LoCoMo. This cross-domain stability suggests that the gate learns a layer-specific correction schedule rather than a dataset-specific binary switch. 
+
+More Models 
+
+We additionally train Last-4 TransMem with HotpotQA on two other student backbones. Table 12 reports their absolute LoCoMo scores together with Qwen3-4B as a reference. The method can be trained without changing the Last-4 design across these model sizes and families. Absolute per-formance does not scale monotonically with parameter count under this protocol, so these results support architectural Table 12: LoCoMo F1 with additional student backbones. Student backbone Injection Train set F1
+
+Qwen2.5-7B Last-4 HQA 49.98 Qwen3-8B Last-4 HQA 50.76 portability rather than a claim that a larger frozen student necessarily yields a larger gain. 
+
+Sensitivity to the Number of Memory Segments 
+
+We first study the memory-segmentation granularity, denoted by B in the paper. We reuse the Qwen3-4B TransMem check-point trained with B = 4 and vary only B at inference time. Thus, this experiment measures inference-time sensitivity rather than the effect of retraining a separate model for ev-ery value of B. Table 13 reports the official task metrics (percentage points) on the deterministic subsets of Memo-ryAgentBench. The results are nearly invariant over B ∈ { 4, 8, 16 , 32 }:increasing B from 4 to 32 changes EventQA by only 0.2
+
+points and improves RULER-1 by 1.0 point, while the other three scores remain unchanged. This suggests that TransMem is not brittle to the precise segmentation granularity. We therefore retain B = 4 as the default because it uses fewer memory states. Table 13: Inference-time sensitivity to the number of memory segments B. FC-SH and FC-MH denote the single-hop and multi-hop FactConsolidation subsets, respectively. 
+
+B RULER-1 RULER-2 EventQA FC-SH FC-MH 4 40.00 30.00 47.40 43.00 5.00 
+
+8 40.00 30.00 47.20 43.00 5.00 
+
+16 40.00 30.00 47.20 43.00 5.00 
+
+32 41.00 30.00 47.60 43.00 5.00 References 
+
+Agashe, S.; Wong, K.; Tu, V.; Yang, J.; Li, A.; and Wang, X. E. 2025. Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents. In Second Conference on Language Modeling .Back, S.; Lee, D.; Kang, N.; Lee, T.; Hong, S. K.; Gwon, Y.; and Ahn, S. 2026. Understanding LoRA as Knowledge Memory: An Empirical Analysis. arXiv:2603.01097. Cao, J.; Wang, J.; Wei, R.; Guo, Q.; Chen, K.; Zhou, B.; and Lin, Z. 2025. Memory Decoder: A Pretrained, Plug-and-Play Memory for Large Language Models. In Advances in Neural Information Processing Systems .Chhikara, P.; Khant, D.; Aryan, S.; Singh, T.; and Yadav, D. 2025. Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory. arXiv:2504.19413. DeepSeek-AI; Liu, A.; Feng, B.; et al. 2025. DeepSeek-V3 Technical Report. arXiv:2412.19437. Ding, Y.; Zhang, L. L.; Zhang, C.; Xu, Y.; Shang, N.; Xu, J.; Yang, F.; and Yang, M. 2024. LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens. In Salakhutdi-nov, R.; Kolter, Z.; Heller, K.; Weller, A.; Oliver, N.; Scarlett, J.; and Berkenkamp, F., eds., Proceedings of the 41st Inter-national Conference on Machine Learning , volume 235 of 
+
+Proceedings of Machine Learning Research , 11091–11104. PMLR. Du, Y.; Huang, W.; Zheng, D.; Wang, Z.; Montella, S.; Lap-ata, M.; Wong, K.-F.; and Pan, J. Z. 2025. Rethinking Mem-ory in LLM based Agents: Representations, Operations, and Emerging Topics. arXiv:2505.00675. Grattafiori, A.; Dubey, A.; Jauhri, A.; Pandey, A.; et al. 2024. The Llama 3 Herd of Models. arXiv:2407.21783. Hsieh, C.-Y.; Chuang, Y.-S.; Li, C.-L.; Wang, Z.; Le, L.; Ku-mar, A.; Glass, J.; Ratner, A.; Lee, C.-Y.; Krishna, R.; and Pfister, T. 2024. Found in the middle: Calibrating Positional Attention Bias Improves Long Context Utilization. In Find-ings of the Association for Computational Linguistics: ACL 2024 , 14982–14995. Association for Computational Linguis-tics. Hu, Y.; Wang, Y.; and McAuley, J. 2026. Evaluating Memory in LLM Agents via Incremental Multi-Turn Interactions. In 
+
+The Fourteenth International Conference on Learning Rep-resentations .Ji, F.; Xie, Z.; Yang, J.; Zhang, F.; Song, Z.; and Chen, X. 2026. Parametric Memory Decoding for Zero-Shot Routing in LoRA-Based External Parametric Memory. arXiv:2607.04118. Latimer, C.; Boschi, N.; Neeser, A.; Bartholomew, C.; Srivas-tava, G.; Wang, X.; and Ramakrishnan, N. 2025. Hindsight is 20/20: Building Agent Memory that Retains, Recalls, and Reflects. arXiv:2512.12818. Lei, H.; Liu, J.; Chen, Y.; Wang, D.; and Wang, H. 2026a. MemCoT: Test-Time Scaling through Memory-Driven Chain-of-Thought. arXiv:2604.08216. Lei, J.; Zhang, D.; Li, J.; Wang, W.; Fan, K.; Liu, X.; Liu, Q.; Ma, X.; Chen, B.; and Poria, S. 2026b. δ-mem: Efficient Online Memory for Large Language Models. arXiv:2605.12357. Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Küttler, H.; Lewis, M.; Yih, W.-t.; Rocktäschel, T.; et al. 2020. Retrieval-augmented generation for knowledge-intensive nlp tasks. Advances in neural information process-ing systems , 33: 9459–9474. Li, Y.; Wei, F.; Zhang, C.; and Zhang, H. 2024. EAGLE: Speculative Sampling Requires Rethinking Feature Uncer-tainty. In International Conference on Machine Learning .Li, Y.; Zuo, Y.; He, B.; Zhang, J.; Xiao, C.; Qian, C.; Yu, T.; ang Gao, H.; Yang, W.; Liu, Z.; and Ding, N. 2026. Rethink-ing On-Policy Distillation of Large Language Models: Phe-nomenology, Mechanism, and Recipe. arXiv:2604.13016. Liu, J.; Su, Y.; Xia, P.; Han, S.; Zheng, Z.; Xie, C.; Ding, M.; and Yao, H. 2026. SimpleMem: Efficient Lifelong Memory for LLM Agents. arXiv:2601.02553. Liu, J.; Sun, Y.; Cheng, W.; Lei, H.; Chen, Y.; Wen, L.; Yang, X.; Fu, D.; Cai, P.; Deng, N.; Yu, Y.; Hu, S.; Shi, B.; and Wang, D. 2025. MemVerse: Multimodal Memory for Lifelong Learning Agents. arXiv:2512.03627. Liu, N. F.; Lin, K.; Hewitt, J.; Paranjape, A.; Bevilacqua, M.; Petroni, F.; and Liang, P. 2024. Lost in the Middle: How Language Models Use Long Contexts. Transactions of the Association for Computational Linguistics , 12: 157–173. Maharana, A.; Lee, D.-H.; Tulyakov, S.; Bansal, M.; Barbieri, F.; and Fang, Y. 2024. Evaluating Very Long-Term Conver-sational Memory of LLM Agents. In Ku, L.-W.; Martins, A.; and Srikumar, V., eds., Proceedings of the 62nd Annual Meet-ing of the Association for Computational Linguistics (Long Papers) , 13851–13870. Association for Computational Lin-guistics. Ouyang, L.; Wu, J.; Jiang, X.; Almeida, D.; Wainwright, C. L.; Mishkin, P.; Zhang, C.; Agarwal, S.; Slama, K.; Ray, A.; Schulman, J.; Hilton, J.; Kelton, F.; Miller, L.; Simens, M.; Askell, A.; Welinder, P.; Christiano, P.; Leike, J.; and Lowe, R. 2022. Training language models to follow in-structions with human feedback. In Proceedings of the 36th International Conference on Neural Information Pro-cessing Systems , NIPS ’22. Curran Associates Inc. ISBN 9781713871088. Ouyang, S.; Yan, J.; Hsu, I.-H.; Chen, Y.; Jiang, K.; Wang, Z.; Han, R.; Le, L.; Daruki, S.; Tang, X.; Tirumalashetty, V.; Lee, G.; Rofouei, M.; Lin, H.; Han, J.; Lee, C.-Y.; and Pfis-ter, T. 2026. ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory. In International Conference on Learning Representations .Packer, C.; Wooders, S.; Lin, K.; Fang, V.; Patil, S. G.; Stoica, I.; and Gonzalez, J. E. 2024. MemGPT: Towards LLMs as Operating Systems. arXiv:2310.08560. Pan, Z.; Wu, Q.; Jiang, H.; Xia, M.; Luo, X.; Zhang, J.; Lin, Q.; Ruhle, V.; Yang, Y.; Lin, C.-Y.; Zhao, H. V.; Qiu, L.; and Zhang, D. 2024. LLMLingua-2: Data Distillation for Efficient and Faithful Task-Agnostic Prompt Compression. In Ku, L.-W.; Martins, A.; and Srikumar, V., eds., Findings of the Association for Computational Linguistics ACL , 963– 981. Association for Computational Linguistics. Quek, R. W. H.; Lee, S.; Leong, A. W. L.; Verma, A.; Prakash, A.; Chen, N. F.; Low, B. K. H.; Rus, D.; and Solar-Lezama, A. 2026. MeMo: Memory as a Model. arXiv:2605.15156. Qwen Team. 2025a. Qwen2.5 Technical Report. arXiv:2412.15115. Qwen Team. 2025b. Qwen3 Technical Report. arXiv:2505.09388. Shao, Z.; Wang, P.; Zhu, Q.; Xu, R.; Song, J.; Bi, X.; Zhang, H.; Zhang, M.; Li, Y. K.; Wu, Y.; and Guo, D. 2024. DeepSeekMath: Pushing the Limits of Mathematical Rea-soning in Open Language Models. arXiv:2402.03300. Shi, Y.; Chen, Y.; Wang, S.; Li, S.; Cai, H.; GU, Q.; Wang, X.; and Zhang, A. 2026. Look Back to Reason Forward: Revisitable Memory for Long-Context LLM Agents. In In-ternational Conference on Learning Representations .Srivastava, G.; Cao, S.; and Wang, X. 2025. ThinkSLM: Towards Reasoning in Small Language Models. In Christodoulopoulos, C.; Chakraborty, T.; Rose, C.; and Peng, V., eds., Proceedings of the 2025 Conference on Empiri-cal Methods in Natural Language Processing , 32612–32662. Association for Computational Linguistics. Srivastava, G.; Hussain, A.; Wang, C.; Lin, Y. C.; and Wang, X. 2026. effGen: Enabling Small Language Models as Ca-pable Autonomous Agents. arXiv:2602.00887. Sun, J.; Zhu, J.; Yao, J.; Liu, T.; and Han, B. 2026. Rethinking How to Remember: Beyond Atomic Facts in Lifelong LLM Agent Memory. arXiv preprint arXiv:2605.19952 .Tan, J.; Dou, Z.; Zhang, L.; Hu, Y.; Cheng, Y.; and Wen, J.-R. 2026. MemSifter: Offloading LLM Memory Retrieval via Outcome-Driven Proxy Reasoning. arXiv:2603.03379. Wang, X.; Wang, C.; Nekoei, H.; Pal, C.; Lacoste, A.; Gella, S.; Liu, B.; and Taslakian, P. 2026. Mem-π: Adaptive Memory through Learning When and What to Generate. arXiv:2605.21463. Wei, R.; Cao, J.; Wang, J.; Kai, J.; Guo, Q.; Zhou, B.; and Lin, Z. 2026. MLP Memory: A Retriever-Pretrained Memory for Large Language Models. In International Conference on Learning Representations .Wu, D.; Wang, H.; Yu, W.; Zhang, Y.; Chang, K.-W.; and Yu, D. 2025. LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory. In International Conference on Learning Representations .Xie, W.; and Wang, X. 2026. Decoupled Reasoning with Im-plicit Fact Tokens (DRIFT): A Dual-Model Framework for Efficient Long-Context Inference. In Liakata, M.; Moreira, V. P.; Zhang, J.; and Jurgens, D., eds., Findings of the Asso-ciation for Computational Linguistics: ACL , 38047–38067. Association for Computational Linguistics. Yan, S.; Yang, X.; Huang, Z.; Nie, E.; Ding, Z.; Li, Z.; Ma, X.; Bi, J.; Kersting, K.; Pan, J. Z.; Schuetze, H.; Tresp, V.; and Ma, Y. 2026. Memory-R1: Enhancing Large Language Model Agents to Manage and Utilize Memories via Rein-forcement Learning. In Annual Meeting of the Association for Computational Linguistics (Long Papers) , 12805–12825. Association for Computational Linguistics. Yang, J.; Jimenez, C. E.; Wettig, A.; Lieret, K.; Yao, S.; Narasimhan, K.; and Press, O. 2024. SWE-agent: agent-computer interfaces enable automated software engineering. NIPS ’24. Curran Associates Inc. Yang, W.; Xiao, J.; Zhang, H.; Zhang, Q.; Wang, Y.; and Xu, B. 2026. Coarse-to-Fine Grounded Memory for LLM Agent Planning. arXiv:2508.15305. Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W. W.; Salakhutdinov, R.; and Manning, C. D. 2018. HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question An-swering. In Conference on Empirical Methods in Natural Language Processing .Yu, H.; Chen, T.; Feng, J.; Chen, J.; Dai, W.; Yu, Q.; Zhang, Y.-Q.; Ma, W.-Y.; Liu, J.; Wang, M.; and Zhou, H. 2026a. MemAgent: Reshaping Long-Context LLM with Multi-Conv RL-based Memory Agent. In International Conference on Learning Representations .Yu, X.; fan, L.; Qiu, X.; Dong, N.; Huang, Y.; Qi, H.; Pu, G.; Ouyang, W.; Chen, X.; and Hu, J. 2026b. MEMTS: Internalizing Domain Knowledge via Parameterized Mem-ory for Retrieval-Free Domain Adaptation of Time Series Foundation Models. arXiv:2602.13783. Yu, Y.; Yao, L.; Xie, Y.; Tan, Q.; Feng, J.; Li, Y.; and Wu, L. 2026c. Agentic Memory: Learning Unified Long-Term and Short-Term Memory Management for Large Lan-guage Model Agents. In Annual Meeting of the Association for Computational Linguistics (Long Papers) , 21457–21483. Association for Computational Linguistics. Zhang, G.; Fu, M.; and Yan, S. 2025. MemGen: Weav-ing Generative Latent Memory for Self-Evolving Agents. arXiv:2509.24704. Zhang, G.; Ren, H.; Zhan, C.; Zhou, Z.; Wang, J.; Zhu, H.; Zhou, W.; and Yan, S. 2025a. MemEvolve: Meta-Evolution of Agent Memory Systems. arXiv:2512.18746. Zhang, X.; Ding, Z.; Pan, T.; Yang, R.; Kang, C.; Xiong, X.; and Gu, J. 2026. OPSDL: On-Policy Self-Distillation for Long-Context Language Models. arXiv:2604.17535. Zhang, Z.; Dai, Q.; Bo, X.; Ma, C.; Li, R.; Chen, X.; Zhu, J.; Dong, Z.; and Wen, J.-R. 2025b. A Survey on the Memory Mechanism of Large Language Model-based Agents. ACM Trans. Inf. Syst. , 43(6). Zhao, H.; Li, J.; Pan, Y.; Liang, S.; Yang, X.; Dou, F.; Liu, T.; and Lu, J. 2025. HELENE: Hessian Layer-wise Clipping and Gradient Annealing for Accelerating Fine-tuning LLM with Zeroth-order Optimization. In Christodoulopoulos, C.; Chakraborty, T.; Rose, C.; and Peng, V., eds., Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , 26044–26067. Association for Com-putational Linguistics. Zhong, W.; Guo, L.; Gao, Q.; Ye, H.; and Wang, Y. 2024. Memorybank: Enhancing large language models with long-term memory. In Proceedings of the AAAI conference on artificial intelligence , volume 38, 19724–19731.

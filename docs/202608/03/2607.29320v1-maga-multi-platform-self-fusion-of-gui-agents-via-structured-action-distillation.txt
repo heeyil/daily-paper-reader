@@ -1,0 +1,859 @@
+Title: MAGA: Multi-Platform Self-Fusion of GUI Agents via Structured Action Distillation
+
+URL Source: https://arxiv.org/pdf/2607.29320v1
+
+Published Time: Mon, 03 Aug 2026 00:49:04 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# MAGA: Multi-Platform Self-Fusion of GUI Agents via Structured Action Distillation 
+
+## Hang Yan 1,2 ∗ Zhangxuan Gu 2† Beitong Zhou 2 Jiaxuan Chen 2,3 Runze Li 2 Yusong Hu 2
+
+## Shuheng Shen 2 Changhua Meng 2
+
+> 1
+
+Xi’an Jiaotong University 2Ant Group 3Shanghai Jiao Tong University hyan@stu.xjtu.edu.cn guzhangxuan.gzx@antgroup.com 
+
+Abstract 
+
+Graphical user interface (GUI) agents based on large language models are increasingly deployed across mobile, web, and desktop environments. However, existing agents are typically domain-specific, limiting the deployment and user experience. This motivates the consolidation of specialized models into a single cross-environment policy. Weight merging directly merges domain-specific experts but can corrupt executable ac-tions under expert disagreement, while on-policy distillation (OPD) avoids conflicting teacher supervision yet still treats all response tokens equally during distillation, ignoring that action tokens are the only interface between the environment and the agent. To address this, We introduce Maga that re-allocates training signal according to the structured action. Based on the correctness of the generated action, it suppresses unnecessary or invalid distillation signals and focuses learning on erroneous actions. Besides, a training-only hint optimizes the supervision signal provided by domain-specific teachers without changing the student input. Across two model scales, 
+
+Maga achieves the highest mean success rate, outperforming the strongest baseline by 2.0% at 8B and achieves almost the same average performance with teachers. 
+
+## 1 Introduction 
+
+Recent advances in vision-language models (VLMs) (Zhu et al. 2024; Li et al. 2025; Zhang et al. 2026a; Liang et al. 2026; Zhang et al. 2026b) have improved visual understand-ing, multimodal reasoning, and grounded decision making. These capabilities support graphical user interface (GUI) agents (Zhou et al. 2025b; Xu et al. 2026b; Team et al. 2026; Tang et al. 2026b) that interpret screen content and execute actions from natural language instructions. Earlier GUI agents typically focused on mobile applications (Sun et al. 2025; Cheng et al. 2026; Gong et al. 2026), web browsers (Yao et al. 2022; Li et al. 2026a; Zhang et al. 2026d), or desktop operating systems (Liu et al. 2025; Jia et al. 2025; Xue et al. 2026) separately. These approaches in-troduce deployment complexity and limit cross-domain user experience, so recent systems combine several of these do-mains into a single agent. Previous methods combine abilities across domains ei-ther by merging expert parameters. Weight merging com-bines separately trained domain-specific experts, as in Model Soup (Wortsman et al. 2022) and TIES (Yadav et al. 2023). GUI domains share action types such as Click and 
+
+> ∗
+
+Work done during internship at Ant Group. 
+
+> †
+
+Corresponding author. 20 40 60 
+
+> Success rate (%)
+> MW
+> OSW
+> WV
+> -10
+> -24
+> -13
+
+(a) High-disagreement samples 
+
+> Teacher
+> Weight Soup
+> MW
+> 20
+> 30
+> 40
+> Success rate (%)  34.2
+> OSW
+> 40
+> 43
+> 46
+
+(b) Performance comparison 
+
+> TIES
+> UI-MOPD
+> Weight Soup
+> MAGA
+> Mixed SFT
+> Teacher
+> 45.3
+> WV
+> 68
+> 72
+> 76
+> 74.3
+
+Figure 1: Results from three benchmarks, including Mobile-World (MW), OSWorld (OSW), and WebVoyager (WV). (a) On 900 random samples, we identify 66 tasks where domain-specific models exhibited high disagreement, and weight merging reduces success rate of the merged model by 10%– 24%. (b) Success rate of models based on Qwen3-VL-8B across three benchmarks. The horizontal dashed lines mark the domain-specific teachers. Maga is the strongest unified model on every benchmark and exceeds the corresponding domain-specific teacher on OSWorld and WebVoyager. 
+
+Scroll , but their domain-specific models can disagree on the corresponding decisions. These disagreements can de-grade the merged model. As shown in Figure 1(a), when eval-uated on samples with high disagreement among domain-specific models, the action success rate of the merged model drops by 10% –24% compared to the individual models. Alternatively, per-sample routed on-policy distillation (OPD) (Lu and Lab 2025; Xiao et al. 2026; Yang et al. 2026b; Wu et al. 2026a) transfers each expert’s supervision to the student without combining their parameters. For each student-generated response, only the corresponding frozen domain-specific model, which serves as the teacher, scores the sampled tokens. However, ordinary OPD treats the re-sponse as a flat sequence and assigns equal weight to all tokens. This allocation is poorly matched to GUI scenarios, where the final short structured action is the only part exe-cuted by the agent. Moreover, GUI actions directly affect the interface state, and incorrect actions can significantly shift the system away from its intended state. arXiv:2607.29320v1 [cs.AI] 31 Jul 2026 To address this, we calibrate the detailed distillation sig-nal during training for GUI actions. A GUI action comprises an action type and its associated parameters(if required). Uniformly increasing supervision across all action tokens ignores this structure. Consequently, we introduce Maga , a distillation method that allocates additional training supervi-sion according to the structure of the action. It operates on both the student and teacher sides. On the student side ,
+
+Maga removes fully correct responses from distillation and focuses extra supervision on erroneous action components. It amplifies the full action span when the action type is cor-rect. Otherwise, it amplifies only the type and masks the incompatible parameters. On the teacher side , we condition the domain-specific teacher on a hint of the correct action during training. The hint therefore provides a more reliable signal when the teacher scores the student-sampled tokens. The student never receives this hint, so its input and output remains unchanged. We evaluate Maga on MobileWorld, OSWorld, and We-bVoyager at two model scales. As shown in Figure 1(b), at 8B it achieves a mean success rate of 51 .2% , exceeding the strongest baseline by 2.0% and achieves almost the same av-erage performance with teachers. Our contributions can be concluded as follows: 
+
+• We identify two limitations of existing approaches to uni-fying domain-specific GUI agents: weight merging de-grades when the experts disagree, and ordinary OPD under-allocates signal to short structured actions. 
+
+• We introduce Maga , which re-allocates distillation sig-nal according to the action structure through student-side conditional training signal re-allocation and a training-only teacher hint. 
+
+• Across three GUI domains and two model scales, Maga 
+
+achieves the highest mean SR among unified methods. At 8B, it exceeds the strongest baseline by 2.0% and achieves almost the same average performance with teachers. 
+
+## 2 Related Work 
+
+GUI agents. GUI agents now operate across increasingly diverse interfaces and tasks. Browser agents (Yao et al. 2022; Zheng et al. 2024; Zhang et al. 2026d; Li et al. 2026a) per-ceive and act on changing websites. Moving to mobile de-vices (Sun et al. 2025; Tang et al. 2026a; Gong et al. 2026; Cheng et al. 2026) introduces persistent app state, cross-app dependencies, and longer action sequences. Desktop control agents (Jia et al. 2025; Liu et al. 2025; Yang et al. 2026a; Xue et al. 2026) operate over applications, files, menus, and system tools. Despite these interface differences, practical deployment benefits from generalist agents (Cheng et al. 2024; Zhou et al. 2025a; Gu et al. 2025; Wu et al. 2025; Hu et al. 2026; Team et al. 2026; Xu et al. 2026b) that cover several interface families within one model. Following this line of work, we study how to combine separately trained per-domain GUI models into a single agent. 
+
+Model merging. Training a single model on mixed-domain trajectories can improve one domain at the expense of another (Xiao et al. 2026; Zhang et al. 2026c; Xu et al. 2026a), including under supervised fine-tuning (SFT) (Luong et al. 2024) or reinforcement learning (RL) (Shao et al. 2024). Post-hoc merging instead combines specialized checkpoints, as in Weight Soup (Wortsman et al. 2022) and TIES (Ya-dav et al. 2023). For GUI agents, domain-specific teach-ers share a structured action space of action types and op-tional parameters. Merging is largely harmless when they agree, but parameter disagreements can shift the prediction away from the corresponding domain-specific teacher (Fig-ure 1(a)). OPD (Wu et al. 2026b; Yang et al. 2026c; Xiao et al. 2026; Xu et al. 2026a) avoids this conflict by scoring each student-generated token with that teacher. However, ex-isting OPD method (Lian et al. 2026) distributes the original token-level signal across long reasoning traces and a few action tokens, leaving the latter under-supervised. Existing evaluation also covers only two domains, leaving broader scalability untested. We therefore introduce Maga to allo-cate signal according to the structured action and generalize it to three GUI domains. 
+
+## 3 Method 
+
+This section first introduces the GUI agent interface and routed OPD (Figure 2(b)). We then present Maga (Fig-ure 2(c)), which combines student-side conditional sig-nal allocation (Section 3.2) with a teacher-side hint (Sec-tion 3.3) to provide targeted supervision for short, structured action outputs. 
+
+3.1 Preliminaries 
+
+GUI Agent Interface During each interaction step, a GUI agent receives a task instruction u, the current visual obser-vation o, and an optional interaction history H. We write the resulting model input as x = ( u, o, H ). For each model call, the agent produces a response y = ( r, a ) containing reasoning r and one executable action a.The action is structured as a = ( z, p z ), where z is a discrete action type and pz contains the parameters required by that type. The action type z selects the parameter schema 
+
+pz , which may be empty. These parameters may be screen coordinates, text, a URL, or a key combination. Coordinates are normalized to the shared [0 , 1000] interface, which are one parameter class used by spatial actions. 
+
+Routed On-Policy Distillation Let d denote a GUI do-main, x ∼ D d an input, and Td a frozen domain-specific teacher. For a student πθ generating tokens y = ( y1, . . . , y |y|)
+
+with prefix y<t , calculating the exact reverse KL divergence against Td requires summing over the full vocabulary. For ef-ficiency, we approximate this using only the single sampled token yt following (Li et al. 2026b). We define the token-level distillation advantage as the gradient-stopped difference in log probabilities: 
+
+bAOPD  
+
+> t
+
+= sg[log πTd (yt | x, y <t ) − log πθ (yt | x, y <t )] .
+
+(1) (A)  Parameter-space fusion            
+
+> θMobile θDesktop θWeb
+> Checkpoints in different domains
+> fusion
+> θMobile
+> θmerged
+> Merged model
+> (B) Multi-teacher On-Policy Distillation
+> θDesktop
+> θWeb
+> Mobile
+> Teacher
+> Domain Teachers: Desktop
+> Teacher
+> Web
+> Teacher
+> Mobile Input
+> Desktop Input
+> Web Input Student Output
+> Token1 Token2 TokenN ...
+> ...
+> Reverse KL
+> Teacher Signal
+> (C) Our Work
+> Type Parameter
+> Type Parameter
+> Type Parameter
+
+## /       
+
+> Reasoning
+> Student Rules
+> Remove the whole trajectory signal
+> ×0  ×0 ×0
+> Parameter Type
+> Reasoning
+> Amplify the full action span signal
+> ×1 ×(1+ β)×(1+ β)
+> Parameter Type
+> Reasoning
+> Keep reasoning signal; remove parameter signal
+> ×1 ×(1+ β)×0
+> Parameter Type
+> Conditional Training Signal Re-Allocation
+> ... Student
+> Model
+> Teacher Hint ++Mobile Input Mobile
+> Teacher
+> Student
+> Model
+> Mobile
+> Reverse KL
+> Desktop
+> Web
+> Student Out put
+
+Figure 2: Comparison of three strategies for unifying domain-specific GUI agents. (a) Parameter merging combines the weights of domain-specific teachers, which can alter executable decisions when the teachers disagree. (b) Per-sample routed on-policy distillation (OPD) trains a student through token-level teacher supervision, but still treats the response as a flat token sequence, leaving the action tokens under-supervised. (c) Maga allocates distillation signal according to the action grammar. On the student side, it removes fully correct responses from distillation. For an incorrect response with the correct action type, it amplifies the full action span. When the type is wrong, it amplifies only the type token and masks the downstream parameters. On the teacher side, a training-only hint improves supervision signal without changing the student input. Routed OPD then optimizes the student using this advantage-weighted objective: 
+
+LOPD (θ) = −Ed,x,y 
+
+"
+
+1
+
+|y|
+
+> |y|
+
+X
+
+> t=1
+
+bAOPD  
+
+> t
+
+log πθ (yt | x, y <t )
+
+#
+
+.
+
+(2) 
+
+3.2 Student-Side Conditional Training Signal Re-allocation 
+
+A GUI action is represented as a = ( z, p z ), where the ac-tion type z selects a type-specific parameter schema pz . For example, coordinates, text, URLs, and key combinations are different parameter classes within this structure. Let Ireason ,
+
+Itype , and Iparam denote the reasoning, action-type, and parameter token positions, respectively. This decomposition yields three training cases, and we use a token weight wt to scale the routed-OPD advantage at token position t.
+
+Training Rule 1: Correct action type, correct param-eters. When both action type z and parameter pz are com-pletely correct, the rollout receives the maximum reward. We remove the whole trajectory from distillation by setting its advantage to zero: 
+
+wt =
+
+
+
+0, t ∈ I reason ,
+
+0, t ∈ I type ,
+
+0, t ∈ I param .
+
+Thus, reasoning, action-type, and parameter tokens receive no distillation signal. The filter avoids further optimization of an action that the evaluator already accepts completely. 
+
+Training Rule 2: Correct action type, incorrect param-eters. Unlike a fully successful rollout, this sample contains a remaining error that the teacher can correct. We assign 
+
+wt =
+
+
+
+1, t ∈ I reason ,
+
+1 + β, t ∈ I type ,
+
+1 + β, t ∈ I param .
+
+Reasoning tokens retain their ordinary routed-OPD weight, while the complete action span, including both type and parameters, is amplified by 1 + β. This prevents the training signal of the action tokens from being diluted by the longer response. 
+
+Training Rule 3: Incorrect action type (regardless of parameters). When the action type is incorrect, the discrete type decision is the primary error to correct. Moreover, the predicted type selects the wrong parameter schema, so its downstream parameters are not semantically valid supervi-sion. We therefore amplify the type tokens and mask the parameter tokens. For a rollout with an incorrect action type, we assign token weight wt as follows: 
+
+wt =
+
+
+
+1, t ∈ I reason ,
+
+1 + β, t ∈ I type ,
+
+0, t ∈ I param .
+
+Thus, reasoning tokens retain their original signal, the in-correct action type receives additional correction, and down-stream parameters receive no distillation signal. 3.3 Teacher-Side Hint 
+
+On the teacher side, we modify only the input prompt of the routed domain-specific teacher. Let P(x) denote the standard prompt constructed from the complete input x, including the system instruction, interaction history, screenshot, and current task. Let h(z∗) be a hint containing only the reference action type, and let ⊕ append this hint to the end of the final user message. The teacher and student prompts are 
+
+PT (x, z ∗) = P(x ⊕ h(z∗)) ,
+
+PS (x) = P(x).
+
+Thus, the teacher prompt differs from the student prompt only by the appended hint. All other input content remains identical. The hint contains no coordinates, text, URLs, keys, or reasoning and is never added to the student prompt. The student rollout remains unchanged. The teacher does not decode a response and only scores the tokens sampled by the student. This changes the teacher term in the distilla-tion advantage but does not alter the student-side weight wt
+
+assigned above. The updated advantage for token yt is 
+
+bAhint  
+
+> t
+
+= sg 
+
+h
+
+log πTd (yt | P T (x, z ∗), y <t )
+
+− log πθ (yt | P S (x), y <t )
+
+i
+
+.
+
+(3) 
+
+3.4 Overall Framework 
+
+Figure 2(c) summarizes the complete framework. For each offline input, the student samples a one-step response and is assigned to one of the three allocation cases in Section 3.2. The corresponding token weights wt determine which parts of the routed OPD signal are retained, amplified, or masked. Meanwhile, the routed domain-specific teacher scores the same student-sampled tokens using the type-hinted prompt in Section 3.3. Combining the student-side weights with the type-hinted teacher advantage gives the final objective: 
+
+LMaga (θ) = −Ed,x,y 
+
+"
+
+1
+
+|y|
+
+> |y|
+
+X
+
+> t=1
+
+wt bAhint  
+
+> t
+
+log πθ (yt | x, y <t )
+
+#
+
+.
+
+(4) During training, all domain-specific teachers remain frozen, and only the student is updated. When both student-side allocation and teacher-side hinting are disabled, the ob-jective reduces to ordinary routed OPD. Detailed training algorithm is provided in Appendix A.3. 
+
+## 4 Experiments 
+
+In this section, we first describe the experiment implemen-tation details, followed by presenting the main results of our method compared to various baselines and an ablation study. Then we provide deeper analysis of the trained student’s per-formance guided by six key questions, revealing fine-grained behavior beyond aggregate task success. 
+
+4.1 Implementation Details 
+
+Models, Benchmarks, and Baselines. In our experiments, we use Qwen3-VL-2B and Qwen3-VL-8B (Yang et al. 2025). For each model, we first mid-train the backbone on mixed data from all three domains to obtain a general student. This checkpoint initializes every trainable student in our exper-iments. We then apply SFT separately on each domain to obtain the three frozen domain-specific teachers. We test our method on the GUI tasks of MobileWorld (Kong et al. 2026) and full set of OSWorld (Xie et al. 2024). We also evalu-ate a subset of WebVoyager (He et al. 2024), which con-tains 140 sample tasks. More information about this subset can be found in Appendix A.1. The main setting consoli-dates all three teachers in one run. The main comparison includes the domain-specific teachers, SFT, GRPO, Weight Soup (Wortsman et al. 2022), TIES (Yadav et al. 2023), and UI-MOPD (Lian et al. 2026). In the ablation study, we re-move the whole student side and its seperate rule. Besides, we also remove teacher side to demonstrate its effectiveness. And removing both student and teacher sides of Maga re-covers ordinary per-sample routed OPD (Lu and Lab 2025). 
+
+Training Details. Our training set contains 343k examples, including 93k from mobile, 50k from desktop, and 200k from the web domain. Notably, the training data for GRPO, UI-MOPD, and Maga is constructed from the same SFT dataset by using the final step’s action as the ground-truth label. All runs are conducted on 32 H20 GPUs and optimize the trainable LLM parameters with AdamW, using 1e-5 as learning rate, batch size 128. The vision parameters remain frozen. Each prompt produces 4 rollouts. After each rollout, the rule-based reward and parsed action spans determine the student-side allocation, while the frozen domain-specific teacher scores the sampled tokens with a training-only hint. During inference, we use vLLM (Kwon et al. 2023) as rollout engine. Further details are provided in Appendix A. 
+
+Evaluation Protocol. We evaluate fixed samples from each domain and use Success Rate (SR) as the primary bench-mark metric. Throughout the paper, percentage differences denote absolute differences between percentage-valued met-rics rather than relative changes. Moreover, to measure how much of each domain-specific teacher’s capability is retained, we first normalize a model merging method’s SR by the cor-responding teacher SR in each domain and then average these ratios. We define the resulting Teacher-Normalized Score (TNS) for method m as 
+
+TNS( m) = 100 
+
+|D| 
+
+X
+
+> d∈D
+
+sm,d 
+
+sTd,d 
+
+, (5) where sm,d and sTd,d are the SRs of method m and the domain-specific teacher on domain d, respectively. The higher the TNS is, the more capability of the domain-specific teachers is retained by the student. A TNS of 100% matches the domain-specific teachers on average. Parameter-class breakdowns, parsing rules, and statistical tests are provided in Appendix B. Method MobileWorld OSWorld WebVoyager Mean SR ↑ TNS (%) ↑                                                                                                                                          
+
+> SR (%) ↑∆TSR (%) ↑∆TSR (%) ↑∆T
+> Qwen3-VL-2B
+> Domain-specific teacher 24.8 -25.2 -47.9 -32.6 100.0 Student 3.4 -21.4 7.9 -17.3 7.9 -40.0 6.4 20.5 SFT 11.1 -13.7 20.6 -4.6 33.6 -14.3 21.8 65.6 GRPO 6.8 -17.9 11.1 -14.1 27.9 -20.0 15.3 43.3 Weight Soup 12.0 -12.8 21.7 -3.5 40.0 -7.9 24.5 72.6 TIES 14.5 -10.3 20.6 -4.6 34.3 -13.6 23.1 70.7 UI-MOPD 12.0 -12.8 21.4 -3.8 30.0 -17.9 21.1 65.3
+> Maga (ours) 14.5 -10.3 23.6 -1.6 37.9 -10.0 25.3 77.1 Qwen3-VL-8B
+> Domain-specific teacher 37.6 -42.8 -72.1 -50.9 100.0 Student 12.8 -24.8 20.9 -22.0 37.1 -35.0 23.6 44.8 SFT 33.3 -4.3 43.1 +0.3 68.6 -3.6 48.3 94.8 GRPO 17.9 -19.7 25.5 -17.3 60.0 -12.1 34.5 63.5 Weight Soup 29.1 -8.5 42.3 -0.5 72.9 +0.7 48.1 92.3 TIES 31.6 -6.0 41.5 -1.4 70.0 -2.1 47.7 92.7 UI-MOPD 30.8 -6.8 44.7 +1.9 72.1 0.0 49.2 95.4
+> Maga (ours) 34.2 -3.4 45.3 +2.4 74.3 +2.1 51.2 99.9
+
+Table 1: Main comparison on MobileWorld, OSWorld, and WebVoyager across two model scales. For each domain, ∆T is the method SR minus its domain-specific teacher SR. SRs are derived from integer success counts over 117, 369, and 140 tasks, respectively. TNS denotes the Teacher-Normalized Score defined in Eq. 5. Among unified methods within each model scale, the best results are in bold and the second-best results are underlined. Uparrow indicates that a higher value is better                         
+
+> Variant MobileWorld OSWorld WebVoyager
+> Maga 34.2 45.3 74.3 w/o student-side 30.8 41.5 72.9 w/o Rule 1 31.6 45.0 70.7 w/o Rule 2 32.7 43.4 74.3 w/o Rule 3 33.3 43.9 72.1 w/o teacher-side 31.6 45.3 73.6 w/o both sides 29.1 44.4 70.0
+
+Table 2: Ablation study of Maga on Qwen3-VL-8B. We report SR on MobileWorld, OSWorld, and WebVoyager. 
+
+4.2 Main Results 
+
+Maga outperforms the other baselines at both model scales. At 8B, Maga exceeds UI-MOPD on all three do-mains, improving mean SR by 2.0% and TNS by 4.4% . It also leads Weight Soup and TIES on both metrics. At 2B, although Weight Soup scores 2.1% higher on WebVoyager, 
+
+Maga achieves the highest mean SR and TNS. 
+
+Maga is comparable to the teachers on average at 8B. 
+
+Across all domains, Maga obtains a TNS of 99 .9% . Its point estimate is 3.4% below the MobileWorld teacher but 2.4% 
+
+and 2.1% above the OSWorld and WebVoyager teachers, respectively. Its mean SR is 0.4% above the teacher mean. 
+
+Maga reduces the imbalance of weight merging. At 8B scale, Weight Soup exceeds the WebVoyager teacher by 0.7% 
+
+but falls 8.5% below the MobileWorld teacher. Maga im-proves these margins to +2 .1% and −3.4% , respectively, demonstrating more balanced cross-domain retention. 
+
+4.3 Ablation Study 
+
+In Table 2, student-side removal lowers SR by 3.4, 3.8, and 
+
+1.4 points on MobileWorld, OSWorld, and WebVoyager . Teacher-side hint removal lowers MobileWorld and WebVoy-ager by 2.6 and 0.7 points, while OSWorld keeps unchanged. Moreover, ablation results on separate student-side rules also demonstrate their effectiveness. 
+
+4.4 Do Student-Side Rules Work as Designed? 
+
+All three student-side cases occur, and fully correct ac-tions increase by 21.0%. In Table 3, we compare the initial student with the trained student on the same 900 held-out test examples, with 300 randomly sampled examples from each domain. These examples are disjoint from the training data. Before training, 42 .2% of actions are fully correct, 30 .9% 
+
+have a wrong action type and 26 .9% have the correct type but an incorrect parameter. This indicates that all three student-side allocation cases occur on the held-out test set, with a majority of errors coming from the action type. After training, the percentage of fully correct actions reaches 63 .2% (+21 .0% ), while parameter errors fall to 
+
+22 .2% (−4.7% ) and type errors fall to 14 .6% (−16 .3% ). The increase is consistent across domains, with gains of +22 .3% 
+
+on MobileWorld, +23 .0% on OSWorld, and +17 .7% on WebVoyager, which indicates that the student’s performance improves across all domains. Parameter-class results and task-level transitions from the initial to the trained student are provided in Appendix D. Initial Student Trained Student Change Domain Correct Type × Param. × Correct Type × Param. × ∆Correct ∆Type × ∆Param. ×                                    
+
+> MobileWorld 50.7 29.3 20.0 73.0 10.7 16.3 +22 .3−18 .6−3.7
+> OSWorld 40.7 26.3 33.0 63.7 13.0 23.3 +23 .0−13 .3−9.7
+> WebVoyager 35.3 37.0 27.7 53.0 20.0 27.0 +17 .7−17 .0−0.7
+> Overall 42.2 30.9 26.9 63.2 14.6 22.2 +21 .0−16 .3−4.7
+
+Table 3: Action outcomes of the initial and Maga -trained students, evaluated on 300 held-out examples per domain. Correct denotes a correct action type and all required parameters. Type × denotes responses without a correct action type. Param. ×
+
+denotes a correct action type with at least one incorrect or missing required parameter. 0 25 50 75 100     
+
+> Share of evaluated single-step tasks (%)
+> Mobile
+> Desktop
+> Web
+> Mean
+> (a) Teacher matching of trained-student actions
+> Match corresponding teacher
+> Match other teacher(s) only
+> No match — correct
+> No match — incorrect
+> Reasoning Type Parameters Full Action
+> Mobile
+> Desktop
+> Web
+> Mean
+> 0
+
++0.128 +0.054 +0.053  
+
+> 0
+
++0.004 +0.066 +0.066  
+
+> 0
+
++0.072 +0.101 +0.096  
+
+> 0
+
++0.068 +0.073 +0.072   
+
+> (b) Teacher likelihood on student-generated tokens across response spans
+> 0.00 0.06 0.12
+
+Figure 3: Based on the trained student, we use 900 random samples (300 per domain) to generate response. (a) Each action falls into one of four mutually exclusive groups: matching its corresponding domain-specific teacher, matching only other domain-specific teacher, matching no teacher but is correct, or matching no teacher and is incorrect. Mean values are averaged across domains. (b) The heatmap compares how strongly each response matches its corresponding domain-specific teacher in the reasoning tokens action type tokens and action parameter tokens. Darker cells indicate a higher similarity to the teacher. All reported values are relative to the reasoning tokens, which serve as the zero-baseline for each domain. 
+
+4.5 Where Does Student’s Behavior Come From? 
+
+The trained student primarily matches the domain-specific teacher and also produces a small set of success-ful novel actions. Based on 900 randomly sampled offline single-step tasks (300 per domain), we prompt the student and teachers to generate the corresponding answer action, and evaluate whether their action semantics align closely. Complete evaluation rules are provided in Appendix A.5. Figure 3(a) shows that 61.5% of actions match the domain-specific teacher. In comparison, 14.8% match only other domain-specific teachers. Thus, the student more often re-produces behavior consistent with its routed domain-specific teacher than behavior found only in teachers from other do-main teachers. Most student actions that do not align with any teacher are incorrect, accounting for 20 .6% of all evaluated tasks. How-ever, 3.0% of these unmatched actions are actually correct. These successful yet unaligned behaviors demonstrate that the student is capable of generating valid, novel actions. 
+
+4.6 On Which Tokens Do Student and Teacher Agree Most? 
+
+Action tokens generated by our trained student show stronger alignment with the corresponding domain-specific teacher than reasoning tokens. Figure 3(b) com-pares the likelihood assigned by teachers to reasoning and ac-tion tokens generated by our trained student. The detailed cal-culation and statistical results are provided in Appendix A.5. Compared with reasoning tokens, action tokens show an average likelihood gain of +0 .072 . Specifically, the type and parameter tokens also show positive average gains of +0 .068 
+
+and +0 .073 against reasoning tokens. This observation sup-ports our action-aware approach to treat the action tokens as a distinct supervision target rather than weighting all response tokens uniformly. 
+
+4.7 Can Action Failures Be Recovered from the Type Alone? 
+
+Correcting only the action type recovers a substantial percentage of wrong actions. From 900 sampled tasks across three domains, we isolate 136 responses with incor-URL 
+
+> 11 cases
+> Text
+> 31 cases
+> Coordinates
+> 87 cases
+> Keys
+> 7 cases
+> Wrong actions
+> 43 cases
+> Correct actions
+> 93 cases
+> B
+> e
+> f
+> o
+> r
+> e
+> T
+> y
+> p
+> e
+> C
+> o
+> r
+> r
+> e
+> c
+> t
+> i
+> o
+> n
+> A
+> f
+> t
+> e
+> r
+> T
+> y
+> p
+> e
+> C
+> o
+> r
+> r
+> e
+> c
+> t
+> i
+> o
+> n
+
+Figure 4: For initially incorrect actions, correcting solely the action type allows the model to automatically recover most of the associated parameters. The student model regenerates all parameters from scratch, without access to the ground-truth reference parameters. Each row represents a single response. The left section groups responses by the ground truth action type, while the right section indicates whether the regener-ated action is correct. rect action types. For these, we replace the predicted action type with the ground truth and prompt the frozen student to regenerate parameters using only its original context and reasoning (details in Appendix A.5). As shown in Figure 4, correcting only the action type re-covers 68 .4% of the responses whose action type is wrong, while the remaining responses still fail due to wrong param-eters. Specifically, 57 out of 87 actions requiring coordinate parameters are successfully recovered. This indicates that many wrong actions do not stem from a lack of capabil-ity in parameter generation. Instead, once the action type is corrected, the student model can often generate these param-eters correctly. This finding also supports Maga ’s stronger supervision of the action type. 
+
+4.8 Can Maga Correct Errors on Samples with High-Disagreement? 
+
+Maga corrects weight-merge errors on both Click and Swipe cases. To evaluate Weight Soup and Maga , we con-struct a case study of 66 held-out MobileWorld tasks (29 
+
+Click , 37 Swipe ). We filtered for spatial actions where all three teachers output valid coordinates with a maximum pairwise distance > 0.07 .Table 4 reports the corresponding change in accuracy. Weight Soup fails on 19 samples. Among them, Maga cor-rects 6 of the 13 Click errors and 4 of the 6 Swipe errors. One Click sample changes in the opposite direction, from a correct prediction to an incorrect Maga prediction. Overall, 
+
+Maga corrects 10 Weight Soup errors while introducing one new error, increasing accuracy from 47 /66 (71 .2% ) to 56 /66 
+
+(84 .8% ), a gain of 13 .6% .         
+
+> Action Correct actions Change Weight Soup Maga
+> Click 16/29 (55.2%) 21/29 (72.4%) +17.2% Swipe 31/37 (83.8%) 35/37 (94.6%) +10.8%
+
+Table 4: MobileWorld case study on high-disagreement sam-ples. Model columns report correct actions over the subset size, with accuracy in parentheses. Change is Maga accu-racy minus Weight Soup accuracy.                      
+
+> Token share (%) Mean interaction steps Domain Reasoning Action Successful Failed Gap MobileWorld 95.9 4.1 19.2 29.4 10.2 OSWorld 92.9 7.1 13.5 56.9 43.4 WebVoyager 96.1 3.9 15.8 39.2 23.4
+
+Table 5: Response-token composition and average interaction steps for the 8B student. The step gap is the failed-trajectory mean minus the successful-trajectory mean. 
+
+4.9 Why Does the Student Not Consistently Surpass Its Teachers? 
+
+Reasoning tokens dominate the response, thereby diluting the action supervision. As shown in Table 5, we segment each response into reasoning and action spans. The action accounts for only 3.9% –7.1% of response tokens, making it difficult for one student to exceed every specialized teacher. 
+
+Training on single-step data limits multi-step generaliza-tion. Table 5 shows that failed trajectories are longer on average than successful ones, suggesting that long sequences are a bottleneck. We train Maga using only single-step super-vision, but real-world GUI tasks require multi-step execution, misaligning the multi-step setting. 
+
+## 5 Conclusion 
+
+This work addresses how to consolidate multiple domain-specific GUI teachers into a single agent while retain-ing their specialized capabilities. Our analysis shows that weight merging degrades performance, particularly on high-disagreement spatial samples, while ordinary routed OPD provides only limited training signal to the short structured action. Moreover, the short action span carries domain-specific behavior, which significantly affects the environ-ment state. Therefore, we propose Maga to address this mismatch with structured action signal re-allocation and a training-only teacher hint, directing additional supervision according to action correctness and structure. Across Mo-bileWorld, OSWorld, and WebVoyager at two model scales, 
+
+Maga achieves the highest mean success rate among unified methods within three domains and best preserves the capabil-ities of the domain-specific teachers. Specifically, at the 8B scale, it improves mean SR by 2.0% over the strongest base-line and achieves almost the same average performance with teachers, suggesting that robust multi-platform consolidation benefits from explicit supervision of structured actions. References 
+
+Cheng, K.; Li, Z.; Ma, Z.; Chen, N.; Cao, J.; Sun, Q.; Ding, Z.; Xu, F.; Yan, H.; Chen, J.; et al. 2026. OpenMobile: Building open mobile agents with task and trajectory synthesis. arXiv preprint arXiv:2604.15093 .Cheng, K.; Sun, Q.; Chu, Y.; Xu, F.; YanTao, L.; Zhang, J.; and Wu, Z. 2024. Seeclick: Harnessing gui grounding for ad-vanced visual gui agents. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 9313–9332. Gong, Y.; Cai, Z.; Dai, S.; Zhou, Y.; Gu, Z.; Meng, C.; and Shen, S. 2026. VenusBench-Mobile: A Challenging and User-Centric Benchmark for Mobile GUI Agents with Capa-bility Diagnostics. In Forty-third International Conference on Machine Learning .Gu, Z.; Zeng, Z.; Xu, Z.; Zhou, X.; Shen, S.; Liu, Y.; Zhou, B.; Meng, C.; Xia, T.; Chen, W.; et al. 2025. Ui-venus technical report: Building high-performance ui agents with rft. arXiv preprint arXiv:2508.10833 .He, H.; Yao, W.; Ma, K.; Yu, W.; Dai, Y.; Zhang, H.; Lan, Z.; and Yu, D. 2024. Webvoyager: Building an end-to-end web agent with large multimodal models. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 6864–6890. Hu, J.; Liu, J.; Lai, J.; Hu, J.; Sheng, Y.; Chen, S.; Li, J.; Du, D.; and Guo, S. 2026. GUI Agents with Reinforce-ment Learning: Toward Digital Inhabitants. arXiv preprint arXiv:2604.27955 .Jia, C.; Luo, M.; Dang, Z.; Sun, Q.; Xu, F.; Hu, J.; Xie, T.; and Wu, Z. 2025. Agentstore: Scalable integration of heteroge-neous agents as specialized generalist computer assistant. In 
+
+Findings of the Association for Computational Linguistics: ACL 2025 , 8908–8934. Kong, Q.; Zhang, X.; Yang, Z.; Gao, N.; Liu, C.; Tong, P.; Cai, C.; Zhou, H.; Zhang, J.; Chen, L.; et al. 2026. Mobileworld: Benchmarking autonomous mobile agents in agent-user in-teractive and mcp-augmented environments. In Proceedings of the 64th Annual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , 6142–6167. Kwon, W.; Li, Z.; Zhuang, S.; Sheng, Y.; Zheng, L.; Yu, C. H.; Gonzalez, J. E.; Zhang, H.; and Stoica, I. 2023. Efficient Memory Management for Large Language Model Serving with PagedAttention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles .Li, J.; Deng, K.; Wang, Y.; Huang, J.; Shi, Y.; Tan, Q.; Lu, J.; and Liu, N. 2026a. Online Skill Learning for Web Agents via State-Grounded Dynamic Retrieval. arXiv preprint arXiv:2606.04391 .Li, Y.; Zuo, Y.; He, B.; Zhang, J.; Xiao, C.; Qian, C.; Yu, T.; Gao, H.-a.; Yang, W.; Liu, Z.; et al. 2026b. Rethinking on-policy distillation of large language models: Phenomenology, mechanism, and recipe. arXiv preprint arXiv:2604.13016 .Li, Z.; Wu, X.; Du, H.; Liu, F.; Nghiem, H.; and Shi, G. 2025. A survey of state of the art large vision language models: Benchmark evaluations and challenges. In Proceedings of the Computer Vision and Pattern Recognition Conference ,1587–1606. Lian, N.; Chen, A.; Yu, Z.; Duan, C.; Liu, F.; Liu, H.; Fu, P.; Luan, J.; Wang, Y.; Xia, S.-T.; and Wang, J. 2026. UI-MOPD: Multi-Platform On-Policy Distillation for Continual GUI Agent Learning. arXiv:2607.04425. Liang, C. X.; Tian, P.; Yin, C. H.; Yua, Y.; Wei, A.-H.; Li, M.; Song, X.; Wang, T.; Bi, Z.; Liu, M.; et al. 2026. A com-prehensive survey and guide to multimodal large language models in vision–language tasks. Computation , 14(6): 125. Liu, Z.; Xie, J.; Ding, Z.; Li, Z.; Yang, B.; Wu, Z.; Wang, X.; Sun, Q.; Liu, S.; Wang, W.; et al. 2025. Scalecua: Scaling open-source computer use agents with cross-platform data. 
+
+arXiv preprint arXiv:2509.15221 .Lu, K.; and Lab, T. M. 2025. On-Policy Dis-tillation. Thinking Machines Lab: Connectionism .Https://thinkingmachines.ai/blog/on-policy-distillation. Luong, T. Q.; Zhang, X.; Jie, Z.; Sun, P.; Jin, X.; and Li, H. 2024. Reft: Reasoning with reinforced fine-tuning. arXiv preprint arXiv:2401.08967 .Shao, Z.; Wang, P.; Zhu, Q.; Xu, R.; Song, J.; Bi, X.; Zhang, H.; Zhang, M.; Li, Y.; Wu, Y.; et al. 2024. Deepseekmath: Pushing the limits of mathematical reasoning in open lan-guage models, 2024. URL https://arxiv. org/abs/2402.03300 ,2(3): 5. Sun, Q.; Cheng, K.; Ding, Z.; Jin, C.; Wang, Y.; Xu, F.; Wu, Z.; Jia, C.; Chen, L.; Liu, Z.; et al. 2025. Os-genesis: Automating gui agent trajectory construction via reverse task synthesis. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 5555–5579. Tang, F.; Gu, Z.; Lu, Z.; Liu, X.; Shen, S.; Meng, C.; Wang, W.; Zhang, W.; Shen, Y.; Lu, W.; et al. 2026a. GUI-G 2: Gaus-sian Reward Modeling for GUI Grounding. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 40, 33214–33222. Tang, F.; Gu, Z.; Lu, Z.; Zhang, S.; Zeng, Z.; Shen, S.; Meng, C.; Yan, Y.; Zhang, W.; Shen, Y.; et al. 2026b. GUI-SAGE: Enhancing GUI Automation with Self-Explanatory Learning. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 13007–13016. Team, V.; Gao, C.; Gu, Z.; Liu, Y.; Qiu, X.; Shen, S.; Wen, Y.; Xia, T.; Xu, Z.; Zeng, Z.; et al. 2026. Ui-venus-1.5 technical report. arXiv preprint arXiv:2602.09082 .Wortsman, M.; Ilharco, G.; Gadre, S. Y.; Roelofs, R.; Gontijo-Lopes, R.; Morcos, A. S.; Namkoong, H.; Farhadi, A.; Carmon, Y.; Kornblith, S.; et al. 2022. Model soups: averaging weights of multiple fine-tuned models improves accuracy without increasing inference time. In International conference on machine learning , 23965–23998. PMLR. Wu, J.; Yang, S.; Lu, Z.; Zhang, F.; Shen, Y.; Feng, L.; Luo, H.; Lian, Z.; Zhang, S.; Wen, Z.; and Tao, J. 2026a. SEED: Self-Evolving On-Policy Distillation for Agentic Reinforce-ment Learning. arXiv:2607.14777. Wu, J.; Yang, S.; Lu, Z.; Zhang, F.; Shen, Y.; Feng, L.; Luo, H.; Lian, Z.; Zhang, S.; Wen, Z.; et al. 2026b. SEED: Self-Evolving On-Policy Distillation for Agentic Reinforcement Learning. arXiv preprint arXiv:2607.14777 .Wu, Z.; Wu, Z.; Xu, F.; Wang, Y.; Sun, Q.; Jia, C.; Cheng, K.; Ding, Z.; Chen, L.; Liang, P. P.; et al. 2025. OS-ATLAS: Foundation action model for generalist GUI agents. In Inter-national Conference on Learning Representations , volume 2025, 5090–5108. Xiao, B.; Xia, B.; Yang, B.; Gao, B.; Shen, B.; Zhang, C.; He, C.; Lou, C.; Luo, F.; Wang, G.; et al. 2026. Mimo-v2-flash technical report. arXiv preprint arXiv:2601.02780 .Xie, T.; Zhang, D.; Chen, J.; Li, X.; Zhao, S.; Cao, R.; Hua, T. J.; Cheng, Z.; Shin, D.; Lei, F.; et al. 2024. Osworld: Benchmarking multimodal agents for open-ended tasks in real computer environments. Advances in Neural Informa-tion Processing Systems , 37: 52040–52094. Xu, A.; Lin, B.; Xue, B.; Wang, B.; Xu, B.; Wu, B.; Zhang, B.; Lin, C.; Dong, C.; Ling, C.; et al. 2026a. Deepseek-v4: Towards highly efficient million-token context intelligence. 
+
+arXiv preprint arXiv:2606.19348 .Xu, H.; Zhang, X.; Liu, H.; Wang, J.; Zhu, Z.; Zhou, S.; Hu, X.; Gao, F.; Cao, J.; Wang, Z.; et al. 2026b. Mobile-agent-v3. 5: Multi-platform fundamental gui agents. arXiv preprint arXiv:2602.16855 .Xue, T.; Peng, C.; Huang, M.; Guo, L.; Han, T.; Wang, H.; Wang, J.; Zhang, X.; Yang, X.; Zhao, D.; et al. 2026. Evocua: Evolving computer use agents via learning from scalable synthetic experience. arXiv preprint arXiv:2601.15876 .Yadav, P.; Tam, D.; Choshen, L.; Raffel, C. A.; and Bansal, M. 2023. Ties-merging: Resolving interference when merging models. Advances in neural information processing systems ,36: 7093–7115. Yang, A.; Li, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.; Yu, B.; Gao, C.; Huang, C.; Lv, C.; et al. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .Yang, B.; Jin, K.; Wu, Z.; Liu, Z.; Sun, Q.; Li, Z.; Xie, J.; Liu, Z.; Xu, F.; Cheng, K.; et al. 2026a. Os-symphony: A holistic framework for robust and generalist computer-using agent. arXiv preprint arXiv:2601.07779 .Yang, S.; Wu, J.; Lu, Z.; Shen, Y.; Zhang, F.; Feng, L.; Zhang, S.; Luo, H.; Lian, Z.; Wen, Z.; and Tao, J. 2026b. OPID: On-Policy Skill Distillation for Agentic Reinforcement Learning. arXiv:2606.26790. Yang, S.; Wu, J.; Lu, Z.; Shen, Y.; Zhang, F.; Feng, L.; Zhang, S.; Luo, H.; Lian, Z.; Wen, Z.; et al. 2026c. OPID: On-Policy Skill Distillation for Agentic Reinforcement Learning. arXiv preprint arXiv:2606.26790 .Yao, S.; Chen, H.; Yang, J.; and Narasimhan, K. 2022. Webshop: Towards scalable real-world web interaction with grounded language agents. Advances in Neural Information Processing Systems , 35: 20744–20757. Zhang, J.; Ji, Y.; Ren, F.; Li, Y.; Zeng, B.; Chen, Z.; Chen, K.; Shou, L.; Chen, G.; and Li, H. 2026a. Efficient inference for large vision-language models: Bottlenecks, techniques, and prospects. In Findings of the Association for Computational Linguistics: ACL 2026 , 21036–21066. Zhang, X.; Dong, Y.; Zhang, L.; Jia, C.; Dang, Z.; Fernando, B.; Liu, J.; and Shou, M. Z. 2026b. Cofft: Chain of foresight-focus thought for visual language models. Advances in Neu-ral Information Processing Systems , 38: 106182–106201. Zhang, X.; Dong, Y.; Zhang, L.; Jia, C.; Dang, Z.; Yao, Y.; Wu, Y.; Fernando, B.; and Liu, J. 2026c. Beyond Layer-Wise Merging: Chain-of-Merging for Vision-Language Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 24279–24289. Zhang, Y.; Tang, S.; Li, Z.; Han, Z.; and Tresp, V. 2026d. WebArbiter: A Principle-Guided Reasoning Process Reward Model for Web Agents. arXiv preprint arXiv:2601.21872 .Zheng, B.; Gou, B.; Kil, J.; Sun, H.; and Su, Y. 2024. Gpt-4v (ision) is a generalist web agent, if grounded. arXiv preprint arXiv:2401.01614 .Zhou, B.; Huang, Z.; Guo, Y.; Gu, Z.; Xia, T.; Luo, Z.; Tang, F.; Kong, D.; Shang, Y.; Ou, S.; et al. 2025a. VenusBench-GD: A Comprehensive Multi-Platform GUI Benchmark for Diverse Grounding Tasks. arXiv preprint arXiv:2512.16501 .Zhou, H.; Zhang, X.; Tong, P.; Zhang, J.; Chen, L.; Kong, Q.; Cai, C.; Liu, C.; Wang, Y.; Zhou, J.; et al. 2025b. MAI-UI Technical Report: Real-World Centric Foundation GUI Agents. arXiv preprint arXiv:2512.22047 .Zhu, D.; Shen, X.; Li, X.; Elhoseiny, M.; et al. 2024. Minigpt-4: Enhancing vision-language understanding with advanced large language models. In International Conference on Learning Representations , volume 2024, 18378–18394. A Experimental Implementation Details 
+
+A.1 Checkpoints and Data 
+
+Checkpoint construction. For each model scale, we mid-train Qwen3-VL on the mixed mobile, desktop, and web data to obtain a shared general-student checkpoint. Every train-able student in the main comparison, ablations, and analyses is initialized from this checkpoint. We independently ap-ply domain-specific SFT to three copies of the same check-point to obtain the MobileWorld, OSWorld, and WebVoyager teachers. These domain-specific teachers remain frozen dur-ing distillation. 
+
+Training data. The data are subject to privacy require-ments and non-disclosure agreements and therefore can-not be released. The collection differs from available pub-lic datasets in scale, domain composition, and production conditions. Our training corpus contains 343k proprietary industrial examples. 200k from the web domain, 93k from the MobileWorld domain, and 50k from the OSWorld do-main. 
+
+WebVoyager subset. The fixed evaluation subset contains 140 tasks, with ten tasks from each of 14 websites. The task IDs are listed below. 
+
+Allrecipes. Allrecipes--43 , Allrecipes--6 ,
+
+Allrecipes--11 , Allrecipes--17 ,
+
+Allrecipes--34 , Allrecipes--2 ,
+
+Allrecipes--14 , Allrecipes--36 ,
+
+Allrecipes--41 , Allrecipes--35 .
+
+Amazon. Amazon--32 , Amazon--35 , Amazon--17 ,
+
+Amazon--33 , Amazon--8 , Amazon--28 ,
+
+Amazon--12 , Amazon--10 , Amazon--14 ,
+
+Amazon--37 .
+
+Apple. Apple--13 , Apple--21 , Apple--33 ,
+
+Apple--10 , Apple--24 , Apple--38 , Apple--19 ,
+
+Apple--18 , Apple--26 , Apple--34 .
+
+ArXiv. ArXiv--7 , ArXiv--30 , ArXiv--37 ,
+
+ArXiv--2 , ArXiv--14 , ArXiv--20 , ArXiv--35 ,
+
+ArXiv--33 , ArXiv--17 , ArXiv--23 .
+
+BBC News. BBC News--40 , BBC News--3 ,
+
+BBC News--6 , BBC News--15 , BBC News--35 ,
+
+BBC News--26 , BBC News--19 , BBC News--24 ,
+
+BBC News--36 , BBC News--17 .
+
+Booking. Booking--15 , Booking--0 ,
+
+Booking--29 , Booking--8 , Booking--43 ,
+
+Booking--35 , Booking--19 , Booking--18 ,
+
+Booking--22 , Booking--33 .
+
+Coursera. Coursera--21 , Coursera--29 ,
+
+Coursera--31 , Coursera--14 , Coursera--16 ,
+
+Coursera--37 , Coursera--40 , Coursera--41 ,
+
+Coursera--23 , Coursera--18 .
+
+ESPN. ESPN--34 , ESPN--21 , ESPN--38 , ESPN--12 ,
+
+ESPN--14 , ESPN--41 , ESPN--26 , ESPN--8 ,
+
+ESPN--37 , ESPN--1 .
+
+GitHub. GitHub--16 , GitHub--27 , GitHub--25 ,
+
+GitHub--5 , GitHub--7 , GitHub--18 ,
+
+GitHub--17 , GitHub--0 , GitHub--39 ,
+
+GitHub--10 .
+
+Google Flights. Google Flights--6 ,
+
+Google Flights--23 , Google Flights--35 ,
+
+Google Flights--8 , Google Flights--15 ,
+
+Google Flights--16 , Google Flights--3 ,
+
+Google Flights--20 , Google Flights--22 ,
+
+Google Flights--5 .
+
+Google Map. Google Map--8 , Google Map--9 ,
+
+Google Map--5 , Google Map--19 ,
+
+Google Map--22 , Google Map--20 ,
+
+Google Map--17 , Google Map--39 ,
+
+Google Map--11 , Google Map--28 .
+
+Google Search. Google Search--3 ,
+
+Google Search--24 , Google Search--21 ,
+
+Google Search--35 , Google Search--27 ,
+
+Google Search--20 , Google Search--41 ,
+
+Google Search--9 , Google Search--38 ,
+
+Google Search--5 .
+
+Huggingface. Huggingface--36 ,
+
+Huggingface--33 , Huggingface--17 ,
+
+Huggingface--37 , Huggingface--7 ,
+
+Huggingface--4 , Huggingface--5 ,
+
+Huggingface--8 , Huggingface--29 ,
+
+Huggingface--12 .
+
+Wolfram Alpha. Wolfram Alpha--36 ,
+
+Wolfram Alpha--5 , Wolfram Alpha--32 ,
+
+Wolfram Alpha--8 , Wolfram Alpha--1 ,
+
+Wolfram Alpha--0 , Wolfram Alpha--33 ,
+
+Wolfram Alpha--17 , Wolfram Alpha--29 ,
+
+Wolfram Alpha--41 .
+
+A.2 Training and Baseline Configurations 
+
+Compute and shared training setup. All training runs use 32 H20 GPUs for one epoch. We optimize the trainable LLM parameters with AdamW using a global batch size of 128, zero weight decay, and a maximum sequence length of 16,384 tokens. The learning rate increases linearly during the first 3% of training and then remains constant at 1 × 10 −5.Each prompt produces four student rollouts. Each training example contains one output action, although its input may include interaction history. All distillation variants use the same student initialization, routed domain data, and frozen domain-specific teachers. The vision tower is bit-identical across teachers and remains frozen throughout training. Be-sides, we separately disable the three rules in the student-side allocation to evaluate their effectiveness. 
+
+Baseline and ablation controls. The main comparison uses the complete method, including student-side allocation and the teacher-side hint. The component ablation disables either operation while keeping the remaining setup fixed. Disabling both recovers ordinary routed OPD exactly. 
+
+Amplification coefficient. We set β = 1 in all experi-ments, which doubles the weight of the selected action to-kens, and keep it fixed across model scales and domains without domain-specific tuning. 
+
+A.3 Hint and Allocation Implementation 
+
+Training algorithm. Algorithm 1 summarizes the dis-tributed implementation from launch through actor updates. The worker count P and resource placement are read from the training configuration rather than hard-coded in the method. The configured update count K covers the single training epoch. The Ray reward actor supplies only the exact-action acceptance gate; the actor update uses the routed reverse-KL distillation advantage and does not optimize a task-reward objective. For sample i, let a∗ 
+
+> i
+
+= ( z∗ 
+
+> i
+
+, p ∗ 
+
+> i
+
+) be the reference action and let yi = ( yi, 1, . . . , y i, |yi|) be the response sampled from the student. At token position t, ℓTi,t is the log probability assigned to the sampled token by the routed teacher using the type-hinted prompt, whereas ℓSi,t is the log probability assigned by the student using the original prompt: 
+
+ℓTi,t = log πTdi (yi,t | P T (xi, z ∗ 
+
+> i
+
+), y i,<t ),ℓSi,t = log πθ (yi,t | P S (xi), y i,<t ).
+
+The three binary masks identify the reasoning, action-type, and parameter positions in the sampled response: 
+
+mri,t = 1[t ∈ I reason ],mzi,t = 1[t ∈ I type ],mpi,t = 1[t ∈ I param ].
+
+These disjoint masks partition the response tokens. Param-eter tokens include coordinates, text, URLs, keys, and other values required by the predicted type-specific schema. We use ˆzi = ParseType (yi) for the type parsed from the student response. Brackets denote a binary indicator, so 
+
+[ˆ zi̸ = Fail ∧ ˆzi = z∗ 
+
+> i
+
+] equals one exactly when parsing succeeds and the predicted type matches the reference type, and equals zero otherwise. 
+
+Teacher-side hint. For each training sample, we con-struct a text hint from only the ground-truth action us-ing the template Hint: the correct action for this step is a {HINT} action. We append the hint to the selected domain-specific teacher’s user turn, after the original instruction and before the assistant response. The teacher then scores exactly the student-generated response to-kens. Disabling the hint restores the original teacher prompt. 
+
+Mask construction. We preserve ordinary routed OPD tra-jectory collection and build the allocation masks after rollout. Incremental cumulative decoding locates the reasoning, type, parameter, and action spans without re-encoding the response or invoking another model. The action-acceptance compo-nent of the existing rollout reward determines whether the sampled action is fully correct. The selected domain-specific teacher then scores the student tokens without decoding. Un-der an incorrect type, parameter tokens are masked, while only the type span receives additional weight and reasoning retains its ordinary distillation advantage. 
+
+A.4 Exact Action Evaluator 
+
+Exact action acceptance. The correctness gate reuses the action-acceptance component of the existing rule-based training reward. It is an offline evaluator signal, not task suc-cess from live interaction. A sampled action is fully correct only when the evaluator accepts its type and every parameter                  
+
+> Action family Full-acceptance rule
+> Click ,
+> LongPress ,
+> Hover ,
+> DoubleClick
+> Point distance is at most 0.07 times the shorter screen side.
+> Drag Both spatial endpoints are at most 0.14
+> times the shorter screen side from their references. MW/OSW Scroll
+> (direction) Direction matches exactly and both end-points are at most 0.07 from their refer-ences. MW/OSW Scroll
+> (no direction) Both endpoints are at most 0.14 from their references. WV Scroll Direction matches exactly. Text/app/URL Exact match or token F1 above 0.5.Hotkeys Exact match after stripping surrounding whitespace. Empty schema Action type matches.
+
+Table 6: Correctness rules for each type-specific parameter. Partial credit does not pass the binary allocation gate. required by the reference type-specific schema. Partial pa-rameter credit does not pass the gate. The separate response-format reward is unchanged by our method but does not de-termine student-side allocation. Both the predicted and reference actions are parsed into an action type and its type-specific parameters. A parse failure or type mismatch fails the action-acceptance gate. An unparseable action follows the wrong-type branch that the implementation retains ordinary reasoning supervision, strengthens an identifiable type token when available, and masks tokens assigned to the parameter span. Once the type matches, the evaluator applies the action-specific parameter rule in Table 6. 
+
+A.5 Analysis Protocols 
+
+Allocation-profile experiment. The allocation profile compares the Qwen3-VL-2B student checkpoint with its cor-responding Maga -trained checkpoint. We sample 300 held-out test examples per domain. These examples are disjoint from the training data. Prompts longer than 14k tokens are ex-cluded rather than truncated. Both checkpoints use the same prompt template and rollout settings, with temperature 0.9,top-p 1.0, no top-k truncation, and a maximum completion length of 1024 tokens. All 900 task IDs are matched between checkpoints for the transition analysis. 
+
+Teacher-matching analysis. We compare the trained stu-dent’s parsed final action with the actions produced by all three frozen domain-specific teachers on the same offline single-step task. The matched set contains 900 tasks, with 300 from each domain. An action match requires the same ac-tion type and accepted type-specific parameters. Coordinate-valued parameters use the 0.07 normalized-distance thresh-old. A shared match means that the student matches at least two teachers. For the main figure, all actions match-ing the domain-specific teacher are merged into one cat-egory, whether or not they also match another domain-Algorithm 1 Maga Training Algorithm 
+
+Require: Config C; routed data D; student πθ ; teachers {Td}; coefficient β
+
+1: Stage 0: launch Read P and K from C; set k ← 0; use Torchrun to start P processes; initialize Ray and one runner. 2: Stage 1: initialize Load the tokenizer/processor, dataloader, reward actors, and shared GPU resource pool. 3: for all p ∈ { 1, . . . , P } in parallel do 
+
+4: Load the sharded actor, vLLM rollout engine, and frozen teachers into one FSDP worker. 5: end for 
+
+6: Stage 2: train 
+
+7: while k < K do 
+
+8: X ← NextBatch (D); B ← ExpandEachPrompt (X, 4) .9: yi ∼ πθ (· | xi) for each rollout slot i ∈ B.10: Asynchronously compute ci ← ExactAccept (yi, a ∗ 
+
+> i
+
+) for each rollout. 11: for all i ∈ B in parallel do 
+
+12: Route source di to Tdi ; set hTi = ( xi, TypeHint (z∗ 
+
+> i
+
+)) .13: Score yi under Tdi with hTi and under πθ with xi to obtain ℓTi,t and ℓSi,t .14: Build mri,t , m zi,t , m pi,t from the sampled token IDs. 15: ˆzi ← ParseType (yi); qi ← [ˆ zi̸ = Fail ∧ ˆzi = z∗ 
+
+> i
+
+].16: bAHi,t ← sg[ ℓTi,t − ℓSi,t ].17: if ci then 
+
+18: wi,t ← 0 {fully accepted} 19: else if qi then 
+
+20: wi,t ← mri,t + (1 + β)( mzi,t + mpi,t ) {amplify action} 21: else 
+
+22: wi,t ← mri,t + (1 + β)mzi,t {amplify type; mask params} 23: end if 
+
+24: bAMaga  
+
+> i,t
+
+← wi,t bAHi,t .25: end for 
+
+26: L ← − 1
+
+> |B|
+
+P
+
+> i∈B
+> 1
+> |yi|
+
+P 
+
+> t
+
+bAMaga  
+
+> i,t
+
+log πθ (yi,t | xi, y i,<t ).27: Update 28: k ← k + 1 .29: end while 
+
+30: Stage 3: finalize Save the actor, TensorBoard events, and per-token distillation logs. 
+
+specific teacher. Actions that do not match the domain-specific teacher are divided into matches with other domain-specific teachers and matches with no teacher. No-teacher matches are divided by whether the existing evaluator ac-cepts the student action for the reference step. 
+
+Spanwise teacher-likelihood analysis. All three frozen teachers score every response under teacher forcing, with-out decoding a new response. Let M (s) 
+
+> d,t
+
+denote the mean length-normalized log likelihood assigned by teacher t to span s of responses from domain d. Because raw scores contain both response-domain and teacher-wide calibration effects, we compute the two-way-centered interaction 
+
+R(s) 
+
+> d,t
+
+= M (s) 
+
+> d,t
+
+− ¯M (s) 
+
+> d, ·
+
+− ¯M (s) 
+
+> ·,t
+
++ ¯M (s) 
+
+> ·,·
+
+. (6) For each domain, the reported value for span s is E(s) 
+
+> d
+
+=
+
+R(s) 
+
+> d,d
+
+− R(reasoning)  
+
+> d,d
+
+. Reasoning is therefore zero by construc-tion, and positive values indicate a larger domain–teacher interaction than on reasoning tokens. The type and parame-ter columns are diagnostic subspans of the full action and are not additive. We compute uncertainty with 2,000 domain-stratified bootstrap resamples over task IDs and macro-average only after computing the statistic within each do-main. 
+
+Disagreement-conditioned diagnostics. We first select samples with a reference spatial action and parseable co-ordinates from all three frozen teachers. High disagreement means that the maximum pairwise teacher distance exceeds the single-step acceptance radius ( 0.07 ). 
+
+Oracle type intervention. We greedily decode 900 ran-domly sampled responses. We retain responses whose pre-dicted type is wrong and parseable, whose reference action requires parameters, and whose type span can be located re-liably. This gives 136 responses: 36 from MobileWorld, 52 
+
+from OSWorld, and 48 from WebVoyager. For each response, we keep the image, interaction history, and generated reasoning fixed, replace only the predicted type with the reference type, and let the same frozen student regenerate the parameters. The student receives no teacher output or reference parameters. Restoring the original type reproduces all 136 original responses, confirming that the intervention changes only the type. 
+
+## B Evaluation Metrics and Statistical Tests 
+
+Structured-action diagnostics. The primary benchmark metric is task-level SR. To locate action errors, we addition-ally report action-type accuracy and parameter acceptance conditional on a correct type. Conditional parameter results are grouped by the reference parameter class and include the denominator of every class. These metrics diagnose the source of task failures but do not replace SR. Measure Domain or response region Share (%) Action tokens MobileWorld ( N = 300 ) 4.1 Action tokens OSWorld ( N = 300 ) 7.1 Action tokens WebVoyager ( N = 300 ) 3.9 Distillation signal Action Tokens 4.0–7.0 
+
+Table 7: Exact action-token share and distillation signal share.                                     
+
+> NInitial Trained Class CT×P×CT×P×
+> Coordinates 678 45.1 25.1 29.8 62.4 14.3 23.3 Text 121 36.4 38.0 25.6 60.3 5.0 34.7 URLs 50.0 100.0 0.0 40.0 60.0 0.0 Keys 37 32.4 43.3 24.3 73.0 27.0 0.0
+
+Table 8: Allocation profile by reference parameter class. C, T ×, and P × denote correct, wrong-type, and wrong-parameter outcomes. For the disagreement-conditioned spatial-action analysis, we report single-step success rate. Each sample contains one reference spatial action. A prediction is a single-step suc-cess only when it has the correct action type, a parseable coordinate, and dnorm ≤ 0.07 . Wrong-type and unparseable predictions are failures. We compute this rate over the fixed spatial-action subset and report its denominator and success count. It is distinct from benchmark task-level SR. 
+
+## C Action-Span Token and Signal Allocation 
+
+We draw 300 responses from each domain and locate the final structured action using the same token boundaries used by the training masks. For each response, we divide the number of action tokens by the number of valid response tokens. The action accounts for 4.1% of MobileWorld tokens, 7.1% of OSWorld tokens, and 3.9% of WebVoyager tokens. The archived training logs retain token-level distillation values by normalized response position. Across domains, action tokens receives 4.0% –7.0% of the total logged distil-lation signal (Table 7), compared with 13% –14% for the first ten response tokens. 
+
+## D Allocation Profile Breakdown 
+
+Table 8 breaks the profile down by the reference parameter schema. Coordinates dominate the sample; the URL subset has only five examples and supports no class-specific con-clusion. These classes cover 841 examples, while 59 empty-schema actions remain in the aggregate results in Table 3. Empty-schema actions require no parameters. A type match is Correct, whereas a wrong is Type ×. Param. × cannot oc-cur. Of these 59 actions, the initial student has 18 Correct and 41 Type ×, while the trained student has 44 Correct and 15 Type ×.
