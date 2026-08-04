@@ -1,0 +1,552 @@
+Title: Safety Invariants for Agents Orchestrating Irreversible State Transitions: A Four-Dimensional Formalism Evaluated on Public Ledgers
+
+URL Source: https://arxiv.org/pdf/2608.00783v1
+
+Published Time: Tue, 04 Aug 2026 00:49:17 GMT
+
+Number of Pages: 29
+
+Markdown Content:
+# Safety Invariants for Agents Orchestrating Irreversible State Transitions 
+
+A Four-Dimensional Formalism Evaluated on Public Ledgers Zhaoming Yin 
+
+Datumpont AI LLC, California, USA 
+
+zhaoming@datumpont.ai 
+
+datumpont.ai 
+
+August 4, 2026 
+
+Abstract 
+
+Autonomous agents are increasingly asked to produce irreversible effects on external systems— transferring funds, writing to durable storage, actuating hardware. Existing agent frameworks (ReAct, Reflexion, MCP, function calling) optimize task success on benchmarks and give little attention to the safety of irreversible side-effects. We formalize one such setting, movement of value across public ledgers, as state transitions in a four-dimensional space indexed by 
+
+(wallet , chain , address , protocol ), and use that formalism to state and prove a guarantee we call 
+
+execution fidelity : under a fault model admitting planner mis-mapping, ambiguous outcomes, retries, at-least-once delivery, and delegated non-human callers, a session’s realized effect on the ledger is either nothing at all or exactly the transition that was rendered to the user, exactly once. The theorem deliberately does not claim that the rendered transition matches the user’s intent—no runtime layer can decide that—but it confines that unbounded question to a single predicate over a finite object, which is what makes a preview a sufficient control rather than a formality. Seven safety invariants, derived from the fidelity condition rather than enumerated from experience, discharge the guarantee; we give their enforcement points and the three places the guarantee stops. Empirically, on a controlled N = 60 adversarial suite the stack lifts pass rate by ∼74 percentage points over a naive-ReAct baseline on two write-aggressive backing models, but by only ∼3 points on a write-cautious one—evidence that single-model evaluations of agent safety stacks are close to unfalsifiable, and an argument for treating the backing model as a first-class experimental variable. The system is deployed; 108 production write operations across 8 chains and 8 transition primitives back the failure taxonomy. Although the evaluation setting is public ledgers, the formalism and invariants apply to any probabilistic agent acting on irreversible external state. 
+
+# 1 Introduction 
+
+Autonomous agents built on probabilistic planners are increasingly asked to produce irreversible 
+
+effects on external systems—signing on-chain transactions, writing to durable storage, actuating hardware. A user who asks “deposit all my USDC to Hyperliquid” or “swap 200 USDT on Ethereum to BTC” expects the agent to navigate chain selection, contract approvals, bridge providers, and RPC consistency on their behalf; naive wrapping of signing and broadcast tools inside such an agent reliably produces money-burning failure modes. The question this paper answers is what can be guaranteed in that setting. The tempting answer—that the agent does what the user meant—is not available: deciding whether a transaction 1arXiv:2608.00783v1 [cs.CR] 1 Aug 2026 faithfully renders a natural-language request is not something a runtime layer can do, and any paper claiming otherwise is overselling. The answer we can defend is narrower and, we argue, more useful. Call a session’s realized effect on the ledger faithful if it is either nothing at all or exactly the transition that was rendered to the user, exactly once. We prove that a deployed agent system satisfies this property—we call it execution fidelity —under a fault model that admits planner mis-mapping, ambiguous outcomes, retries, at-least-once delivery, and delegated non-human callers (§4.6). What that buys is a reduction. Intent-mapping remains unsolved, but it becomes the only 
+
+unsolved thing: every other way a session can go wrong is forced to produce no effect at all. An unbounded semantic question is thereby confined to a bounded one—does this four-coordinate tuple and amount match what was asked—which a human can answer in a second and which a scope check can approximate when no human is present. The four-dimensional formalism exists to make that comparison decidable rather than to describe wallets elegantly. The problem is not hypothetical. We observe three failure classes in the wild that the guarantee is built against. RPC-level: phantom success , where a verify-on-broadcast check returns a hash the RPC retracts seconds later, and the agent reports failed on a transaction that actually landed. LLM-level: stale-context drift , where an agent that concluded “the user has no Hyperliquid account” parrots that conclusion on later turns even after the cause is fixed, over-weighting a prior observation rather than re-querying ground truth. Exchange-API-level: documented-atomicity drift , where an action specified as atomic cancel-and-replace applies only the cancel half on a replacement-side rejection, leaving the user with no resting order. One of these cost real money: a retry after a misreported failure produced a duplicated 200 USDT swap (§5). A second finding concerns how such systems should be evaluated at all. On a controlled N =60 
+
+adversarial suite the invariant stack lifts pass rate by ∼74 percentage points over a naive-ReAct baseline on two write-aggressive backing models—and by ∼3 points on a write-cautious one, which declines write tools on ambiguous prompts unprompted. The measured value of a safety layer is thus largely a function of which model sits underneath it, so a single-model evaluation can report almost any number it likes. We treat the backing model as a first-class experimental variable for this reason. Concretely, this paper contributes the following. We formalize the wallet problem as state transitions in a four-dimensional space S = W × C × A × P , together with a fault model over the agent–executor surface that is separate from the usual adversary model over the ledger (§3). We state and prove the fidelity theorem, and derive seven safety invariants from the fidelity condition by case analysis rather than enumerating them from experience, giving each one’s enforcement point and the three places the guarantee stops (§4). We describe cryptitalk-wallet , a deployed multi-tier agent system—executor, avatar, and analyst tiers glued by an agent SDK over MCP and cross-tier delegation tokens—and report its on-chain track record of 108 production write operations across 8 source chains, transactions that landed on a public ledger rather than in a simulator, from which the failure taxonomy is drawn. Finally we report a controlled adversarial suite at N =60 across four backing models, whose cross-model spread is itself the methodological finding above (§5). The remainder of the paper is structured as follows. §2 surveys agent frameworks and on-chain safety primitives. §3 introduces the four-dimensional state space, the fault model, and the fidelity condition. §4 derives the invariants from that condition, gives their enforcement points, and proves the theorem. §5 reports the on-chain track record and the adversarial-suite results. §6 situates the work against prior agent and wallet literature. §7 discusses limitations and §8 concludes. 22 Background 
+
+This section grounds the formalism of §3 for readers arriving from any of three communities the paper sits between: agent / LLM tool-use research, public-ledger systems and DeFi, and applied security. 
+
+Hierarchical deterministic wallets and custody. A single mnemonic seed (BIP-39) derives, via BIP-32 / BIP-44, an unbounded family of key pairs and therefore addresses; authority over funds at any derived address reduces to control of the seed. In cryptitalk-wallet the seed lives in encrypted-at-rest storage keyed off a master key held in a cloud key-management service (KMS), and signing happens in a short-lived in-process derivation; no plaintext private key is logged, returned over the API, or persisted. The orchestration-layer arguments of §4 are independent of this custody choice—the seven invariants apply identically over hardware-security-module, threshold-signature (MPC), and smart-contract-wallet substrates, because each is a property of the agent–executor surface, not of the signing one. Key-recovery questions (lost mnemonic, social-recovery designs, smart-wallet guardian sets [4, 25, 3]) are orthogonal and out of scope. 
+
+Chains, protocols, tokens. Each chain imposes its own address format (EVM hex, Bitcoin bech32 / taproot, Solana base58, Cosmos bech32). On a given chain, a user’s address holds value under various protocols : the native coin, fungible tokens (ERC-20, SPL / Token-2022, IBC denominations), LP positions, wrapped or staked derivatives, bridge-custodied balances, off-chain exchange balances (Hyperliquid spot and perp), and outcome shares on CTF-Exchange-style prediction-market venues. We treat protocol as a dimension orthogonal to address because neither coordinate determines the other: one address holds balances under many protocols simultaneously, and one protocol exists at many addresses across many holders. Collapsing the two—modelling a position as “an address that happens to hold token X”—loses the ability to express a transition that changes what is held while holding where it is held fixed, which is exactly a Swap . Operation surfaces in production cluster into a small number of categories: native transfers, single-chain DEX swaps, cross-chain bridges (THORChain, Squid / Axelar GMP, Skip on Cosmos), exchange operations, prediction-market trades, and arbitrary EVM contract calls. §3 formalizes these as transition primitives on a single state space. 
+
+Agent orchestration substrate. We instantiate the agent with a large language model invoked through claude-agent-sdk [2], but the formalism and invariants do not depend on that choice. Tool calls cross a structured boundary defined by the Model Context Protocol (MCP) [ 2]: the agent emits a JSON-shaped tool_use payload naming a tool and its arguments, the runtime executes the tool and returns a structured result, and the agent decides whether to continue. Two caller types appear throughout: a human user driving the agent interactively, and an avatar —a persistent agent instance, installed and parameterized by the user, that runs on a schedule or trigger and acts on the user’s behalf while the user is not present. Avatars hold no keys and reach no external system directly; they call the same API a human calls, under a scoped credential (§4.4). Prior work on LLM agents relevant here includes ReAct [ 30 ] and Reflexion [ 28 ] (single-process planners), AutoGen [ 29 ] and MetaGPT [ 10 ] (multi-agent orchestration), and DecoAgent [ 13 ] (decomposition under tool constraints). 
+
+Threat model. Public-ledger transactions are irreversible: once included in a finalized block, no rollback path exists short of chain reorg, which we treat as out of scope. Authority on a user’s funds reduces to a signature from a key derivable from the user’s seed. We treat the user-side 3Wallet w Chain c Address a Protocol p Balance Pre-state s w0 arbitrum aEVM              
+
+> wUSDC 54 ,331 ,159
+> Post-state s′w0hyperliquid-L1 aHL
+> wperp-USDC 54 ,331 ,159
+> Deposit fixed moved moved moved conserved
+
+Figure 1: A transition as a coordinate readout: “deposit all my USDC to Hyperliquid” resolved against S = W × C × A × P . Three of four coordinates move; W is fixed, because the same mnemonic authorizes both sides. S is an index set rather than a geometry, so we render a transition as the pair of coordinate tuples it relates rather than as a projection. This is also, deliberately, the shape of the preview the agent must render before a key is derived (Invariant 1, §4): the reason to carry all four coordinates explicitly is that it makes “what was promised” a finite object that a user, or a scope check, can compare against “what was executed”. Balances are integers in the protocol’s smallest unit; 54 ,331 ,159 is 54.33 USDC at six decimals. software stack—LLM agent, MCP client, wallet service—as fallible (may misinterpret intent, retry on ambiguous results, mis-marshal a boolean) but not directly adversarial , and assume an honest-majority network and honest block explorers for post-broadcast verification. The threat-surface taxonomy we work against: 
+
+In scope agent-side fallibility (the seven invariants of §4); cross-tier authority leakage addressed by scoped delegation tokens; HTTP-boundary duplicate-delivery races addressed by the idempotent receiver. 
+
+Partly in scope indirect prompt injection [ 7] through avatar-ingested feeds (RSS, social, third-party webhooks)—scope-bounded by Invariant 5 but not eliminated; compromised-avatar single-point-of-compromise; MEV (sandwich, JIT, oracle/bridge front-running) [ 6, 24 , 32 ]addressed in part by limit-order discipline on Trade primitives, not by any of the seven invariants. 
+
+Out of scope signature-key compromise; smart-contract bugs in routed protocols; Sybil attacks on consensus; cross-chain bridge protocol vulnerabilities [31]. The seven invariants in §4 address agent-side and receiver-side failures; the partly-in-scope and out-of-scope surfaces are revisited in §7. Recent work on LLM context fragility [ 18 , 14 , 16 ] and on agent-layer attack surfaces in MCP systems [ 7] complements our fallible-software framing rather than substituting for it. 
+
+# 3 A Four-Dimensional State Space 
+
+Definition 1 (Wallet state) . Let W be the set of mnemonics the user custodies, C the set of chains, 
+
+Ac the set of addresses derivable on chain c ∈ C, and Pc the set of protocols (tokens, contracts, off-chain accounts) recognized on chain c. A state s ∈ S is a function 
+
+s : W × C × A × P → Z≥0,
+
+where s(w, c, a, p ) denotes the balance under protocol p at address a on chain c, owned by mnemonic 
+
+w. Balances are non-negative integers in the protocol’s smallest unit (wei, satoshi, lamport, or the protocol’s specified decimals); the human-decimal projection (e.g. 54.33 USDC ) is a UI abstraction over the underlying integer. 
+
+4A wallet’s observable balance is a finite-support slice of s: the tool returns only s(w, c, a, p ) > 0
+
+entries. 
+
+Definition 2 (Transition) . A transition is a partial function τ : S → S that modifies the balances at a bounded set of (w, c, a, p ) quadruples. It is partial because a transition has preconditions: we write dom (τ ) for the set of states on which τ is defined—those whose pre-state carries sufficient balance at every coordinate τ decrements, together with whatever chain-specific preconditions the primitive requires (a live ERC-20 approval, an unspent UTXO set covering the output, an exchange account in a tradeable status). The distinction is load-bearing rather than notational: s / ∈ dom (τ )
+
+is precisely the condition Invariant 2 (§4) checks before signing, and the reason it must be checked against ground-truth chain state rather than against a cached read is that dom (τ ) is evaluated at broadcast time, not at planning time. Writing s′ = τ (s) for s ∈ dom (τ ), every transition satisfies two formal constraints. 
+
+Conservation. A conservation class is a set K ⊆ W × C × A × P over which the protocol’s specification guarantees aggregate invariance (e.g. global USDC supply , fixed by the issuer’s mint contract; or a single mnemonic’s Hyperliquid spot sub-account , fixed by the exchange’s reconciliation rule). Each class has a fee allowance εK (τ ) ≥ 0 and a mint/burn delta δK (τ ) ∈ Z such that 
+
+X
+
+> (w,c,a,p )∈K
+
+s′(w, c, a, p ) = X
+
+> (w,c,a,p )∈K
+
+s(w, c, a, p ) − εK (τ ) + δK (τ ).
+
+Per-chain bridging via lock-and-mint, for example, has δK̸ = 0 on each individual chain’s USDC class but δK = 0 on the global USDC class. 
+
+Signature authorization. For every coordinate where the balance strictly decreases, the transition carries a valid signature from a key derivable from w:
+
+∀(w, c, a, p ) : s′(w, c, a, p ) < s (w, c, a, p ) = ⇒ ∃ σ : Verify pk( w,c,a )(τ, σ ) = 1 ,
+
+where pk (w, c, a ) is the derivation of the public key for chain c and address a from mnemonic w (§2), and Verify is the chain’s signature-verification primitive applied to a canonical encoding of τ .Both conditions are well-formedness properties of the substrate, not guarantees the orchestration layer supplies. Any transition a ledger accepts already satisfies them, and they constrain the model rather than the agent: they say that a transition cannot invent or destroy value outside a declared mint/burn, and cannot move value out of a coordinate without the corresponding key. What they conspicuously do not say is that the transition carrying that signature is the one the user asked for—a hundred unintended transfers signed by the correct key satisfy both conditions. Closing that distance is the job of §4, and the reason the formalism is worth stating is that it makes the target precise: the orchestration layer must ensure the tuple that gets signed is the tuple that was promised. 
+
+We identify eight transition primitives, matching the categories observed in production (§5, Table 4). The point of tabulating them is to establish that the state space needs all four axes and no fewer: each of C, A and P is moved by some primitive while the others are held fixed, so no axis is a function of the rest and none can be dropped without losing the ability to express an operation the system actually performs. For each primitive we list which dimensions change ( ✓) and which are held fixed ( −): 5Primitive Wallet Chain Address Protocol                                 
+
+> Transfer ––✓–
+> Swap –––✓
+> Bridge –✓✓±
+> Deposit –✓✓✓
+> Withdraw –✓✓✓
+> Trade –––✓
+> Intra-Exchange –––✓
+> Contract –––±
+
+Intra-Exchange (e.g. moving balance between a Hyperliquid spot and perp sub-account) holds chain and address fixed while crossing the protocol axis. Contract (an arbitrary EVM call) holds chain and address fixed and may or may not cross the protocol axis depending on the call’s effect (WETH.withdraw converts WETH →ETH, crossing protocol; a read-only call holds all four fixed and is not a transition). The wallet column deserves comment, since no primitive moves it and a reader may reasonably ask why W is in the model at all. It is there precisely because it is fixed: the signature condition of Definition 2 pins w across a transition, so a transition whose source coordinate names the wrong mnemonic is not a different-but-valid operation—it is one the user’s key cannot authorize. Users routinely custody several mnemonics, and selecting the wrong one is failure class 4 (wrong-wallet selection, §4.5), our second-most-common observed class. A three-axis model would have no coordinate in which to express that error: the operation would look well-formed and simply fail at the balance check for reasons the model could not name. Carrying W explicitly is what turns a confusing insufficient-funds error into a wrong-wallet diagnosis, which is the difference between a user who retries blindly and one who switches wallets. 
+
+Definition 3 (Composition and plans) . The composition τ2 ◦ τ1 of two transitions is the partial function s 7 → τ2(τ1(s)) , defined exactly when s ∈ dom (τ1) and τ1(s) ∈ dom (τ2). A finite chain 
+
+π = τn ◦ · · · ◦ τ1 is a plan ; the conservation and signature-authorization conditions of Definition 2 compose coordinate-wise. 
+
+Cross-chain bridges are accommodated within this single-S framing: Bridge affects per-chain conservation classes on both the source chain (lock or burn, δK < 0) and the destination chain (mint or release, δK > 0), while the global class for the bridged asset has δK = 0 . Plan composition across chains is therefore just ordinary composition in S with different conservation classes contributing on each step. Plans introduce a separate, runtime concern not visible at the level of Definition 2: an executor that completes τi but fails before τi+1 leaves the chain in an intermediate state that is reachable but not the one the plan intends. Avatar-tier discipline against re-issuing τi on a transient failure of τi+1 
+
+is formalized in Invariant 6. 
+
+Example 1 (“Deposit all my USDC to Hyperliquid”) . Mapping the user intent to a transition tuple: 
+
+• Source: s(w, arbitrum , a EVM  
+
+> w
+
+, USDC ) = 54 ,331 ,159 (54.33 USDC in 6-decimal units). 
+
+• Transition: Deposit with parameters (arbitrum , a EVM  
+
+> w
+
+, USDC ) 7 → (hyperliquid-L1 , a HL  
+
+> w
+
+, perp-USDC ).
+
+• Implementation: the existing transfer tool issues an ERC-20 call USDC .transfer (b, 54 ,331 ,159) 
+
+to the bridge contract address b; the bridge observes the transfer and the L1 validator set credits 
+
+perp-USDC to aHL  
+
+> w
+
+.
+
+6Example 2 (“Swap 200 USDT Ethereum to BTC” via THORChain) . Source s(w, ethereum , a EVM  
+
+> w
+
+, USDT ) = 2,087 · 10 6. Transition: Bridge with chain and protocol both changing, executed via a single call to the THORChain router’s depositWithExpiry on Ethereum; the bridge observes, atomically swaps USDT →RUNE →BTC across its liquidity pools, and emits a BTC send to the specified destination address. 
+
+Both examples were chosen for clarity, and clarity is exactly what makes them unrepresentative: each names its source, asset, amount and destination, so the mapping to a tuple is mechanical. Real requests are frequently not like this, and a formalism that only handles the easy case would be worth little. The interesting question is what the model says about a request that does not determine a transition. 
+
+Example 3 (“Move my stables somewhere safer”) . This request fixes almost nothing. Which 
+
+stablecoins—the user may hold USDC, USDT and DAI across several chains, so the protocol coordinate p is a set, not a value. Safer in what sense: fewer bridge hops, a chain with faster finality, a non-custodial venue, or simply out of a protocol the user has read something about? The destination coordinates (c, a ) are underdetermined, and different readings select genuinely different transitions with different costs and different risks. The formalism’s response is not to guess well. It is that no single τ has been determined, so no preview can be rendered, so the confirm gate of §4 cannot be satisfied and no key is derived. The correct behavior is a clarification request. This is worth stating explicitly because it is a case where the right answer is to not act , and where an agent optimized for task-completion benchmarks is under precisely the wrong incentive: picking a plausible reading scores as success, and refusing scores as failure, while on a public ledger the ranking is reversed. 
+
+This is also the principled basis for the scoring rule in §5.1, which counts a conservative refusal or a clarification request as a pass whenever the expected outcome is non-succeed . Without Example 3 that rule reads as scorer leniency; with it, it is the only scoring that matches what the system is trying to do. 
+
+3.1 Sessions, faults, and what can be guaranteed 
+
+The machinery above describes what can happen on a ledger. It does not yet say what a probabilistic agent driving that ledger should be held to. We state that target here, before describing any mechanism, because the guarantee we can honestly offer is narrower than a reader might expect and the narrowing is the substance of the claim rather than a caveat on it. 
+
+Definition 4 (Session) . A session σ is one pass through the pipeline: a user request u expressed in natural language, a single transition τp that the agent commits to and renders before acting—the 
+
+preview —and whatever execution follows. We write real (σ) for the multiset of transitions that take effect on the ledger as a consequence of σ. The multiset, rather than set, is deliberate: a transition applied twice is the failure mode of §5’s realized double-spend, and a formalism that silently collapses it cannot express the property we need. 
+
+Fault model. §2’s threat model bounds the adversary . What follows bounds the fallibility of non-adversarial components, which is a different axis and the one this paper is about. Within a session we admit: 
+
+F1 (intent mis-mapping) The planner may commit to any τp whatsoever, with arbitrary relation to u. This fault is unbounded : nothing in a runtime layer can decide whether a tuple faithfully renders a natural-language request. 7F2 (pre-state drift) Between planning and broadcast the chain may move, so that s / ∈ dom (τp)
+
+at the moment of execution even though it held at planning time. 
+
+F3 (outcome ambiguity) After broadcast, whether τp took effect may be unobservable within any bounded window, or observably wrong—an RPC may return a hash it later retracts. 
+
+F4 (re-issue) The planner may invoke any tool any number of times, in particular after an error or an ambiguous result. 
+
+F5 (duplicate delivery) A channel carrying externally originated intent is at-least-once; the same request may arrive more than once. 
+
+F6 (non-human caller) A call may originate from an autonomous caller acting under delegated authority rather than from the user directly. We assume throughout that executor code is correct and its checks are not bypassable, that signing keys are uncompromised, that the chain does not reorganize, and that the RPC is honest—the last already flagged as a trust assumption in Invariant 2. These are assumptions, not results. 
+
+Definition 5 (Execution fidelity) . A session σ satisfies execution fidelity if 
+
+real( σ) ∈  ∅, {τp} .
+
+That is: either nothing happened, or exactly the transition that was rendered happened, exactly once. 
+
+It is worth being explicit about what this does not say. Fidelity makes no claim that τp is a faithful rendering of u; F1 is unbounded by construction and survives untouched. What fidelity buys is that F1 becomes the only way a session can go wrong. Every other fault in the model is forced to yield ∅ rather than an unintended effect, so the residual risk of the whole pipeline collapses onto a single predicate—“does τp render u”—evaluated over a finite object: four coordinates and an amount. This is the sense in which the four-dimensional space earns its place in the paper. Its role is not descriptive elegance; it is that it makes “what was promised” and “what was executed” the same kind of object, so that comparing them is a decidable finite check rather than a judgment about language. §4.6 proves that Invariants 1–7 suffice, and §4.7 is candid about the three places the guarantee stops. 
+
+# 4 Agent Orchestration 
+
+4.1 Mapping natural language to transitions 
+
+The agent receives a user request in natural language and must commit to a single transition tuple before touching any signing key. This step is where the system’s guarantee is weakest and where we make the smallest claim: no runtime layer can decide whether a tuple faithfully renders an intent expressed in natural language. What the layer can do is force the mapping to be explicit, singular, and inspectable before anything irreversible happens, so that the residual risk is concentrated in one bounded comparison rather than spread across the whole execution. Two mechanisms serve that end. 
+
+Skill-loading injects only those routing rules whose triggers match the current message (declared in per-protocol markdown files with regex frontmatter), so the system prompt grows O(1) rather than 
+
+O(N ) in the number of supported protocols. Preview–confirm is the mechanism behind Invariant 1 below: the agent must render the tuple it has chosen and obtain confirmation against that rendering before the key is derived. A request that does not resolve to a single tuple therefore cannot be executed at all: the correct behavior is a clarification request, not a best guess (Example 3). 8User request 
+
+> natural language
+
+Agent 
+
+> LLM + skill routing
+
+Write tool 
+
+> preview / confirm
+
+Signer 
+
+> key derivation
+
+RPC / exchange API 
+
+Public ledger     
+
+> EVM / BTC / HL-L1
+> verify poll
+> I1 confirm gate
+> I2 pre-state sufficiency
+> I3 post-state observability
+> I4 no phantom success
+
+Figure 2: Orchestration pipeline in cryptitalk-wallet . A natural-language request flows top to bottom: the agent resolves it to a single transition tuple, the write tool renders that tuple and holds it until confirmation ( I1 ) and a ground-truth balance check ( I2 ) both pass, and only then is a key derived. The dashed return path is the post-broadcast verify poll, which supplies I3 and I4 before the tool reports any outcome back to the agent. Invariants are stated in §4; the pins here mark where each one executes. 
+
+4.2 Deriving the invariants 
+
+A list of seven safety rules invites the question of where the seven came from—whether they follow from anything, or are simply the bugs we happened to hit written up as principles. We therefore derive them, and defer the production failure classes to §4.5 where they serve as a check on the derivation rather than as its source. The derivation is a case analysis on Definition 5. A session’s realized multiset real (σ) must equal 
+
+∅ or {τp}, so a violation is an element of real (σ) that is either (a) not τp, (b) a second copy of τp, or (c) something derived from τp but not equal to it. Each branch generates its obligations by asking what a runtime layer must establish, and when , to exclude it. 
+
+(a) Nothing unrendered may execute. Executing requires a key. So the key must not be derivable without a tuple that has been rendered and confirmed—this is Invariant 1. Distinctly, the fact that a confirmation exists does not establish that this caller was entitled to it, which under F6 is a separate question and yields Invariant 5. These two are often conflated as “authorization”; they answer different questions ( was this tuple approved versus may you approve it ), and a system with only one of them is exploitable in a way we observed in practice. 
+
+(c) Nothing derived-but-different may execute. A tuple approved at planning time may be inapplicable at broadcast time under F2. The layer must therefore re-establish s ∈ dom (τp)
+
+immediately before signing, against ground truth rather than a cached view—Invariant 2. The alternative failure here is subtle and worth naming: a system that silently adapts the transition to the available balance rather than refusing has produced a transition the user never saw, which is 9case (a) wearing case (c)’s clothes. 
+
+(b) Nothing may execute twice. Multiplicity has three independent sources, and closing one does nothing for the others. The executor’s own belief: if the system can report failure on a transition that in fact landed, it manufactures the trigger for a retry, so outcomes that cannot be observed must be reported as uncertain (Invariant 3) and outcomes that cannot be confirmed must not be reported as success (Invariant 4). The planner (F4): even given an honest uncertainty signal, nothing stops a planner from calling again, so re-issue must be gated on positively confirming absence (Invariant 6). 
+
+The channel (F5): duplication upstream of the planner is invisible to both of the above, so the boundary that ingests intent must deduplicate (Invariant 7). Table 1 records the result. We claim completeness only with respect to this decomposition, which is a bounded claim and the only one we can support: given Definition 5 and faults F1–F6, every way to violate fidelity falls in branch (a), (b) or (c), and each branch’s obligations are discharged by the invariants listed against it. This is not a claim that no other failures exist—F1 sits outside the analysis entirely, and §4.7 names three further limits. Table 1: The seven invariants, by the fidelity-violation branch that generates each. Tier indicates where each is enforced: E executor-local, X cross-tier, P plan-level, R HTTP receiver.                         
+
+> #Name Tier Excludes 1Confirm gate E(a) unrendered 2Pre-state sufficiency E(c) inapplicable at broadcast 3Post-state observability E(b) false failure report 4No phantom success E(b) false success report 5Scoped delegation X(a) unentitled caller 6Plan-level retry safety P(b) planner re-issue 7Idempotent intent receiver R(b) channel redelivery
+
+Two structural observations fall out of the derivation that were not visible when the invariants were merely listed. Invariants 1–4 are executor-local : they hold within the wallet agent regardless of who issued the request, and are properties of a single signing-and-broadcast cycle. The remaining three are not, and each becomes load-bearing only when a specific structural feature is present— Invariant 5 once the executor has more than one caller type, Invariant 6 once a planner can retry without a human in the loop, Invariant 7 once intent arrives over a network boundary. A single-user, single-process, human-driven wallet needs only the first four, which is why systems that stop there appear correct until they grow one of those three features. Invariants 6 and 7 in particular attack duplication from opposite sides of the same boundary— sender-side verification versus receiver-side deduplication—and neither subsumes the other: retry safety cannot see a duplicate that arrives before the planner runs, and an idempotent receiver cannot see a second call the planner makes on its own initiative. 
+
+Invariant 1 (Confirm gate) . No signing key is derived, and therefore no transition is authorized, until an explicit confirmation has been recorded against a rendered transition tuple. The write tool runs in two phases: a confirm=false call resolves the user’s request to a single tuple τ and returns it as a preview (source and destination coordinates, amount in both integer and human-decimal form, fees, expected output); only a subsequent confirm=true call carrying that same tuple releases the key. In attended operation the confirmation is the human’s; in unattended operation it is admission by Invariant 5’s scope check, which is the weaker of the two and bounds the resulting authority rather than checking the tuple’s content (§7). 
+
+10 This gate is what makes the rest of the stack statable: it forces the system to commit to exactly one point of S before any irreversible step, so that “what was promised” is a finite object the remaining invariants can be stated against. It is a property of the orchestration layer, distinct from the substrate’s own signature requirement (§3, Definition 2): the ledger guarantees that some key signed whatever was broadcast, but not that what was broadcast is what the user was shown. A gate is only as strong as its cheapest bypass. In our deployment that bypass was a type coercion rather than a logic error: MCP serializes bool arguments as the literal string "false" on some client paths, and Python’s non-empty-string truthiness silently promotes it to True , admitting an unconfirmed call as a confirmed one (failure class 3, §4.5). Every write tool now parses string forms explicitly. We report this because it illustrates a general point about where these invariants actually fail—at the type boundary between the agent’s serialization and the executor’s interpretation, not in the policy the invariant states. 
+
+Invariant 2 (Pre-state sufficiency) . Every transition is gated by a pre-broadcast check of the current on-chain balance. A transition that would set any coordinate below zero is rejected before signing, with a message naming the token, current balance, and shortfall. Crucially, the preflight check must bypass eventually-consistent indexer caches and hit the L1 RPC balanceOf directly; a cached read would permit indexer-drift failures. The L1 RPC remains a trust assumption: the current deployment uses a pinned set of providers per chain with cross-provider sanity checks on the read. Light-client verification (header sync + inclusion proof ) would close the surface and is flagged as future work (§7). 
+
+Invariant 3 (Post-state observability) . After broadcast, the tool polls the chain’s transaction-lookup RPC for up to 12 seconds before reporting success. If the poll times out, the tool reports uncertainty —not failure— and includes the block-explorer URL so the agent can convey that nuance rather than parroting “failed”. 
+
+Invariant 4 (No phantom success) . A broadcast that returns a hash but never propagates to an indexer is treated as uncertain; the tool refuses to claim “Sent!” on a hash whose existence on chain cannot be verified. 
+
+Definition 6 (Authorization predicate) . Fix a finite scope alphabet S. For an actor identity 
+
+α = ( caller_type , caller_id ), a scope set Σ ⊆ S, and a transition τ requiring scope set Στ ⊆ S,the authorization predicate is auth (α, Σ, τ ) = 1 iff Στ ⊆ Σ. The predicate is independent of α’s type: a human caller and an avatar caller with the same Σ are indistinguishable to the executor; the difference is observed only in the audit log. 
+
+Invariant 5 (Scoped delegation) . Every write-capable tool call carries an actor identity α and a scope set Σ derived from the auth context. The executor admits the call iff auth (α, Σ, τ ) = 1 , and the audit log records both α and Στ alongside the transition tuple. For human callers Σ is implicit (the session token grants every scope in S); for non-human callers Σ is explicit and bounded by a delegation token, so an avatar holding a Σ = {transfer } token cannot invoke a swap even under prompt injection. The invariant decouples authentication (“who is calling”) from authorization (“what may they do”). 
+
+Invariant 6 (Plan-level retry safety) . A plan π = τn ◦ · · · ◦ τ1 issued by the avatar tier may not re-issue any irreversible transition τi on a reported failure or uncertainty until the avatar has positively confirmed, by querying ground-truth on-chain state through the same indexer-bypassing path required by Invariant 2, that τi’s effect is absent. Verify-then-retry is required; bare retry-on-failure (“the call returned an error, so I’ll call it again”) is prohibited. The invariant is enforced at the avatar tier 
+
+11 write_tool(request, confirm): tau = resolve(request) # may fail -> clarify if not authorized(actor, scope, tau): return DENIED # I5 bal = balance_at_L1(tau.source) # I2: no cache if bal < tau.amount: return INSUFFICIENT(bal) # I2 if not is_true(confirm): # I1: parse "false" return PREVIEW(tau, bal, fee) key = derive(tau.wallet) # only past this point txid = broadcast(sign(tau, key)) for _ in range(POLL_WINDOW): # I3: <= 12s if lookup(txid): return SENT(txid) return UNCERTAIN(txid, explorer_url) # I3, I4 
+
+Figure 3: The executor-local write path. Every early return is a refusal that leaves real (σ) = ∅; the only path to a signature runs through all four executor-local checks. Note that the terminal state on an unconfirmable broadcast is UNCERTAIN , never FAILED —this is what denies a retrying planner its trigger (§4.6). 
+
+because Invariant 3’s “uncertainty” signal lives inside one executor-local cycle and does not by itself prevent the avatar from re-invoking the same tool a few seconds later. 
+
+Invariant 7 (Idempotent intent receiver) . For any externally-originated intent i delivered over an at-least-once channel (webhook, message queue, retried HTTP), the receiver hashes a canonical pair 
+
+h(i) = H(sender_id , request_bytes ) and replays the recorded response on every duplicate delivery within a fixed deduplication window ∆. The invariant decouples network duplication (at-least-once delivery semantics every public HTTP boundary inherits) from intent duplication (the user wanting the same action twice), and ensures a single user intent produces a single transition tuple regardless of how many times the carrier retries. Invariants 6 and 7 are dual: the former handles ambiguous outcomes, the latter ambiguous deliveries. 
+
+4.3 Enforcement 
+
+The invariants above are stated as properties. This section says how each is actually checked, because a property nobody enforces is a wish, and because the difference between the two is where our own deployment failed (§4.5). Figure 3 gives the write path for a single transition. The ordering is not incidental: the balance read must happen after the tuple is resolved (otherwise there is nothing to check against) and before the preview is rendered (otherwise the user confirms a transition already known to be inapplicable), and the key must be derived after confirmation and released before nothing else. Table 2 locates each invariant: the process it runs in, what it does on violation, and the evidence it leaves behind. The last column matters for a reason worth stating separately—an invariant that refuses silently is indistinguishable in production from one that was never reached, so each check writes a row naming itself. This is what makes the false-positive analysis in §5 possible at all. Two of the seven are not executor-local and are worth spelling out, since a reader cannot infer their mechanism from the write path. 
+
+Scoped delegation (Invariant 5). The check lives in the auth middleware, ahead of dispatch, so it applies uniformly to every write-capable tool rather than being re-implemented per tool. A 12 Table 2: Where each invariant executes, what it does on violation, and what it leaves in the audit log.                                
+
+> #Runs in On violation Evidence 1write tool, per call return preview, no key derivation preview row, confirmed flag 2write tool, pre-sign refuse, name shortfall refusal row with observed bal-ance 3write tool, post-broadcast report UNCERTAIN outcome column, poll duration 4write tool, post-broadcast withhold success claim outcome column, txid 5auth middleware, pre-dispatch reject call caller_type ,Στ
+> 6avatar loop, per plan step block re-issue pending veri-fication run outcome escalated
+> 7HTTP receiver, pre-handler replay recorded response dedup-hit counter
+
+delegation token carries the triple (user , avatar , Σ) as signed claims; the middleware resolves the requested tool to its required scope set Στ and evaluates Definition 6’s predicate. Because the predicate is independent of caller type, a human session token and an avatar delegation token traverse identical code—the avatar path is not a privileged bypass, which is precisely what makes it auditable. Placement is the design decision: a per-tool check would be seven opportunities to forget. 
+
+Idempotent receiver (Invariant 7). The check lives at the HTTP boundary, ahead of any handler, and keys a sliding-window cache on H(sender_id , request_bytes ) with ∆ = 30 s. On a hit the recorded response is replayed verbatim, so the caller cannot distinguish a deduplicated retry from the original—which is the point, since a caller that could tell would retry differently. Hashing the raw bytes rather than a parsed payload is deliberate: it makes the check independent of schema evolution, at the cost of missing semantically identical requests that differ in serialization. For an at-least-once carrier replaying its own buffered bytes, that trade is the right one. What none of this gives us is assurance that the implementations match the properties. Failure class 3 is exactly that gap: the policy in Invariant 1 was right and is_true(confirm) in Figure 3 was, for a period, wrong. The enforcement points are where to audit, not evidence that the audit passed. 
+
+4.4 Multi-tier orchestration: avatars driving wallets 
+
+A separate avatar service runs persistent agents—one per user-installed template—that act as the user when the user is not actively signed in. By design, avatars cannot reach any external system directly: every action they take is a call into an executor agent (the wallet for fund-moving operations; an analyst service for read-only news, prediction-market, and sentiment data) over the executor’s normal user-facing API. The threat-model implications were established in §2. The orchestration architecture is two-tiered. The avatar-side tier decides which executor to call and with what intent , runs on a trigger (scheduled cadence, external webhook, or predicate over indexed state), and may interleave calls to multiple executors within one behavior. The executor-local tier is unchanged from the single-actor description above: it maps the intent to a transition tuple in 
+
+S and applies Invariants 1–4. 13 Intent  
+
+> Plan
+> Preview
+> Confirm
+> Sign
+> Broadcast
+> Verify
+> refuse: preview stale (class 2)
+> refuse: insufficient balance (classes 4, 8)
+> report uncertain , not failed (classes 1, 2)
+> ×
+> gate bypassed (class 3)
+
+Figure 4: State-machine view of a single transition. Solid arrows are the happy path. Dashed arrows on the right are guarded exits : outcomes a safety invariant produces deliberately, annotated with the failure class from §4.5 that motivated the guard. The dashed arrow on the left is different in kind—it is the one edge that must not exist, the boolean-marshalling coercion (class 3) that let an unconfirmed call reach the signer. The distinction matters for reading the ablations in §5: disabling a guard removes a right-hand exit, while a bypass re-opens the left-hand edge. The cross-tier security model is Invariant 5. The avatar holds a long-lived delegation token 
+
+bound to a specific (user , avatar , Σ) triple, replacing the human’s session token in the auth header but otherwise traversing the same code path. The wallet does not need any privileged backdoor for avatars; the token is just a different kind of credential the same auth middleware recognizes. Conversation threads are tagged with (user_id , owner_type , owner_id ) so an avatar’s working memory does not pollute the human user’s chat thread, and the audit log distinguishes human-initiated from avatar-initiated rows by the caller_type column. Avatar-initiated rows are by construction not adversarial (the avatar is software the user installed and parameterized, not an attacker) and form the cleanest source for the false-positive rate of each invariant under realistic load (§5). 
+
+4.5 Failure modes observed in the wild 
+
+We recorded nine classes of safety bug while building and iterating on the system. Chronologically these came first: the system was built, it failed in these ways, and the invariants were written down afterwards. We present them second, and as a check on §4.2 rather than as its source, because the interesting question is not whether we can name the bugs we fixed but whether the derivation predicts them. It does: every class below lands in a branch the case analysis already identified, and no class required inventing an eighth invariant. Table 3 maps each to the invariant that catches it; §5 reports per-class incidence in the deployment record (Table 6). The exception proves the point. Class 5 (provider gap) is the one entry with no invariant against it, and it is not an oversight: failing to find a route is a liveness failure, not a fidelity failure. Nothing executes, so Definition 5 is satisfied trivially and the derivation has nothing to say. It appears in the table because it is a real operational problem, not because the safety analysis covers it. 14 Table 3: Failure classes observed in production, by the invariant that catches each. Class 5 is a liveness failure and falls outside the fidelity analysis; see text.                        
+
+> #Class (one-line description) Inv. 1Phantom success: RPC returns hash for a tx that never propagates 42Phantom failure: legitimate tx lands but verify window too short 33Preview-gate bypass via confirm="false" bool coercion 14Wrong-wallet selection: source has no balance 25Provider gap: no single bridge covers the route liveness 6Slow indexer drift: cached balanceOf lags chain state 27Stale agent context: re-emits stale negative conclusion on repeat request 68Documented-atomicity drift: “atomic” exchange API applies half on partial failure 29Duplicate webhook delivery: at-least-once retry processes intent twice 7
+
+The two LLM-layer classes (7 stale context, 8 documented-atomicity drift) are the ones whose defense is least obvious from the single-cycle invariants 1–4. Stale-context resolution lives at the avatar tier: skill-level rules force a fresh state query on repeat write operations before consulting the agent’s accumulated context, so an earlier turn’s negative conclusion cannot block a later turn’s re-evaluation. Documented-atomicity drift is a client-side preflight (2): even when an exchange documents an action as atomic, the client checks the precondition the exchange claims to enforce, so a server-side validation failure on the replacement half of a cancel-and-replace cannot leave the user with no resting order. 
+
+4.6 The fidelity theorem 
+
+§4.2 argued informally that the seven invariants close every branch of the case analysis. We now discharge that obligation formally against the target set in §3.1. The proof follows the same three branches, which is the point: the derivation and the theorem are the same argument stated at different levels of rigour, not two independent claims that happen to agree. 
+
+Theorem 1 (Execution fidelity) . Let σ be a session executed under Invariants 1–7, subject to faults drawn from F1–F6 and the assumptions of §3.1. Then σ satisfies execution fidelity: real (σ) ∈{∅ , {τp}} .Proof. Since real (σ) is a multiset of transitions, a violation takes one of exactly three forms: it contains a transition other than τp; it contains τp with multiplicity greater than one; or—the degenerate reading of the first—it contains a transition derived from τp but not equal to it. We rule out each. 
+
+(i) No transition other than τp. By the signature condition of Definition 2, any transition that decreases a balance carries a signature from a key derivable from w, so every element of real (σ)
+
+is preceded by a key derivation inside the executor. Invariant 1 makes key derivation conditional on a confirmation recorded against a rendered tuple, and a session renders exactly one such tuple (Definition 4). Hence every element of real (σ) equals τp. Note that F1 is untouched by this step: τp
+
+may be a poor rendering of u, and the claim is only that nothing outside the rendered tuple executes. Under F6 the confirmation is a scope admission rather than a human act; Invariant 5 rejects a caller whose scope set does not cover τp, yielding real( σ) = ∅.
+
+(ii) No duplicate. A second copy of τp can arise on three paths. Within one executor cycle: aretry would have to be triggered by a definite failure report, but under F3 an unobservable outcome 15 is reported as uncertainty rather than failure (Invariant 3), and a hash that cannot be confirmed is never reported as success (Invariant 4); the trigger is therefore not produced. From the planner (F4): 
+
+Invariant 6 forbids re-issuing τp until its absence has been positively confirmed against ground-truth state, so a re-issue following a landed first attempt is refused. From the channel (F5): Invariant 7 replays the recorded response for a duplicate delivery within the window ∆, so the duplicate produces no second session and hence no second transition. 
+
+(iii) Nothing derived-but-different. Under F2 the pre-state may have drifted so that s / ∈ dom (τp)
+
+at broadcast time. Invariant 2 rejects the transition in that case rather than adjusting it to fit the available balance, so the outcome is ∅ and not a transition the user never saw. This step is why preflight must read ground truth rather than a cached indexer value: a stale read can report 
+
+s ∈ dom (τp) when it is false, which admits exactly the derived-but-different case the invariant exists to exclude. Every fault in F1–F6 is therefore either excluded or forced to ∅, except F1, which by construction acts only on the choice of τp itself. 
+
+Corollary 1 (Residual-risk localization) . Under Invariants 1–7, the only fault that can produce an unintended irreversible effect is F1. Every other fault class yields ∅.
+
+Corollary 1 is the paper’s actual claim, and it is deliberately modest. We do not solve the intent-mapping problem; we confine it. The engineering value is that an unbounded semantic question—did the agent understand the user—has been reduced to a bounded one: does this four-coordinate tuple and amount match what was asked. That question is answerable by a human in a fraction of a second, which is what makes the confirm gate a usable control rather than a formality. 
+
+4.7 Where the guarantee stops 
+
+Three limits, stated plainly because each is load-bearing. 
+
+The unattended case is materially weaker. In attended operation a human evaluates “does τp
+
+render u” at the confirm gate. In unattended operation nobody does. The bound degrades from a check on the tuple’s content to Invariant 5’s check on the caller’s authority , and those are not the same thing: an avatar holding Σ = {transfer } that resolves “send one unit” into a transfer of ten is inside its scope and executes. Fidelity holds—the ten-unit transfer was previewed, and it happened once—while the user’s intent is still violated. Scope sets today name tools; extending them to carry predicates over the transition tuple (per-period caps, destination allowlists, rate limits) would let Σ
+
+bound content as well as authority and is the most valuable single extension we are aware of (§7). 
+
+Duplicate suppression is ∆-bounded. Invariant 7 holds within its deduplication window. A redelivery arriving after ∆ opens a new session, and the theorem is stated per session, so it says nothing about the pair. Choosing ∆ is therefore a safety parameter and not a cache-tuning decision, a point the Stripe-style idempotency-key literature makes for payments and which transfers directly. 
+
+Plans get prefix consistency, not atomicity. For a plan π = τn ◦ · · · ◦ τ1, applying the theorem stepwise gives that real (π) is a prefix of (τ1, . . . , τ n) with each element previewed and no duplicates. That is strictly weaker than atomicity: a plan interrupted after τi leaves a reachable intermediate state that no one asked for—a swap completed but its follow-on bridge not. Fidelity is a per-transition property and cannot see this; lifting it to a transactionality predicate over compound transitions is the open problem we regard as most worth attacking (§7). Finally, a note on how to read the theorem in practice. It is conditional on the invariants holding, so its useful form is the contrapositive: every failure class in Table 3 is an instance of some invariant 16 not in fact holding in deployed code. Failure class 3 is the sharpest example—the policy stated by Invariant 1 was correct, and a string-to-boolean coercion made the implementation not satisfy it. The theorem tells you where to look; it does not certify the code. 
+
+# 5 Empirical Evaluation 
+
+We report two kinds of evidence, and it is worth separating them clearly because they answer different questions and carry very different weight. The controlled evidence (§5.1) is the evaluation proper: an adversarial-prompt suite targeting each failure class, run across four backing models, with each invariant ablated in turn. It is designed to answer whether the invariant stack changes agent behavior, and it supports a comparison because conditions differ by one variable at a time. The deployment record (§5.2) is not an experiment and we do not present it as one. It is 108 write operations the system performed on real wallets, which establishes that the system runs in production rather than in a simulator, and it is the source of the failure taxonomy in §4.5. There is no control group and no counterfactual; a reader should take from it that the failure classes are real and were observed, not that the invariants are thereby validated. Presenting a track record as though it were a result is a common enough move in systems papers that we prefer to disclaim it explicitly. 
+
+5.1 Controlled experiments 
+
+Adversarial prompt suite. A labeled prompt dataset ( data/adversarial_prompts.csv , N =60 ,seven to eight prompts per failure class) targets each class of §4; class 9 (duplicate webhook) is exercised by a separate HTTP-replay harness. Each row carries a target class, an expected outcome label, the target tool, and a ground-truth rationale. We run the dataset against four backing models for the wallet’s planning loop: Claude, MiniMax-M2.7-highspeed, Gemini-2.5-flash-lite, and OpenAI gpt-5-nano, all routed through the wallet’s per-tenant LiteLLM gateway. The Gemini path required two adapter-level fixes (MCP namespace-prefix stripping and a validation-hint augmentation for tool-result errors); pre-fix Gemini runs are not reported. 
+
+Invariant ablation. The same suite is replayed with one invariant disabled at a time via a request-scoped header gated by an eval-only env var, so every condition runs against identical code modulo one boolean. Tool-level ablations (I 2, I 4) are toggled on the broadcasting executor against the operator’s wallet. The five code-gate invariants (I 1, I 3, I 5, I 6, I 7) are exercised by deterministic in-process drivers that mirror the production code paths (the broadcasting executor would sign every preview-class prompt on first contact; the drivers separate the gate’s logic from the broadcast side effect). Two caveats on that choice, which we state here rather than deferring to the driver sources: the in-process drivers were authored alongside the gates they exercise, so they test the gate’s logic against inputs chosen by the same author rather than against production traffic; and a trace-replay version that toggles each gate inside the broadcasting executor over the recorded audit log would be the stronger design, which we flag as follow-up (§7). 
+
+Naive-ReAct baseline. The baseline [ 30 ] runs the same prompt suite against a bare ReAct loop with the same wallet tools, but with preview/confirm, pre-state preflight, and post-broadcast verification removed at the system-prompt level. Each baseline row uses the same backing model as its stacked comparison row and the same tool surface, so a delta is attributable to the orchestration 17 layer rather than to the model or the tool code. We do not attempt to reproduce closed-source third-party Web3 agents: reproducing a full commercial stack inside a comparable sandbox is out of scope, and a partial reproduction would be more misleading than informative. One property of this baseline materially limits what it can show, and it is easy to miss. The baseline is single-turn : the runner presents the prompt and the tool surface and observes whether the model emits a tool_use block for a write tool. It does not execute the tool, return a tool result, or continue the agent loop. The resulting number is therefore the model’s stated intent under naive scaffolding, not a measurement of what would happen in a production loop where the call fires, a result comes back, and the model gets another chance to reconsider. A high baseline pass rate does not imply the model is safe in deployment. We use the baseline strictly as a control for attribution—the finding is the delta between a stacked row and its same-model baseline, never either row read on its own. Capability-uncertainty refusals (the model declines because it cannot complete the call schema) are classified separately from safety-driven refusals by the per-prompt judge, so the baseline reflects safety reflex rather than incidental schema confusion. 
+
+Metrics and scoring. We report pass rate: the fraction of prompts on which the agent produced the expected-outcome label, with 95% bootstrap intervals from 1000 resamples of the per-row Bernoulli trials. Those intervals are unpaired , which deserves a note because it is the wrong choice for half of what we do with them. The stack and its baseline see the same 60 prompts, so a paired test—McNemar over per-prompt outcomes—would be strictly more powerful for a with-vs-without delta on a fixed backing model, and reporting the unpaired interval there costs us statistical power we could have had. We report unpaired for uniformity with the cross-model rows, where the prompts are shared but the model differs and the paired design is less clean, and flag the paired test as follow-up (§7). The reader should treat the intervals as conservative for within-model comparisons and appropriate for across-model ones. False-positive rates on non-adversarial prompts and per-invariant 
+
+p-values are out of scope at N =60 .Each response is classified by a two-stage scorer: a Gemini-2.5-flash-lite LLM-as-judge at temperature 0 with schema-constrained output proposes an outcome category and a satisfies / fails verdict; a deterministic post-hoc override then applies a safety-equivalence rule (any conservative refusal, preview, or clarification request counts as a pass when the expected outcome is non-succeed ,since refusing on an under-specified prompt is itself correct safety behavior). The override is reproducible to the byte given the judge’s classifications; the planning path remains non-deterministic by construction (live hosted-API calls). A spot-check re-run on Claude moved the headline by under 3 pp with per-prompt agreement above 90%. Figures 5–8 report the per-row pass rate and 95% bootstrap interval for each backing-model column; the dashed reference line is the same model’s full-stack adversarial pass rate so each ablation drop reads against a common ceiling. 
+
+Results: write-aggressive pair. On Claude the full invariant stack catches 81.7% of the N =60 
+
+suite; the naive-ReAct baseline catches 10.2% , a 71.5 -pp safety delta attributable to the orchestration layer. On MiniMax-M2.7-highspeed the same comparison reads 86.7% vs 10.0% (76.7 -pp gap). The cross-model agreement on direction and magnitude is the empirical claim: the safety contribution replicates across two different write-aggressive planning models, not just the one the system was tuned on. Bootstrap intervals overlap in the 78 –92% range (full stack) and the 3–19% range (baseline), non-overlapping by a wide margin. 18 0% 25% 50% 75% 100%                                                  
+
+> Pass rate (95% bootstrap CI)
+> full-stack ref
+> claude N=60 81.7% Adversarial suite
+> i1_on N=20 100.0% Invariant ablation (I 1confirm gate)
+> i1_off N=20 40.0%
+> claude N=60 83.3% Invariant ablation (I 2off)
+> i3_on N=20 100.0% Invariant ablation (I 3wallet-tier)
+> i3_off N=20 25.0%
+> claude N=60 83.3% Invariant ablation (I 4off)
+> i5_on N=20 100.0% Invariant ablation (I 5delegation-tier)
+> i5_off N=20 25.0%
+> i6_on N=20 100.0% Invariant ablation (I 6cross-tier)
+> i6_off N=20 0.0%
+> i7_on N=20 100.0% Invariant ablation (I 7cross-tier)
+> i7_off N=20 0.0%
+> claude N=59 10.2% Baseline (naive ReAct)
+
+Figure 5: Experimental results with backing model Claude. Each row’s whisker is a 95% bootstrap confidence interval over 1000 resamples with replacement of the per-row Bernoulli outcomes; the filled point is the empirical pass rate. The dashed vertical reference line marks this model’s full-stack adversarial pass rate so each ablation’s drop reads off against a common ceiling. Code-gate ablation rows (I 1, I 3, I 5, I 6, I 7) describe a gate at the executor or avatar tier rather than the backing model, and so appear identically in the companion figure for the other backing model. 
+
+Results: write-cautious and methodology-bounded. Gemini-2.5-flash-lite reaches 60.0% 
+
+with the stack and 56.7% on the naive baseline—a ∼3-pp gap, because the model declines write tools on 46 /60 baseline prompts on its own. We read this as evidence that the stack’s measurable safety contribution depends on the underlying model’s write-aggressiveness: on a model that hesitates natively, the stack overlaps the model’s behavior on this single-turn suite, though it remains necessary for multi-turn cases (Invariants 3, 4, 5, 6) that single-turn refusal cannot guard against. OpenAI gpt-5-nano reproduces the write-aggressive baseline pattern ( 41 /60 issue a write, point 31 .7% at N = 60 )but its safety-stack cells were collected at smaller samples ( N =19 –22 ) because per-turn latency on the 30-tool MCP surface routinely exceeded the 120-second polling budget; sessions log 150 –350 
+
+seconds and 185 k–372 k accumulated input tokens before terminating on the wallet side. Within the achievable sample ( 36.8% , 31.8% , 40.0% for adv / I 2-off / I 4-off) the lift overlaps the baseline interval; conditional on the ∼40% of sessions that converged the agent passed 7/9, 7/8, 8/10 
+
+respectively—consistent with the stack working when gpt-5-nano completes a session. We report the column as a methodology-bounded measurement. 
+
+Per-invariant ablation. Tool-level I 2 (balance preflight) and I 4 (no phantom success) ablations move pass rate by under 4 pp on the three full-N models: Claude 83.3% /83.3% (vs 81.7% ), MiniMax 
+
+86.7% /85.0% (vs 86.7% ), Gemini 61.7% /56.7% (vs 60.0% ). Two reasons: (i) the agent also reads balances through the read-only get_all_balances tool and reasons about insufficiency in its own context, blunting tool-level I 2 removal; (ii) under the safety-equivalence scorer (any conservative refusal counts), both tool-level ablations sit below the measurement floor at N =60 . The cleanly discriminating ablations are the code-gate rows: in-process drivers for I 1, I 3, I 5 collapse from 20 /20 
+
+control to 5–8/20 ablated, and the cross-tier gates (I 6, I 7) collapse to 0/20 . These rows establish that each gate’s code path is load-bearing on the failure class it targets; the tool-level rows remain in the figure as evidence that agent-level reasoning absorbs single-tool removal, not as a per-invariant 19 0% 25% 50% 75% 100%                                                  
+
+> Pass rate (95% bootstrap CI)
+> full-stack ref
+> minimax N=60 86.7% Adversarial suite
+> i1_on N=20 100.0% Invariant ablation (I 1confirm gate)
+> i1_off N=20 40.0%
+> minimax N=60 86.7% Invariant ablation (I 2off)
+> i3_on N=20 100.0% Invariant ablation (I 3wallet-tier)
+> i3_off N=20 25.0%
+> minimax N=60 85.0% Invariant ablation (I 4off)
+> i5_on N=20 100.0% Invariant ablation (I 5delegation-tier)
+> i5_off N=20 25.0%
+> i6_on N=20 100.0% Invariant ablation (I 6cross-tier)
+> i6_off N=20 0.0%
+> i7_on N=20 100.0% Invariant ablation (I 7cross-tier)
+> i7_off N=20 0.0%
+> minimax N=60 10.0% Baseline (naive ReAct)
+
+Figure 6: Experimental results with backing model MiniMax-M2.7-highspeed. Each row’s whisker is a 95% bootstrap confidence interval over 1000 resamples with replacement of the per-row Bernoulli outcomes; the filled point is the empirical pass rate. The dashed vertical reference line marks this model’s full-stack adversarial pass rate so each ablation’s drop reads off against a common ceiling. Code-gate ablation rows (I 1, I 3, I 5, I 6, I 7) describe a gate at the executor or avatar tier rather than the backing model, and so appear identically in the companion figure for the other backing model. contribution estimator. 
+
+Reproducibility. The prompt dataset, every result CSV, the per-label scorer, and the ablation drivers are versioned alongside the paper source but are not released with it, for the wallet-privacy reason given above. We therefore make the weaker claim the artifact supports: the methodology is specified here in enough detail to be reimplemented, and the scoring is deterministic given a fixed judge output, but the numbers are not at present independently re-derivable from published material. A privacy-preserving release —the controlled-experiment material, which touches no production wallet, separated from the on-chain extract—is the obvious remedy and is not yet done. The deterministic override plus frozen-judge output makes re-scoring a frozen CSV byte-reproducible. The hosted planning path is non-deterministic by construction; we pin the model identifier and the wallet commit SHA in the result-CSV commit messages. A full per-seed variance study is flagged as future work (§7). 
+
+5.2 Deployment record 
+
+Scope and privacy. We report every write-tool invocation logged since the system’s first production use on 2026-04-07. Failure-mode incidents (Table 6) are human-curated from audited sessions; the underlying CSV is frozen at paper-build time. To balance verifiability against the privacy of the operator’s production wallets we report counts and aggregates rather than hashes and addresses. The per-transaction extract behind these tables carries the transaction IDs, but we do not release it: the operations are the operator’s own, and publishing the hashes under a named paper would link a real wallet’s full balance history to an identity permanently. The aggregate tables are therefore the unit a reader can check, and the on-chain record should be read as evidence that the system runs in production rather than as an independently verifiable result. Adversarial-suite trials execute against 20 0% 25% 50% 75% 100%                                                  
+
+> Pass rate (95% bootstrap CI)
+> full-stack ref
+> gemini N=60 60.0% Adversarial suite
+> i1_on N=20 100.0% Invariant ablation (I 1confirm gate)
+> i1_off N=20 40.0%
+> gemini N=60 61.7% Invariant ablation (I 2off)
+> i3_on N=20 100.0% Invariant ablation (I 3wallet-tier)
+> i3_off N=20 25.0%
+> gemini N=60 56.7% Invariant ablation (I 4off)
+> i5_on N=20 100.0% Invariant ablation (I 5delegation-tier)
+> i5_off N=20 25.0%
+> i6_on N=20 100.0% Invariant ablation (I 6cross-tier)
+> i6_off N=20 0.0%
+> i7_on N=20 100.0% Invariant ablation (I 7cross-tier)
+> i7_off N=20 0.0%
+> gemini N=60 56.7% Baseline (naive ReAct)
+
+Figure 7: Experimental results with backing model Gemini-2.5-flash-lite. Each row’s whisker is a 95% bootstrap confidence interval over 1000 resamples with replacement of the per-row Bernoulli outcomes; the filled point is the empirical pass rate. The dashed vertical reference line marks this model’s full-stack adversarial pass rate so each ablation’s drop reads off against a common ceiling. Code-gate ablation rows (I 1, I 3, I 5, I 6, I 7) describe a gate at the executor or avatar tier rather than the backing model, and so appear identically in the companion figure for the other backing model. freshly-generated test wallets, never against production wallets. Table 4 breaks the on-chain record down by the eight transition primitives of §3. Every primitive has at least one real operation behind it, with Bridge and Trade dominating—a function of the operator’s usage pattern (cross-chain swaps and exchange activity) rather than a design choice about which primitives to support. Table 5 pivots the same data by source chain: eight distinct chains / substrates, including Bitcoin (native transfers), Hyperliquid’s non-EVM L1, and Solana (a non-EVM smart-contract chain). Several chains are L2 rollups or sidechain-style execution layers; their specific trust surface (sequencer censorship, withdrawal timer) is not engaged by the seven invariants, which treat L2-only inclusion as confirmed for the user’s purposes; a sequencer-independent deployment that pushed observability down to L1 inclusion proofs is out of scope for this paper. Table 6 enumerates every audited safety-bug incident, tagged by the class it belongs to (§4) and linked to the fix PR. The list is not exhaustive—classes 1 (phantom success) and 6 (indexer drift) are likely under-counted because early incidents self-resolved without detailed audit—but it covers every incident where the session ID, failure shape, and subsequent fix were recorded. Table 7 reports the production avatar fleet’s outcome distribution. The fleet runs continuously: a DCA template fires on a daily schedule and a market-analysis template runs on a news-event trigger. In the data window, 32% of DCA runs end in success , 32% in escalated (the avatar deferred to the human rather than re-issue a write), 24% in error (executor hard failure, correctly surfaced rather than retried), and 11% in aborted (safety stop). None of the 87 DCA runs produced a duplicated on-chain transition; the realized double-spend in the case study below predates the deployment of Invariant 6. Avatar runs are non-adversarial by construction (the avatar is software the user parameterized, not an attacker), so the share of runs the executor or avatar tier blocks is a direct lower bound on the false-positive rate of Invariants 3–6 under realistic load. 21 0% 25% 50% 75% 100%                                                  
+
+> Pass rate (95% bootstrap CI)
+> full-stack ref
+> openai-nano N=19 36.8% Adversarial suite
+> i1_on N=20 100.0% Invariant ablation (I 1confirm gate)
+> i1_off N=20 40.0%
+> openai-nano N=22 31.8% Invariant ablation (I 2off)
+> i3_on N=20 100.0% Invariant ablation (I 3wallet-tier)
+> i3_off N=20 25.0%
+> openai-nano N=20 40.0% Invariant ablation (I 4off)
+> i5_on N=20 100.0% Invariant ablation (I 5delegation-tier)
+> i5_off N=20 25.0%
+> i6_on N=20 100.0% Invariant ablation (I 6cross-tier)
+> i6_off N=20 0.0%
+> i7_on N=20 100.0% Invariant ablation (I 7cross-tier)
+> i7_off N=20 0.0%
+> openai-nano N=60 31.7% Baseline (naive ReAct)
+
+Figure 8: Experimental results with backing model GPT-5-nano. Each row’s whisker is a 95% bootstrap confidence interval over 1000 resamples with replacement of the per-row Bernoulli outcomes; the filled point is the empirical pass rate. The dashed vertical reference line marks this model’s full-stack adversarial pass rate so each ablation’s drop reads off against a common ceiling. Code-gate ablation rows (I 1, I 3, I 5, I 6, I 7) describe a gate at the executor or avatar tier rather than the backing model, and so appear identically in the companion figure for the other backing model. 
+
+Case study: Phantom failure, realized double-spend. On 2026-04-30 a DCA avatar issuing a 200 USDT → BTC daily swap saw the executor report “failed,” retried, and confirmed both attempts on chain (two Ethereum transactions, three minutes apart) for a total of 400 USDT against an intended 200. The executor-local fix from an earlier near-miss had shipped, but the avatar tier treated the executor’s first response as authoritative at plan granularity. Under Invariant 6 the second transaction does not happen: the avatar must positively verify the first attempt’s on-chain absence before re-issuing, which fails here because the first attempt did land. The incident is the empirical motivation behind that invariant; a verify-then-retry implementation at the avatar tier shipped the same week. 
+
+Case study: Webhook duplicate delivery. On 2026-05-01 an external trigger source delivered a webhook to the avatar service. The pod processed the request and started a rebalance run, but the edge proxy returned 502 to the trigger source despite upstream success. The trigger retried the same byte-for-byte payload eight seconds later. Without idempotency the duplicate would have either started a second run or returned 409 on the in-flight first run, orphaning the original from the trigger source’s logs. The fix shipped the same day: a sliding-window cache keyed by 
+
+H(sender_id , request_bytes ) with ∆ = 30 s; on the retry the cache hits and the original response is returned verbatim. This is the failure-class 9 incident and the motivation behind Invariant 7; the mechanism echoes Stripe-style idempotency keys, and the contribution is the observation that agent systems inherit at-least-once delivery semantics from every public HTTP boundary. 
+
+Case study: Cross-venue prediction-market lifecycle. We built two parallel implementations of the prediction-market trade tool—one per CTF-Exchange-style venue—before extracting any shared abstraction, on the principle that one known-good implementation is a guess at what generalizes whereas two are data. The two-venue exercise surfaced two specifics neither single-venue 22 Table 4: On-chain write operations by transition primitive (§3). Each row is a transaction that landed on a public ledger or was accepted by the Hyperliquid exchange API. 108 total operations. Primitive Count Transfer 12 Swap 16 Bridge 27 Deposit 1Withdraw 3Trade 35 Intra-Exchange 5Contract 9
+
+Total 108 
+
+Table 5: On-chain coverage: operations per source chain. Bridge operations are counted by their source chain, the side that the agent signed on. Chain Operations ethereum 35 base 29 polygon 19 hyperliquid 16 solana 4bitcoin 2bsc 2arbitrum 1
+
+Total 108 
+
+track would have caught: one venue’s matching engine enforces takerAmount=1 as a sentinel on 
+
+both sides of the book; the other deploys a separate Exchange contract per market so an ERC-1155 
+
+setApprovalForAll preflight must be checked per-market rather than against a global constant. Both findings are now regression-pinned and illustrate that the formalism’s venue-agnosticism (§3) does not imply implementation-agnosticism. 
+
+# 6 Related Work 
+
+Tool-use in agent frameworks and long-context drift. ReAct [ 30 ] interleaves reasoning and tool invocation; Reflexion [ 28 ] adds verbal self-correction; the Model Context Protocol (MCP) [ 2]standardizes tool wire formats. These frameworks optimize task success on benchmarks and give little attention to irreversible side-effects; a recent systematization [ 7] catalogs MCP-layer risks (tool poisoning, prompt injection, epistemic failures) but does not address the coercion-at-the-type-boundary failure we observe in class 3. Long-context behavior is documented as “lost in the middle” [ 18 ]; subsequent work sharpens the phenomenon at the start [ 16 ] and under intent mismatch [ 17 , 14 ]. Our stale-context failure (class 7) is a specific instance: the stale conclusion is whether a write is possible at all, addressed structurally (smart wallet-active picker + skill-level 23 Table 6: Safety bug incidents observed in the wild, grouped by the eight failure classes of §4. Every class has at least one audited incident with a corresponding fix shipped to production; the case-study paragraphs in this section cite the specific incidents where the detail matters.                     
+
+> Class Description Fix shipped 1Phantom success ✓
+> 2Phantom failure ✓
+> 3Preview gate bypass ✓
+> 4Wrong-wallet selection ✓
+> 5Provider gap (THORChain no-USDC-on-BSC) ✓
+> 6Slow indexer drift ✓
+> 7Stale agent context ✓
+> 8Documented-atomicity drift ✓
+> 9Duplicate webhook delivery (TradingView 502 retry) ✓
+
+Table 7: Production avatar-fleet outcome distribution. One row per installed template; columns are the four terminal-state outcomes recorded in the avatar service’s avatar_runs table over the fleet’s lifetime to date. Avatar runs are non-adversarial by construction (the avatar is software the user installed and parameterized, not an attacker), so the fraction of runs that the executor blocks is a direct lower bound on Invariants 3–6’s false-positive rate under realistic load.                     
+
+> Template Success Escalated Error Aborted Total
+> dca 28 28 21 10 87
+> market_analysis 20002
+> All 30 28 21 10 89
+
+fresh-query rules on repeat write intents) rather than by prompting alone. The hallucination literature [ 12 , 11 ] is adjacent but distinct: our failure is not fabrication, it is over-weighting a previously-correct observation. 
+
+Atomicity and end-to-end precondition checking. Classical transaction semantics [ 8, 9]give precise definitions financial systems are expected to uphold. In practice venue APIs routinely expose documented semantics that diverge from implementation (class 8 in our taxonomy), broadly consistent with the atomicity pitfalls documented in DeFi [ 6, 32 ]. Defending against documented-vs-implemented drift reduces to precondition checking on the client side rather than trust in the documented guarantee—an application of the end-to-end argument [ 26 ] to order-replacement APIs. 
+
+Multi-agent systems, capabilities, and account abstraction. Multi-agent frameworks (Au-toGen [ 29 ], MetaGPT [ 10 ]) formalize multi-LLM collaboration via structured conversation; our orchestration (§4.4) layers over a single-actor surface unchanged by the multi-agent setting—a human user and an avatar are interchangeable from the executor’s point of view, which the multi-agent lit-erature does not address. Invariant 5 borrows vocabulary from object-capability security [ 15 , 19 , 20 ]; we instantiate the surface (scoped bearer tokens, audit ground truth) but do not prove the formal object-capability properties, flagged as future work (§7). The natural alternative substrate is ERC-4337 account abstraction [ 4], where smart-contract wallets expose session keys (Safe [ 25 ], Argent [ 3]) that programmatically restrict a delegated signer with on-chain revocation transparency. For an EVM-only deployment account abstraction would be a strictly cleaner home for Invariant 5; we chose off-chain tokens because the wallet drives non-EVM executors (Hyperliquid signed L1 messages, an 24 HTTP-only analyst service) under a single auth middleware. MPC-custody and multi-sig alternatives attack key custody rather than scoping signer authority and are orthogonal to the orchestration-layer invariants. 
+
+Web3 agents, bridges, and concurrent-state formalisms. A growing set of projects ships agent-driven Web3 tooling and recent work [ 1, 13 ] has begun to benchmark the space. We are not aware of published work that formalizes wallet operations as state transitions in a four-dimensional space, enumerates safety invariants against real observed failure modes, and evaluates against an on-chain track record rather than a synthetic benchmark. Bridge surveys [ 31 , 5] taxonomize the provider-gap failure (class 5) and the trust assumptions users pay to move value between ledgers; our table-driven dispatcher is an applied instance of the routing machinery these works motivate, specialized for a probabilistic agent. Petri nets and process calculi [ 22 , 21 , 23 ] give vocabulary for concurrent state transitions with preservation constraints; embedding the 4D space into a Petri-net or π-calculus formalization would let plan-level guarantees (Invariant 6) follow structurally rather than from a named runtime invariant, and remains future work. HD-wallet derivation trees [ 27 ] are only lightly formalized in the academic literature, with recent post-quantum work treating the tree as a capability-like structure under hot- and cold- storage threat models. 
+
+# 7 Discussion 
+
+Limitations. The work treats the user as trusted and single-tenant; multi-user deployment introduces adversarial-prompt surface the invariants do not address. The model provider’s API is a black box, so a silent change to tokenization, system-prompt handling, or sampling defaults could invalidate the reproducibility regime (§5.1) without an observable signal on the wallet side. The controlled-experiment sample ( N = 60 per cell) is small for an academic claim: the 95% bootstrap intervals reported are unpaired (conservative for our own with-vs-without comparisons where a paired test e.g. McNemar would be more powerful) and we do not report a per-seed variance study. Within that suite the gpt-5-nano column is further methodology-bounded ( N = 19 –22 because of per-turn agent-loop wall-clock; see §5). The code-gate invariant ablations (I 3, I 5, I 6, I 7) are exercised by in-process drivers that mirror the production code paths rather than by toggling the gate inside the broadcasting executor over a live trace; this isolates the gate’s logic from the broadcast side effect but does not exercise the gate against a population of traffic-mixed inputs, which a trace-replay row over the production audit log would. Invariant 2 additionally inherits a trust assumption on the L1 RPC provider; light-client verification (header sync + inclusion proof) would close the surface and is the most-pressing infrastructure-level future work. 
+
+Out-of-scope environmental losses. Three losses the seven invariants do not directly defend against sit in the threat-model bucket partly in scope from §2: 
+
+Indirect prompt injection through avatar-ingested feeds (RSS, social, third-party trigger pay-loads): Invariant 5’s scope bounding limits the authority an injected prompt can exercise but not its exercise on in-scope tools. 
+
+Avatar-service compromise is a single-point-of-compromise distinct from executor compromise: the avatar holds long-lived delegation tokens across the fleet, and a breach would let an attacker exercise every token’s scope at once. Mitigation today is operational (scope-bound tokens, audit log per call, revocation without session restart); on-chain session-key custody via account abstraction (§6) is the natural next step. 25 MEV (sandwich, JIT-liquidity, oracle / bridge front-running) is a counterparty-layer extraction [ 6,24 ] operating on otherwise-valid signed transactions, orthogonal to the agent invariants. Operational mitigations (limit-order discipline on Trade primitives, router preference for on-chain auction mechanics on Bridge primitives, tight slippage tolerance) reduce realized loss on small notionals but do not close the surface. 
+
+Future work — formal. The most load-bearing direction is plan-level transactionality. Invariant 6 states a verify-then-retry rule enforced at the avatar tier, but it guards retries only negatively : it refuses an unsafe retry without formalizing when forward progress on a partial plan is admissible. The cleaner treatment is to model a plan as a compound transition τn ◦ · · · ◦ τ1 in S with an explicit transactionality predicate, so plan-level guarantees fall out of the formalism rather than from a named runtime invariant; a swap-then-bridge or deposit-then-withdraw sequence has atomicity requirements Invariant 6 does not capture. A secondary direction is extending τ to a partial function 
+
+τ(actor ,Σ) parameterized by the caller’s scope set, lifting Invariant 5 from runtime check to algebra (building on the object-capability vocabulary discussed in §6). 
+
+Future work — empirical. The avatar fleet (§4.4) is the largest source of non-adversarial agent-issued traffic the wallet sees. Once audit_log.caller_type is populated end-to-end, every daily run is a labeled data point and the false-positive rate of each invariant becomes a continuous deployment metric—an unexpected lift in, say, Invariant 2’s false-positive rate signals indexer drift or an avatar template’s intent grammar moving out of distribution, a qualitatively different empirical posture from the scripted adversarial suite. A trace-replay version of the I 3, I 5, I 6, I 7 ablation rows over the same audit log would replace the in-process drivers with traffic-mixed inputs and is the cleanest single piece of empirical follow-up. 
+
+# 8 Conclusion 
+
+We argued that a broad class of agent-orchestrated actions on public ledgers are naturally state transitions in a four-dimensional space, and that the point of saying so is not description but decidability: it makes “what was promised” and “what was executed” the same kind of finite object. On that basis we proved execution fidelity —a session’s realized effect is either nothing or exactly the rendered transition, exactly once—and derived seven safety invariants from the condition rather than from the bugs that prompted them. The guarantee stops short of the question everyone wants answered, whether the rendered transition is what the user meant; what it does is make that the only remaining question, over an object small enough to check. The empirical side is an on-chain track record of 108 production write operations plus a controlled N =60 adversarial suite on which the full stack lifts pass rate by ∼74 percentage points over a naive-ReAct baseline on two write-aggressive backing models—and by ∼3 points on a write-cautious one, which is a caution about how safety layers are evaluated at least as much as a result about this one. The cross-tier invariant is load-bearing in deployment: a separate avatar service holds scoped delegation tokens against subsets of the wallet’s authority and drives the same user-facing surface humans use, without any privileged backdoor. The cleanest single piece of formal future work the paper suggests is lifting Invariant 6 from a runtime check into a plan-level transactionality predicate on the compound transition τn ◦ · · · ◦ τ1 (§7). The formalism and invariants apply to any probabilistic agent acting on irreversible external state; public ledgers are a particularly demanding testbed because every failure is publicly and permanently observable. 26 References 
+
+[1] Saad Alqithami. Autonomous agents on blockchains: Standards, execution models, and trust boundaries. arXiv:2601.04583, 2026. [2] Anthropic. Model context protocol specification. https://modelcontextprotocol.io/ specification , 2024. Accessed 2026-04-19. [3] Argent Labs. Session keys in Argent: scope-bounded delegated signers. Technical blog, 2023. [4] Vitalik Buterin, Yoav Weiss, Dror Tirosh, Shahaf Nacson, Alex Forshtat, Kristof Gazso, and Tjaden Hess. ERC-4337: Account abstraction using alt mempool. Ethereum Improvement Proposal, 2021. [5] Yiyue Cao, Mingzhe Zheng, Lin William Cong, Siguang Li, and Xuechao Wang. The price of in-teroperability: Exploring cross-chain bridges and their economic consequences. arXiv:2604.03083, 2026. [6] Philip Daian, Steven Goldfeder, Tyler Kell, Yunqi Li, Xueyuan Zhao, Iddo Bentov, Lorenz Breidenbach, and Ari Juels. Flash boys 2.0: Frontrunning in decentralized exchanges, miner extractable value, and consensus instability. In IEEE Symposium on Security and Privacy (S&P) , 2020. [7] Shiva Gaire, Srijan Gyawali, Saroj Mishra, Suman Niroula, Dilip Thakur, and Umesh Yadav. Systematization of knowledge: Security and safety in the Model Context Protocol ecosystem. arXiv:2512.08290, 2025. [8] Jim Gray and Andreas Reuter. Transaction Processing: Concepts and Techniques . Morgan Kaufmann, 1993. [9] Maurice P. Herlihy and Jeannette M. Wing. Linearizability: A correctness condition for concurrent objects. ACM Transactions on Programming Languages and Systems , 12(3), 1990. [10] Sirui Hong, Mingchen Zhuge, Jiaqi Chen, Xiawu Zheng, Yuheng Cheng, Ceyao Zhang, Jinlin Wang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, Liyang Zhou, Chenyu Ran, Lingfeng Xiao, Chenglin Wu, and Jürgen Schmidhuber. MetaGPT: Meta programming for a multi-agent collaborative framework. arXiv:2308.00352, 2023. [11] Lei Huang, Weijiang Yu, Weitao Ma, Weihong Zhong, Zhangyin Feng, Haotian Chen, Qianglong Chen, Weihua Peng, Xiaocheng Feng, Bing Qin, and Ting Liu. A survey on hallucination in large language models: Principles, taxonomy, challenges, and open questions. arXiv:2311.05232, 2023. [12] Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu, Dan Su, Yan Xu, Etsuko Ishii, Ye Jin Bang, Andrea Madotto, and Pascale Fung. Survey of hallucination in natural language generation. 
+
+ACM Computing Surveys , 55(12), 2023. [13] Anan Jin, Yuhang Ye, Brian Lee, and Yuansong Qiao. DeCoAgent: Large language model empowered decentralized autonomous collaboration agents based on smart contracts. IEEE Access , 12:155234–155245, 2024. [14] Philippe Laban, Hiroaki Hayashi, Yingbo Zhou, and Jennifer Neville. Llms get lost in multi-turn conversation. arXiv:2505.06120, 2025. 27 [15] Henry M. Levy. Capability-Based Computer Systems . Digital Press, 1984. [16] Baohao Liao, Xinyi Chen, Sara Rajaee, Yuhui Xu, Christian Herold, Anders Søgaard, Maarten de Rijke, and Christof Monz. Lost at the beginning of reasoning. 2025. [17] Geng Liu, Fei Zhu, Rong Feng, Changyi Ma, Shiqi Wang, and Gaofeng Meng. Intent mismatch causes LLMs to get lost in multi-turn conversation. arXiv:2602.07338, 2026. [18] Nelson F. Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. Lost in the middle: How language models use long contexts. In Transactions of the Association for Computational Linguistics (TACL) , 2024. [19] Mark S. Miller. Robust Composition: Towards a Unified Approach to Access Control and Concurrency Control . PhD thesis, Johns Hopkins University, 2006. [20] Mark S. Miller, Ka-Ping Yee, and Jonathan Shapiro. Capability myths demolished. Technical Report SRL2003-02, Systems Research Laboratory, Johns Hopkins University, 2003. [21] Robin Milner. Communicating and Mobile Systems: The π-calculus . Cambridge University Press, 1999. [22] Carl Adam Petri. Kommunikation mit Automaten . PhD thesis, Technische Universität Darm-stadt, 1962. [23] Frank Puhlmann and Mathias Weske. A look around the corner: The π-calculus. In Transactions on Petri Nets and Other Models of Concurrency II . Springer, 2009. [24] Kaihua Qin, Liyi Zhou, and Arthur Gervais. Quantifying blockchain extractable value: How dark is the forest? In IEEE Symposium on Security and Privacy (S&P) , pages 198–214, 2022. [25] Safe Ecosystem Foundation. Safe smart account modules and session keys. Technical documen-tation, 2024. [26] J. H. Saltzer, D. P. Reed, and D. D. Clark. End-to-end arguments in system design. ACM Transactions on Computer Systems , 2(4), 1984. [27] Iyane Seck and Adeline Roux-Langlois. Towards post-quantum Bitcoin blockchain using Dilithium signature. IACR Communications in Cryptology (CIC) , 2(3), 2025. [28] Noah Shinn, Federico Cassano, Edward Berman, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. Reflexion: Language agents with verbal reinforcement learning. In Advances in Neural Information Processing Systems (NeurIPS) , 2023. [29] Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang, Xiaoyun Zhang, Shaokun Zhang, Jiale Liu, Ahmed Hassan Awadallah, Ryen W. White, Doug Burger, and Chi Wang. AutoGen: Enabling next-gen LLM applications via multi-agent conversation. arXiv:2308.08155, 2023. [30] Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. React: Synergizing reasoning and acting in language models. In International Conference on Learning Representations (ICLR) , 2023. [31] Mengya Zhang, Xiaokuan Zhang, Josh Barbee, Yinqian Zhang, and Zhiqiang Lin. SoK: Security of cross-chain bridges: Attack surfaces, defenses, and open problems. arXiv:2312.12573, 2023. 28 [32] Liyi Zhou, Xihan Xiong, Jens Ernstberger, Stefanos Chaliasos, Zhipeng Wang, Ye Wang, Kaihua Qin, Roger Wattenhofer, Dawn Song, and Arthur Gervais. SoK: Decentralized finance (defi) attacks. In IEEE Symposium on Security and Privacy (S&P) , 2023. 29
