@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-04</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-05</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 27 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>13</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-04 22:35:51 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-05 22:36:57 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,10 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共读27篇论文，精读13篇、速读14篇，核心聚焦长周期智能体（Long-Horizon Agents）与流式任务下的自演进能力。</p>
-<p>最值得精读的是满分论文《LongHorizon-Harness》与9分《AgentStream》，前者为真实世界长任务提供训练与评估框架，后者揭示自演进LLM在流式任务中的性能瓶颈。</p>
-<p>普通读者可顺带关注速读中《Turning Interaction History into Execution State》等三篇8分工作，它们从运行时状态、安全形式化等角度补全了长周期Agent落地的关键拼图。</p>
+<p>今日共生成 23 篇推荐（精读 9 篇，速读 14 篇）</p>
+<p>精读：《FRAMES: Guarded and Dual-Objective Skill Evolution for Agents in Policy-Governed Enterprise Workflows》（9.0/10）, 《Evolving in the Agent Jungle via History-Informed Opponent Awareness》（9.0/10）</p>
+<p>速读：《Towards Robust Tool Use in Agents via Experience-Driven Adaptive Guidance》（8.0/10）, 《Personalizing Large Language Model Agents with Small Policy Models》（7.0/10）, 《Test-Time Curriculum for Open-Set AIGC Detection》（7.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +74,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">13 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="LongHorizon-Harness: Advancing Long-Horizon Agents for Real-World Tasks">LongHorizon-Harness: Advancing Long-Horizon Agents for Real-World Tasks</span></li><li><span class="dpr-home-dashboard-paper-title" title="AgentStream: How Well Do Self-Evolving LLM Agents Perform Under Streaming Tasks?">AgentStream: How Well Do Self-Evolving LLM Agents Perform Under Streaming Tasks?</span></li><li><span class="dpr-home-dashboard-paper-title" title="DiffuseAgent-MI: Distributionally-Grounded,Tool-Integrated Self-Evolving Agents for Faithful Visual Reasoning">DiffuseAgent-MI: Distributionally-Grounded,Tool-Integrated Self-Evolving Agents for Faithful Visual Reasoning</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="FRAMES: Guarded and Dual-Objective Skill Evolution for Agents in Policy-Governed Enterprise Workflows">FRAMES: Guarded and Dual-Objective Skill Evolution for Agents in Policy-Governed Enterprise Workflows</span></li><li><span class="dpr-home-dashboard-paper-title" title="Evolving in the Agent Jungle via History-Informed Opponent Awareness">Evolving in the Agent Jungle via History-Informed Opponent Awareness</span></li><li><span class="dpr-home-dashboard-paper-title" title="ContinualSkillBench: Can LLM Agents Truly Evolve Their Capabilities?">ContinualSkillBench: Can LLM Agents Truly Evolve Their Capabilities?</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>10</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -89,9 +90,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="OpenART: Scaling Agent Red Teaming via Open-Ended Environment Evolution">OpenART: Scaling Agent Red Teaming via Open-Ended Environment Evolution</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safety Invariants for Agents Orchestrating Irreversible State Transitions: A Four-Dimensional Formalism Evaluated on Public Ledgers">Safety Invariants for Agents Orchestrating Irreversible State Transitions: A Four-Dimensional Formalism Evaluated on Public Ledgers</span></li><li><span class="dpr-home-dashboard-paper-title" title="Turning Interaction History into Execution State: A Runtime Layer for Long-Horizon Coding Agents">Turning Interaction History into Execution State: A Runtime Layer for Long-Horizon Coding Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Towards Robust Tool Use in Agents via Experience-Driven Adaptive Guidance">Towards Robust Tool Use in Agents via Experience-Driven Adaptive Guidance</span></li><li><span class="dpr-home-dashboard-paper-title" title="Personalizing Large Language Model Agents with Small Policy Models">Personalizing Large Language Model Agents with Small Policy Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Test-Time Curriculum for Open-Set AIGC Detection">Test-Time Curriculum for Open-Set AIGC Detection</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>13</strong></span><span class="dpr-home-dashboard-tag">agent-mix <strong>1</strong></span></div>
 </section>
 </div>
 
