@@ -1,0 +1,318 @@
+Title: BiCAA: Bidirectional Credit Assignment for Search-Augmented Agent
+
+URL Source: https://arxiv.org/pdf/2608.01321v1
+
+Published Time: Tue, 04 Aug 2026 01:26:17 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# BiCAA: Bidirectional Credit Assignment for Search-Augmented Agent 
+
+## Yibin Huang 1, Bin Xu 1, Hailong Cao 1, Conghui Zhu 1∗
+
+> 1
+
+Faculty of Computing, Harbin Institute of Technology 
+
+Abstract 
+
+Multi-step search is a fundamental capability for search agents, enabling them to iteratively acquire, refine, and in-tegrate external evidence for complex reasoning QA. How-ever, vanilla GRPO allocates rewards exclusively based on the model’s final outputs, yielding outcome-only supervision with no supervisory signals for intermediate reasoning steps. Such sparse supervision easily causes training instability and redundant search behaviors on multi-step search tasks. To mitigate this limitation, we adopt process reward to deliver stepwise supervision signals. For this process reward, we pro-pose two complementary criteria to judge each search step: whether the step yields new evidence to facilitate problem solving, and whether it forms an efficient, pivotal intermediate decision within the overall reasoning trajectory. Building on this insight, we propose BiCAA: a bidirectional credit assign-ment framework that delivers dense, distinguishing process rewards for search-augmented agents. BiCAA builds bidirec-tional process rewards by fusing two complementary signals: forward solvability gain and hindsight success criticality. The former quantifies step-wise improvements in answer plausi-bility, while the latter evaluates each step’s necessity for final success via hindsight outcome-based criticality scoring. We modulate and aggregate the two signals and then fuse them with the outcome reward. Experiments on search-augmented QA benchmarks show that BiCAA stabilizes policy optimiza-tion, reduces redundant search behavior, and achieves com-petitive performance. 
+
+## Introduction 
+
+Knowledge-intensive complex reasoning tasks (Lewis et al. 2020) relies on iterative information gathering, instead of discrete single-round search. For search-augmented LLM agents, search constitutes an interactive sequential decision-making process: each iteration uncovers fragmentary sup-porting evidence, optimizes subsequent retrieval queries, and decides whether additional search rounds are needed (Yao et al. 2022; Jiang et al. 2023). Multi-step search thus stands as a core capability for agentic large language models. Nevertheless, training stable and effective search-augmented reasoning agents poses some challenges. While the GRPO algorithm (Shao et al. 2024) delivers competitive results on conventional reasoning benchmarks and equips LLMs with sophisticated reasoning chains (Wei et al. 2022; 
+
+> ∗
+
+Corresponding author. 
+
+Guo et al. 2025), its vanilla variant fails to fit multi-step search agent pipelines (Zeng et al. 2025). This paradigm cal-culates reward signals solely based on terminal model out-puts, resulting in sparse outcome-only supervision that lacks dedicated guidance for every intermediate search step. The absence of fine-grained stepwise supervision frequently trig-gers training instability and policy collapse within multi-step reasoning workflows (Hao et al. 2026). A natural solution to this limitation is process supervi-sion (Lightman et al. 2024), which assigns intermediate re-ward signals to each individual search step. Although dense step-wise rewards alleviate the sparsity of outcome super-vision, few prior studies investigate quantitative metrics to evaluate the quality of individual search steps. First, a valu-able search step ought to uncover novel supporting evidence to boost problem solvability and steer the agent’s policy to-ward correct solutions. Second, the search action must con-stitute a critical, non-redundant decision that is indispensable for reaching the correct solution in the reasoning trajectory. Taken together, these two criteria jointly drive efficient and purposeful search throughout the reasoning process. Existing process reward schemes typically prioritize only one of the two evaluation dimensions outlined above. Signals derived from forward solvability gain, such as information gain metrics, steer exploratory search behavior (Zheng et al. 2025; Wang et al. 2025). Nevertheless, local solvability im-provements alone fail to evaluate the necessity or efficiency of individual search actions. By contrast, hindsight-oriented approaches (Harutyunyan et al. 2019; Tan et al. 2026) retro-spectively pinpoint steps vital to the final answer. However, these methods provide little instant feedback regarding how each search step modifies the agent’s information state. Mo-tivated by the inherent limitations of single-aspect reward modeling, we posit that robust process credit assignment requires the fusion of two complementary signals: forward solvability gain and hindsight success criticality. Based on this insight, we propose BiCAA, a credit assign-ment framework tailored for search-augmented LLM agents to produce dense and discriminative process rewards. BiCAA constructs bidirectional process rewards by integrating for-ward solvability gain and hindsight success criticality. The solvability-gain branch quantifies the target answer proba-bility gain generated by each search step, and the retrospec-tive criticality branch evaluates how criticality each step is arXiv:2608.01321v1 [cs.CL] 2 Aug 2026 to reaching a correct final result. We fuse the two signals with a dedicated modulation rule: search steps that deliver local solvability improvement and prove vital in retrospec-tive analysis gain enhanced credit, whereas accidental minor gains and inefficient search iterations are downweighted. Fi-nally, BiCAA combines the calibrated process reward with outcome reward under unified advantage estimation. This design retains global trajectory-level supervision while dis-tributing fine-grained credit signals to each search step. Our contributions are summarized as follows: 
+
+• We formalize two complementary criteria for evaluating individual search steps, namely forward solvability gain and hindsight success criticality. 
+
+• We propose BiCAA, a unified process credit assignment framework that integrates the two evaluation criteria via tailored modulation and advantage estimation to realize fine-grained dense credit allocation per search iteration. 
+
+• Comprehensive experiments demonstrate that BiCAA re-duces redundant search behavior and achieves competi-tive answer quality. 
+
+## Related Work 
+
+RL Post-Training for Reasoning and Agents. RL post-training has become a standard way to improve LLM rea-soning ability. Existing algorithms differ mainly in how they estimate advantages from sampled generations: PPO (Schul-man et al. 2017) uses a learned critic, RLOO (Ahmadian et al. 2024) and REINFORCE++ (Hu et al. 2025) use critic-free return estimators, and GRPO-style methods such as GRPO (Shao et al. 2024), DAPO (Yu et al. 2026), and Dr.GRPO (Liu et al. 2025) compute group-relative advan-tages without training a separate value model. Recent agen-tic RL studies adapt these optimizers to search-augmented reasoning. Search-R1 (Jin et al. 2025) trains reasoning-and-search interleaved LLMs to generate search queries during step-by-step reasoning, using retrieved-token masking and outcome rewards for stable RL training. ReSearch (Chen et al.) treats search operations as first-class components of the reasoning chain, allowing text-based thinking to decide when and how to search without supervised reasoning traces. ZeroSearch (Sun et al. 2025) avoids direct interaction with real search engines during training by using simulated re-trieval results and curriculum rollouts to elicit search behav-ior. These methods establish that RL can elicit multi-turn search policies, but their rewards mainly supervise com-pleted responses or whole trajectories. BiCAA complements this line by keeping the practical group-based optimization framework while assigning step-level process rewards to in-dividual search decisions. 
+
+Credit Assignment in Agentic Search. Credit assignment lies at the heart of search-augmented agent learning: sparse final outcome rewards fail to disambiguate the intermedi-ate search steps that ought to be reinforced. Recent work addresses this issue by designing step-wise rewards or by refining the unit of policy optimization. StepSearch (Zheng et al. 2025) constructs explicit rewards for search turns from information gain, redundancy penalties, and query quality, encouraging agents to retrieve useful evidence while avoid-ing repetitive searches. IGPO (Wang et al. 2025) defines an intrinsic process reward by checking whether the retrieved content increases the model’s probability of producing the correct answer, thereby connecting retrieval utility to answer solvability. GiGPO (Feng et al. 2026) extends group-based policy optimization to agent trajectories by comparing ac-tions under similar intermediate states, which reduces the noise of assigning the same trajectory-level reward to all ac-tions. Turn-level reward design provides feedback at each interaction turn, so multi-turn reasoning agents can receive localized supervision instead of waiting until the final re-sponse (Zeng et al. 2025). POAD (Wen et al. 2024) further decomposes language actions and applies policy updates at a finer granularity, mitigating the coarse credit assignment caused by treating an entire response as one optimization unit. These methods show the value of finer credit signals, but they usually focus on either forward evidence gain, state-based action comparison, or language-action decomposition. BiCAA instead combines forward solvability gain with hind-sight success criticality, so a search step is credited according to both its immediate contribution to answer solvability and its retrospective necessity for the final answer. 
+
+Hindsight Attribution and Retrospective Signals. Retro-spective credit assignment evaluates intermediate decisions after the final outcome is known, providing a backward view complementary to forward process rewards. Hindsight Credit Assignment credits past actions according to how likely they are to have led to the observed outcome, rather than judging them only by immediate transitions (Harutyunyan et al. 2019). Recent LLM-agent studies further adapt this idea to sparse-reward agent training. HCAPO (Tan et al. 2026) uses the LLM itself as a post-hoc critic to refine step-level credit through hindsight reasoning. Retrospective In-Context Learning converts sparse environmental feedback into dense temporal credit signals through retrospective in-context updates (Chen et al. 2026a). Contextual Counterfac-tual Credit Assignment estimates the causal contribution of individual decisions by comparing context-matched coun-terfactual alternatives under fixed-continuation replay (Chen et al. 2026b). These methods show that outcome-conditioned and counterfactual signals can improve credit allocation after a trajectory is observed. However, retrospective consistency alone does not verify that a search step improved answer solvability when it was generated. BiCAA therefore couples hindsight success criticality with forward solvability gain, crediting search steps according to both retrospective neces-sity and immediate contribution to answer solvability. 
+
+## Method 
+
+Overview 
+
+Figure 1 illustrates the overall pipeline of our proposed Bi-CAA. In this section, we first formalize the multi-step agent search task. We then elaborate on the core design of BiCAA: the framework constructs bidirectional process rewards by computing forward solvability gain, modulating this signal with hindsight success criticality, and fusing the two compo-nents via unified advantage estimation. 𝑂 !         
+
+> 𝑂 "
+> 𝑂 #
+> 𝑂 $
+> … …… …
+> 在此处键⼊公式。
+> 𝑂 %#&!
+> 𝑂 %#
+> 𝑎 𝑎 𝑓 #&!
+> 𝑓 #
+> 𝑔 #= 𝑓 #− 𝑓 #&!
+> 𝑂 !𝑂 "··· 𝑂 #𝑂 $
+> High Low
+> ℎ!ℎ"ℎ#ℎ$
+> 𝜔 #= 𝑐𝑙𝑖𝑝(ℎ #/ℎ 1')
+
+𝑟 ! = # 𝜔 ! ∗ 𝑔 !, 𝑖𝑓 𝑔 ! ≥ 0 𝜔 !"# ∗ 𝑔 !, 𝑖𝑓 𝑔 ! ≤ 0 
+
+Forward Solvability Gain Hindsight Success Criticality    
+
+> Rollout
+> Predict the probability of answer Predict the probability of action
+> <Think> <Search> <Observation> Retrive
+> Question Ground Truth Answer
+
+Figure 1: Overall framework of BiCAA. The model generates multi-step search trajectories, then computes Forward Solvability Gain and Hindsight Success Criticality, which are asymmetrically weighted to form dense per-step process rewards. 
+
+Task Formulation 
+
+Let D = {(q, a )} be the dataset of question–ground-truth answer pairs, where q is a question and a is its ground-truth answer. Let E represent the external retrieval tool. Given a question q, the agent interacts repeatedly with E to produce a multi-step trajectory τ = ( o1, o 2, . . . , o T ), with T as the total interaction steps in one trajectory. Each intermediate step ot (t < T ) consists of reasoning wrapped in <think> ,a retrieval query in <search> , and retrieved context un-der <information> . The terminal step oT outputs the predicted answer within <answer> .
+
+Bidirectional Credit Assignment 
+
+Forward Solvability Gain. To enable adequate tool ex-ploration, we aim to provide dense step-wise feedback that judges how each search action improves answer prediction confidence. We quantify such confidence variation by treat-ing each retrieval step as incremental evidence collection. As defined above, each retrieval step oi,t (t < T ) yields new evidence, and oi, ≤t denotes the trajectory prefix accu-mulating all information collected up to step t. Our objective is to quantify the shift in the model’s belief for the ground-truth answer a introduced by each search action. We measure this conditional belief via token-level average log-likelihood over target answers, defined formally below: 
+
+fi,t = 1
+
+N
+
+> N
+
+X
+
+> j=1
+
+log πθ
+
+ a | q, o i, ≤t
+
+ (1) where N denotes the token number of the answer a. Forward solvability gain is then defined as the marginal change of gi,t 
+
+induced by the t-th retrieval operation: 
+
+gi,t = fi,t − fi,t −1 (2) Intuitively, positive forward solvability gain implies re-trieved evidence offers supportive clues and boosts the ques-tion’s solvability, while negative gain indicates noisy irrel-evant retrieval results that interfere with reasoning. Unlike traditional outcome supervision, which only outputs a sin-gle sparse reward per trajectory, our forward solvability gain produces dense supervision for every search step. Such fine-grained sequential signals alleviate credit assignment degen-eracy over the full reasoning trajectory. 
+
+Hindsight Success Criticality. Relying solely on forward solvability gain may overvalue locally helpful yet non-critical retrieval steps and encourage redundant searches. We address this limitation with hindsight success criticality. This retrospective metric leverages ground-truth answer a
+
+as global context to evaluate each step’s overall contribution to correct predictions. Concretely, we condition on a within the prompt and define hindsight success criticality as the geometric mean of token-wise action log-likelihoods: 
+
+hi,t = exp 
+
+ 1
+
+NtNtX
+
+> j=1
+
+log πθ
+
+ oi,t | q, o i,<t , a  (3) where Nt refers to the token length of action oi,t .The value hi,t measures each step’s importance. Since 
+
+hi,t is derived from action log-likelihoods conditioned on the ground-truth answer, we argue that a larger value means the policy favors this retrieval step under the target answer, reflecting its relative significance for correct final predictions. To obtain each step’s relative criticality within a trajectory, we normalize all hi,t by the sequence-wide average ¯hi:
+
+¯hi = 1
+
+T −1 
+
+> T−1
+
+X
+
+> k=1
+
+hi,k (4) We then clip the normalized value within a predefined in-terval to stabilize model training, and the clipped output is defined as the step-wise criticality ratio: 
+
+ωi,t = clip 
+
+ hi,t 
+
+¯hi
+
+, C min , C max 
+
+
+
+(5) where Cmin and Cmax denote the lower and upper truncation bounds, respectively. We consider a search action relatively vital for back-ward inference of the ground-truth answer if ωi,t > 1,while ωi,t < 1 suggests this retrieval contributes marginally. This metric discriminates high-value and redundant retrieval steps, allowing us to filter out useless searches. 
+
+Unified Advantage Estimation. As discussed above, for-ward solvability gain gi,t captures local solvability improve-ments of each retrieval step, while hindsight success criti-cality ωi,t retrospectively evaluates the global rationality of search actions. These two metrics complement each other to deliver comprehensive dense per-step process supervision, which we further combine with trajectory-level outcome re-wards for joint policy optimization. To integrate these complementary signals, we scale infor-mation gain g via an asymmetric weighting scheme built on 
+
+ω. The fused hybrid reward is formulated as follows: 
+
+ri,t =
+
+(ωi,t · gi,t if gi,t ≥ 0
+
+ω−1 
+
+> i,t
+
+· gi,t if gi,t < 0 (6) The asymmetric weighting scheme enables the modulated hybrid reward ri,t to integrate two evaluation dimensions of per-step retrieval quality. We calibrate the forward solvability gain gi,t via two scaling schemes derived from ωi,t .For gi,t ≥ 0, we softly modulate the base reward via the weight coefficient ωi,t . Pivotal retrieval steps benefi-cial to subsequent procedures are assigned larger weights to strengthen supervisory signals, whereas trivial retrievals with marginal task gains receive smaller weights to weaken such regulatory effects. Conversely, for gi,t < 0, we calibrate penalty intensity using the reciprocal term ω−1 
+
+> i,t
+
+. Since poor results of core retrievals may stem from flawed semantic construction of queries, we adopt small reciprocal coefficients to reduce penalty magnitudes for critical search steps. In contrast, larger reciprocal values impose stricter penalties on redun-dant retrievals that contribute negligibly to task performance. The above process reward quantifies retrieval step impor-tance in two dimensions, and combining it with trajectory outcome reward fairly distributes total trajectory returns to all intermediate retrievals. The bidirectional process reward ri,t and the outcome reward rOi typically reside on different scales. To account for both differences, we first normalize them independently within each group of G rollouts sharing the same input: 
+
+ˆri,t = ri,t − μproc 
+
+σproc + ϵ , ˆrOi = rOi − μout 
+
+σout + ϵ (7) where μproc , σ proc denote the mean and standard deviation of process rewards, and μout , σ out correspond to those of outcome rewards. We then decouple temporal dependencies between normalized rewards by computing the turn-level advantage as: 
+
+Ai,t = ˆ rOi + α
+
+> t+L
+
+X
+
+> k=t
+
+γ k−t ˆri,k , (8) where γ denotes the discount factor exclusively applied to normalized process rewards, scalar α weights the overall contribution of process rewards, and L controls the maxi-mum number of subsequent steps taken into account. The normalized outcome reward ˆrOi adopts no discounting and is identical across all turns to enable consistent supervision. In contrast, process rewards apply geometric discounting: each step’s advantage is dominated by its own reward, with ex-ponentially decaying weights assigned to later steps. During policy optimization, the advantage Ai,t is propagated to all tokens generated at turn t. We train the policy with a clipped surrogate objective regularized by KL divergence: 
+
+J (θ) = E
+
+ 1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+|oi|
+
+> |oi|
+
+X
+
+> t=1
+
+min  ϱi,t Ai,t ,
+
+clip( ϱi,t , 1 − ϵ, 1 + ϵ)Ai,t 
+
+
+
+− β D KL 
+
+ πθ ∥ πold 
+
+
+
+(9) where the importance sampling ratio is defined by 
+
+ϱi,t = πθ (oi,t | q, o i,<t )
+
+πθold (oi,t | q, o i,<t ) . (10) We only compute gradients for decision tokens (reasoning, tool calls, answers), masking tool response tokens during optimization. 
+
+## Experiments 
+
+Experimental Setup 
+
+Benchmarks and Metrics. We conduct experiments on seven search-augmented QA benchmarks covering both in-domain (ID) and out-of-domain (OOD) settings. The ID setting includes NQ (Kwiatkowski et al. 2019), TriviaQA (TQ) (Joshi et al. 2017), HotpotQA (Yang et al. 2018), and 2WikiMultiHopQA (2Wiki) (Ho et al. 2020). The OOD setting includes MuSiQue (Trivedi et al. 2022), Bam-boogle (Press et al. 2023), and PopQA (Mallen et al. 2023). Among these, HotpotQA, 2Wiki, and MuSiQue require multi-hop reasoning across multiple documents. We report word-level F1 as the primary evaluation metric. 
+
+Implementation Details. We conduct experiments on two base models: Qwen2.5-7B-Instruct (Yang et al. 2024) and Qwen3-8B (Yang et al. 2025). Following IGPO, we adopt a unified mixed open-domain QA training set for model op-timization. Training runs on 8 GPUs with a global batch size of 32 and group size of 16. We adopt a learning rate of 1 × 10 −6, a process reward weight α = 0 .25 , and a KL penalty coefficient of 0.001 for optimization. For retrieval and interaction configurations, our framework uses E5-base-v2 (Wang et al. 2022) as the dense retriever over a local Wikipedia corpus, fetching the top-3 relevant passages per query. We cap the maximum interaction turns at 10 for all trials. 
+
+Main Results 
+
+Table 1 compares BiCAA with various methods across mul-tiple benchmarks. In what follows, we conduct a compre-hensive comparative analysis of these experimental results to validate the superiority of BiCAA. Type Method In-Domain Out-of-Domain Avg. NQ TQ HotpotQA 2Wiki MuSiQue Bamboogle PopQA 
+
+Qwen2.5-7B-Instruct 
+
+Prompt-based CoT 19.8 45.6 24.4 26.4 8.5 22.1 17.0 23.4 Prompt-based CoT+RAG 42.0 68.9 37.1 24.4 10.0 25.4 46.9 36.4 RL-based Search-R1 39.3 61.0 37.0 40.1 14.6 36.8 39.7 38.5 RL-based GiGPO 46.4 64.7 41.6 43.6 18.9 68.9 46.1 47.2 RL-based HCAPO 46.1 65.5 42.1 43.1 17.7 69.0 47.6 48.3 RL-based IGPO 44.7 68.3 48.2 38.5 21.3 50.1 48.8 45.7 RL-based BiCAA 45.5 72.5 57.7 51.9 28.6 59.0 49.8 52.1 
+
+Qwen3-8B 
+
+Prompt-based CoT+RAG 39.5 70.3 48.3 40.7 24.0 58.5 44.3 46.5 RL-based GRPO 43.4 74.4 54.3 44.5 26.0 63.4 50.2 50.9 RL-based BiCAA 45.9 76.5 55.7 49.8 30.7 63.4 51.3 53.3 
+
+Table 1: Main F1 (%) results on seven search-augmented QA benchmarks with two backbone models. Best scores are bolded. 
+
+Prompt-based Methods. With Qwen2.5-7B-Instruct as the backbone, vanilla CoT achieves an average score of 23.4. Incorporating retrieved evidence, CoT+RAG boosts this av-erage to 36.4, and our BiCAA pushes the metric to 52.1. Noticeable performance improvements can be observed on multi-hop benchmarks. Compared with CoT+RAG, BiCAA gains 20.6 on HotpotQA and 27.5 on 2Wiki. These outcomes reveal that retrieval alone fails to tackle complicated multi-step QA problems. Search agents require fine-grained super-vision to schedule and execute retrievals rationally through-out multi-turn reasoning. 
+
+RL-based methods. Compared with mainstream RL opti-mization baselines, our BiCAA achieves the best average metric with Qwen2.5-7B-Instruct as the base model. Our approach surpasses the strongest baseline HCAPO by a clear margin, lifting the overall average from 48.3 to 52.1. BiCAA also outperforms IGPO, whose average result only reaches 45.7. In addition, BiCAA shows stronger reasoning ability on complex multi-hop benchmarks, scoring 57.7 on HotpotQA and 51.9 on 2Wiki. These experimental results verify that the bidirectional credit assignment mechanism can produce more stable step-level supervision signals. This kind of detailed supervision information is especially critical for reasoning paths contain-ing multiple sequential retrieval steps, which together decide whether the final answer prediction is accurate. 
+
+Results across backbones. The advantages of BiCAA can be stably reproduced on the Qwen3-8B backbone model. Com-pared with CoT+RAG and GRPO, BiCAA lifts the average metric from 46.5 and 50.9 up to 53.3, respectively. Specifi-cally, BiCAA achieves steady improvements of 5.3 and 4.7 over GRPO on 2Wiki and MuSiQue. Consistent improvements obtained on two distinct base models indicate that BiCAA maintains stable effectiveness across different pre-trained backbones. 
+
+Ablation Studies 
+
+To quantify the individual contribution and interaction of the FSG, HSC and outcome reward modules in BiCAA, we carry out ablation experiments based on Qwen2.5-7B-Instruct. 
+
+Ablation of Forward Solvability Gain (FSG). The FSG module produces dense step-level feedback to quantify marginal gains in answer solvability yielded by each retrieval action. To evaluate the standalone impact of FSG, we exclude this module while preserving HSC weighting and terminal outcome rewards to construct a sparse supervision baseline. Under this ablation setup, the model no longer obtains fine-grained signals to gauge how each retrieval step facilitates the overall reasoning procedure. Table 2 summarizes that re-moving FSG yields an overall performance drop, pushing the average F1 score down to 48.5 from its original 52.1. We ob-serve distinct dataset-dependent performance gaps. Single-hop benchmarks incur only mild accuracy losses: NQ sees a tiny dip to 44.6, while TriviaQA falls moderately to 71.6. In contrast, multi-hop reasoning tasks undergo substantial per-formance degradation. HotpotQA’s F1 slides to 51.8, 2Wiki drops to 46.2, and MuSiQue reaches merely 24.2. Such disparate performance trends confirm that FSG acts as an essential fine-grained supervisory signal for intricate multi-turn retrieval trajectories. For long sequential reason-ing chains, this signal enables the agent to quantitatively assess the incremental utility of each individual search step. 
+
+Ablation of Hindsight Success Criticality (HSC). Standard FSG computes only local step-level gains and may mislead optimization by overvaluing locally beneficial but globally redundant retrievals. HSC addresses this limitation by cal-ibrating step-wise scores according to each action’s global reasoning contribution. To verify the effectiveness of HSC, we remove this module while retaining raw FSG and terminal outcome rewards for training. The average metric drops to 49.3, noticeably lower than the full BiCAA model’s 52.1. Without HSC, the model only reaches 54.2 on HotpotQA and 48.3 on 2Wiki. The absence of HSC disables global retrospective adjustment for step-level rewards. Reliant solely on uncalibrated local FSG signals, the model fails to accurately evaluate the practical value of each retrieval action, leading to degraded reasoning performance on complex multi-hop tasks. These results demonstrate that the HSC module effec-tively complements raw FSG supervision. By incorporating global trajectory information, HSC refines step-wise reward Method In-Domain Out-of-Domain Avg. NQ TQ HotpotQA 2Wiki MuSiQue Bamboogle PopQA 
+
+Qwen2.5-7B-Instruct 
+
+BiCAA 45.5 72.5 57.7 51.9 28.6 59.0 49.8 52.1 w/o FSG 44.6 71.6 51.8 46.2 24.2 51.8 49.0 48.5 w/o HSC 43.9 70.8 54.2 48.3 25.7 54.1 47.8 49.3 w/o outcome reward 40.3 66.8 50.1 45.2 23.4 50.6 44.5 45.8 Table 2: Ablation results on Qwen2.5-7B-Instruct, reported as F1 (%) after removing key BiCAA components.                
+
+> Category Useful % Repeated % Off-target %
+> g> 0, ω> 178.4 12.1 9.5
+> g> 0, ω< 147.2 36.8 16.0
+> g< 0, ω> 159.6 15.2 25.2
+> g< 0, ω< 124.3 29.4 46.3
+
+Table 3: Step-level analysis by Forward Solvability Gain (FSG) g and Hindsight Success Criticality (HSC) ω. Rows show useful, repeated, and off-target search actions.                   
+
+> αIn-Domain Out-of-Domain Overall 0.00 51.4 37.4 45.4 0.25 56.9 45.8 52.1 0.50 56.7 44.2 51.3 0.75 54.2 41.3 48.7 1.00 50.8 36.9 44.8
+
+Table 4: Sensitivity of BiCAA to the process-reward weight 
+
+α on Qwen2.5-7B-Instruct. estimation and yields more stable and reliable process-level supervision for search-augmented reasoning. 
+
+Ablation of Terminal Outcome Reward. FSG and HSC jointly provide dense step-level process supervision, yet such intermediate signals cannot directly align retrieval behaviors with the ultimate task objective of predicting ground-truth answers. The terminal outcome reward compensates for this limitation by anchoring sequential retrieval policies to the correctness of final model outputs. To verify the necessity of terminal grounding, we exclude the outcome reward and train the model solely with bidirec-tional FSG-HSC process rewards. This setup retains dense sequential supervision but eliminates explicit task-level ob-jective constraints. This ablation leads to the most substantial performance decline among all experimental variants, low-ering the average F1 score to 45.8 from the full model’s 52.1. Unlike FSG removal, performance degradation occurs universally across all benchmarks, covering both single-hop and multi-hop reasoning scenarios. Specifically, the model achieves only 66.8 on TriviaQA, 50.1 on HotpotQA, 45.2 on 2Wiki, and 44.5 on PopQA. Such universal performance collapse demonstrates that standalone process supervision is inadequate for reliable pol-icy optimization. While FSG and HSC steer the agent toward locally beneficial retrieval operations, terminal outcome re-ward serves as a critical global anchor, ensuring the learned search policy consistently adheres to the core objective of accurate answer prediction. 
+
+Hyperparameter Sensitivity Analysis Having validated the individual and combined effects of FSG and HSC, we conduct a sensitivity analysis on hyperparameter α to explore the optimal weighting ratio between bidirectional process rewards and terminal outcome rewards. This hyperparame-ter governs the contribution magnitude of process rewards within the advantage estimation term. We maintain fixed experimental settings and tune the weight hyperparameter α over {0.00 , 0.25 , 0.50 , 0.75 , 1.00 }.Table 4 presents the quantitative results. When α = 0 .00 ,the model abandons all step-wise process supervision and optimizes its policy using only outcome rewards. The over-all average metric drops drastically to 45.4, which confirms that relying purely on final outcome rewards leads to severe reward sparsity and weak gradient signals for multi-step rea-soning. Balanced incorporation of process rewards brings clear performance improvements, with the best overall per-formance achieved at α = 0 .25 . Under this setting, the model reaches an in-domain average of 56.9, an out-domain aver-age of 45.8, and a global average of 52.1. By comparison, overemphasizing process supervision harms overall perfor-mance. The average metric falls to 48.7 at α = 0 .75 , and declines further to 44.8 when α rises to 1.00. The performance curve shows a distinct trade-off con-trolled by α. Moderate process rewards relieve gradient spar-sity, while over-weighting them weakens global task con-straints. The optimal performance at α = 0 .25 confirms that blending process and terminal rewards in proper proportion yields the best reasoning effect. 
+
+Analysis Studies 
+
+Joint Signal Analysis of FSG and HSC on Search Behav-iors. To intuitively observe the real search behaviors cor-responding to different combinations of Forward Solvability Gain and Hindsight Success Criticality, we adopt GPT-5.5 to automatically classify retrieval steps. We randomly sample 100 complete reasoning trajectories from all test datasets, and divide each retrieval step into three mutually exclusive categories: useful queries, redundant repeated queries, and off-target irrelevant queries. All samples are grouped into four quadrants based on the sign of FSG signal g and nor-malized HSC weight ω, with the proportion of each category summarized in Table 3. In the quadrant where both FSG and HSC yield posi-tive values ( g > 0, ω > 1), useful retrievals account for 78.4%, with repeated and off-target queries taking only 12.1% and 9.5% respectively. Steps assigned positive scores 25 50 75 100 125 150 175 Training Steps 2.0 2.5 3.0 3.5 4.0 Search Frequency       
+
+> Search Usage During Training
+> BiCAA w/o HSC w/o FSG
+> 25 50 75 100 125 150 175 Training Steps 510 15 20 25 30 Redundancy Rate (%)
+> Query Redundancy During Training
+> BiCAA w/o HSC w/o FSG
+
+Figure 2: Search behavior during training. Left: search fre-quency; right: redundant-query ratio. BiCAA maintains ef-fective searches and reduces redundancy. 0 50 100 150 200   
+
+> 152.9s 201.2s
+> Qwen2.5-7B BiCAA Qwen3-8B BiCAA
+> HSC 16.1s (10.5%) FSG 18.5s (12.1%) HSC 25.1s (12.5%) FSG 23.9s (11.9%)
+> Training time per step (s)
+> Rollout Old/Ref log-prob HSC FSG Actor update Sync/other
+
+Figure 3: Training-time distribution of the proposed BiCAA method, showing the relative proportion of time spent in dif-ferent training components. under both metrics generally correspond to high-quality rea-soning search operations. Clear differences in search behav-ior appear within the two signal-mismatched quadrants. For steps with positive FSG but low HSC weight ( g > 0, ω < 1), the proportion of useful queries falls to 47.2% alongside a high repetition rate of 36.8%. This reveals that retrievals im-proving local single-step solvability often contain duplicate information that contributes minimally to the complete rea-soning trajectory. Conversely, steps carrying negative FSG but high HSC weight ( g < 0, ω > 1) still retain a 59.6% share of valid search actions, even with weak immediate lo-cal gains. These retrievals bring limited step-wise benefits at present, yet act as critical prerequisites for accurate sub-sequent reasoning. For the last quadrant where both FSG and HSC are negative ( g < 0, ω < 1), valid queries drop to merely 24.3%, while irrelevant off-target retrievals reach 46.3%. Steps receiving negative scores from both metrics can hardly provide effective support for reasoning. These statistics reveal the complementary cooperation be-tween FSG and HSC, and validate our BiCAA framework: FSG quantifies per-step reasoning gains, while HSC evalu-ates the utility of each search action across trajectories. 
+
+Analysis of Search Efficiency and Redundancy Suppres-sion. To further explore the behavioral advantages of Bi-CAA during training, we monitor the step-wise search statis-tics across the whole training process and conduct quantita-tive analysis on two metrics: search frequency and redundant query ratio, with experimental results shown in Figure 2. The left subplot compares average search frequency across training steps. The w/o HSC baseline shows a continuous upward search volume, whereas BiCAA maintains moderate, bounded search counts that peak mid-training and decline afterwards. This proves BiCAA invokes retrieval selectively rather than pursuing excessive searches. Combined with the strong F1 metrics in Table 1, BiCAA’s performance gains derive from improved retrieval quality instead of increased search quantity. The right subplot quantifies redundant query ratios. The w/o HSC group’s redundancy surges sharply to the maximum of all variants. In contrast, BiCAA’s redundancy rises mildly and drops in late training. While w/o FSG achieves the lowest redundancy, it suffers from insufficient search frequency. The sample distribution in Table 3 further shows duplicate queries are concentrated in the g > 0, ω < 1 quadrant. Through coordinated step weighting, BiCAA strikes a bal-anced search strategy throughout the entire training cycle. It avoids the over-searching and severe redundancy observed in the HSC-free baseline, while preventing the overly conser-vative, insufficient retrieval problem of the FSG-free variant simultaneously. 
+
+Computational Overhead of Bidirectional Credit As-signment We analyze the training computational overhead caused by the bidirectional credit assignment mechanism, with detailed latency statistics illustrated in Figure 3. We decompose the per-step training latency of BiCAA based on both Qwen2.5-7B and Qwen3-8B backbones. The results clearly show that core training operations, such as tra-jectory rollout and actor network update, dominate the overall runtime. Across different model settings, the additional com-putation required by FSG and HSC only accounts for 10%– 13% of the total training latency. This modest computational increase demonstrates that BiCAA introduces limited extra overhead and maintains satisfactory training efficiency. 
+
+## Conclusion 
+
+This work presents BiCAA, a bidirectional credit assignment paradigm designed to enhance process-level supervision for search agents. Unlike conventional methods that rely solely on final outcome rewards, our framework integrates two mu-tually supportive step-level evaluation signals: forward solv-ability gain and hindsight success criticality. By adaptively modulating and aggregating the dual process signals, Bi-CAA constructs refined step-wise advantage estimates and combines them with terminal reward signals to deliver com-prehensive supervision. Empirical results across multiple search-augmented QA benchmarks verify that our bidirec-tional supervision mechanism effectively stabilizes policy training, curtails inefficient and redundant search behaviors, and maintains superior answer performance compared to conventional single-view credit assignment strategies. 
+
+## References 
+
+Ahmadian, A.; Cremer, C.; Gallé, M.; Fadaee, M.; Kreutzer, J.; Pietquin, O.; Üstün, A.; and Hooker, S. 2024. Back to ba-sics: Revisiting REINFORCE-style optimization for learning from human feedback in LLMs. In Proceedings of the 62nd Annual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers) , 12248–12267. Chen, M.; Sun, L.; Li, T.; Sun, H.; Zhou, Y.; Zhu, C.; Wang, H.; Pan, J.; Zhang, W.; Chen, H.; et al. ???? ReSearch: Learning to Reason with Search for LLMs via Reinforcement Learning. arXiv 2025. arXiv preprint arXiv:2503.19470 .Chen, W.-T.; Chen, J.; Tajwar, F.; Zhu, H.; Duan, X.; Salakhutdinov, R.; and Schneider, J. 2026a. Retrospective in-context learning for temporal credit assignment with large language models. Advances in Neural Information Process-ing Systems , 38: 71973–71998. Chen, Y.; Sun, Y.; Wang, H.; Zhang, X.; Shen, X.; Li, W.; and Zhang, W. 2026b. Contextual counterfactual credit as-signment for multi-agent reinforcement learning in llm col-laboration. arXiv e-prints , arXiv–2603. Feng, L.; Xue, Z.; Liu, T.; and An, B. 2026. Group-in-group policy optimization for llm agent training. Advances in Neural Information Processing Systems , 38: 46375–46408. Guo, D.; Yang, D.; Zhang, H.; Song, J.; Wang, P.; Zhu, Q.; Xu, R.; Zhang, R.; Ma, S.; Bi, X.; et al. 2025. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 .Hao, Y.; Jin, Z.; Liao, H.; Liu, K.; and Zhao, J. 2026. Why Multi-Step Tool-Use Reinforcement Learning Collapses and How Supervisory Signals Fix It. In Workshop on Failure Modes of Agentic AI at ICML 2026 .Harutyunyan, A.; Dabney, W.; Mesnard, T.; Azar, M. G.; Piot, B.; Heess, N.; van Hasselt, H.; Wayne, G.; Singh, S.; Precup, D.; et al. 2019. Hindsight credit assignment. Ho, X.; Nguyen, A.-K. D.; Sugawara, S.; and Aizawa, A. 2020. Constructing a multi-hop qa dataset for comprehen-sive evaluation of reasoning steps. In Proceedings of the 28th International Conference on Computational Linguis-tics , 6609–6625. Hu, J.; Liu, J. K.; Xu, H.; and Shen, W. 2025. Reinforce++: Stabilizing critic-free policy optimization with global advan-tage normalization. arXiv preprint arXiv:2501.03262 .Jiang, Z.; Xu, F. F.; Gao, L.; Sun, Z.; Liu, Q.; Dwivedi-Yu, J.; Yang, Y.; Callan, J.; and Neubig, G. 2023. Active retrieval augmented generation. In Proceedings of the 2023 confer-ence on empirical methods in natural language processing ,7969–7992. Jin, B.; Zeng, H.; Yue, Z.; Yoon, J.; Arik, S.; Wang, D.; Zamani, H.; and Han, J. 2025. Search-r1: Training llms to reason and leverage search engines with reinforcement learning. arXiv preprint arXiv:2503.09516 .Joshi, M.; Choi, E.; Weld, D. S.; and Zettlemoyer, L. 2017. Triviaqa: A large scale distantly supervised challenge dataset for reading comprehension. In Proceedings of the 55th An-nual Meeting of the Association for Computational Linguis-tics (Volume 1: Long Papers) , 1601–1611. Kwiatkowski, T.; Palomaki, J.; Redfield, O.; Collins, M.; Parikh, A.; Alberti, C.; Epstein, D.; Polosukhin, I.; Devlin, J.; Lee, K.; et al. 2019. Natural questions: a benchmark for question answering research. Transactions of the Association for Computational Linguistics , 7: 453–466. Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Küttler, H.; Lewis, M.; Yih, W.-t.; Rocktäschel, T.; et al. 2020. Retrieval-augmented generation for knowledge-intensive nlp tasks. Advances in neural information process-ing systems , 33: 9459–9474. Lightman, H.; Kosaraju, V.; Burda, Y.; Edwards, H.; Baker, B.; Lee, T.; Leike, J.; Schulman, J.; Sutskever, I.; and Cobbe, K. 2024. Let’s verify step by step. In International Con-ference on Learning Representations , volume 2024, 39578– 39601. Liu, Z.; Chen, C.; Li, W.; Qi, P.; Pang, T.; Du, C.; Lee, W. S.; and Lin, M. 2025. Understanding r1-zero-like training: A critical perspective. arXiv preprint arXiv:2503.20783 .Mallen, A.; Asai, A.; Zhong, V.; Das, R.; Khashabi, D.; and Hajishirzi, H. 2023. When not to trust language models: Investigating effectiveness of parametric and non-parametric memories. In Proceedings of the 61st annual meeting of the association for computational linguistics (volume 1: Long papers) , 9802–9822. Press, O.; Zhang, M.; Min, S.; Schmidt, L.; Smith, N. A.; and Lewis, M. 2023. Measuring and narrowing the composition-ality gap in language models. In Findings of the Association for Computational Linguistics: EMNLP 2023 , 5687–5711. Schulman, J.; Wolski, F.; Dhariwal, P.; Radford, A.; and Klimov, O. 2017. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 .Shao, Z.; Wang, P.; Zhu, Q.; Xu, R.; Song, J.; Bi, X.; Zhang, H.; Zhang, M.; Li, Y.; Wu, Y.; et al. 2024. Deepseekmath: Pushing the limits of mathematical reasoning in open lan-guage models. arXiv preprint arXiv:2402.03300 .Sun, H.; Qiao, Z.; Guo, J.; Fan, X.; Hou, Y.; Jiang, Y.; Xie, P.; Zhang, Y.; Huang, F.; and Zhou, J. 2025. Zerosearch: Incentivize the search capability of llms without searching. 
+
+arXiv preprint arXiv:2505.04588 .Tan, H.-Z.; Yang, X.-W.; Chen, H.; Shao, J.-J.; Wen, Y.; Shen, Y.; Luo, W.; Du, X.; Guo, L.-Z.; and Li, Y.-F. 2026. Hindsight credit assignment for long-horizon llm agents. arXiv preprint arXiv:2603.08754 .Trivedi, H.; Balasubramanian, N.; Khot, T.; and Sabharwal, A. 2022. MuSiQue: Multihop Questions via Single-hop Question Composition. Transactions of the Association for Computational Linguistics , 10: 539–554. Wang, G.; Dai, S.; Ye, G.; Gan, Z.; Yao, W.; Deng, Y.; Wu, X.; and Ying, Z. 2025. Information Gain-based Policy Op-timization: A Simple and Effective Approach for Multi-Turn LLM Agents. arXiv preprint arXiv:2510.14967 .Wang, L.; Yang, N.; Huang, X.; Jiao, B.; Yang, L.; Jiang, D.; Majumder, R.; and Wei, F. 2022. Text Embeddings by Weakly-Supervised Contrastive Pre-training. arXiv preprint arXiv:2212.03533 .Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Xia, F.; Chi, E.; Le, Q. V.; Zhou, D.; et al. 2022. Chain-of-thought prompt-ing elicits reasoning in large language models. Advances in neural information processing systems , 35: 24824–24837. Wen, M.; Wan, Z.; Zhang, W.; Wang, J.; and Wen, Y. 2024. Reinforcing language agents via policy optimization with action decomposition. arXiv preprint arXiv:2405.15821 .Yang, A.; Li, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.; Yu, B.; Gao, C.; Huang, C.; Lv, C.; Zheng, C.; Liu, D.; Zhou, F.; Huang, F.; Hu, F.; Ge, H.; Wei, H.; Lin, H.; Tang, J.; Yang, J.; Tu, J.; Zhang, J.; Yang, J.; Yang, J.; Zhou, J.; Zhou, J.; Lin, J.; Dang, K.; Bao, K.; Yang, K.; Yu, L.; Deng, L.; Li, M.; Xue, M.; Li, M.; Zhang, P.; Wang, P.; Zhu, Q.; Men, R.; Gao, R.; Liu, S.; Luo, S.; Li, T.; Tang, T.; Yin, W.; Ren, X.; Wang, X.; Zhang, X.; Ren, X.; Fan, Y.; Su, Y.; Zhang, Y.; Zhang, Y.; Wan, Y.; Liu, Y.; Wang, Z.; Cui, Z.; Zhang, Z.; Zhou, Z.; and Qiu, Z. 2025. Qwen3 Technical Report. arXiv preprint arXiv:2505.09388 .Yang, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.; Yu, B.; Li, C.; Liu, D.; Huang, F.; Wei, H.; Lin, H.; Yang, J.; Tu, J.; Zhang, J.; Yang, J.; Yang, J.; Zhou, J.; Lin, J.; Dang, K.; Lu, K.; Bao, K.; Yang, K.; Yu, L.; Li, M.; Xue, M.; Zhang, P.; Zhu, Q.; Men, R.; Lin, R.; Li, T.; Xia, T.; Ren, X.; Ren, X.; Fan, Y.; Su, Y.; Zhang, Y.; Wan, Y.; Liu, Y.; Cui, Z.; Zhang, Z.; and Qiu, Z. 2024. Qwen2.5 Technical Report. arXiv preprint arXiv:2412.15115 .Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W.; Salakhut-dinov, R.; and Manning, C. D. 2018. HotpotQA: A dataset for diverse, explainable multi-hop question answering. In 
+
+Proceedings of the 2018 conference on empirical methods in natural language processing , 2369–2380. Yao, S.; Zhao, J.; Yu, D.; Shafran, I.; Narasimhan, K. R.; and Cao, Y. 2022. React: Synergizing reasoning and acting in language models. In NeurIPS 2022 Foundation Models for Decision Making Workshop .Yu, Q.; Zhang, Z.; Zhu, R.; Yuan, Y.; Zuo, X.; Yue, Y.; Dai, W.; Fan, T.; Liu, G.; Liu, L.; et al. 2026. Dapo: An open-source llm reinforcement learning system at scale. Advances in Neural Information Processing Systems , 38: 113222– 113244. Zeng, S.; Wei, Q.; Brown, W.; Frunza, O.; Nevmyvaka, Y.; Zhao, Y. K.; and Hong, M. 2025. Reinforcing multi-turn reasoning in llm agents via turn-level credit assignment. In 
+
+ICML 2025 Workshop on Computer Use Agents .Zheng, X.; An, K.; Wang, Z.; Wang, Y.; and Wu, Y. 2025. StepSearch: Igniting LLMs search ability via step-wise prox-imal policy optimization. In Proceedings of the 2025 Confer-ence on Empirical Methods in Natural Language Processing ,21816–21841.

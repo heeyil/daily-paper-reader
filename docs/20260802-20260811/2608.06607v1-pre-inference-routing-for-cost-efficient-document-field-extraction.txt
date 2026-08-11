@@ -1,0 +1,409 @@
+Title: Pre-Inference Routing for Cost-Efficient Document Field Extraction
+
+URL Source: https://arxiv.org/pdf/2608.06607v1
+
+Published Time: Mon, 10 Aug 2026 00:13:11 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Pre-Inference Routing for Cost-Efficient Document Field Extraction 
+
+Sreerekha Rajendran 
+
+Independent Researcher Salt Lake City, Utah, United States sreerekha.raju@gmail.com 
+
+Abstract —Most document-extraction systems use a single model for all documents. This is simple but can be costly for easy cases and less effective for difficult ones. We examine whether we can predict a document’s difficulty before extraction using inexpensive, document-based signals, and use this to choose between a cheaper and a stronger extractor. We find that routing only helps if two conditions hold: the cheaper model fails often enough to make routing worthwhile, and those failures can be predicted from visible features such as image quality and layout. We turn these into a practical test and apply it to five genres. When both conditions are met, the calibrated router reduces cost by 31–33% on receipts and 77% on degraded ad-buy forms while keeping quality within 0.02 F1 of always choosing the large model. Routing does not help if either condition is missing, as with clean digital invoices or nutrition labels that are already easy to read. A small labeled pilot can predict whether routing will work, and in the two cases where we ran it first, the prediction was correct. A simple bag-of-words router works about as well as engineered features, showing that the main limit is the genre, not the router design; we use interpretable features to help explain which genres can be routed. The router must be retrained for each dataset and does not transfer across datasets, even within the same genre. These results hold for two model pairs with cost differences of 5× and 3×.
+
+Index Terms —document understanding, model routing, cost-efficient inference, information extraction, large language models 
+
+I. I NTRODUCTION 
+
+Organizations handle many kinds of documents, such as invoices, receipts, forms, and contracts, and often use a single extraction model for all of them. This can make simple documents more expensive to process, and it limits the benefit of stronger models to only the hardest cases. We examine whether extraction difficulty can be predicted in advance from low-cost, document-based features, and used to reduce cost while maintaining accuracy. We find that pre-inference routing only works when there is a clear difference in difficulty between documents and when this difference is evident in observable features. We turn this into a test that can be run on a small labeled sample before rolling out at scale, and we try it on five genres, including degraded ad-buy forms, where routing cut cost by 77% . In structured extraction the schema stays fixed while document complexity varies, so routing is based on the document’s characteristics rather than the extraction request. Unlike cascades or deferral systems, which may run more than one model on a single document, our router selects one model per document from its features alone. 
+
+Contributions.  
+
+> •
+
+A two-part test, which assesses how many documents are difficult and whether features can predict this, lets us decide from a small labeled sample whether pre-inference routing will save cost before full deployment. We ran it on five genres, and in both cases where we ran a pilot first, the prediction was correct.  
+
+> •
+
+Strong results on a non-receipt genre: for degraded ad-buy forms the router reduced cost by 77% while keeping quality within 0.02 F1 of always using the large model (held-out AUC 0.92 ); savings on receipts were 31 –33% .Two other genres did not benefit, each missing one of the two test conditions.  
+
+> •
+
+The main limit is the genre, not the router. A simple bag-of-words text router works about as well as our interpretable pre-inference features; we focus on the interpretable features because they help explain which genres are good candidates for routing.  
+
+> •
+
+The approach is deployment-specific: the router does not generalize across datasets, even within the same genre (for example, CORD to SROIE AUC is about 0.55 ), so it must be retrained for each new deployment on that corpus’s own labeled sample. We use a field-type canonical scorer and a leakage-resistant feature set, so our numbers are reported conservatively.  
+
+> •
+
+Under full-document re-extraction and the same es-calation decision, pre-inference routing is consistently cheaper than a confidence cascade because it avoids the extra cheap-model call on escalated documents. This holds for both model pairs, at 5× and 3× cost differences. II. R ELATED WORK 
+
+a) LLM routing and model selection.: A growing body of work routes each query to the cheapest model that can answer it adequately. CARROT [1] frames this as a minimax-optimal selection problem; MixLLM [3] and Route-to-Reason [2] route over mixed model pools, the latter also selecting a reasoning strategy. BEST-Route [5] couples routing with test-time compute, and a family of recent systems [6], [7], [8] target cost-efficient orchestration across models, strategies, and agents. These routers estimate difficulty by embedding queries or predicting model performance, and are tested on arXiv:2608.06607v1 [cs.CL] 6 Aug 2026 text QA, reasoning, or multimodal QA [4]; surveys have recently catalogued this space [9]. However, none estimates difficulty from intrinsic, document-level features computable 
+
+pre-inference , and there is no routing benchmark for structured document extraction. 
+
+b) Cost-aware cascades and deferral.: Cascades invoke a cheap model first and escalate based on its output. Fru-galGPT [10] learns a cascade of LLM calls with a scoring function; RouteLLM [11] and Hybrid-LLM [12] learn binary routers between a weak and a strong model. Crucially, these decisions are made after generation (on output confidence or a learned score), whereas we estimate difficulty pre-inference 
+
+from the document itself, avoiding a speculative first genera-tion. Our routing target, escalate only when the strong model’s expected F1 gain exceeds a threshold τ , is an instance of 
+
+learning to defer [13] and selective prediction [14]. 
+
+c) Document AI and key-information extraction.: Struc-tured extraction from visually-rich documents is dominated by layout-aware models such as LayoutLMv3 [15] and OCR-free transformers such as Donut [16]. We evaluate on the standard receipt benchmarks CORD [17] and SROIE [18] and the more complex, cross-domain VRDU [20]; FUNSD [19], another common benchmark, is incompatible with our extraction-F1 protocol (Sec. VI). Most prior work uses these datasets to improve extraction accuracy . We instead hold the extractor fixed and ask a different question: which documents justify paying for the stronger tier? 
+
+d) Document complexity and quality signals.: Our fea-tures build on established quality signals: OCR confidence as a proxy for input degradation, document image-quality assessment (blur, skew), and layout-complexity measures. We aggregate thirteen such signals into a pre-inference difficulty estimate. We are not aware of earlier work that uses this combination of intrinsic signals for model routing rather than for quality filtering or re-scanning. III. M ETHOD 
+
+A. Problem formulation 
+
+Let d be a document and x(d) ∈ R13 its pre-inference feature vector (Sec. III-D). Two extractors are available: a cheap tier s and an expensive tier ℓ, yielding field-level F1 quality qs(d), q ℓ(d) ∈ [0 , 1] at per-document cost cs(d), c ℓ(d).The difficulty gap is 
+
+g(d) = qℓ(d) − qs(d), (1) and the oracle tier label is y(d) = 1[ g(d) > τ ]: a document is large-required only if the expensive tier improves F1 by more than the oracle threshold τ . A router estimates p(d) = 
+
+cPr[ y(d)=1 | x(d) ] and routes to the large tier when p(d) ≥ t;write rt(d) = 1[ p(d) ≥ t ]. Over N documents, 
+
+Q(t) = 1
+
+> N
+
+P
+
+> d
+
+rt(d) qℓ(d) + (1 −rt(d)) qs(d), (2) 
+
+C(t) = 1
+
+> N
+
+P
+
+> d
+
+rt(d) cℓ(d) + (1 −rt(d)) cs(d). (3) Sweeping t ∈ [0 , 1] traces the cost–quality Pareto frontier. The target operating point is the cost-minimal threshold that preserves quality within a tolerance δ of always-large: 
+
+t⋆ = arg min  
+
+> t
+
+C(t) s.t. Q(t) ≥ Qℓ − δ, (4) where Qℓ is the always-large mean quality and δ = 0 .02 (two F1 points). The reported saving is 1 − C(t⋆)/C ℓ, with Cℓ the always-large cost. We report the full frontier and the threshold-free AUC as our primary, selection-free results; the single point t⋆ summarises the frontier at tolerance δ. Because t⋆ is read from the evaluation set, the headline saving characterises the achievable frontier rather than a fixed deployed threshold, whereas the AUC requires no threshold and is the selection-free measure of router quality (threshold transfer is verified in Sec. V-F). The oracle label threshold τ and the deployed 
+
+quality tolerance δ are two distinct ideas, but for simplicity we set them to the same value, τ = δ = 0 .02 , so that the per-document training target matches the standard used when the system is actually deployed (Sec. IV-C). 
+
+B. Cost model 
+
+Per-document cost is token-based: 
+
+cm(d) = πin  
+
+> m
+
+nin (d) + πout  
+
+> m
+
+nout  
+
+> m
+
+(d), m ∈ { s, ℓ }, (5) where πin 
+
+> m
+
+, π out  
+
+> m
+
+are tier m’s per-token input/output prices and nin , n out  
+
+> m
+
+the input and output token counts. Using the published list prices of Sec. IV-B, both the input and output price ratios between the two tiers are 5×, so the per-document cost ratio is 5× regardless of the input/output token mix; an X% cost saving corresponds to avoiding X% of that 5×
+
+premium. Our second model pair (Sec. V-K) uses a 3× ratio, so the reported savings are not an artifact of one particular price gap. 
+
+C. Pipeline Offline: documents → OCR → features → run both tiers →
+
+field-level F1 → gap g(d) → labels y(d) → train the router. 
+
+Inference: document → OCR → features → p(d) → threshold 
+
+t → cheap or expensive extractor. Baselines follow the same path with the routing decision replaced by a fixed rule. 
+
+D. Pre-inference features 
+
+We compute 13 interpretable, document-intrinsic features (Table I), each cheap to compute and available before any extraction call, spanning four families: OCR quality, image quality, layout, and content/structure. Every feature derives only from the page image, its OCR text, or OCR box ge-ometry, never from ground-truth annotations, so the router is strictly pre-inference. An earlier 16-feature set addition-ally used three annotation-derived signals ( label_entropy ,
+
+label_diversity , section_count ); we remove them to eliminate label leakage, and find this costs almost nothing (pooled 5-fold CV AUC 0.730 clean vs. 0.731 leaky): the leakage was not load-bearing. We also exclude a composite 
+
+complexity_score used in early experiments because it is collinear with its own components, which makes feature attribution unreliable. TABLE I THE 13 PRE -INFERENCE , DOCUMENT -INTRINSIC FEATURES , BY FAMILY .ALL ARE COMPUTED BEFORE ANY EXTRACTION CALL , FROM THE IMAGE ,OCR TEXT , OR OCR BOX GEOMETRY ONLY , NEVER FROM GROUND -TRUTH ANNOTATIONS .
+
+Feature Description 
+
+OCR quality 
+
+ocr_conf Mean per-token OCR confidence 
+
+ocr_std Std. of per-token OCR confidence 
+
+ocr_stage Preprocessing stage needed to read the image 
+
+short_token_ratio Fraction of tokens ≤2 characters 
+
+inv_chars_per_word Inverse mean chars per token (frag-mentation) 
+
+Image quality 
+
+blur_score Variance of the image Laplacian (sharpness) 
+
+image_contrast Global pixel-intensity contrast 
+
+word_height_cv Coef. of variation of word-box heights 
+
+Layout 
+
+crowded_line_frac Fraction of lines with >3 words 
+
+line_density Text lines per unit page height 
+
+aspect_ratio Page height / width 
+
+Content / structure 
+
+item_density Line-items per text line (table density) 
+
+tokens Total OCR token count       
+
+> TABLE II SIX DATASETS ACROSS FIVE GENRES ,SPANNING THE TWO DIAGNOSTIC AXES . “C APTURE ”SUMMARIZES HOW THE PAGE IMAGE IS PRODUCED (APROXY FOR WHETHER DIFFICULTY IS VISIBLE IN OBSERVABLE FEATURES ); “R OUTES ?” IS THE STUDY ’S OUTCOME . R ECEIPTS AND
+> DEEP FORM SATISFY BOTH CONDITIONS ;THE REST EACH FAIL ONE (OR ARE BORDERLINE ).
+
+Dataset Genre Capture N Routes? CORD Receipts photo 900 yes SROIE Receipts scan 973 yes DeepForm Ad-buy forms fax 800 yes (non-receipt) DocILE Invoices digital 600 no (no signal) POIE Nutrition labels photo 120 no (no headroom) VRDU Registration scan 500 marginal 
+
+IV. E XPERIMENTAL SETUP 
+
+A. Datasets 
+
+Table II lists six datasets spanning five document genres, chosen to span the two diagnostic axes, routing headroom and feature-detectable difficulty, rather than a single domain. Receipts (CORD [17], SROIE [18]) and degraded political ad-buy forms (DeepForm [21]) are the genres where routing works; invoices (DocILE [23]), photographed nutrition labels (POIE [24]), and registration forms (VRDU [20]) are the diagnostic’s negative and borderline cases. Each genre’s router is trained and evaluated within genre on its own train/test split (receipts pool CORD+SROIE); we never train a single router across genres, because cross-genre transfer fails (Sec. V-J). 
+
+B. Model tiers 
+
+We instantiate the small and large tiers with Claude Haiku 4.5 ($1/$5 per MTok) and Claude Opus 4.8 ($5/$25 per MTok), a clean 5× cost ratio. We deliberately use a same-provider pair, which helps eliminate confounds that might arise from the API, such as differences in prompt formatting, JSON-output variance, or instruction-following, and it helps ensure both tiers follow instructions in the same way. Both tiers receive an identical schema-conditioned tool-use prompt, which keeps the comparison consistent. The oracle threshold and routing classifier are then fit to this pair’s gap distribution; moving to a new pair requires refitting on that pair’s gaps. We test this transfer-through-refitting by running a second model pair, Haiku 4.5 vs. Claude Sonnet 4.6 ($3/$15 per MTok, a 
+
+3× ratio), in Sec. V-K. We use generic, zero-shot extraction with no dataset-specific fine-tuning: each tier sees only its target schema and the document. Absolute F1 will be lower than task-specific fine-tuned models such as LayoutLMv3 [15]; this is by design, to simulate the realistic scenario where one general LLM serves many genres without bespoke training. The distinction is critical: it makes clear that routing is independent of absolute extractor quality and concerns only the relative gap between tiers. 
+
+C. Oracle labeling 
+
+A document is labeled large-required if F1 large − F1 small >τ , else small-sufficient . We set the label threshold equal to the deployment tolerance, τ = δ = 0.02 : a document is then large-required exactly when routing it to the small model would, on that document, lose more quality than the tolerance allows. The classifier’s training target is thus the per-document analogue of the aggregate deployment constraint in Eq. (4), rather than an arbitrary cutoff. We report a sensitivity sweep over τ ∈ { 0.01 , 0.02 , 0.05 } (Table X). F1 is multiset (label, value); values are matched with a field-type canoni-cal rule (money →numeric equality, dates →date-component, text →normalized exact match), which prevents currency pre-fixes, appended timestamps, and thousands separators from being scored as extraction errors. If we skip this normalization, a strict exact-match scorer calls harmless formatting changes “wrong,” so correct extractions look like failures and the F1-gap becomes misleading. We report strict exact-match F1 alongside the canonical figures for transparency. 
+
+D. Classifier and baselines 
+
+The router is a calibrated random forest (isotonic). We com-pare against always-small, always-large, random-at-matched-cost, a single-feature (OCR-confidence) rule, and an oracle upper bound. 
+
+a) Reproducibility: All experiments after oracle labeling are local and deterministic: OCR uses Tesseract and extraction uses pinned model snapshots (claude-haiku-4-5-20251001 ,
+
+claude-opus-4-8 ). Extraction uses the provider’s default sampling (we do not set a temperature) with aTABLE III THE DIAGNOSTIC ACROSS FIVE GENRES . Headroom IS THE FRACTION OF DOCUMENTS THE CHEAP TIER FAILS (g > τ ) AND AUC IS THE WITHIN -GENRE ROUTING AUC (5-FOLD CV) FROM PRE -INFERENCE FEATURES ; BOTH ARE COMPUTED OVER THE FULL WITHIN -GENRE SAMPLE (TRAIN AND TEST POOLED ), SO THEY DIFFER FROM THE HELD -OUT , PER -DATASET FIGURES REPORTED IN THE SUBSECTIONS (E.G.TABLE VI). R OUTING HELPS ONLY WHERE both ARE FAVORABLE 
+
+(RECEIPTS , D EEP FORM ). I NVOICES HAVE AMPLE HEADROOM BUT ARE NOT PREDICTABLE (SEMANTIC DIFFICULTY , INVISIBLE TO FEATURES ); 
+
+> NUTRITION LABELS ARE PREDICTABLE BUT HAVE ALMOST NO HEADROOM
+
+(THE CHEAP TIER IS NEAR CEILING ); VRDU IS WEAK ON BOTH .
+
+Genre Capture Headroom AUC Routes? Receipts photo/scan 44% 0.71 yes DeepForm fax 41% 0.91 yes Invoices digital 67% 0.52 no (not predictable) Nutrition photo 16% 0.63 no (no headroom) VRDU scan 21% 0.60 marginal 
+
+single response per document, cached per (tier, document). Extractions are the only paid, stochastic step; once cached, every downstream analysis is deterministic and free to reproduce. Because each F1 gap is a single stochastic draw, small per-document gaps carry some decoding variance; a re-extraction pilot measures this variance directly (per-document F1 std ≈ 0.02 ) and quantifies the resulting oracle-label instability near τ (Sec. VI). Routing overhead is negligible: feature extraction reuses the OCR pass the pipeline already performs, and classifier inference is sub-millisecond, both dominated by the extraction call. Code, the feature extractor, and the oracle-labeling and routing scripts are released at https://github.com/sreerekha3547/complexity-aware-routing. V. R ESULTS 
+
+We organize the evidence around three questions: does routing help (is there headroom?), is it predictable (can pre-inference features identify the hard documents?), and is it transferable (can a router generalize to another genre?). Table III summarizes these for five genres; only the two that satisfy the first two conditions support routing (receipts, DeepForm), while the others each miss one and none transfers to another genre. The following sections detail each row: receipts (Sec. V-A) as the clearest within-genre evidence, DeepForm (Sec. V-D) as the most compelling non-receipt case, router simplicity (Sec. V-I), and transfer (Sec. V-J). 
+
+A. Receipts: clearest within-genre evidence 
+
+On pooled CORD+SROIE, the 13-feature model reaches a held-out ROC-AUC of 0.707 (95% CI [0 .656 , 0.758] , 2000 bootstrap resamples), compared with 0.625 for logistic regres-sion on the same features and 0.551 for OCR confidence alone (Table IV). The feature set carries information a linear model does not fully capture ( +0 .082 over logistic regression). We return in Sec. V-I to the fact that a simple text router matches this, which is why we frame the features as interpretable inputs 
+
+rather than the contribution. Under the field-type canonical scorer, OCR confidence is no longer anti-predictive, so the 
+
+TABLE IV ROUTING DISCRIMINATION ON THE POOLED HELD -OUT TEST SET 
+
+(N =447 , τ =0 .02 ). T HE COMPLEXITY MODEL BEATS A LINEAR READ OF THE SAME FEATURES BY +0 .082 AUC; UNDER THE CANONICAL SCORER 
+
+OCR CONFIDENCE IS NO LONGER BELOW CHANCE .
+
+Router ROC-AUC Calibrated random forest (ours) 0.707 [0.656, 0.758] Logistic regression 0.625 Single feature ( ocr_conf ) 0.551 Gain (RF − logistic regression) +0.082 
+
+Gain (RF − single feature) +0 .156 
+
+TABLE V EFFECT OF THE SCORING PROTOCOL (τ =0 .02 , POOLED TEST ). T HE FIELD -TYPE CANONICAL SCORER IS CONSERVATIVE : IT LOWERS BOTH THE HEADLINE AUC AND THE SAVINGS RELATIVE TO STRICT EXACT -MATCH ,
+
+> BECAUSE IT WITHDRAWS CREDIT THE STRICT SCORER WRONGLY GAVE THE LARGE MODEL FOR REFORMATTING CORRECT VALUES
+
+.
+
+Scorer RF AUC CORD save SROIE save Strict exact-match 0.748 36% 40% Field-type canonical (ours) 0.707 33% 31% 
+
+gain over it ( +0 .156 ) is less informative than it looks. The router is well calibrated (expected calibration error 0.061 ), as required for the probability-threshold sweep; per-feature attributions are in Sec. V-H. 
+
+a) Effect of the scoring protocol.: Table V reports the headline under both scorers. The canonical rule lowers the AUC ( 0.748 → 0.707 ) and the savings ( 36 /40 → 33 /31% ): by crediting the large model for correctly reformatted values that strict exact-match rejected (currency prefixes, appended timestamps, thousands separators), it narrows the measured gap. The canonical scorer therefore makes the result more conservative rather than inflating it. It also lifts the OCR-confidence baseline from below chance (0.463 ) to 0.551 ,which is why we headline the margin over logistic regression rather than over that baseline. 
+
+B. A routable gap exists 
+
+Table VI confirms that 30–58% of receipt documents gen-uinely need the large model, validating the routing premise; the per-document gap distributions are in Fig. 1. VRDU’s near-zero mean gap is itself a finding: that domain rarely needs the large model. The gap is signed : on 5–10% of documents the large model scores lower than the small one (SROIE mean −0.25 on the affected 5% ). The canonical scorer already removes most spu-rious negatives: under strict exact-match many were the large model formatting a correct value differently (currency prefix, appended timestamp), not a genuine miss. The residual nega-tives arise where the small model is already at ceiling and the large model over-generates or departs from the target schema. Escalation is therefore not uniformly beneficial: always-large sacrifices quality, not just cost, on these documents, which is TABLE VI ORACLE GAP LABELING . A ROUTABLE DIFFICULTY GAP EXISTS ON RECEIPTS ; VRDU’ S NEAR -ZERO GAP SHOWS THAT DOMAIN RARELY NEEDS THE LARGE MODEL .
+
+Dataset F1 small F1 large Mean gap Large-req. CORD 0.395 0.473 +0 .077 58% SROIE 0.828 0.896 +0 .068 30% VRDU 0.790 0.807 +0 .017 23% 
+
+TABLE VII COST SAVINGS AT QUALITY WITHIN 2 F1 POINTS OF ALWAYS -LARGE 
+
+(τ =0 .02 ). T HE FULL FEATURE MODEL EXCEEDS THE SINGLE -FEATURE 
+
+(OCR-CONFIDENCE ) BASELINE , CLEARLY ON SROIE (31% VS . 16%)  
+
+> AND BY A SMALLER MARGIN ON
+
+CORD (33% VS . 27%); THE DISCRIMINATION GAP IS SHARPER IN AUC (T ABLE IV). T HE LAST COLUMN IS A PER -DOCUMENT GAP -THRESHOLD policy (ROUTE IF THE OBSERVED GAP EXCEEDS τ ), not A TRUE AGGREGATE ORACLE ; THE TRUE CONSTRAINED -SUBSET ORACLE IS HIGHER (CORD 61%, SROIE 67%), 
+
+> SO THE ROUTER OPERATES BELOW A GENUINE UPPER BOUND
+
+. VRDU 
+
+> AND THE OTHER NON
+
+-ROUTABLE GENRES ARE TREATED IN THE DIAGNOSTIC (T ABLE III) AND TRANSFER ANALYSIS (S EC . V-J), NOT AS SAVINGS HEADLINES .
+
+Dataset Full model Single-feature Gap policy CORD 33% 27% 32% SROIE 31% 16% 56% 
+
+why we route on the signed gap and reward a router that leaves ceiling-quality documents with the small model. 
+
+C. Cost savings 
+
+Table VII is the main result. Both CORD and SROIE clear the predefined success criterion (within 2 F1 points of always-large while cutting cost by ≥30%). Bootstrapped 
+
+95% confidence intervals on the saving are [26 , 42]% (CORD) and [27 , 35]% (SROIE), both clear of zero; the wider CORD interval reflects its smaller test set ( N =100 ), so we treat the pooled AUC as the headline discrimination metric. The Pareto frontiers (Fig. 2, Fig. 3) show the routing model dominating both the random and single-feature base-lines across the cost range. On CORD the full model cuts cost by 33%, essentially matching the gap-threshold policy at 32%. There is no conflict here: that baseline policy decides with a single fixed threshold per document, whereas our router works from calibrated probabilities and can sweep thresholds, sending borderline and high-requirement documents to the small model with only a negligible F1 loss. It can therefore meet, and even slightly surpass, the fixed-threshold policy. This is not an absolute upper bound; the constrained-subset oracle is higher (CORD 61%, SROIE 67%), and the router sits below it. 
+
+D. DeepForm: routing on a non-receipt genre 
+
+Receipt difficulty is often visible in the image itself, be-cause the documents are photographed, dense, and frequently degraded. A stronger test is whether the same diagnostic works on a different genre that also satisfies both conditions. DeepForm [21] is FCC political ad-buy disclosure forms: 
+
+TABLE VIII DEEP FORM WITHIN -GENRE ROUTING (HELD -OUT TEST ), ON TWO MODEL PAIRS . A NON -RECEIPT GENRE ROUTES : HIGH AUC, A POSITIVE 
+
+RF-OVER -LOGISTIC MARGIN , AND A LARGE DEPLOYABLE SAVING WITHIN THE 0.02 F1 TOLERANCE . T HE 3× PAIR SAVES LESS BECAUSE THE TWO TIERS ARE CLOSER ON THESE FORMS (SMALLER GAP TO EXPLOIT ). 
+
+Haiku/Opus ( 5×) Haiku/Sonnet ( 3×)Held-out AUC 0.916 0.845 RF − logistic +0 .062 +0 .069 
+
+Large-required 31% 22% No-peek saving 77% 65% Quality within 0.02 yes yes 
+
+faxed, photocopied, degraded scans of business forms, not receipts, with buried key fields. Its capture-quality variance and structural complexity give it feature-detectable difficulty, and its cheap-tier failures give it headroom; the diagnostic therefore predicts it should route, and a feature-signal-gated pilot confirmed both conditions before we ran the full exper-iment. Refit within-genre (700 train / 100 held-out test forms, five KILE fields), the router reaches held-out AUC 0.916 (logistic regression 0.854, gain +0 .062 ), with 31% of test documents large-required. The deployable, no-peek policy saves 77% of cost at quality within the 0.02 F1 tolerance (gap 0.020), using a threshold selected on train with a half-tolerance general-ization buffer (Table VIII, Fig. 4). The routing decisions are meaningful: on the documents the router escalates, the large tier rescues a median +0 .20 F1 (mean +0 .205 ). Absolute F1 is low for both tiers (small 0.62, large 0.67) because we process the first page only of multi-page forms and ∼10% of documents place a target field off page 0; this caps absolute accuracy but not the gap , which is what routing exploits. Excluding the documents that are unwinnable for both tiers (those ∼10%) leaves the routing AUC essentially unchanged (0.894 CV on the winnable subset), confirming the signal is genuine extraction difficulty, not a page-selection artifact. The result holds on a second model pair (Sec. V-K), so it is not specific to one expensive model. 
+
+E. Comparison to a confidence cascade 
+
+A familiar alternative is a cascade: run the cheap tier first and escalate only when its output looks unreliable (Sec. II). That design still pays the cheap inference on every document before deciding what to do next, whereas our router picks a single tier up front from pre-inference features alone. Under full-document re-extraction and the same escalation decision, pre-inference routing is strictly cheaper than a cascade because it avoids the redundant cheap call on escalated documents (Table IX); the comparison has three parts. 
+
+(i) Lower cost than a same-signal cascade. Granting the cascade our router’s own escalation signal (its best realistic trigger) and the same quality target, the single-tier router saves 
+
+33% /39% (CORD/SROIE) versus the cascade’s 21% /29% : the cascade forfeits the saving on every escalated document to the Fig. 1. Distribution of the per-document F1 gap (large − small). CORD is right-skewed with a tail past τ (real difficulty); SROIE is bimodal, with a cluster at zero and a cluster of genuinely hard documents; VRDU is near-symmetric about zero, indicating little routing headroom.     
+
+> Fig. 2. Quality–cost Pareto frontier on CORD ( τ=0 .02 ). The routing model sits above the single-feature and random baselines.
+> Fig. 3. Quality–cost Pareto frontier on SROIE ( τ=0 .02 ).
+
+redundant cheap call, and can never undercut the always-small floor. 
+
+(ii) The logprob-triggered variant is unavailable on this provider. One common cascade escalates on the cheap model’s token logprobs; the Anthropic Messages API exposes none, so that particular variant cannot be built here. Other cascade    
+
+> Fig. 4. Quality–cost Pareto frontier on DeepForm (Haiku/Opus, τ=0 .02 ). The router sits above the single-feature and random baselines across the cost range: a non-receipt genre where pre-inference routing works.
+
+triggers (schema validation, self-consistency, external verifiers) remain possible; our cost argument applies to any of them whenever the cheap extraction is run in full before the esca-lation decision. 
+
+(iii) We beat even a perfect cascade where escalation is fre-quent. Against an oracle -triggered cascade (the best physically possible: it escalates exactly the large-required documents, yet still pays the cheap call on every one), the router still wins on CORD ( 33% vs. 20% ), where escalation is frequent ( 58% ) and the redundant call is expensive. On SROIE, where escalation is rare ( 30% ), a perfect cascade would edge the router ( 50% 
+
+vs. 39% ), but that oracle cannot be built, and the gap reflects residual headroom in the SROIE router (well below its 56% 
+
+oracle route), not a cascade advantage. 
+
+F. Threshold transfer (no test peeking) 
+
+The operating point in Eq. (4) is read from the evaluation set. To confirm the saving is not an artifact of test-set thresh-old selection, we repeat the protocol without peeking: the threshold is selected on out-of-fold training predictions (cost-minimal subject to the quality tolerance on train) and applied TABLE IX COST SAVING VS . CASCADES (τ =0 .02 ). RF ROUTE IS OUR PRE -INFERENCE ROUTER ; RF CASCADE USES THE SAME SIGNAL BUT PAYS THE CHEAP TIER ON EVERY DOCUMENT ; THE ORACLE COLUMNS USE THE PERFECT (LARGE -REQUIRED ) TRIGGER .
+
+Dataset RF route RF cascade Oracle cascade Oracle route CORD 33% 21% 20% 32% SROIE 39% 29% 50% 56%       
+
+> TABLE X SENSITIVITY TO ORACLE THRESHOLD τ. AUC AND SAVINGS ARE STABLE ,
+> CONFIRMING τ=0 .02 IS NOT A CRITICAL DESIGN CHOICE .
+
+τ AUC (RF) CORD saving SROIE saving 0.01 0.726 29% 32% 0.02 0.707 33% 39% 0.05 0.709 35% 40% 
+
+unchanged to test. On both receipt datasets it transfers within tolerance: the blind threshold saves 33% on CORD and 31% 
+
+on SROIE with test quality inside the 2 F1-point tolerance (the achievable frontier is 33% and 39% respectively, so the blind SROIE threshold is the more conservative of the two). The deployable operating point is thus robust to selection on both, and the threshold-free AUC (Table IV) remains our primary, selection-free metric. 
+
+G. Robustness to τ
+
+Table X sweeps the oracle threshold. The AUC is steady across all values tried ( 0.707 –0.726 ); τ =0 .02 was chosen from the quality-tolerance criterion, and the sweep shows the classifier is not τ -dependent. SROIE’s large-required fraction is constant across the range ( 30% ), indicating a bimodal rather than continuous difficulty gap; its saving rises with τ as the looser tolerance allows more aggressive routing. 
+
+H. Interpretability 
+
+Permutation importance for the deployed calibrated ran-dom forest (mean AUC drop on the pooled receipt test set) ranks inv_chars_per_word (+0 .082 ), item_density 
+
+(+0 .037 ), and ocr_std (+0 .018 ) highest: token fragmen-tation and content/structure density drive escalation, while the pure image-readability features (image_contrast ,
+
+blur_score ) add little. A per-family ablation confirms the families are complementary: training on any single family (OCR, image, layout, or content) underperforms the full 13-feature set ( 0.707 ), with layout and content the strongest and image the weakest. This attribution is why we keep the features despite the text baseline matching them (Sec. V-I): they say 
+
+which document properties make extraction hard, which is what turns routing into a diagnostic. 
+
+I. The router can be simple: a text baseline 
+
+Our features are interpretable, but are they necessary ? We compare them against a content baseline: a TF-IDF / latent-semantic (LSA) router over the same OCR text, also pre-          
+
+> TABLE XI ENGINEERED FEATURES VS .A TEXT (TF-IDF/LSA) BASELINE :
+> WITHIN -GENRE 5-FOLD CV AUC. N EITHER CHEAP PRE -INFERENCE ROUTER DOMINATES ACROSS GENRES (TEXT EDGES ON RECEIPTS /D EEP FORM ,FEATURES EDGE ON NUTRITION ,BOTH NEAR CHANCE ON INVOICES ), EVIDENCE THAT THE CONSTRAINT IS THE DOCUMENT ,NOT THE ROUTER .
+
+Genre Features (13) Text (LSA) Receipts 0.71 0.80 DeepForm 0.89 0.91 Invoices 0.52 0.57 Nutrition 0.63 0.55 VRDU 0.60 0.59 
+
+inference (no model call), but treating the document as a bag of words rather than a structured artifact. Across the five genres neither router dominates (Table XI): the text router edges the features on receipts ( 0.80 vs. 0.71 ) and DeepForm (0.91 vs. 0.89 ; difference −0.015 , 95% CI [−0.033 , +0 .003] ), the features edge text on nutrition ( 0.63 vs. 0.55 ), the two tie on VRDU, and both are near chance on invoices. We had expected the image/layout features to beat text on the capture-degraded DeepForm forms; they do not, because degraded scans produce garbled OCR tokens that a bag-of-words model already captures. We draw the honest conclusion. The engineered features are not a superior routing signal, and we do not claim they are. What the comparison shows is stronger for the thesis: two 
+
+completely different cheap pre-inference routers (image and layout features, and bag-of-words text) succeed on the same genres (receipts, DeepForm) and fail on the same ones. The binding constraint is the genre’s two conditions, not the router. We report the interpretable features as the primary router because their signals map onto the mechanism (capture quality, structure) and thus let us state and predict the diagnostic (which a black-box text router cannot), not because they route better. 
+
+J. Transfer: the router is deployment-specific 
+
+A single router that worked across corpora would be ideal; it does not exist. We train on each genre and evaluate on every other (Table XII). The within-genre diagonal is strong where routing works (receipts 0.71 , DeepForm 0.91 ) but the off-diagonal collapses to near chance (mean 0.56 ). The effect is not merely cross-genre: even two datasets of the same genre do not transfer, with CORD →SROIE 0.54 and SROIE →CORD 
+
+0.55 , no better than cross-genre pairs. Difficulty features mean different things across corpora, so the learned mapping does not carry. The practical consequence is that the router is refit per deployment on that corpus’s own labeled pilot, which is cheap (a few dollars) and, where the conditions hold, works; the receipts result is pooled (trained on CORD and SROIE together), i.e. within-distribution, not a claim of genre-level transfer. The failing genres reinforce the point rather than transfer. A DeepForm-trained router scores 0.49 on invoices: invoice TABLE XII CROSS -GENRE TRANSFER AUC ( ROWS TRAIN , COLUMNS TEST ;            
+
+> DIAGONAL IS WITHIN -GENRE 5-FOLD CV). R OUTING DOES NOT TRANSFER ACROSS GENRES :THE STRONG WITHIN -GENRE DIAGONAL
+> (RECEIPTS , D EEP FORM )COLLAPSES OFF -DIAGONAL ,SO THE ROUTER IS REFIT PER GENRE . I NVOICES AND NUTRITION ARE OMITTED HERE AS TEST TARGETS (SEMANTIC -DIFFICULTY /SMALL -SAMPLE OFF -DIAGONALS ARE UNRELIABLE ;SEE APPENDIX ); THEIR WITHIN -GENRE RESULTS ARE IN TABLE III.
+
+Train ↓ / Test → Receipts DeepForm VRDU Receipts 0.71 0.62 0.51 DeepForm 0.54 0.91 0.56 VRDU 0.55 0.60 0.60               
+
+> TABLE XIII CROSS -PAIR GENERALIZATION ON RECEIPTS . T HE SAME 13 FEATURES ,
+> ROUTER REFIT ON EACH PAIR ’S GAPS . S AVINGS ARE THE FRONTIER VALUES AT τ=0 .02 (THE DEPLOYABLE NO -PEEK HEADLINE IN TABLE VII
+> IS MORE CONSERVATIVE ). T HE RF-OVER -LOGISTIC -REGRESSION MARGIN IS STABLE ACROSS THE 5×AND 3×COST RATIOS ; D EEP FORM SHOWS THE SAME PATTERN (T ABLE VIII).
+
+Model pair Ratio AUC RF −LR CORD SROIE Haiku / Opus 4.8 5× 0.707 +0 .082 33% 39% Haiku / Sonnet 4.6 3× 0.753 +0 .079 22% 51% 
+
+difficulty is semantic and invisible to these features, the same reason invoices’ within-genre AUC is only 0.52 (Table III). VRDU is the borderline case: weak signal both in-domain (0.60 ) and under transfer, with only 21% headroom, and behaviorally the router escalates ∼0% of it, declining to spend rather than fabricating savings. Neither is a routing success; both are evidence for when routing is not worthwhile , which is part of the contribution. 
+
+K. Cross-pair generalization 
+
+The reusability claim (refit the router per model pair) is only meaningful if it transfers. We test a second pair, Haiku 4.5 vs. Claude Sonnet 4.6, at a 3× cost ratio (versus 5× for Haiku/Opus). Sonnet is closer to Haiku than Opus is, so the difficulty gap is smaller (mean +0 .068 on CORD, +0 .032 
+
+on SROIE), yet a routable gap remains. Refitting the same 
+
+13 features on this pair’s gaps (Table XIII, Fig. 5), the router reaches pooled AUC 0.753 , higher than the primary pair, and saves 22% (CORD) and 51% (SROIE). The larger SROIE saving follows from the smaller gap: only 22% of SROIE receipts need Sonnet, so most route to cheap Haiku within tolerance. DeepForm shows the same pair-robustness (Table VIII): held-out AUC 0.845 under Haiku/Sonnet versus 
+
+0.916 under Haiku/Opus, with the RF-over-logistic margin holding at +0 .069 .The margin over the linear baseline is stable across pairs and cost ratios: RF exceeds logistic regression by +0 .082 /+0 .079 
+
+on receipts and +0 .062 /+0 .069 on DeepForm. What is reusable is the routing signal and the diagnostic , not a fixed threshold or a single model pair: the threshold is refit per pair (and per genre), and doing so works. VI. L IMITATIONS 
+
+The contribution is the diagnostic (measuring headroom, testing feature predictability, and evaluating transfer), not a claim that any particular router is optimal. A bag-of-words text router matches our engineered features on every genre (Sec. V-I); we prefer the interpretable features for their ex-planatory value, but they are not a superior routing signal, and better routers (including feature/text fusion) are open. Our positive evidence is concentrated in two genres: receipts (CORD, SROIE) and degraded ad-buy forms (DeepForm); these span photographed receipts and faxed business forms, but broader coverage of the positive case is valuable future work. Routing does not transfer across genres (Sec. V-J): a router must be refit per genre, which the diagnostic pilot makes cheap but which precludes a single universal router. On DeepForm we process the first page only of multi-page forms, which caps absolute F1 (some target fields fall on later pages) though not the routable gap that routing ex-ploits; full multi-page handling is future work. The deployed threshold is refit per model pair and per genre; we vali-date the pair-refit on a second pair (Sec. V-K), but broader model-pair and cross-provider coverage remains open. We pin exact model versions ( claude-haiku-4-5-20251001 ,
+
+claude-opus-4-8 ); provider updates may shift absolute numbers. OCR confidence is from Tesseract and is not cal-ibrated across engines, so OCR-derived features are engine-specific. By “document” we mean the page artifact (its layout, image quality, and structure) as opposed to a text query; the routing signal is a property of that artifact. Extraction was run once per document at the provider’s default tem-perature rather than averaged over samples. A re-extraction pilot measures the resulting decoding variance directly (per-document F1 std ≈ 0.02 ) and the oracle-label instability it induces near the boundary: about 20% of documents within 
+
+0.10 F1 of τ flip label under k-draw averaging, almost all zero-gap documents that carry a small positive expected gap. Because τ =0 .02 sits within this decoding-noise floor, the binary label is inherently soft near the boundary; the threshold-free AUC is nonetheless stable across τ (Table X), so the primary metric does not depend on where the boundary falls. We do not evaluate on FUNSD [19] despite its prominence in document AI: its annotations are structural entity-linking labels (header/question/answer/other) rather than named key– value fields, so there is no per-field value to score with our extraction-F1 protocol, making it incompatible with the routing task as posed. VII. C ONCLUSION 
+
+We recast pre-inference document routing as a question of when it works and give a diagnostic (routable headroom and feature-detectable difficulty) that a small labeled pilot can answer before committing at scale. Evaluated across five genres, the diagnostic separates the genres where routing helps (receipts and degraded ad-buy forms, a non-receipt genre, where a calibrated router cuts cost by 31 –33% and 77% at quality within 0.02 F1 of always-large) from those where Fig. 5. Quality–cost Pareto frontiers for the second model pair (Haiku 4.5 vs. Claude Sonnet 4.6, a 3× cost ratio) on CORD (left) and SROIE (right), 
+
+τ =0 .02 . Refit on this pair’s gaps, the router again dominates the single-feature and random baselines across the cost range: cross-pair generalization holds at a different cost ratio. 
+
+it does not (clean digital invoices with no feature-detectable signal, near-ceiling nutrition labels with no headroom, and low-headroom registration forms). The routing signal is avail-able in cheap pre-inference representations, both interpretable document features and OCR text; within the engineered model, token fragmentation and layout density matter most. The router is deployment-specific, refit per corpus, and does not transfer across datasets even within a genre. Under full-document re-extraction, pre-inference routing is strictly cheaper than a cas-cade, and beats even a perfect-trigger cascade where escalation is frequent, because a cascade pays the cheap-model call on every document; the logprob-triggered variant is unavailable on this provider. The results hold across two model pairs at 
+
+5× and 3× cost ratios. The practical takeaway is a checklist: before deploying routing on a new corpus, measure headroom and feature predictability on a small labeled pilot, and if either is absent, do not route. Extending the diagnostic across providers and to vision-language extractors is the natural next step. REFERENCES [1] S. Somerstep, F. Maia Polo, A. F. M. de Oliveira, P. Mangal, M. Silva, O. Bhardwaj, M. Yurochkin, and S. Maity. CARROT: A Cost Aware Rate Optimal Router. arXiv:2502.03261, 2025. [2] Z. Pan, K. Zhang, Y. Zhao, and Y. Han. Route to Reason: Adaptive Routing for LLM and Reasoning Strategy Selection. arXiv:2505.19435, 2025. [3] X. Wang, Y. Liu, W. Cheng, X. Zhao, Z. Chen, W. Yu, Y. Fu, and H. Chen. MixLLM: Dynamic Routing in Mixed Large Language Mod-els. In Proc. NAACL-HLT , pp. 10912–10922, 2025. arXiv:2502.18482. [4] H. Ma, G. Lai, and H.-J. Ye. MMR-Bench: A Comprehensive Bench-mark for Multimodal LLM Routing. In ECCV , 2026. https://github.com/ Hunter-Wrynn/MMR-Bench. [5] D. Ding, A. Mallick, S. Zhang, C. Wang, D. Madrigal, M. Hipolito Garcia, M. Xia, L. V. S. Lakshmanan, Q. Wu, and V. R¨ uhle. BEST-Route: Adaptive LLM Routing with Test-Time Optimal Compute. arXiv:2506.22716, 2025. [6] Z. Pan and K. Zhang. Adaptive Model and Strategy Routing for Cost-Efficient LLM Services. In Proc. ACM Web Conference (WWW) , 2026. https://doi.org/10.1145/3774904.3792556. [7] D. Smirnova, H. Nasiri, M. Adamska, Z. Yu, and P. Garraghan. Cost-Aware Model Orchestration for LLM-based Systems. In Proc. EuroML-Sys , 2026. arXiv:2512.01099. [8] A. Sindhu and A. Suresh. Agent-Based Generative AI Model for Cost-Aware Automation in Machine Learning Pipelines. IEEE Access , 2025. [9] Y. Moslem and J. D. Kelleher. Dynamic Model Routing and Cascading for Efficient LLM Inference: A Survey. arXiv:2603.04445, 2026. [10] L. Chen, M. Zaharia, and J. Zou. FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance. arXiv:2305.05176, 2023. [11] I. Ong, A. Almahairi, V. Wu, W.-L. Chiang, T. Wu, J. E. Gonzalez, M. W. Kadous, and I. Stoica. RouteLLM: Learning to Route LLMs with Preference Data. arXiv:2406.18665, 2024. [12] D. Ding, A. Mallick, C. Wang, R. Sim, S. Mukherjee, V. R¨ uhle, L. V. S. Lakshmanan, and A. H. Awadallah. Hybrid LLM: Cost-Efficient and Quality-Aware Query Routing. In ICLR , 2024. [13] D. Madras, T. Pitassi, and R. Zemel. Predict Responsibly: Improving Fairness and Accuracy by Learning to Defer. In NeurIPS , 2018. [14] Y. Geifman and R. El-Yaniv. Selective Classification for Deep Neural Networks. In NeurIPS , 2017. [15] Y. Huang, T. Lv, L. Cui, Y. Lu, and F. Wei. LayoutLMv3: Pre-training for Document AI with Unified Text and Image Masking. In ACM Multimedia , 2022. [16] G. Kim, T. Hong, M. Yim, J. Nam, J. Park, J. Yim, W. Hwang, S. Yun, D. Han, and S. Park. OCR-free Document Understanding Transformer (Donut). In ECCV , 2022. [17] S. Park, S. Shin, B. Lee, J. Lee, J. Surh, M. Seo, and H. Lee. CORD: A Consolidated Receipt Dataset for Post-OCR Parsing. In NeurIPS Workshop on Document Intelligence , 2019. [18] Z. Huang, K. Chen, J. He, X. Bai, D. Karatzas, S. Lu, and C. V. Jawahar. ICDAR2019 Competition on Scanned Receipt OCR and Information Extraction (SROIE). In ICDAR , 2019. [19] G. Jaume, H. K. Ekenel, and J.-P. Thiran. FUNSD: A Dataset for Form Understanding in Noisy Scanned Documents. In ICDAR-OST , 2019. [20] Z. Wang, Y. Zhou, W. Wei, C.-Y. Lee, and S. Tata. VRDU: A Benchmark for Visually-rich Document Understanding. In KDD , 2023. [21] S. Svetlichnaya. DeepForm: Understand Structured Documents at Scale. Weights & Biases, 2020. https://wandb.ai/stacey/deepform v1. Distributed via the DUE benchmark [22]. [22] Ł. Borchmann, M. Pietruszka, T. Stanisławek, D. Jurkiewicz, M. Tur´ oski, K. Szyndler, and F. Grali´ nski. DUE: End-to-End Document Understanding Benchmark. In NeurIPS Datasets and Benchmarks , 2021. [23] ˇS. ˇSimsa, M. ˇSulc, M. Uˇ riˇ c´ aˇ r, Y. Patel, A. Hamdi, M. Koci´ an, M. Skalick´ y, J. Matas, A. Doucet, M. Coustaty, and D. Karatzas. DocILE Benchmark for Document Information Localization and Extraction. In 
+
+ICDAR , 2023. [24] J. Kuang, W. Hua, D. Liang, M. Yang, D. Jiang, B. Ren, and X. Bai. Visual Information Extraction in the Wild: Practical Dataset and End-to-End Solution (POIE). In ICDAR , 2023.
