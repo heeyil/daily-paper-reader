@@ -1,0 +1,770 @@
+Title: MACRO: Markov Chain Routing of Transformer Layers
+
+URL Source: https://arxiv.org/pdf/2608.05872v1
+
+Published Time: Fri, 07 Aug 2026 00:49:54 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> arXiv:2608.05872v1 [cs.CL] 6 Aug 2026
+
+# MACRO: Markov Chain Routing of Transformer Layers 
+
+Paweł Batorski 1, Abtin Pourhadi 1, Akylgali Aitaza 1, Przemysław Spurek 2,3 , Paul Swoboda 1
+
+> 1
+
+Heinrich Heine University Düsseldorf 
+
+> 2
+
+Jagiellonian University 
+
+> 3
+
+IDEAS Research Institute 0 5 10 15 
+
+> Search time (h)
+> 60 64 68
+> Mean accuracy
+
+Cost vs. Accuracy                   
+
+> Higher accuracy with lower search cost
+> +7.2 pts accuracy | 9.4x lower search Q
+> INPUT
+> 2+2=?
+> L1 L2 L3 L4 L5 L6 L7 L8 L9 L10
+> STANDARD
+> L1 L2 L4 L5 L6 L3
+> L4 L5 L7 L8 L9 L10 L6
+> MACRO
+> SKIP L3
+
++
+
+> ADD
+> H4 L4 OUTPUT
+> SKIP L6
+> REJOIN RESULT
+> STANDARD
+> 3
+> INCORRECT
+> ROUTED
+> 4
+> CORRECT
+
+Figure 1: Against Dr.LLM, MACRO improves mean accuracy while reducing route-search time from 14.8 to 1.6 hours per benchmark, averaged over six shared model settings. 
+
+Abstract 
+
+Standard Large Language Models (LLMs) execute layers se-quentially. Dynamic layer routing, i.e. search for a different execution path through layers involving layer repetitions, skips and other moves, can improve performance. Existing routing approaches often require updating model weights, running expensive search loops per test instance, or demand ground-truth labels during inference. In this work, we propose Markov Chain Routing of Transformer Layers (MACRO) , a frame-work that learns task-specific routes over LLM architectures without modifying underlying parameters. MACRO models layer routing as a context-dependent Markov policy condi-tioned on layer indices, computation budget phases, direc-tional displacements, and operator context, supporting skip, repeat, and residual hidden-state addition operations. The Markov route distribution is updated via feedback on training data and decoded using a top-k Viterbi algorithm to isolate high-probability candidate programs. We evaluate MACRO across diverse reasoning and knowledge benchmarks on mul-tiple open-weight LLMs. MACRO achieves a +5.0% aver-age accuracy improvement over the unrouted baselines, with largest gains on small models. We outperform the best dy-namic routing approach Dr. LLM by +7.2% , while reducing route-search time 9.4 × (from 14.8 to 1.6 hours). Our code is publicly available at https://github.com/Batorskq/MACRO. 
+
+Introduction 
+
+Standard Large Language Models (LLMs) operate on a rigid computational schedule, executing transformer blocks se-quentially from the first layer to the last. This approach ignores the potential for dynamic computation pathways. Prior work has explored adaptive depth primarily to acceler-ate inference via early exits (Teerapittayanon, McDanel, and Kung 2016; Xin et al. 2020; Zhou et al. 2020) or structured layer dropping (Fan, Grave, and Joulin 2020; Elhoushi et al. 2024). However, actively restructuring the execution route of a frozen model to improve reasoning accuracy on complex tasks remains a highly challenging and relatively unexplored frontier. Figure 2 illustrates what such a restructuring can buy: on GSM8K, rewinding Qwen3-1.7B from layer 7 back to layer 3 and replaying five blocks raises test accuracy from 43.4% to 69.5%, without changing a single weight. Recent efforts to achieve accuracy gains through layer routing highlight significant practical bottlenecks. Dr.LLM (Heakl et al. 2026) bypasses the need for test-time labels by training lightweight routers, yet it necessitates an expensive offline Monte Carlo Tree Search (MCTS)-driven data gener-ation and training pipeline. Furthermore, purely exhaustive approaches, such as Neuroanatomy (Ng 2026), operate in a constrained search space and are computationally prohibitive for per-task adaptation or search over more complex routes. 28 layers 43.44%   
+
+> L0 L27
+> 33 layers
+
+## 69.52%      
+
+> L0 L3 L7 L27
+> Baseline MACRO
+> ↺Rewind L3–L7 run twice
+> ▲ +26.1
+
+Figure 2: A single MACRO route on Qwen3-1.7B for GSM8K. The baseline executes the 28 transformer blocks once, front to back. The searched route runs L0 –L7 , rewinds to L3 , and then continues to L27 , so L3 –L7 execute twice and 33 block calls are made in total. The weights are frozen and only the execution order changes. To overcome these limitations, we introduce Markov Chain Routing of Transformer Layers (MACRO) . We for-malize layer routing as a discrete, context-dependent stochas-tic process. We choose Markov chains (Norris 1998) for the following reasons: First, unlike deep reinforcement learn-ing or auxiliary neural routers, a Markov transition matrix is lightweight and requires no parameter updates or back-propagation through the LLM. Second, it naturally mitigates overfitting on small validation datasets by structurally con-straining the decision space. Most importantly, modeling the routing as a Markov chain allows us to leverage exact, polynomial-time sequence decoding (the Viterbi algorithm) instead of relying on stochastic sampling or computationally expensive tree searches at test time. MACRO operates through on a compact state and action space: The state space encompasses the current layer, the remaining computation budget, the incoming displacement and the operator context. From any state, the policy can ex-ecute feasible actions, which include moving to a nearby layer, adding a previous hidden state (drawing inspiration from recurrent-depth behaviors (Chen et al. 2025; Bae et al. 2026)), or rejoining the standard suffix. Rather than em-ploying per-sample routing, the framework learns a single, task-specific Markov transition distribution. This global pol-icy is iteratively updated using an estimation-of-distribution approach on a subset of training data, augmented by a replay buffer to ensure stable convergence. Once the Markov chain is fully trained, exploration is completely halted. At this final stage, we employ a top-k Viterbi algorithm to deterministi-cally extract the highest-probability valid routing programs, selecting the absolute best-performing route via a held-out validation set for uniform test-time deployment. In summary, the main contributions of this work are: 
+
+• We propose MACRO, a parameter-efficient framework for adaptive layer routing in frozen and quantized LLMs, modeled as a context-dependent Markov policy. 
+
+• We introduce an exact top-k Viterbi decoding scheme equipped with structural feasibility masks, which elimi-nates the need for per-sample test-time search, auxiliary neural network training, or ground-truth inference ora-cles. 
+
+• We demonstrate empirically that MACRO consistently outperforms prior dynamic routing methods across di-verse reasoning and knowledge benchmarks, yielding a +5.0% average accuracy improvement over the non-routed baseline, +7.2% over Dr. LLM, and +1.5% over Dr. LLM with an equivalent action space, while reducing the route-search computational cost by 9.4 ×.
+
+Related Work 
+
+Adaptive Depth and Layer Routing Much prior work ex-ploits redundancy in transformer depth mainly to make infer-ence faster through early exits (Teerapittayanon, McDanel, and Kung 2016; Xin et al. 2020; Liu et al. 2020; Zhou et al. 2020; Elbayad et al. 2020; Liu et al. 2021a; Hou et al. 2020; Schuster et al. 2022; Chen et al. 2024; Jazbec et al. 2024), structured layer dropping (Fan, Grave, and Joulin 2020; Liu et al. 2021b; Men et al. 2025; Zhao et al. 2025), and Layer-Skip (Elhoushi et al. 2024). Mixture-of-Depths (Raposo et al. 2024), adaptive layer skipping (Luo, Wang, and Yan 2025), and router tuning (He et al. 2025) similarly adapt which layers or tokens receive computation, while earlier dynamic networks learn input-dependent execution paths (Wu et al. 2018; Wang et al. 2018). Our objective differs: we use layer routing to improve accuracy while keeping the pretrained model fixed. The closest works are Dr.LLM (Heakl et al. 2026), CoLA (Li, Li, and Zhou 2025), and Neuroanatomy (Ng 2026). Dr.LLM trains lightweight routers from MCTS-derived su-pervision, requiring route-label generation and router train-ing. CoLA performs per-sample MCTS over skipped and looped layers with ground-truth reward, and Neuroanatomy exhaustively searches a limited route space. MACRO learns one Markov route distribution per task from train/validation feedback and decodes it with top-k Viterbi, avoiding per-test ground-truth search and any model-weight updates. 
+
+Recurrent and Expert Routing Universal Transformers (Dehghani et al. 2018), looped transformers (Giannou et al. 2023; Yang et al. 2024; Zhu et al. 2025), and recurrent-depth models (Chen et al. 2025; Geiping et al. 2026; Bae et al. 2026) show that repeated computation over depth can support al-gorithmic or reasoning behavior. Mixture-of-experts models (Shazeer et al. 2017; Lepikhin et al. 2021; Fedus, Zoph, and Shazeer 2022) and routing experts (Wu et al. 2025) route tokens across parameter experts; in contrast, our experts are the existing blocks of a single pretrained transformer. The lightweight Markov policy (Norris 1998), feasibility masks, and top-k Viterbi decoding remain compatible with frozen and quantized LLMs. 
+
+Method 
+
+Problem Statement Consider a pretrained transformer with frozen weights, whose forward pass applies L layer blocks f1, . . . , f L in a fixed order. A route r relaxes this schedule into a program over the blocks. At each step, it chooses which block to apply, so blocks may be skipped, re-peated, or revisited by going back to earlier ones. The route may also add an earlier hidden state to the running hidden state before applying the next block. Let R be the space of A ONE OPTIMIZATION PASS                       
+
+> MARKOV POLICY
+> πt(a|st)
+> LAYER pL
+> ADD pA
+> REJOIN pR
+> PROGRAM BATCH 1.18 2.11 3.07 layer add rejoin TRAIN SCORES
+> P1.08
+> P2.22
+> P3.46 BINSIDE THE TRANSITION POLICY
+> POLICY STATE
+> st= ( Li, ϕ t,∆t, o t)
+> Licurrent layer
+> ϕtearly / mid / late
+> ∆tstart, −l:+ rotID / ADD source
+> πt
+> LAYER ADD REJOIN
+> pLpApRLi+∆
+> +
+> ROVERVIEW
+
+LEARN, DECODE, SELECT                                   
+
+> 1LEARN INITIAL PRIOR
+> π0
+> forward-biased
+> AONE OPTIMIZATION PASS Bπt(a|st)SAMPLE TRAIN SCORE FIT πt+1 STOP? identical
+> πt←πt+1 NO YES 2FINAL DECODE & SELECTION 2a VITERBI DECODE POLICY
+> π∗
+> t= 0 t= 1 t= 2 t=T
+> s0
+> RRRRRRRRTOP-KROUTES
+> K
+> VITERBI PROBABILITY RANK
+> P1≻P2≻P3≻ · · · ≻ PK
+> 2b VALIDATE & SELECT VALIDATION SCORES select the final route from the Viterbi top-KP1
+> P2
+> P3
+> VIT. #1 VIT. #2 VIT. #3 74% 76% 70% PICK
+> P2: Viterbi rank 2 →best validation →selected
+
+Figure 3: The left panel summarizes the complete workflow. (1) Starting from a forward-biased prior π0, each iteration samples 
+
+N routing programs, scores them by executing the frozen model on training data, and refits the policy using the top-performing programs, weighted exponentially by training score, until convergence or the iteration limit. (2a) Top-K Viterbi decoding ranks feasible programs under the learned policy as P1 ≻ P2 ≻ · · · ≻ PK . (2b) Held-out validation selects among the execution-distinct candidates independently of their Viterbi rank. Panel (A) expands the sampling, scoring, and refitting steps. Panel (B) 
+
+shows the masked categorical policy conditioned on layer, budget phase, incoming displacement, and operation provenance, over local LAYER, parameterized ADD, and deterministic REJOIN actions. 
+
+Method Acc. No Labels No Per-Ex. No Pre-Gen Frozen 
+
+Early exit/Skip × ✓ ✓ ✓ ×
+
+CoLA ✓ × × ✓ ✓
+
+Dr.LLM ✓ ✓ ✓ × ✓
+
+MACRO ✓ ✓ ✓ ✓ ✓
+
+Table 1: Qualitative comparison of layer-adaptation methods. “Acc.” denotes an explicit accuracy-improvement objective; “No Labels” means no test labels are used; “No Per-Ex.” means no per-example test-time search is required; “No Pre-Gen” means no offline route-label generation stage is re-quired. such routes and let Mr denote the model run under route r.Given a dataset D = {(xi, y i)}Ni=1 , we seek the route that maximizes accuracy: 
+
+r⋆ = arg max 
+
+r∈R 
+
+Acc( r),
+
+Acc( r) = 1
+
+N
+
+NX
+
+i=1 
+
+1{Mr (xi) = yi}.
+
+(1) 
+
+Dataset Split Given a benchmark dataset D, we partition it into three disjoint subsets: a training set Dtrain , a validation set Dval , and a test set Dtest :
+
+D = Dtrain ∪ D val ∪ D test .
+
+The training and validation sets are used during routing search, whereas the test set is held out and used only for final evaluation. Throughout this procedure, the model pa-rameters remain fixed, and optimization is performed over the space of routings. To reduce overfitting during search, we further partition the training set into I disjoint subsets, 
+
+Dtrain =
+
+I[
+
+i=1 
+
+Di,
+
+which are used across search rounds to evaluate candidate routes on fresh subsets of training data. At search iteration i,candidates are evaluated on the current subset together with a small replay buffer of examples from previous rounds. We denote the buffer by B, initialize it as B0 = ∅, and use 
+
+Si = Di ∪ B i−1
+
+as the route-evaluation set. After each iteration, the buffer is updated by adding a randomly sampled fraction λrep of the current subset: 
+
+Bi = Bi−1 ∪ Sample λrep (Di).
+
+This schedule keeps each round focused mainly on fresh data while preserving limited coverage of examples seen in earlier iterations. 
+
+Markov Route Generator We model route construction as a context-dependent Markov policy πθ (at | st). A route is represented as a typed program that starts at the first trans-former layer and is extended one action at a time until a terminal Rejoin action is selected. The state st is a compact summary of the partial program, including the current layer, the current length or budget phase, and optional context such as the previous layer, the incoming layer displacement, and whether the current hidden state was produced by a plain layer or by an add operation. At each step, infeasible actions are masked so that the program stays within layer bounds and the maximum route length. State Space For a partial program, the state factorizes as 
+
+st = ( ℓ, ϕ, δ, o ), and the next-action distribution is condi-tioned on all four components. 1. The current layer ℓ ∈ { 0, . . . , L − 1} is the most recently produced layer in the partial program. 2. The budget phase ϕ ∈ { early , mid , late } buckets the fraction of remaining route-length budget into three bins, biasing the policy toward Rejoin as the route nears its maximum length. 3. The incoming displacement δ = ℓ−ℓprev ∈ {− r, . . . , r },together with a dedicated start symbol, records how the current layer was reached. 4. The binary op-context o ∈ { 0, 1} indicates whether the current hidden state ht was produced by a plain layer or by an add operation. A single global policy is shared across these states (no input-dependent context), giving a state space of size |S| = L · 3 ·
+
+(2 r+2) · 2.
+
+Action Space At current layer ℓ, the policy chooses from three action families: 1. Local layer move: apply layer ℓ + ∆ , where ∆ ∈{− r, . . . , r } and the destination layer is valid. This allows local skips, repeats, and backward revisits while biasing the search toward small perturbations of the standard for-ward pass. 2. Add-and-apply: add a previous hidden state ht−b to the current hidden state ht, using ht + γh t−b with γ > 0, and then apply a local destination layer ℓ + ∆ .3. Rejoin: terminate the learned part of the route and exe-cute the remaining standard suffix of transformer layers. At each routing step, we apply a feasibility mask that removes actions which would produce an invalid program, such as moving outside the layer range, exceeding the route-length budget, or adding a hidden state that has not yet been produced. The Markov policy is then renormalized over the remaining feasible actions, so sampling and Viterbi decoding always operate over valid routes. During decoding, a route is executed as an ordered sequence of frozen block applications, and each program step gets its own attention cache slot. Thus a revisited block fℓ keeps a separate key/value history for each application, so a route of T applied steps has the cache and decoding cost of a T -block network with tied weights. 
+
+Policy Initialization The initial Markov policy is aforward-biased prior rather than a uniform distribution over routes. We make the baseline route most probable because accuracy-improving programs are expected to be slight mod-ifications of the standard forward pass rather than entirely random layer programs. The route starts at the first layer and the final layer must terminate by rejoining the standard suffix: 
+
+ρ(ℓ) = 1{ℓ = 0 }, πθ0 (Rejoin | s) = 1 if ℓ = L−1.
+
+For any earlier layer, let a→ be the standard forward move 
+
+ℓ 7 → ℓ + 1 , let Aloc be the local layer moves plus Rejoin, and let Aop be the add-and-apply actions. Before feasibility masking, we set 
+
+πθ0 (a | s) = (1 − εloc − εop )1{a = a→}
+
++ εloc 
+
+|A loc | 1{a ∈ A loc }
+
++ εop 
+
+|A op | 1{a ∈ A op }.
+
+Thus a→ receives the large remaining mass, while all local deviations and add actions receive small exploration mass. The most likely route under πθ0 is therefore the unmodi-fied network, ⟨0, 1, . . . , L −1⟩. This prior is also the default for states that the search never visits: since the update uses pseudo-counts απ θi , the empirical row ˆpi and weighted visit count mi(s) give 
+
+ˆπi+1 (· | s) = αα + mi(s) πθi (· | s) + mi(s)
+
+α + mi(s) ˆpi(· | s).
+
+Unvisited states have mi(s) = 0 and keep the initialization exactly; visited states move away from it only in proportion to the evidence collected for that state. 
+
+Update Rule We update the Markov policy with an estimation-of-distribution procedure. At iteration i, we sam-ple K candidate programs {rj }Kj=1 from the current policy 
+
+πθi , apply the feasibility mask at each step, and evaluate each candidate on Si:
+
+qj = Acc Si (rj ).
+
+The scores are converted into normalized update weights. Optionally, only the top m candidates are kept as an elite set 
+
+Ei; otherwise Ei = {1, . . . , K }:
+
+wj =
+
+
+
+exp( β(qj − max k∈Ei qk)) 
+
+P 
+
+> k∈Ei
+
+exp( β(qk − max ℓ∈Ei qℓ)) if j ∈ Ei,
+
+0 otherwise. Here β controls the sharpness of selection. Let Ni(s, a ) denote the weighted transition count for tak-ing action a from state s. We initialize the counts with a smoothed copy of the current transition table and then add the weighted transitions observed in the sampled programs: 
+
+Ni(s, a ) = α π θi (a | s) + 
+
+> K
+
+X
+
+> j=1
+
+wj
+
+X
+
+> t
+
+1{sj,t = s, a j,t = a}.
+
+The new policy is the normalized weighted maximum-likelihood estimate, 
+
+ˆπi+1 (a | s) = Ni(s, a )
+
+P 
+
+> a′
+
+Ni(s, a ′) .
+
+In the default update we set πθi+1 = ˆ πi+1 . For a smoother update, we optionally use an exponential moving average, 
+
+πθi+1 = (1 − η)πθi + ηˆπi+1 ,
+
+followed by row-wise normalization. This update increases the probability of high-scoring route programs while retain-ing probability mass on nearby alternatives through smooth-ing and feasibility-masked sampling. Final Selection After the last update, the learned Markov policy defines a distribution over valid route programs. Rather than selecting the best route seen during sampling, we decode the most likely programs under the final policy using a top-k Viterbi procedure. For a partial state s, let 
+
+A(s) be the set of feasible actions after applying the length and layer-bound masks. The score of a complete program 
+
+r = ( a1, . . . , a T ) is its log-probability under the masked policy, 
+
+log πθ (r) = 
+
+> T
+
+X
+
+> t=1
+
+log πθ (at | st).
+
+The Viterbi recursion keeps the top k suffixes from each state: 
+
+Vk(s) = TopK a∈A (s) [log πθ (a | s) + Vk(T (s, a ))] ,
+
+where T (s, a ) is the next state after action a. If a is Rejoin, the recursion terminates by appending the standard remain-ing suffix. This produces a small candidate set Cvit of high probability valid programs. We then evaluate these candidates on the validation set and select 
+
+ˆr = arg max 
+
+> r∈C vit
+
+Acc Dval (r),
+
+breaking ties by higher training accuracy and then by shorter route length. The test set is used only once, to report the final accuracy of the selected route ˆr.
+
+Experiments 
+
+In our main experiments we will use the following baselines: 
+
+• Baseline: The baseline follows the standard transformer execution path, applying every layer sequentially from the first layer to the last. 
+
+• Dr.LLM (Heakl et al. 2026): Dr.LLM trains lightweight per-layer routers from MCTS-derived route labels, pro-viding a learned layer-routing baseline. 
+
+• Dr.LLM+Ext.: Dr.LLM+Ext. uses the same Dr.LLM-style router training procedure, but with the extended MACRO action space. 
+
+• MACRO (top-1): MACRO (top-1) deploys the single most probable route under the learned policy, that is the rank-1 Viterbi candidate. 
+
+• MACRO (no Vit.): MACRO (no Vit.) removes decoding altogether and deploys the highest training-accuracy route the search ever sampled. 
+
+• MACRO: MACRO learns a task-specific Markov policy over feasible layer-routing programs, decodes top-k can-didates with Viterbi, and selects a single validation-best route for test-time evaluation. Additional details on dataset splits, generation settings, route-search hyperparameters, and baseline training are pro-vided in Appendix C. 
+
+Main Results We compare MACRO against baselines on mathematical reasoning GSM8K (Cobbe et al. 2021) and 
+
+MATH500 (Lightman et al. 2024), knowledge-intensive question answering OpenBookQA (Mihaylov et al. 2018), 
+
+MedQA (Jin et al. 2021), SciQ (Welbl, Liu, and Gardner 2017), MMLU-Pro (Wang et al. 2024), SVAMP (Patel, Bhattamishra, and Goyal 2021), ASDiv (Miao, Liang, and Su 2020), MAWPS (Koncel-Kedziorski et al. 2016), GSM8K-Hard (Gao et al. 2023), GSM8K-Plus (Li et al. 2024), 
+
+multistep-arithmetic , and object counting (Suzgun et al. 2023). We additionally report results on meta-llama/Llama-3.2-3B-Instruct in Appendix A. Table 2 shows that MACRO attains the best average accuracy on every model except the reasoning-distilled one, and that its margin over the unrouted baseline is widest exactly where that baseline is weakest, narrowing to a smaller but consistent gain once the model is already strong. Dr. LLM in its original skip-and-repeat action space frequently ends up below the unrouted baseline. Dr. LLM+Ext. keeps the same routers, supervision, and la-bel budget and differs only in adopting the MACRO action space, yet is substantially stronger on every model we test, indicating that the action space itself is a decisive part of what makes layer routing help rather than hurt. 
+
+MACRO Without Viterbi or Validation Selection 
+
+MACRO (no Vit.) keeps the learned policy but discards de-coding, deploying the highest training-accuracy route the search happened to sample. MACRO (top-1) instead keeps decoding but discards validation selection, deploying the sin-gle most probable route under the final policy. Full MACRO is the strongest of the three in Table 2, best on four of the six models and on the average over them . Both stages appear to contribute, and each replaces a lucky draw with a more prin-cipled choice: Viterbi reconstructs candidates from the tran-sition table rather than trusting whichever routes the sampler happened to visit, and validation then ranks those candidates on held-out data rather than on the training score the search has already optimized. 
+
+Statistical Significance Seed replicates of one benchmark share a test set and a deterministic baseline run, so they are not independent observations. We therefore first aver-age the accuracy difference d = Acc MACRO − Acc base over seeds within each benchmark, and treat the 13 resulting per-benchmark differences as the units of analysis. Per model we run a one-sided Wilcoxon signed-rank test of H0: MACRO does not improve over the baseline (no positive shift in d)against H1: MACRO improves accuracy. Table 3 reports the mean improvement ¯d, which equals the per-model average gain in Table 2, a 95% confidence interval from a clus-ter bootstrap over benchmarks ( 10 5 resamples), the counts of benchmarks improved/tied/degraded, and p-values Holm-corrected across the six models. Every model improves sig-nificantly, degrades on no benchmark, and excludes zero. 
+
+State-Space Ablation We ablate the context used by the Markov transition model on Qwen3-1.7B by removing one state factor at a time: the budget phase, the incoming layer delta, or the operator context. The full state performs best overall, with the largest drop coming from removing the Method GSM8K MATH500 MedQA OpenBookQA SciQ MMLU-Pro SVAMP ASDiv MAWPS GSM8K-Hard GSM8K-Plus MS-Arith Obj-Count Avg. Model: Qwen3-1.7B 
+
+Baseline 42.84 34.00 38.88 68.00 92.60 22.13 72.67 90.25 57.88 18.18 29.10 27.00 61.00 50.35 Dr.LLM 50.04 ±4.42 20.33 ±3.06 35.35 ±3.45 54.93 ±5.59 79.53 ±2.44 17.88 ±1.75 55.67 ±6.98 72.64 ±12.78 53.91 ±4.62 15.67 ±1.96 26.20 ±2.46 74.07 ±4.98 43.00 ±1.00 46.09 Dr.LLM+Ext. 42.71 ±0.68 35.33 ±1.53 39.15 ±0.87 56.67 ±10.71 77.67 ±24.31 23.12 ±0.38 70.22 ±1.35 90.25 ±1.37 56.35 ±1.15 17.66 ±0.48 30.70 ±0.26 96.48 ±0.32 64.00 ±2.65 53.87 MACRO (no Vit.) 62.62 ±11.73 36.33 ±4.16 44.70 ±2.93 78.20 ±0.57 92.93 ±0.12 30.00 ±2.47 83.78 ±4.14 96.12 ±1.01 65.64 ±2.85 30.93 ±5.40 47.30 ±10.06 86.67 ±7.51 68.33 ±3.21 63.35 MACRO (top-1) 62.37 ±11.42 36.33 ±4.16 44.70 ±2.93 78.20 ±0.57 92.97 ±0.15 26.50 ±5.66 83.67 ±4.33 96.12 ±1.01 65.64 ±2.85 28.53 ±3.26 47.30 ±10.06 84.33 ±6.51 69.33 ±4.93 62.77 
+
+MACRO 63.56 ±12.15 38.00 ±7.00 42.84 ±2.91 77.80 ±3.96 93.03 ±0.25 29.38 ±1.59 83.11 ±3.75 96.12 ±1.01 64.17 ±1.97 29.99 ±5.03 47.70 ±9.37 84.33 ±6.51 69.33 ±4.93 63.03 Model: Qwen/Qwen3-4B 
+
+Baseline 74.75 36.67 62.48 90.47 95.73 44.42 87.44 98.95 72.12 32.39 57.33 100.00 91.33 72.62 Dr.LLM 70.86 ±3.62 31.67 ±2.31 58.18 ±0.65 85.80 ±3.27 93.47 ±0.72 41.12 ±2.09 83.00 ±0.33 85.74 ±9.69 68.27 ±2.69 29.15 ±1.63 48.07 ±4.45 89.07 ±3.35 74.33 ±5.13 66.06 Dr.LLM+Ext. 79.18 ±3.31 35.33 ±2.08 62.19 ±0.20 90.13 ±1.17 90.73 ±6.88 43.67 ±0.31 84.56 ±1.64 99.27 ±0.48 72.12 ±0.19 30.83 ±1.73 54.67 ±2.40 99.07 ±1.16 91.67 ±2.52 71.80 MACRO (no Vit.) 75.03 ±0.50 35.67 ±1.53 61.38 ±0.36 90.47 ±0.64 94.67 ±0.90 45.33 ±0.52 88.00 ±1.67 98.95 ±0.48 72.56 ±0.40 37.51 ±5.65 60.50 ±3.50 99.26 ±0.32 94.33 ±1.15 73.36 MACRO (top-1) 76.12 ±2.24 36.33 ±2.52 61.64 ±0.87 90.47 ±0.64 95.70 ±0.10 44.83 ±0.95 88.78 ±1.64 99.27 ±0.48 72.56 ±0.40 37.72 ±5.29 60.60 ±3.36 99.26 ±0.32 94.33 ±1.15 73.66 
+
+MACRO 77.99 ±2.91 37.00 ±1.00 62.48 ±0.37 90.47 ±0.31 95.73 ±0.15 46.04 ±1.13 89.67 ±1.20 99.06 ±0.54 74.36 ±3.07 36.47 ±4.35 62.70 ±1.28 100.00 ±0.00 91.67 ±2.31 74.12 Model: Qwen/Qwen3-8B 
+
+Baseline 75.39 41.33 68.08 93.87 96.17 50.67 89.78 99.48 73.91 38.14 59.33 98.89 97.67 75.59 Dr.LLM 75.84 ±1.05 28.67 ±7.57 66.22 ±1.47 90.53 ±1.42 95.00 ±0.50 46.92 ±0.94 82.67 ±6.39 95.28 ±2.37 69.49 ±5.02 31.56 ±0.18 51.10 ±1.31 94.63 ±2.80 77.33 ±5.03 69.63 Dr.LLM+Ext. 78.85 ±0.62 40.33 ±2.08 68.34 ±0.52 93.27 ±0.70 95.40 ±1.51 49.54 ±0.07 90.22 ±0.69 99.16 ±0.18 74.68 ±0.40 37.72 ±0.79 58.57 ±0.85 99.63 ±0.64 96.00 ±1.73 75.52 MACRO (no Vit.) 76.32 ±0.99 38.33 ±1.53 67.22 ±1.88 93.67 ±2.00 95.37 ±1.27 49.25 ±1.87 90.00 ±0.33 99.06 ±0.31 76.35 ±2.40 38.45 ±1.45 61.00 ±1.25 98.33 ±0.56 95.33 ±1.15 75.28 MACRO (top-1) 76.57 ±0.66 38.33 ±1.53 67.45 ±2.11 94.47 ±0.95 96.07 ±0.15 50.17 ±0.59 90.22 ±0.51 99.06 ±0.31 76.35 ±2.40 37.72 ±1.10 60.03 ±1.17 98.70 ±0.32 95.33 ±0.58 75.42 
+
+MACRO 77.71 ±2.63 41.67 ±0.58 68.29 ±0.24 94.20 ±0.92 96.33 ±0.15 50.79 ±0.36 90.33 ±0.33 99.48 ±0.48 76.15 ±1.07 39.92 ±0.72 60.97 ±1.04 99.07 ±0.32 97.67 ±0.58 76.35 Model: Qwen/Qwen3-14B (4-bit) 
+
+Baseline 83.93 42.67 73.74 95.13 97.07 56.42 91.67 99.16 75.06 42.11 63.77 100.00 100.00 78.52 Dr.LLM 81.50 ±1.18 36.33 ±3.79 71.62 ±1.56 93.93 ±1.42 95.37 ±0.35 54.12 ±1.39 86.00 ±1.76 96.33 ±1.61 70.77 ±3.97 37.30 ±2.99 56.23 ±1.10 96.85 ±0.85 85.67 ±1.53 74.00 Dr.LLM+Ext. 84.86 ±0.39 41.67 ±1.15 63.68 ±17.94 95.47 ±0.12 96.80 ±0.10 55.12 ±0.88 90.78 ±1.64 99.16 ±0.18 74.42 ±0.33 42.11 ±1.31 63.67 ±0.12 99.26 ±1.28 94.33 ±6.35 77.03 MACRO (no Vit.) 86.38 ±2.11 42.33 ±4.04 73.95 ±0.05 95.07 ±1.67 96.97 ±0.23 55.46 ±0.19 92.11 ±0.51 99.27 ±0.18 74.74 ±1.83 41.48 ±2.04 65.93 ±0.65 100.00 ±0.00 99.00 ±1.00 78.67 MACRO (top-1) 83.83 ±0.24 41.67 ±1.53 74.10 ±0.71 95.00 ±0.20 97.03 ±0.12 56.17 ±1.09 91.11 ±0.77 99.16 ±0.36 74.36 ±0.11 42.53 ±0.96 64.23 ±0.51 100.00 ±0.00 99.67 ±0.58 78.37 
+
+MACRO 86.20 ±1.51 44.67 ±2.08 74.37 ±0.45 95.53 ±0.95 97.13 ±0.06 56.42 ±0.26 92.00 ±0.58 99.48 ±0.18 75.71 ±0.87 42.74 ±0.48 66.57 ±0.76 100.00 ±0.00 100.00 ±0.00 79.29 Model: mistralai/Mixtral-8x7B-Instruct-v0.1 (4-bit) 
+
+Baseline 67.15 20.33 55.73 75.00 90.10 24.21 76.67 91.93 64.68 32.60 49.27 93.33 66.33 62.10 Dr.LLM 65.20 ±0.93 17.67 ±0.58 51.66 ±0.70 69.93 ±3.80 88.90 ±0.26 21.29 ±0.63 66.22 ±1.26 80.82 ±1.63 54.55 ±2.25 29.26 ±1.73 38.20 ±1.47 78.33 ±0.96 47.00 ±1.73 54.54 Dr.LLM+Ext. 68.76 ±1.38 25.00 ±0.00 55.70 ±0.00 76.20 ±0.00 89.80 ±0.00 22.50 ±0.00 77.33 ±0.58 90.88 ±0.00 63.97 ±0.22 33.75 ±0.18 49.00 ±0.36 93.33 ±0.00 65.33 ±0.58 62.43 MACRO (no Vit.) 67.32 ±1.05 22.67 ±3.51 56.52 ±0.94 77.70 ±1.56 90.85 ±0.35 24.62 ±1.84 77.89 ±0.77 92.24 ±1.58 65.32 ±2.13 32.29 50.83 ±1.10 94.63 ±1.79 67.00 ±4.36 63.07 MACRO (top-1) 67.22 ±0.16 21.33 ±4.04 55.07 ±1.11 74.67 ±1.22 90.40 ±0.61 24.21 ±0.07 78.00 ±0.88 92.56 ±1.10 64.49 ±0.11 33.39 ±1.55 49.53 ±1.46 93.33 ±1.47 67.67 ±2.52 62.45 
+
+MACRO 67.50 ±0.92 24.33 ±2.31 56.52 ±0.94 77.33 ±2.58 90.67 ±0.21 25.12 ±0.76 77.33 ±1.53 93.40 ±2.27 65.77 ±1.45 34.33 ±0.22 49.53 ±1.46 94.81 ±0.85 68.00 ±2.00 63.43 Model: deepseek-ai/DeepSeek-R1-Distill-Llama-8B 
+
+Baseline 20.67 31.00 48.10 80.60 90.57 32.62 33.78 45.81 35.58 20.79 46.47 36.67 34.67 42.87 Dr.LLM 60.48 ±0.53 33.33 ±3.21 46.61 ±1.41 76.60 ±1.74 87.13 ±1.16 30.79 ±1.78 67.78 ±3.15 84.28 ±1.96 60.96 ±1.85 20.38 ±0.83 39.23 ±3.32 81.11 ±1.47 73.33 ±6.11 58.62 Dr.LLM+Ext. 61.36 ±0.27 40.00 ±1.73 47.97 ±0.92 79.67 ±1.10 88.70 ±1.40 32.42 ±1.13 74.89 ±0.19 90.67 ±0.18 64.04 ±0.00 21.63 ±0.31 46.17 ±0.65 90.00 ±0.00 75.33 ±7.23 62.53 MACRO (no Vit.) 31.19 ±5.58 34.33 ±3.06 48.00 ±0.00 81.30 ±0.14 90.20 ±0.28 33.06 ±0.62 58.00 ±2.40 86.06 ±7.42 54.29 ±1.49 20.53 ±0.22 45.20 ±1.84 82.41 ±4.17 69.67 ±12.34 56.48 MACRO (top-1) 20.34 ±0.23 33.67 ±2.89 47.92 ±0.11 81.00 ±0.57 90.20 ±0.28 33.06 ±0.62 33.22 ±1.26 45.28 ±1.44 35.45 ±0.68 20.22 ±0.66 46.70 ±0.57 36.48 ±1.16 34.67 ±1.53 42.94 
+
+MACRO 30.53 ±5.62 33.00 ±3.61 48.10 ±0.73 81.27 ±0.58 90.57 ±0.51 33.25 ±0.54 58.00 ±2.40 81.66 ±4.52 56.03 ±2.32 21.11 ±0.90 46.83 ±0.38 83.15 ±4.32 63.33 ±7.02 55.91 
+
+Table 2: Performance comparison across prompting and optimization methods. Colored bars denote different model families. Within each model and benchmark column, cells are shaded by rank across methods (red: best, orange: second, yellow: third); ties share a color. Values with gray subscripts report mean and standard deviation over 3 seeds. 
+
+Model ¯d (pts) 95% CI W/T/L pHolm 
+
+Qwen3-1.7B +12 .68 [ 6 .70 , 21 .38 ] 13/0/0 7.3×10 −4
+
+Qwen3-4B +1 .50 [ 0 .62 , 2.51 ] 9/4/0 2.0×10 −3
+
+Qwen3-8B +0 .76 [ 0 .33 , 1.25 ] 11/2/0 2.0×10 −3
+
+Qwen3-14B (4-bit) +0 .78 [ 0 .33 , 1.31 ] 10/3/0 2.0×10 −3
+
+Mixtral-8x7B (4-bit) +1 .33 [ 0 .86 , 1.91 ] 13/0/0 7.3×10 −4
+
+DeepSeek-R1-Distill-Llama-8B +13 .04 [ 5 .07 , 22 .00 ] 11/2/0 2.0×10 −3
+
+Table 3: Statistical significance of MACRO over the baseline, with benchmarks as the unit of analysis. 
+
+State Variant Phase Delta Op Ctx. Avg. Drop Full state ✓ ✓ ✓ 63.03 –No delta ✓ × ✓ 62.54 ±3.32 -0.49 No op context ✓ ✓ × 61.48 ±3.59 -1.55 No phase × ✓ ✓ 59.56 ±5.19 -3.47 
+
+Table 4: State-space ablation on Qwen3-1.7B. Averages are over all the 13 benchmarks used in Table 2. budget-phase factor, indicating that routing decisions depend strongly on where the program sits in its computation budget. 
+
+Hyperparameter Analysis We sweep one search hyperpa-rameter at a time around our configuration on Qwen3-1.7B: the selection sharpness β and the elite count m (Figure 4). Accuracy is essentially flat in β, since the elite set already applies a hard filter before the update and leaves the softer reweighting little to decide. The elite count matters more, and our setting sits between two failure modes: m = 1 fits the transition counts to a single trajectory and commits to it before the evidence supports doing so, making it the only set-ting significantly worse than ours, while m = 12 keeps too broad a range of candidates for the update to stay selective and dilutes the counts with noise. Every setting still improves over the unrouted model, so MACRO does not depend on a narrow hyperparameter choice. 
+
+Mechanistic Interpretability of MACRO To understand 
+
+how a route improves accuracy without any weight update, we apply a logit lens: at each layer we read the running hidden state through the model’s own output projection and track the probability assigned to the correct answer token. Figure 5 shows that the standard forward pass can represent the answer internally and then suppress it near the output, while MACRO 0.5 1.83 3.0 
+
+β
+
+> 50 55 60 65
+> test accuracy (%)
+> unrouted model
+
+Selection sharpness (β)  
+
+> ours
+> 59.8 1512
+
+m
+
+> unrouted model
+
+Elite count (m)
+
+> ours
+> 59.8
+
+Figure 4: Accuracy on Qwen3-1.7B when sweeping the se-lection sharpness β (left) and the elite count m (right) one at a time around our configuration (shaded, diamond). 0
+
+> −10
+> −20
+> correct-answer log-prob
+
++15.4 
+
+SVAMP 
+
++14.0 
+
+OpenBookQA    
+
+> 0918 27
+
+network depth (layer) 
+
+> 0
+> −10
+> −20
+> correct-answer log-prob
+
++9.8 
+
+GSM8K    
+
+> 0918 27
+
+network depth (layer) 
+
++7.5 
+
+MATH500 
+
+baseline MACRO 
+
+Figure 5: Logit-lens log-probability of the correct answer at each layer of Qwen3-1.7B for baseline route and MACRO route 
+
+Model In-Domain Out-of-Domain Base. MACRO ∆ Base. MACRO ∆
+
+Qwen3-1.7B 71.50 74.29 +2 .79 30.98 40.00 +9 .02 
+
+Qwen3-4B 83.77 84.07 +0 .30 56.09 57.21 +1 .12 
+
+Table 5: Results for the one model = one route experiment. A single shared route is trained on the combined training pool from the eight in-domain benchmarks and evaluated on both the held-out test splits of those in-domain benchmarks and the five out-of-domain benchmarks. preserves this signal through the final readout. Because the model’s own generated reasoning is held fixed in context, this suggests that routing improves how an already-computed answer is exposed rather than changing the reasoning itself. GSM8K GSMHard GSMPlus SVAMP ASDiv MAWPS MSArith MATH500 ObjCnt MedQA OBQA SciQ                                                                                                                                                           
+
+> Target benchmark
+> Standard GSM8K GSMHard GSMPlus SVAMP ASDiv MAWPS MSArith MATH500 ObjCnt MMLUPro MedQA OBQA SciQ
+> Route source
+> 42 18 32 73 88 57 23 32 53 42 66 93 74 23 46 78 94 61 79 39 68 42 74 92 57 33 51 86 97 70 88 37 58 35 66 80 73 30 54 84 91 64 85 37 54 39 46 82 72 37 56 86 95 67 90 35 64 41 70 85 66 31 45 84 98 70 77 25 44 40 70 86 69 30 50 80 93 64 61 28 54 36 61 83 73 30 54 84 91 64 85 37 54 39 46 82 73 30 54 84 91 64 85 37 54 39 46 82 46 15 25 65 84 56 25 25 66 42 71 91 70 29 49 84 98 64 70 34 76 44 77 89 25 818 52 64 39 713 41 43 72 90 65 25 45 82 94 62 42 25 54 45 75 88 42 18 32 73 88 57 23 32 53 42 66 93
+> 025 50 75 100
+> Accuracy (%)
+
+Figure 6: Route-transfer heatmap on Qwen3-1.7B, with red-to-green shading from lower to higher target accuracy. 
+
+One Model, One Route To test whether a single shared route can transfer across tasks, we train one route policy on a combined training pool built from MAWPS, ASDiv, SVAMP, multistep-arithmetic, object counting, MATH500, Open-BookQA, and SciQ. We then evaluate the resulting route on the held-out test splits of those eight in-domain bench-marks and on the five out-of-domain benchmarks GSM8K, GSM8K-Hard, GSM8K-Plus, MMLU-Pro, and MedQA. Re-sults are summarized in Table 5. For each model, we report the mean accuracy of the baseline forward pass and the mean accuracy of the routed candidate selected by the shared route, along with the aggregate in-domain and out-of-domain aver-ages. Accuracies for all benchmarks and representative non-standard route strings for the two Qwen models are provided in Appendix B. 
+
+Route Transfer Across Benchmarks To test whether routes capture reusable computation or only benchmark-specific quirks, we evaluate each Qwen3-1.7B route, un-changed, on every held-out target benchmark. Only the route transfers: the prompts, scoring, data, and baseline always come from the target benchmark. Figure 6 shows this ac-curacy matrix, where entry (A, B ) is the route searched on benchmark A evaluated on target B. The highest-accuracy cells are mostly on the diagonal, which is expected because each route is optimized for its home benchmark. Off-diagonal transfer still appears, especially among related mathematical-reasoning tasks, suggesting that some routes encode reusable model computations rather than only task-specific effects. 
+
+Conclusion 
+
+We have introduced a lightweight dynamic routing method that outperforms the unrouted base model and Dr.LLM, the leading dynamic routing method across a plethora of bench-marks and LLM models. It is an interesting further research question why routing improves performance: Is it because routing improves capabilities or because an internally already present answer is better elicited? We argue that some evi-dence points towards the latter, including our limited mecha-nistic interpretability study. We argue that routing should be taken much further: we want models that profit from much more extensive input-depending dynamic routing, allowing for another dimension of flexible test-time scaling. 
+
+References 
+
+Bae, S.; Kim, Y.; Bayat, R.; Kim, S.; Ha, J.; Schuster, T.; Fisch, A.; Harutyunyan, H.; Ji, Z.; Courville, A.; et al. 2026. Mixture-of-recursions: Learning dynamic recursive depths for adaptive token-level computation. Advances in Neural Information Processing Systems , 38: 96572–96617. Chen, Y.; Pan, X.; Li, Y.; Ding, B.; and Zhou, J. 2024. EE-LLM: Large-Scale Training and Inference of Early-Exit Large Language Models with 3D Parallelism. In Interna-tional Conference on Machine Learning , 7163–7189. Chen, Y.; Shang, J.; Zhang, Z.; Xie, Y.; Sheng, J.; Liu, T.; Wang, S.; Sun, Y.; Wu, H.; and Wang, H. 2025. Inner think-ing transformer: Leveraging dynamic depth scaling to foster adaptive internal thinking. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 28241–28259. Cobbe, K.; Kosaraju, V.; Bavarian, M.; Chen, M.; Jun, H.; Kaiser, L.; Plappert, M.; Tworek, J.; Hilton, J.; Nakano, R.; et al. 2021. Training verifiers to solve math word problems. 
+
+arXiv preprint arXiv:2110.14168 .Dehghani, M.; Gouws, S.; Vinyals, O.; Uszkoreit, J.; and Kaiser, Ł. 2018. Universal transformers. arXiv preprint arXiv:1807.03819 .Elbayad, M.; Gu, J.; Grave, E.; and Auli, M. 2020. Depth-Adaptive Transformer. In International Conference on Learning Representations .Elhoushi, M.; Shrivastava, A.; Liskovich, D.; Hosmer, B.; Wasti, B.; Lai, L.; Mahmoud, A.; Acun, B.; Agarwal, S.; Ro-man, A.; Aly, A.; Chen, B.; and Wu, C.-J. 2024. LayerSkip: Enabling Early Exit Inference and Self-Speculative Decod-ing. In Ku, L.-W.; Martins, A.; and Srikumar, V., eds., Pro-ceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 12622– 12642. Bangkok, Thailand: Association for Computational Linguistics. Fan, A.; Grave, E.; and Joulin, A. 2020. Reducing Trans-former Depth on Demand with Structured Dropout. In Inter-national Conference on Learning Representations .Fedus, W.; Zoph, B.; and Shazeer, N. 2022. Switch trans-formers: Scaling to trillion parameter models with simple and efficient sparsity. Journal of Machine Learning Research ,23(120): 1–39. Gao, L.; Madaan, A.; Zhou, S.; Alon, U.; Liu, P.; Yang, Y.; Callan, J.; and Neubig, G. 2023. Pal: Program-aided language models. In International conference on machine learning , 10764–10799. PMLR. Geiping, J.; McLeish, S. M.; Jain, N.; Kirchenbauer, J.; Singh, S.; Bartoldson, B. R.; Kailkhura, B.; Bhatele, A.; and Goldstein, T. 2026. Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach. In The Thirty-ninth Annual Conference on Neural Information Pro-cessing Systems .Giannou, A.; Rajput, S.; Sohn, J.-y.; Lee, K.; Lee, J. D.; and Papailiopoulos, D. 2023. Looped transformers as pro-grammable computers. In International Conference on Ma-chine Learning , 11398–11442. PMLR. He, S.; Ge, T.; Sun, G.; Tian, B.; Wang, X.; and Yu, D. 2025. Router-Tuning: A Simple and Effective Approach for Dy-namic Depth. In Christodoulopoulos, C.; Chakraborty, T.; Rose, C.; and Peng, V., eds., Proceedings of the 2025 Confer-ence on Empirical Methods in Natural Language Processing ,1925–1938. Suzhou, China: Association for Computational Linguistics. ISBN 979-8-89176-332-6. Heakl, A.; Gubri, M.; Khan, S.; Yun, S.; and Oh, S. J. 2026. Dr.LLM: Dynamic Layer Routing in LLMs. In The Four-teenth International Conference on Learning Representa-tions .Hou, L.; Huang, Z.; Shang, L.; Jiang, X.; Chen, X.; and Liu, Q. 2020. DynaBERT: Dynamic BERT with Adaptive Width and Depth. In Advances in Neural Information Processing Systems , volume 33, 9782–9793. Jazbec, M.; Timans, A.; Veljković, T. H.; Sakmann, K.; Zhang, D.; Naesseth, C. A.; and Nalisnick, E. 2024. Fast yet Safe: Early-Exiting with Risk Control. In Advances in Neural Information Processing Systems , volume 37, 129825– 129854. Jin, D.; Pan, E.; Oufattole, N.; Weng, W.-H.; Fang, H.; and Szolovits, P. 2021. What disease does this patient have? a large-scale open domain question answering dataset from medical exams. Applied Sciences , 11(14): 6421. Koncel-Kedziorski, R.; Roy, S.; Amini, A.; Kushman, N.; and Hajishirzi, H. 2016. MAWPS: A Math Word Problem Repository. In Knight, K.; Nenkova, A.; and Rambow, O., eds., Proceedings of the 2016 Conference of the North Amer-ican Chapter of the Association for Computational Linguis-tics: Human Language Technologies , 1152–1157. San Diego, California: Association for Computational Linguistics. Lepikhin, D.; Lee, H.; Xu, Y.; Chen, D.; Firat, O.; Huang, Y.; Krikun, M.; Shazeer, N.; and Chen, Z. 2021. GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. In International Conference on Learning Repre-sentations .Li, Q.; Cui, L.; Zhao, X.; Kong, L.; and Bi, W. 2024. Gsm-plus: A comprehensive benchmark for evaluating the robust-ness of llms as mathematical problem solvers. In Proceedings of the 62nd Annual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , 2961–2984. Li, Z.; Li, Y.; and Zhou, T. 2025. Skip a Layer or Loop it? Test-Time Depth Adaptation of Pretrained LLMs. arXiv preprint arXiv:2507.07996 .Lightman, H.; Kosaraju, V.; Burda, Y.; Edwards, H.; Baker, B.; Lee, T.; Leike, J.; Schulman, J.; Sutskever, I.; and Cobbe, K. 2024. Let’s Verify Step by Step. In The Twelfth Interna-tional Conference on Learning Representations .Liu, W.; Zhou, P.; Wang, Z.; Zhao, Z.; Deng, H.; and Ju, Q. 2020. FastBERT: a Self-distilling BERT with Adaptive Inference Time. In Jurafsky, D.; Chai, J.; Schluter, N.; and Tetreault, J., eds., Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , 6035–6044. Online: Association for Computational Linguistics. Liu, Y.; Meng, F.; Zhou, J.; Chen, Y.; and Xu, J. 2021a. Faster depth-adaptive transformers. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 35, 13424– 13432. Liu, Z.; Li, F.; Li, G.; and Cheng, J. 2021b. EBERT: Efficient BERT Inference with Dynamic Structured Pruning. In Zong, C.; Xia, F.; Li, W.; and Navigli, R., eds., Findings of the Asso-ciation for Computational Linguistics: ACL-IJCNLP 2021 ,4814–4823. Online: Association for Computational Linguis-tics. Luo, X.; Wang, W.; and Yan, X. 2025. Adaptive Layer-skipping in Pre-trained LLMs. In Second Conference on Language Modeling .Men, X.; Xu, M.; Zhang, Q.; Yuan, Q.; Wang, B.; Lin, H.; Lu, Y.; Han, X.; and Chen, W. 2025. Shortgpt: Layers in large language models are more redundant than you expect. In 
+
+Findings of the Association for Computational Linguistics: ACL 2025 , 20192–20204. Miao, S.-Y.; Liang, C.-C.; and Su, K.-Y. 2020. A diverse corpus for evaluating and developing English math word problem solvers. In Proceedings of the 58th annual meeting of the Association for Computational Linguistics , 975–984. Mihaylov, T.; Clark, P.; Khot, T.; and Sabharwal, A. 2018. Can a Suit of Armor Conduct Electricity? A New Dataset for Open Book Question Answering. In Riloff, E.; Chiang, D.; Hockenmaier, J.; and Tsujii, J., eds., Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing , 2381–2391. Brussels, Belgium: Association for Computational Linguistics. Ng, D. N. 2026. LLM Neuroanatomy: How I Topped the LLM Leaderboard Without Changing a Single Weight. On-line .Norris, J. R. 1998. Markov chains . 2. Cambridge university press. Patel, A.; Bhattamishra, S.; and Goyal, N. 2021. Are NLP models really able to solve simple math word problems? In 
+
+Proceedings of the 2021 conference of the North American chapter of the association for computational linguistics: hu-man language technologies , 2080–2094. Raposo, D.; Ritter, S.; Richards, B.; Lillicrap, T.; Humphreys, P. C.; and Santoro, A. 2024. Mixture-of-depths: Dynamically allocating compute in transformer-based language models. 
+
+arXiv preprint arXiv:2404.02258 .Schuster, T.; Fisch, A.; Gupta, J.; Dehghani, M.; Bahri, D.; Tran, V.; Tay, Y.; and Metzler, D. 2022. Confident Adaptive Language Modeling. In Advances in Neural Information Processing Systems , volume 35, 17456–17472. Shazeer, N.; Mirhoseini, A.; Maziarz, K.; Davis, A.; Le, Q.; Hinton, G.; and Dean, J. 2017. Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. In 
+
+International Conference on Learning Representations .Suzgun, M.; Scales, N.; Schärli, N.; Gehrmann, S.; Tay, Y.; Chung, H. W.; Chowdhery, A.; Le, Q.; Chi, E.; Zhou, D.; et al. 2023. Challenging big-bench tasks and whether chain-of-thought can solve them. In Findings of the Association for Computational Linguistics: ACL 2023 , 13003–13051. Teerapittayanon, S.; McDanel, B.; and Kung, H.-T. 2016. Branchynet: Fast inference via early exiting from deep neural networks. In 2016 23rd international conference on pattern recognition (ICPR) , 2464–2469. IEEE. Wang, X.; Yu, F.; Dou, Z.-Y.; Darrell, T.; and Gonzalez, J. E. 2018. SkipNet: Learning Dynamic Routing in Convolutional Networks. In Proceedings of the European Conference on Computer Vision , 409–424. Wang, Y.; Ma, X.; Zhang, G.; Ni, Y.; Chandra, A.; Guo, S.; Ren, W.; Arulraj, A.; He, X.; Jiang, Z.; et al. 2024. Mmlu-pro: A more robust and challenging multi-task language un-derstanding benchmark. Advances in Neural Information Processing Systems , 37: 95266–95290. Welbl, J.; Liu, N. F.; and Gardner, M. 2017. Crowdsourcing multiple choice science questions. In Proceedings of the 3rd Workshop on Noisy User-generated Text , 94–106. Wu, Q.; Ke, Z.; Zhou, Y.; Sun, X.; and Ji, R. 2025. Routing Experts: Learning to Route Dynamic Experts in Existing Multi-modal Large Language Models. In The Thirteenth International Conference on Learning Representations .Wu, Z.; Nagarajan, T.; Kumar, A.; Rennie, S.; Davis, L. S.; Grauman, K.; and Feris, R. 2018. BlockDrop: Dynamic In-ference Paths in Residual Networks. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recogni-tion , 8817–8826. Xin, J.; Tang, R.; Lee, J.; Yu, Y.; and Lin, J. 2020. DeeBERT: Dynamic Early Exiting for Accelerating BERT Inference. In Jurafsky, D.; Chai, J.; Schluter, N.; and Tetreault, J., eds., 
+
+Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , 2246–2251. Online: Associ-ation for Computational Linguistics. Yang, L.; Lee, K.; Nowak, R.; and Papailiopoulos, D. 2024. Looped transformers are better at learning learning algo-rithms. In International conference on learning representa-tions , volume 2024, 42195–42214. Zhao, A.; Ye, F.; Fan, Y.; Tong, J.; Xiong, J.; Fei, Z.; Su, H.; and Shen, X. 2025. SkipGPT: Each Token is One of a Kind. In International Conference on Machine Learning ,77844–77863. Zhou, W.; Xu, C.; Ge, T.; McAuley, J.; Xu, K.; and Wei, F. 2020. Bert loses patience: Fast and robust inference with early exit. Advances in Neural Information Processing Sys-tems , 33: 18330–18341. Zhu, R.-J.; Wang, Z.; Hua, K.; Zhang, T.; Li, Z.; Que, H.; Wei, B.; Wen, Z.; Yin, F.; Xing, H.; et al. 2025. Scaling Latent Reasoning via Looped Language Models. arXiv preprint arXiv:2510.25741 .
+
+A Additional Experimental Results on Llama 
+
+We additionally evaluate MACRO on meta-llama/Llama-3.2-3B-Instruct. For this model we report the standard forward-pass baseline and MACRO across all benchmarks in Ta-ble A.1. The results follow the same protocol and rank-based color scheme as the main results table. Consistent with the other models, MACRO matches or improves over the base-line on every benchmark; pooling the per-dataset, per-seed accuracy differences, the mean improvement is ¯d = +0 .35 
+
+points (95% bootstrap CI [0 .03 , 0.79] ; one-sided Wilcoxon signed-rank p = 3 .3 × 10 −2). 
+
+B Best Discovered Routes 
+
+Tables B.1 through B.3 list, for every model and bench-mark, the chosen route. Routes built only from local moves dominate on the larger models, while the small and distilled models more often select routes that also contain an add operation. 
+
+Route notation Each Best route entry is read left to right as the sequence of transformer layers applied to the running hidden state. Li applies layer i as a plain (identity) step, and Li-L j abbreviates the consecutive run Li Li+1 · · · Lj;a segment whose start index drops below the preceding layer marks a backward revisit or repeat. A parenthesized suffix denotes an add-and-apply step: Lℓ(+h-b) forms ht +γ h t−b
+
+from the hidden state b produced-states back and then applies layer ℓ, with the default coefficient γ = 1 .0 left implicit; the subtract variant carries an explicit sign and coefficient, e.g. 
+
+L2(-0.25h-1) applies ht − 0.25 ht−1. RJ is Rejoin: it terminates the learned prefix and appends the remaining stan-dard forward layers up to the last layer, so every route ends in RJ . Rows marked standard forward pass indicate that the raw candidate is semantically equivalent to the unmodified baseline route after Rejoin expansion, e.g. L0 RJ or L0-L2 RJ . The Layers column reports the layer-application count (KV-cache depth) of the baseline and of the listed route as 
+
+baseline →route , and ∆ is the listed MACRO test ac-curacy minus the baseline. 
+
+Representative non-standard routes for the one-model-one-route experiment Table B.4 reports, for each of the Qwen3-1.7B and Qwen3-4B models, accuracy averaged over 3 seeds of the single shared policy trained over the combined pool of in-domain benchmarks, evaluated on test splits of both in-domain and out-of-domain benchmarks. The layer range and route printed below the table are from one repre-sentative seed, given as an illustrative example of the kind of routing the policy discovers. 
+
+Selected Route Composition Table B.5 summarizes which nonstandard actions appear in the final top-1 routes selected by MACRO and which Viterbi rank is ultimately chosen after validation. Move actions are common across model families, while Add appears more selectively; every valid route eventually uses Rejoin, so it is omitted from the table.                                                                                     
+
+> Model Add (%) Move (%) Both (%) Len. ∆(%) Mean Rank
+> Qwen3-1.7B 54.3 65.7 25.7 +9 .51.81 Qwen3-4B 15.4 65.4 7.7 +1 .92.23 Qwen3-8B 7.7 65.4 3.8 +2 .32.64 Qwen3-14B (4-bit) 26.9 69.2 19.2 +4 .42.46 Llama-3.2-3B 0.0 38.9 0.0 +3 .61.72 Mixtral-8x7B (4-bit) 45.5 68.2 31.8 +7 .92.62 DeepSeek-R1-8B 31.2 50.0 21.9 +10 .72.05 Method GSM8K MATH500 MedQA OpenBookQA SciQ MMLU-Pro SVAMP ASDiv MAWPS GSM8K-Hard GSM8K-Plus MS-Arith Obj-Count Avg. Model: meta-llama/Llama-3.2-3B-Instruct
+> Baseline 75.26 42.33 57.84 77.53 88.03 33.21 83.83 96.12 63.97 26.33 58.07 97.41 56.33 65.87
+> MACRO 75.26 ±0.00 42.33 ±0.00 57.84 ±0.00 77.53 ±0.31 88.40 ±0.35 33.21 ±0.00 83.83 ±0.00 96.12 ±0.00 63.97 ±0.00 26.33 ±0.00 58.07 ±0.00 97.41 ±0.00 60.33 ±2.31 66.20
+
+Table A.1: Additional results on meta-llama/Llama-3.2-3B-Instruct. 
+
+Benchmark Baseline MACRO ∆ Layers Best route Model: Qwen3-1.7B 
+
+GSM8K 43.44 69.52 +26.08 28 →33 L0-L7 L3-L9 RJ 
+
+MATH500 38.00 38.00 +0.00 28 standard forward pass 
+
+MedQA 40.53 41.32 +0.79 28 →29 L0-L7 L7 RJ 
+
+OpenBookQA 68.60 75.00 +6.40 28 →37 L0-L7 L8(+h-5) L9-L14 L9-L15 L13-L20 RJ 
+
+SciQ 92.60 93.30 +0.70 28 →34 L0-L15 L10 L11 RJ 
+
+MMLU-Pro 23.62 28.25 +4.62 28 →31 L0-L7 L5-L27 RJ 
+
+SVAMP 72.67 86.33 +13.67 28 →33 L0-L8 L4 L5(+h-6) L6-L11 RJ 
+
+ASDiv 90.25 96.86 +6.60 28 →28 L0-L7 L8(+h-1) L9-L27 RJ 
+
+MAWPS 57.88 66.35 +8.46 28 →33 L0-L4 L5(+h-4) L6 L7 L3(+h-4) L4-L11 RJ 
+
+GSM8K-Hard 18.81 34.80 +15.99 28 →32 L0-L2 L4-L7 L3-L9 RJ 
+
+GSM8K-Plus 29.20 53.60 +24.40 28 →33 L0-L5 L1-L9 RJ 
+
+MS-Arith 26.00 91.00 +65.00 28 →30 L0-L2 L4 L3-L7 L7 RJ 
+
+Obj-Count 61.00 75.00 +14.00 28 →34 L0-L7 L7-L25 L24 L25 L24-L26 L26 L27 RJ 
+
+Model: Qwen3-4B 
+
+GSM8K 74.83 81.35 +6.52 36 →38 L0 L0-L5 L5 RJ 
+
+MATH500 38.00 38.00 +0.00 36 standard forward pass 
+
+MedQA 62.77 62.77 +0.00 36 standard forward pass 
+
+OpenBookQA 90.80 90.80 +0.00 36 standard forward pass 
+
+SciQ 95.90 95.90 +0.00 36 standard forward pass 
+
+MMLU-Pro 44.00 47.12 +3.12 36 →38 L0 L1 L0 RJ 
+
+SVAMP 88.00 90.67 +2.67 36 →37 L0-L5 L5-L35 RJ 
+
+ASDiv 99.37 99.37 +0.00 36 standard forward pass 
+
+MAWPS 72.12 77.88 +5.77 36 →35 L0-L7 L9(+h-3) L11(+h-6) L12-L20 L20-L35 RJ 
+
+GSM8K-Hard 31.66 40.13 +8.46 36 →37 L0-L5 L5-L35 RJ 
+
+GSM8K-Plus 58.50 64.10 +5.60 36 →37 L0-L5 L5-L35 RJ 
+
+MS-Arith 100.00 100.00 +0.00 36 standard forward pass 
+
+Obj-Count 93.00 93.00 +0.00 36 standard forward pass 
+
+Model: Qwen3-8B 
+
+GSM8K 75.51 80.74 +5.23 36 →38 L0 L0-L5 L5 RJ 
+
+MATH500 42.00 42.00 +0.00 36 standard forward pass 
+
+MedQA 68.50 68.50 +0.00 36 standard forward pass 
+
+OpenBookQA 94.20 95.20 +1.00 36 →38 L0-L2 L1 RJ 
+
+SciQ 96.00 96.50 +0.50 36 →35 L0-L22 L24-L35 RJ 
+
+MMLU-Pro 51.00 51.00 +0.00 36 standard forward pass 
+
+SVAMP 89.33 89.33 +0.00 36 standard forward pass (L0-L35 RJ )ASDiv 100.00 100.00 +0.00 36 standard forward pass 
+
+MAWPS 74.04 77.12 +3.08 36 →37 L0 L1 L0-L10 L12-L14 RJ 
+
+GSM8K-Hard 37.62 40.75 +3.13 36 →37 L0-L2 L2-L24 RJ 
+
+GSM8K-Plus 59.10 61.80 +2.70 36 →38 L0 L1 L0 RJ 
+
+MS-Arith 98.89 99.44 +0.56 36 →36 L0-L7 L9 L9-L35 RJ 
+
+Obj-Count 98.00 98.00 +0.00 36 standard forward pass 
+
+Table B.1: Best route found by MACRO for each model and benchmark. Benchmark Baseline MACRO ∆ Layers Best route Model: Qwen3-14B (4-bit) 
+
+GSM8K 83.78 87.11 +3.34 40 →46 L0-L6 L1(+h-5) L2 L3 RJ 
+
+MATH500 41.00 47.00 +6.00 40 →44 L0-L2 L4 L5 L1-L9 RJ 
+
+MedQA 73.53 73.53 +0.00 40 standard forward pass (L0-L39 RJ )OpenBookQA 95.80 96.60 +0.80 40 →41 L0-L2 L2-L24 RJ 
+
+SciQ 97.20 97.20 +0.00 40 standard forward pass 
+
+MMLU-Pro 56.62 56.62 +0.00 40 standard forward pass 
+
+SVAMP 92.00 92.33 +0.33 40 →40 L0-L2 L2 L3(+h-2) L4-L7 L9-L39 RJ 
+
+ASDiv 99.06 99.69 +0.63 40 →42 L0 L1 L0 L1 RJ 
+
+MAWPS 74.62 76.54 +1.92 40 →45 L0-L5 L1-L4 RJ 
+
+GSM8K-Hard 41.38 43.26 +1.88 40 →42 L0-L14 L13(+h-6) L14-L39 RJ 
+
+GSM8K-Plus 63.60 67.10 +3.50 40 →44 L0-L4 L1 L2(+h-5) L3 RJ 
+
+MS-Arith 100.00 100.00 +0.00 40 standard forward pass 
+
+Obj-Count 100.00 100.00 +0.00 40 standard forward pass 
+
+Model: Mixtral-8x7B (4-bit) 
+
+GSM8K 67.85 68.54 +0.68 32 →33 L0-L7 L7-L31 RJ 
+
+MATH500 23.00 27.00 +4.00 32 →37 L0-L9 L5-L9 RJ 
+
+MedQA 55.62 57.19 +1.57 32 →38 L0-L15 L10-L13 RJ 
+
+OpenBookQA 76.00 80.20 +4.20 32 →43 L0-L15 L10-L13 L15 L16 L13-L22 L21-L31 RJ 
+
+SciQ 90.00 90.90 +0.90 32 →38 L0-L15 L10 L11 RJ 
+
+MMLU-Pro 24.12 25.62 +1.50 32 →33 L0-L6 L6(+h-5) L7-L31 RJ 
+
+SVAMP 78.67 78.67 +0.00 32 standard forward pass 
+
+ASDiv 91.82 95.91 +4.09 32 →34 L0-L30 L29(+h-1) L30 L31 RJ 
+
+MAWPS 65.19 67.31 +2.12 32 →36 L0-L7 L3(+h-4) L5(+h-6) L6-L11 RJ 
+
+GSM8K-Hard 33.54 33.54 +0.00 32 standard forward pass (L0-L31 RJ )GSM8K-Plus 50.10 50.10 +0.00 32 standard forward pass (L0-L31 RJ )MS-Arith 95.00 95.56 +0.56 32 →36 L0-L4 L6 L7 L8(+h-1) L9 L5-L9 RJ 
+
+Obj-Count 65.00 65.00 +0.00 32 standard forward pass (L0-L31 RJ )
+
+Model: DeepSeek-R1-Distill-Llama-8B 
+
+GSM8K 20.17 36.54 +16.38 32 →41 L0-L15 L10-L13 L15 L16 L13-L31 RJ 
+
+MATH500 32.00 37.00 +5.00 32 →32 L0-L3 L4(+h-1) L5-L23 RJ 
+
+MedQA 48.94 48.94 +0.00 32 standard forward pass 
+
+OpenBookQA 80.20 81.60 +1.40 32 →31 L0-L18 L20-L31 RJ 
+
+SciQ 91.00 91.00 +0.00 32 standard forward pass 
+
+MMLU-Pro 33.62 33.62 +0.00 32 standard forward pass 
+
+SVAMP 36.33 60.00 +23.67 32 →39 L0-L5 L5 L6 L1(+h-5) L2 L3 RJ 
+
+ASDiv 46.23 86.79 +40.57 32 →43 L0-L5 L5 L6 L1(+h-5) L2-L16 L13-L31 RJ 
+
+MAWPS 35.38 58.46 +23.08 32 →36 L0-L5 L5 L6 L4(+h-1) L5-L11 RJ 
+
+GSM8K-Hard 20.69 21.63 +0.94 32 →34 L0-L7 L6(+h-5) L7-L18 L19(+h-3) L20-L31 RJ 
+
+GSM8K-Plus 46.00 46.00 +0.00 32 standard forward pass (L0-L31 RJ )MS-Arith 36.67 86.67 +50.00 32 →42 L0-L15 L11-L13 L9-L20 RJ 
+
+Obj-Count 34.00 70.00 +36.00 32 →33 L0-L18 L18-L22 L24(+h-6) L25-L27 L27-L31 RJ 
+
+Table B.2: Best route found by MACRO for each model and benchmark Benchmark Baseline MACRO ∆ Layers Best route Model: Llama-3.2-3B-Instruct 
+
+GSM8K 75.36 76.04 +0.68 28 →28 L0 L1 L2(-0.25h-1) RJ 
+
+MATH500 44.00 44.00 +0.00 28 standard forward pass (L0-L2 RJ )MedQA 57.42 57.42 +0.00 28 standard forward pass (L0 RJ )OpenBookQA 77.00 77.00 +0.00 28 standard forward pass (L0 RJ )SciQ 89.40 89.40 +0.00 28 standard forward pass 
+
+MMLU-Pro 33.25 33.25 +0.00 28 standard forward pass (L0 RJ )SVAMP 84.33 84.33 +0.00 28 standard forward pass 
+
+ASDiv 96.23 96.23 +0.00 28 standard forward pass 
+
+MAWPS 64.23 64.23 +0.00 28 standard forward pass 
+
+GSM8K-Hard 26.65 26.65 +0.00 28 standard forward pass 
+
+GSM8K-Plus 58.30 58.30 +0.00 28 standard forward pass 
+
+MS-Arith 97.78 97.78 +0.00 28 standard forward pass 
+
+Obj-Count 57.00 63.00 +6.00 28 →31 L0-L7 L5-L27 RJ 
+
+Table B.3: Best route found by MACRO for each model and benchmark. 
+
+Qwen3-1.7B Qwen3-4B Benchmark Base. MACRO ∆ Base. MACRO ∆
+
+In-Domain 
+
+MAWPS 58.46 62.95 ±3.95 +4.49 71.73 72.24 ±0.48 +0.51 ASDiv 91.51 94.03 ±1.78 +2.52 99.06 99.16 ±0.15 +0.10 SVAMP 74.00 81.44 ±5.27 +7.44 88.33 89.33 ±0.98 +1.00 MultiArith 95.00 96.85 ±1.31 +1.85 99.44 99.81 ±0.26 +0.37 Obj-Count 54.00 58.67 ±3.30 +4.67 90.00 90.67 ±1.70 +0.67 MATH500 38.00 36.33 ±3.09 -1.67 34.00 36.00 ±3.56 +2.00 OpenBookQA 67.60 72.73 ±4.72 +5.13 91.80 90.20 ±1.18 -1.60 SciQ 93.40 91.30 ±2.24 -2.10 95.80 95.13 ±0.53 -0.67 
+
+Overall 71.50 74.29 ±2.07 +2.79 83.77 84.07 ±0.74 +0.30 Out-of-Domain 
+
+GSM8K 43.75 60.85 ±12.18 +17.11 81.80 80.92 ±1.64 -0.88 GSM-Hard 17.24 26.23 ±6.85 +8.99 33.23 39.39 ±4.51 +6.17 GSM-Plus 31.10 45.10 ±10.01 +14.00 57.00 61.70 ±3.32 +4.70 MMLU-Pro 23.75 27.42 ±2.66 +3.67 45.50 45.38 ±0.27 -0.13 MedQA 39.04 40.38 ±3.19 +1.34 62.92 58.65 ±3.05 -4.27 
+
+Overall 30.98 40.00 ±6.39 +9.02 56.09 57.21 ±0.82 +1.12 
+
+Model Layers Best route Qwen3-1.7B: 28 →34 L0-L4 L5(+h-4) L6-L15 L10-L11 RJ 
+
+Qwen3-4B: 36 →37 L0-L5 L5 L6 RJ 
+
+Table B.4: Performance of MACRO evaluated across all in-domain and out-of-domain benchmarks for each model. Reported accuracies are averaged over 3 seeds; the layer range and route shown below the table are from one representative seed, given as an illustrative example. Table B.5: Frequency with which selected top-1 routes con-tain each action at least once, together with relative route-length change and the average raw Viterbi rank selected af-ter validation among the final top-5 candidates (rank 1 be-ing the most probable). “Both” denotes routes that contain at least one Add and at least one Move. Length change is 
+
+100( Lours − Lbase )/L base , where L is the number of exe-cuted layer applications. 
+
+C Experimental Details 
+
+Connection to CEM. Our search procedure can be viewed as a structured variant of the Cross-Entropy Method. The sampling distribution is a masked Markov policy over rout-ing programs. Each iteration samples candidate programs, evaluates them on training data, forms an elite or soft-elite distribution using accuracy-based weights, and updates the Markov transition table by weighted maximum likeli-hood. Thus, the update minimizes cross-entropy between the learned policy family and the empirical distribution in-duced by high-performing sampled routes, while feasibility masks and smoothing adapt CEM to the constrained routing-program space. 
+
+Splits and Decoding For each model, benchmark, and ran-dom seed, we learn a separate task-level route policy while keeping all pretrained model weights frozen. Each run re-quests 1,000 training examples and a held-out validation split for route selection (100 examples in the standard runs and 200 examples in the baseline-anchored 4-bit/non-Qwen runs; smaller benchmark train pools are split proportionally by the loader). The final test score is computed after route selec-tion using the available test split or held-out remainder, with no test subsampling unless explicitly configured. We report means and standard deviations over completed seeds from 
+
+{1, 2, 42 }. Generation is deterministic greedy decoding with temperature 0, top-p = 1 .0, top-k = 0 , at most 400 thinking tokens, and at most 128 answer tokens. 
+
+MACRO Hyperparameters The main experiments use 10 search iterations with 30 candidate programs per iteration. Training examples are partitioned into iteration chunks; each iteration also replays one tenth (λrep = 0 .1) of each previ-ous chunk. The Markov state uses three budget-phase bins, incoming layer-delta context, and operator context, but not the previous-layer context. The local move radius is r = 5 .The program action space contains identity layer moves, add-and-apply actions, and Rejoin; subtraction and bare merge actions are disabled in the main MACRO runs. Add actions draw from a history window of six previous hidden states and use coefficient γ = 1 .0. The initial policy sets εloc = 0 .2
+
+for local layer moves and Rejoin, and εop = 0 .0867 for add-and-apply actions. The transition update uses smooth-ing α = 0 .0397 , softmax sharpness β = 1 .8262 , and an elite set of the top five candidates per iteration. Route sam-pling temperature is 1.0. Search stops early when all sampled programs become semantically identical after expanding Re-join; otherwise it stops at the 10-iteration cap. 
+
+Final Selection and Baselines After the final Markov up-date, we decode five final candidates with top-k Viterbi,         
+
+> Model group Max route len. Final set
+> Qwen3-1.7B, Qwen3-4B, Qwen3-8B, Llama-3.2-3B 40 top-5 Viterbi Qwen3-14B (4-bit) 52 baseline + 4 Viterbi neighbors Mixtral-8x7B (4-bit), DeepSeek-R1-8B 44 baseline + 4 Viterbi neighbors
+
+Table C.1: Model-specific route-length caps and final can-didate construction. Viterbi decoding returns the highest-probability raw programs under the masked Markov policy. For final evaluation we deduplicate programs that execute the same route after expanding Rejoin; in baseline-anchored runs, the standard route is inserted as the selection floor and the remaining candidates are the highest-probability nonstan-dard neighbors. evaluate them on the validation split, and select by valida-tion accuracy, breaking ties by training accuracy and then shorter route length. The reported test score is the selected route’s held-out test accuracy. The Dr.LLM baseline trains one lightweight router per benchmark from MCTS-generated route labels. For Dr.LLM+Ext., we keep the Dr.LLM train-ing procedure but replace its action space with the extended MACRO program action space. The Program-Dr.LLM runs use 100 MCTS-labeled training examples, 10 MCTS simu-lations per example, exploration constant 1.8, length penalty 3.0, router hidden dimension 128, eight windows, 15 epochs, AdamW learning rate 10 −3, weight decay 0.01, gradient ac-cumulation 16, and focal-loss γ = 2 .0.
+
+Exactness of top-k decoding The five final candidates are the exact k highest-probability programs under the learned policy, not a beam or sampling approximation. Exactness is not automatic here: because the state conditions on the in-coming layer-delta (the signed gap to the previously applied layer) and on the operator context, the policy is not Markov in the current layer alone, so a decoder that merged all paths reaching a given layer and budget phase would be approx-imate. We instead run the top-k dynamic program over the augmented state: current layer, budget phase, incoming delta, and operator context, keying on the previously applied layer (which fixes the incoming delta exactly) alongside the cur-rent layer, length, and operator context, so partial paths with differing continuations are never merged. The augmentation is lossless and cheap: the incoming delta is a one-step fea-ture bounded by the local radius r, so it enlarges the state space by at most a factor 2r + 1 and needs no longer-range history, and since program length grows by one at every step the reachable set is a finite DAG on which retaining the k
+
+best continuations per state yields the exact global top-k. Af-ter decoding we deduplicate programs that execute the same route once Rejoin is expanded, keeping the most probable representative of each route. 
+
+D Inference-Time Cost 
+
+Because MACRO routes revisit, repeat, or occasionally drop layers, the executed route changes the per-token cost of de-coding relative to the standard forward pass. Figure D.1 pro-files this on Qwen3-1.7B, comparing the standard route with the MACRO route on decoding latency and peak GPU mem-ory. The overhead is modest and uneven: it is largest where the selected route is longest, negligible where the route stays close to baseline length, and occasionally negative, faster and lighter, when the route is shorter than the standard pass. Since these are the routes that deliver the accuracy gains of Table B.1, MACRO trades a small, route-dependent compute premium for higher accuracy at fixed model weights. 
+
+Use of LLM Assistance 
+
+Large language models were used only as auxiliary aids for editing, grammar, presentation, and implementation-code support. The authors made all substantive technical contri-butions, experimental design decisions, analyses, interpreta-tions, and final research judgments. GSM8K MATH500 MedQA OpenBookQA SciQ MMLU-Pro SVAMP ASDiv MAWPS GSM8K-Hard GSM8K-Plus MS-Arith Obj-Count 
+
+> Average
+> 0200 400 600 800 1000
+> Latency  (ms / item)
+> GSM8K MATH500 MedQA OpenBookQA SciQ MMLU-Pro SVAMP ASDiv MAWPS GSM8K-Hard GSM8K-Plus MS-Arith Obj-Count
+> Average
+> 036912
+> Peak GPU memory  (GB)
+
+Inference cost: standard vs. MACRO route   
+
+> Qwen3-1.7B ·mean overhead +16% latency, +4.6% peak memory across 13 benchmarks
+
+Standard route MACRO route Figure D.1: Per-item decoding latency (top) and peak GPU memory (bottom) of the standard forward pass (gray) versus the MACRO route (blue) on Qwen3-1.7B, under the same two-stage 400/128-token generation budget with batched greedy decoding on a single A40 over 64 test items per benchmark. The percentage above each pair is the route’s overhead relative to the standard route; the rightmost group averages over all thirteen benchmarks ( +16 .1% latency, +4 .6% /335 MB memory). Peak memory is the maximum allocated during generation, not compute utilization.
