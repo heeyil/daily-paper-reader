@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-11</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-12</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 24 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 25 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>11</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-11 22:00:59 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-12 22:04:51 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日更新24篇论文，精读10篇、速读14篇，聚焦智能体自进化与分层架构。</p>
-<p>最值得精读的是《Hierarchical Self-Improvement》与《A/B Agent》，分别关注任务特定可进化框架和工业A/B测试策略迭代。</p>
-<p>下一步可延伸关注速读中的《InsightEmb》与《Hierarchical Graph Memory》，探索自进化与记忆/检索的协同。</p>
+<p>今日聚焦LLM智能体研究，共读25篇论文，其中精读11篇、速读14篇。最值得关注的是两项9.0分精读：Agent技能实际效用评估，以及基于置信门控的贝尔曼信用分配方法。建议优先精读这两篇，把握智能体训练与评估的前沿方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Hierarchical Self-Improvement: A Framework for Task-Specific Evolvable Agent Harnesses">Hierarchical Self-Improvement: A Framework for Task-Specific Evolvable Agent Harnesses</span></li><li><span class="dpr-home-dashboard-paper-title" title="A/B Agent: A Self-Evolving Agent for Strategy Iteration in Industrial A/B Testing">A/B Agent: A Self-Evolving Agent for Strategy Iteration in Industrial A/B Testing</span></li><li><span class="dpr-home-dashboard-paper-title" title="State2State: Environment-Derived Mid-Training for LLM Agents">State2State: Environment-Derived Mid-Training for LLM Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Skill-Use: Can LLMs Actually Use Skills in Agentic Harnesses?">Skill-Use: Can LLMs Actually Use Skills in Agentic Harnesses?</span></li><li><span class="dpr-home-dashboard-paper-title" title="Gated-BEPO: Confidence-Gated Bellman Credit Assignment for Large Language Model Agents">Gated-BEPO: Confidence-Gated Bellman Credit Assignment for Large Language Model Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Long-Horizon Agent Trajectory Attribution: A Unified Benchmark and Fine-Grained Annotation Framework">Long-Horizon Agent Trajectory Attribution: A Unified Benchmark and Fine-Grained Annotation Framework</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>10</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -89,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="InsightEmb: Learning Action-Intent Embeddings for Agentic Insight Retrieval">InsightEmb: Learning Action-Intent Embeddings for Agentic Insight Retrieval</span></li><li><span class="dpr-home-dashboard-paper-title" title="A-SR: Self-Evolving Agentic LLMs for Symbolic Regression via Hierarchical Coordination">A-SR: Self-Evolving Agentic LLMs for Symbolic Regression via Hierarchical Coordination</span></li><li><span class="dpr-home-dashboard-paper-title" title="Hierarchical Graph Memory for LLM Agents with Path-level Localization and Rewrite">Hierarchical Graph Memory for LLM Agents with Path-level Localization and Rewrite</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="AgentChaos: Chaos Engineering for Agent Systems via Programmatic Fault Injection">AgentChaos: Chaos Engineering for Agent Systems via Programmatic Fault Injection</span></li><li><span class="dpr-home-dashboard-paper-title" title="$A^2E$ : An End-to-End Agent Auditing Engine">$A^2E$ : An End-to-End Agent Auditing Engine</span></li><li><span class="dpr-home-dashboard-paper-title" title="Towards Researcher Agents for Knowledge-Graph Question Answering">Towards Researcher Agents for Knowledge-Graph Question Answering</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>13</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>13</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span></div>
 </section>
 </div>
 
