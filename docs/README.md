@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-12</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-13</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 25 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-12 22:04:51 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-13 21:32:18 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日聚焦LLM智能体研究，共读25篇论文，其中精读11篇、速读14篇。最值得关注的是两项9.0分精读：Agent技能实际效用评估，以及基于置信门控的贝尔曼信用分配方法。建议优先精读这两篇，把握智能体训练与评估的前沿方向。</p>
+<p>今日共读23篇论文，精读2篇、速读14篇，重点聚焦智能体记忆与系统进化。</p>
+<p>最值得关注的是《MESA》提出的长时记忆多结构证据选择，以及《Co-Evolution》探讨的智能体自定向进化，两者均获9.0高分。</p>
+<p>下一步建议优先深入这两篇精读论文，并留意多智能体角色分工与行为科学自动化等速读方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Skill-Use: Can LLMs Actually Use Skills in Agentic Harnesses?">Skill-Use: Can LLMs Actually Use Skills in Agentic Harnesses?</span></li><li><span class="dpr-home-dashboard-paper-title" title="Gated-BEPO: Confidence-Gated Bellman Credit Assignment for Large Language Model Agents">Gated-BEPO: Confidence-Gated Bellman Credit Assignment for Large Language Model Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Long-Horizon Agent Trajectory Attribution: A Unified Benchmark and Fine-Grained Annotation Framework">Long-Horizon Agent Trajectory Attribution: A Unified Benchmark and Fine-Grained Annotation Framework</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MESA:Task-Adaptive Multi-Structure Evidence Selection for Long-Horizon Agent Memory">MESA:Task-Adaptive Multi-Structure Evidence Selection for Long-Horizon Agent Memory</span></li><li><span class="dpr-home-dashboard-paper-title" title="Co-Evolution in Agentic Systems: Toward Self-Directed Evolution Beyond Human Design">Co-Evolution in Agentic Systems: Toward Self-Directed Evolution Beyond Human Design</span></li><li><span class="dpr-home-dashboard-paper-title" title="Self-Evolving Embodied Agents via Skill-Harness Evolution">Self-Evolving Embodied Agents via Skill-Harness Evolution</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>10</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>8</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +89,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="AgentChaos: Chaos Engineering for Agent Systems via Programmatic Fault Injection">AgentChaos: Chaos Engineering for Agent Systems via Programmatic Fault Injection</span></li><li><span class="dpr-home-dashboard-paper-title" title="$A^2E$ : An End-to-End Agent Auditing Engine">$A^2E$ : An End-to-End Agent Auditing Engine</span></li><li><span class="dpr-home-dashboard-paper-title" title="Towards Researcher Agents for Knowledge-Graph Question Answering">Towards Researcher Agents for Knowledge-Graph Question Answering</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Automating and Scaling Behavioral Scientific Research on AI Agents">Automating and Scaling Behavioral Scientific Research on AI Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="ExRole: From Team Trajectories to Executable Roles in Multi-Agent Language Models">ExRole: From Team Trajectories to Executable Roles in Multi-Agent Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Search-Aided Joint Agent-Environment Reinforcement Learning for Robust Lifelong Multi-Agent Path Finding with Rotations">Search-Aided Joint Agent-Environment Reinforcement Learning for Robust Lifelong Multi-Agent Path Finding with Rotations</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>13</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>13</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 </div>
 

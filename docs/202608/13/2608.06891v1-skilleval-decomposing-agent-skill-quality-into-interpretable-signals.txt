@@ -1,0 +1,770 @@
+Title: SkillEval: Decomposing Agent Skill Quality into Interpretable Signals
+
+URL Source: https://arxiv.org/pdf/2608.06891v1
+
+Published Time: Mon, 10 Aug 2026 00:34:30 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# SkillEval: Decomposing Agent Skill Quality into Interpretable Signals 
+
+Jiahui Han 1,2,* , Qinuo Li 2,5,* , Ziheng Peng 2,4,* , Haotian Wu 3, Haoze Liu 2,Danfeng Shan 1, Guanchu Wang 2, Huiqi Deng 1,2, †, Ninghao Liu 3, †
+
+> 1
+
+Xi’an Jiaotong University 
+
+> 2
+
+Shanghai AI Laboratory 
+
+> 3
+
+The Hong Kong Polytechnic University 
+
+> 4
+
+Renmin University of China 
+
+> 5
+
+Harbin Institute of Technology 
+
+Abstract 
+
+Agent skills provide reusable procedural knowledge that helps agents solve specialized tasks. As their use expands, evaluating skill quality becomes increasingly important. Existing evalu-ations often measure skill quality by testing whether a skill improves performance on specific downstream tasks. How-ever, a reusable skill may apply to multiple task scenarios. Downstream evaluation mainly reflects the compatibility be-tween a skill and the evaluated task, provides only a partial view of skill quality, and does not identify which aspect of the skill should be improved. We find that general properties of the SKILL.md document play an important role in skill quality. To evaluate these properties, we propose SkillEval ,an interpretable framework for document-level skill evalua-tion. SkillEval evaluates each property using a fixed and in-spectable scoring direction, producing interpretable scores. It further measures and reduces the influence of unrelated doc-ument features, such as length and formatting, so that each score captures its intended semantic property more specifi-cally. Specifically, SkillEval learns an interpretable direction for each quality property from controlled positive–negative skill pairs in the hidden representation space of the model, and scores a new skill by projecting its representation onto these fixed directions. We use SkillEval to evaluate skills in controlled quality tests and show that SkillEval reliably dis-tinguishes skills of different quality. In addition, SkillEval scores closely reflect downstream task performance, provid-ing an early indication of whether a skill is likely to help an agent complete a task. We further explore SkillEval for diag-nosing weaknesses in skill documents and guiding targeted revisions. The revised skills improve the targeted properties and achieve higher pass rates on downstream tasks. 
+
+Introduction 
+
+Agent skills increasingly serve as reusable procedural doc-uments that provide agents with task-specific knowledge, tool-use guidance, and procedural workflows at inference time (Jiang et al. 2026; Ling, Zhong, and Huang 2026). A skill packages the recurring procedure for a class of tasks into a form that can be stored, retrieved, and reused with-out retraining the underlying model (Agent Skills n.d.). This makes skills a practical mechanism for accumulating experi-ence in modern agent systems (Liang et al. 2026b; Lei et al. 2026). As agents are deployed in increasingly specialized  
+
+> *
+
+Equal contribution. † Corresponding authors. 
+
+tasks, skills are becoming a common way to extend agents beyond their base capabilities (Jiang et al. 2026; Ling, Zhong, and Huang 2026; Li et al. 2026b). As skills are increasingly used, the evaluation of skill qual-ity becomes increasingly important. The quality of a skill di-rectly affects how well an agent can understand the task and complete the required workflow. Recent work has studied the evaluation of skills through the outcomes of downstream tasks, such as task pass rates, or through analyses of agent ex-ecution trajectories (Li et al. 2026b; Han et al. 2026; Zhong et al. 2026). However, existing evaluations still test skills in specific downstream task environments. This makes the ob-served performance highly dependent on the compatibility between a skill and the evaluated task (Liu et al. 2026). In addition, the pass rate alone cannot identify which aspect of a skill causes poor performance or how the skill should be improved. For a reusable skill, quality is not determined only by its performance on one task, but also by its ability to support different task scenarios consistently. Therefore, single-task downstream performance provides a useful but partial view of skill quality. We find that the general properties of a SKILL.md doc-ument also play an important role in determining quality of skills. To evaluate these document-level properties, we propose SkillEval, an interpretable framework that evaluates the skill document. SkillEval decomposes skill quality into four complementary dimensions: applicability, content qual-ity, execution guidance, and robustness, as illustrated in Ta-ble 1. These dimensions examine when a skill should be used, whether its content is clear and specific, how it guides execu-tion, and how it handles failures and edge cases. In addition, for each learned metric, SkillEval derives an explicit direc-tion from controlled positive–negative skill pairs and scores a document by projecting its representation onto that direc-tion. This fixed scoring procedure makes individual quality signals inspectable and reproducible. It also enables poten-tial biases introduced by document length or formatting to be quantified and corrected by orthogonalizing the metric direc-tion against the corresponding bias direction in hidden space. We use SkillEval to evaluate skills and analyze their downstream utility on SkillsBench (Li et al. 2026b), leading to three key findings: (1) The learned metric directions consistently distinguish positive skills from negative skills across A2, B1, B2, C1, C2, and D1 on the arXiv:2608.06891v1 [cs.AI] 7 Aug 2026 Dimension Metric Name Definition Applicability A1 Format Validity Whether the skill is a Markdown file with valid YAML frontmatter and the required name and description fields.                
+
+> A2 Trigger Clarity Whether the description states what the skill does, when it should be used, and its main applicability conditions.
+> Content Quality B1 Content Consistency Whether the capabilities stated in the description are supported by the instructions and resources in the body.
+> B2 Technical Specificity Whether the skill provides concrete, executable details, including tools, commands, parameters, fields, units, constraints, and file paths.
+> Execution Guidance C1 Workflow Integrity Whether the skill specifies the required input, processing, and output stages.
+> C2 I/O Explicitness Whether the expected inputs and outputs, formats, fields, schemas, units, and constraints are explicitly defined.
+> Robustness D1 Failure Awareness Whether the skill covers common failures, boundary conditions, diagnostic signals, and recovery strategies.
+
+Table 1: Intrinsic skill-quality properties used in our evaluation framework. 
+
+validation set of 518 skills, including 259 positive and 259 negative examples. (2) The predictions of pass-rate uplift, defined as the difference between the pass rate with and without a skill, are strongly correlated with the observed uplift on SkillsBench (Li et al. 2026b), with Pearson 
+
+r ranging from 0.779 to 0.787. (3) SkillEval identifies weaknesses in skill documents and guides LLMs to address them. These targeted revisions improve the relevant metric scores and increase the mean downstream pass rate by 29.5 percentage points. These findings demonstrate that SkillEval provides interpretable evaluation signals that reflect both document-level quality and downstream skill utility. Our main contributions are as follows: 
+
+• We propose SkillEval , an interpretable framework that decomposes skill quality into four complementary dimen-sions. The framework evaluates each dimension through an auditable and reproducible scoring process, producing an interpretable quality profile for each skill. 
+
+• We show that SkillEval effectively distinguishes skills of different quality. In addition, pass-rate uplift predicted from its scores is strongly correlated with the uplift ob-served on downstream tasks, with Pearson r ranging from 
+
+0.779 to 0.787 . This correlation provides an early indica-tion of whether a skill is likely to help an agent complete a downstream task successfully. 
+
+• We explore SkillEval as a tool for diagnosing and improving skills. These metric-level scores identify specific weaknesses and guide targeted revisions of skill documents. Our experiments show that the revised skills improve the targeted properties and improve pass rates on downstream tasks. 
+
+Related Work 
+
+Agent skills package instructions, workflows, and resources for reuse (Liang et al. 2026a). Recent surveys organize this emerging field and discuss systematic evaluation (Jiang et al. 2026; Ding et al. 2026). We group prior work by its source of evaluation evidence. Task-based methods infer skill qual-ity from downstream execution, whereas intrinsic methods assess the skill document without executing a downstream task. They differ in cost, environment dependence, and the evidence they provide. 
+
+Task-Based Skill Evaluation 
+
+Task-based evaluation measures whether a skill improves an agent on downstream tasks. SkillsBench (Li et al. 2026b) compares matched runs with and without a curated skill. It uses containerized environments and deterministic verifiers across several domains (Li et al. 2026b). SWE-Skills-Bench uses a similar design for software engineering. It pairs public skills with pinned repositories and executable acceptance tests (Han et al. 2026). These benchmarks provide direct evidence of practical utility. Other work broadens the scope of task-based evaluation (Zhou et al. 2026; Ying et al. 2026). SkillLearnBench sep-arates skill-text quality, trajectory alignment, and final task outcomes (Zhong et al. 2026). Some work generate tasks and scoring rubrics from each skill (Shaposhnikov et al. 2026). AgentSkillOS evaluates skill retrieval and composition over large libraries, with pairwise LLM evaluation of task outputs (Li et al. 2026a). These systems cover more stages of skill use than a single success score (Zhu et al. 2026). Despite these differences, task-based methods require agent execution. They need task environments and outcome verification. Many also require tool access. Their results can also depend on the base model, agent harness, and resource budget (Li et al. 2026b; Xu et al. 2026). Task-level rewards may mix skill quality with agent capability (Ding et al. 2026). Therefore, this approach is costly for frequent screening. A failed run may also reflect the skill, model, tool, or agent setup. 
+
+Intrinsic Skill Quality Evaluation 
+
+Agent skills exhibit observable document-level properties, and these properties can affect how skills are discovered, se-lected, and governed in practice (Ling, Zhong, and Huang SKILL.md 
+
+Dimension Definition 
+
+# ... ... 
+
+positive skills negative skills 
+
+Total Tasks Total Skills 
+
+(a) Dataset Configuration (b) Methodology (c) Skill Quality Metrics 
+
+(d) Downstream Applications 
+
+> B1. Content Consistency B2. Technical Specificity C1. Workflow Integrity
+> C2. I/O Explicitness D1. Failure Awareness
+> Applic-ability Content Validity
+> Execution Support Failure Guidance
+> Can the skill be indexed, matched, and triggered? Does the skill give actionable steps and guidance? Does the skill warn about common mistakes or failure
+> Full Process
+> Does the task align and provide concrete details? Measures whether the skill provides clear conditions for accurate invocation. Measures alignment with the task goal and task-specific content. Measures concreteness of technical details. Measures the completeness of workflow steps. Measures explicitness of inputs, outputs, schemas, and constraints. Measures awareness of errors, anti-patterns, and actions to avoid.
+> Measures structural
+
+new skills Projection score      
+
+> Positive Correlation
+> A2 B1 B2 C1 C2 D1
+> Pearson
+> r > 0.7
+> Positive correlat ion
+> Metric-Guided Improvement
+> Original Skills
+> A2 B1 B2 C1 C2 D1
+> Target Revision
+> B&C
+> A2 B1 B2 C1 C2 D1
+> Revised Skills
+> Pass Rate
+
+87-tasks 1647-skills Figure 1: Overview of SkillEval. The figure shows (a) the dataset configuration, where 1,647 SKILL.md documents from 87 tasks are organized into four quality dimensions; (b) the methodology, where strong and weak skills are contrasted in a frozen LLM representation space to learn metric-specific scoring directions; (c) the skill quality metrics used to evaluate reusable skill documents; and (d) the downstream applications, where the learned scores are used for pass-rate correlation analysis and metric-guided skill revision. 2026; Saha, Faghih, and Feizi 2026). Existing work has begun to assess such intrinsic properties directly. Hong, Imani, and Ahmed (2026) treat SKILL.md as a software artifact, de-fine skill smells such as weak guidance, missing safeguards, and context bloat, and develop methods to detect them. Skil-lLearnBench evaluates skill-text quality alongside trajectory alignment and task outcomes, including text-level coverage, executability, and safety (Zhong et al. 2026). LLM judges are useful when explicit rules are hard to write. MT-Bench and G-Eval show that strong judges can align well with human judgments in dialogue and text evalu-ation (Zheng et al. 2023; Liu et al. 2023). However, their reli-ability depends on the evaluation setting. Candidate order can change pairwise judgments (Shi et al. 2025), and non-target information can affect decisions (Chen et al. 2024). Reliabil-ity also varies across models, tasks, and evaluated properties (Bavaresco et al. 2025). Code judges can change scores after surface edits that preserve program behavior (Moon et al. 2026). Therefore, repeated generative judgments may change with the judge or the presentation of the input. 
+
+Internal Representations for Evaluation 
+
+Prior work suggests that high-level concepts can be repre-sented as approximately linear directions in a model’s inter-nal representation space (Zou et al. 2023; Kim et al. 2018; Park, Choe, and Veitch 2023). Such directions can be ex-tracted from contrastive examples and used to analyze or in-fluence model behavior (Rimsky et al. 2024; Li et al. 2023). Recent studies further show that internal representations can serve as evaluation signals through learned probes or projec-tions onto interpretable semantic directions (Li et al. 2026c; Ma, Zhang, and Weng 2026). To our knowledge, however, prior work has not applied this paradigm to the fine-grained quality evaluation of agent skill documents. Motivated by this gap, we develop an interpretable framework for evaluating the intrinsic quality of agent skills. SkillEval learns one representation direction for each metric. At evaluation time, the directions remain fixed, and the framework produces dimension-level scores without querying a generative judge. 
+
+Proposed Methodology 
+
+We propose an interpretable framework for evaluating the general properties of skills across four complementary di-mensions: applicability, content quality, execution guidance, and robustness. As shown in Figure 1, these dimensions are represented by seven metrics, comprising one structural-format metric and six semantic metrics. Structural Format Validity (A1) is evaluated using deterministic rules. For each semantic metric, we construct positive–negative skill pairs that differ primarily in the target property. We encode the paired skills with a frozen language model and aggregate their representation differences to derive a metric-specific quality direction. At evaluation time, we project a new skill onto each quality direction and standardize the resulting scores using training-split statistics. Together with the structural check, these scores form an interpretable quality profile for each skill. 
+
+Metric Selection and Definitions 
+
+Agent skills support diverse tasks, domains, and tool envi-ronments (Jiang et al. 2026; Li et al. 2026b). Therefore, task-specific evaluation criteria may not apply uniformly across skills (Ding et al. 2026). We focus instead on intrinsic prop-erties that can be evaluated directly from the skill document. We select metrics that are broadly applicable, observable from SKILL.md , and related to common sources of skill failure. Table 1 summarizes the selected metrics. Structural Format Validity is checked with deterministic rules. The remaining metrics require semantic judgments and are learned from controlled skill pairs as described below. 
+
+Positive–Negative Skill Pair Construction 
+
+A reliable metric direction requires positive and negative examples that differ mainly in the target quality dimension. If the two skills also differ in topic, task content, writing style, or length, the learned direction may capture these unrelated changes. Therefore, we use multiple controlled skill pairs to reduce noise from individual examples (Rimsky et al. 2024). For each learned semantic metric Fi, we first select a posi-tive skill d+ 
+
+> i,j
+
+that meets the metric criteria. We then select its negative version with a metric-specific selection function Ti:
+
+d− 
+
+> i,j
+
+= Ti(d+ 
+
+> i,j
+
+).
+
+The selected counterpart weakens the target property while keeping the task goal, topic, tools, and other content as un-changed as possible. This design limits unrelated differences and helps the learned direction focus on the target metric. 
+
+Hidden Representation and Direction Extraction 
+
+We use a frozen Qwen3.5-9B model and extract the hidden-state tensor at index 16. For metric Fi and skill d, let 
+
+H(16)  
+
+> i
+
+(d) ∈ RTd×dh
+
+denote the token-level hidden states. We pool the region most relevant to each metric: 
+
+hi(d) = Pool i
+
+
+
+H(16)  
+
+> i
+
+(d)
+
+
+
+∈ Rdh .
+
+A2 uses the frontmatter description. B1 averages the descrip-tion and body representations. B2, C1, and C2 use mean pool-ing over the body. D1 uses the final token of the full model input. The model, hidden-state index, prompt, and pooling rule are fixed before validation. The maximum input length is 20,000 tokens, and no document in our dataset is truncated. For the j-th training pair, we compute 
+
+∆i,j = hi
+
+ d+
+
+> i,j
+
+ − hi
+
+ d−
+
+> i,j
+
+ .
+
+A confounding factor may introduce an unintended direc-tion in the hidden space. Following prior work on removing Algorithm 1: SkillEval Direction Learning and Scoring 
+
+Require: Paired training sets Pi = {(d+ 
+
+> i,j
+
+, d − 
+
+> i,j
+
+)}Ni
+
+> j=1
+
+, i =1, . . . , K , Pooled representation functions {hi(·)}Ki=1 ,unit confounding direction uconf , unseen skill d
+
+Ensure: Metric directions {bi}Ki=1 and standardized scores 
+
+{zi(d)}Ki=1  
+
+> 1:
+
+for i = 1 , . . . , K do  
+
+> 2:
+
+Dtrain  
+
+> i
+
+← SNi
+
+> j=1
+
+{d+ 
+
+> i,j
+
+, d − 
+
+> i,j
+
+} 
+
+> 3:
+
+for j = 1 , . . . , N i do  
+
+> 4:
+
+∆i,j ← hi(d+ 
+
+> i,j
+
+) − hi(d− 
+
+> i,j
+
+) 
+
+> 5:
+
+∆⊥ 
+
+> i,j
+
+← ∆i,j − (∆ ⊤ 
+
+> i,j
+
+uconf )uconf  
+
+> 6:
+
+end for  
+
+> 7:
+
+¯∆i ← 1
+
+> Ni
+
+PNi 
+
+> j=1
+
+∆⊥ 
+
+> i,j
+> 8:
+
+bi ← ¯∆i/∥ ¯∆i∥2 
+
+> 9:
+
+Strain  
+
+> i
+
+←
+
+n
+
+hi( ˜d)⊤bi | ˜d ∈ D train 
+
+> i
+
+o 
+
+> 10:
+
+(μtrain  
+
+> i
+
+, σ train  
+
+> i
+
+) ← MeanStd( Strain  
+
+> i
+
+) 
+
+> 11:
+
+si(d) ← hi(d)⊤bi 
+
+> 12:
+
+zi(d) ← si(d) − μtrain 
+
+> i
+
+σtrain  
+
+> i
+> 13:
+
+end for  
+
+> 14:
+
+return {bi}Ki=1 , {zi(d)}Ki=1 
+
+linearly represented attributes through projection (Ravfogel et al. 2020; Haghighatkhah et al. 2022; Belrose et al. 2023), we use a precomputed unit confounding direction uconf , fixed before metric training and shared across semantic metrics. We remove the component aligned with this direction from each training difference: 
+
+∆⊥ 
+
+> i,j
+
+= ∆ i,j −  ∆⊤ 
+
+> i,j
+
+uconf 
+
+ uconf .
+
+The metric direction is the normalized mean of the orthogo-nalized training differences: 
+
+bi =
+
+> 1
+> Ni
+
+PNi 
+
+> j=1
+
+∆⊥
+
+> i,j
+> 1
+> Ni
+
+PNi 
+
+> j=1
+
+∆⊥ 
+
+> i,j 2
+
+.
+
+Metric Scoring and Normalization 
+
+For a new skill d, we compute the metric score by projection: 
+
+si(d) = hi(d)⊤bi.
+
+We convert the score to a z-score using the mean and standard deviation over all positive and negative training skills: 
+
+zi(d) = si(d) − μtrain 
+
+> i
+
+σtrain 
+
+> i
+
+.
+
+Higher values indicate stronger alignment with the positive side of metric Fi.
+
+Experiments 
+
+Experimental Setup 
+
+Dataset Setting. Our dataset contains 1,647 skills from open-source datasets, public online sources, manual con-struction, and LLM generation. For each semantic metric, 11% 36% 10% 24% 10% 9%       
+
+> Total skills: 1,647
+> A2 Trigger Clarity
+> B1 Content Consistency
+> B2 Technical Specificity
+> C1 Workflow Integrity
+> C2 I/O Explicitness
+> D1 Failure Awareness
+
+Figure 2: Distribution of the 1,647 skills used to construct the six metric directions, including A2, B1, B2, C1, C2, D1. we construct controlled positive–negative pairs and split them into training and validation sets, with no overlap in original documents, tasks, sources, or generation templates. All metric directions and normalization statistics are learned exclusively from the training split, while the validation split is used only for final evaluation. 
+
+Model Setting. In our main experiments, we use a frozen Qwen3.5-9B model and extract representations at hidden-state index 16. A2 applies mean pooling to the description, B1 combines the mean-pooled representations of the description and body, B2, C1, and C2 apply mean pooling to the body, and D1 uses the final-token representation. The maximum input length is 20,000 tokens. For model ablations, we further use Qwen3.5-27B at index 32, Llama3.1-8B-Instruct at index 16, and Llama3.2-3B-Instruct at index 14. 
+
+Downstream Evaluation. We use SkillsBench (Li et al. 2026b) for downstream evaluation and run each task with Codex using GPT-5.5 at the xhigh reasoning effort. For each task, the with-skill and no-skill conditions use the same task environment and executor configuration. Each condition is evaluated over three runs, and the pass rate is calculated as the proportion of successful runs. We define pass-rate uplift as the difference between the pass rates under the with-skill and no-skill conditions. 
+
+Main Result 
+
+Validation Score Distribution. We first examine whether the learned metric directions preserve the intended quality ordering on unseen skill documents. Each direction is con-structed using only the training split and remains fixed during validation. We evaluate 518 held-out documents across A2, B1, B2, C1, C2, and D1, including 259 positive and 259 neg-ative skills. A1 is excluded because it is evaluated using de-terministic rules. As shown in Figure 3, positive skills obtain mean scores above zero for all six metrics, whereas negative skills consistently receive scores below zero. Specifically, A2 shows the largest separation, with mean scores of 0.98 
+
+and −0.96 for positive and negative skills, respectively. B1 and B2 also exhibit clear gaps of 1.36 and 1.28 , followed by D1 with a gap of 1.10 . Although the separations are smaller for C2 and C1, their positive skills still outperform the cor-responding negative skills by 0.86 and 0.75 , respectively. These results show that the learned directions recover the intended positive–negative ordering on held-out documents −1.0 −0.5 0.0 0.5 1.0        
+
+> Mean score on the validation set
+> -0.96 0.98 -0.57 0.79 -0.38 0.90 -0.67 0.08 -0.48 0.38 -0.63 0.47
+> Negative skills Positive skills
+
+Figure 3: Mean validation scores for 259 positive and 259 negative skills across the six metrics (A2, B1, B2, C1, C2, and D1). Hatched bars extending to the left denote negative skills, whereas solid bars extending to the right denote positive skills. Values at the ends of the bars report the corresponding group means. rather than merely memorizing individual training pairs. The variation in separation also provides insight into the proper-ties captured by different directions. Explicit properties, such as trigger-condition clarity in A2, produce a sharper distinc-tion, whereas workflow completeness and input–output clar-ity require information to be integrated across multiple parts of a document and therefore exhibit smaller gaps. This varia-tion supports decomposing skill quality into metric-specific directions instead of representing it with a single holistic score. The resulting quality profile can distinguish skills of different quality and reveal which properties contribute most strongly to their differences. 
+
+Metric Correlation with Downstream Task Pass Rate. 
+
+We use the SkillsBench (Li et al. 2026b) examples with pass-rate uplift, defined as the difference between the pass rate with skills and the pass rate without skills, fit one lin-ear model per metric to map the metric score to uplift. As shown in Figure 4, all five metric-specific signals show pos-itive correlations with downstream uplift. We do not include A2 in this analysis because A2 only evaluates the clarity of trigger conditions and is less directly related to the execu-tion quality measured by downstream task performance. The correlations are consistently high across B1, B2, C1, C2, and D1, with Pearson r ranging from 0.779 to 0.787, while the all-metric setting obtains r = 0 .716 . The colored regions provide an additional distributional check: negative skills are concentrated more on the low-uplift side, whereas positive skills shift toward regions with larger uplift. This pattern in-dicates that the fitted linear functions preserve the expected positive–negative ordering of skills in the downstream task space. Together with the validation results in Figure 3, this provides evidence that the learned metric scores are direc-tionally aligned with downstream pass-rate variation. 
+
+Skill Diagnosis and Targeted Revision 
+
+We further explore whether SkillEval can diagnose weak-nesses in skill documents and guide their revision. We select −100 −50 0 50 100 −100 −50 050 100 ALL r = 0.716 −100 −50 0 50 100 −100 −50 050 100 B1 r = 0.780 −100 −50 0 50 100 −100 −50 050 100 B2 r = 0.782 −100 −50 0 50 100 −100 −50 050 100 C1 r = 0.785 −100 −50 0 50 100 −100 −50 050 100 C2 r = 0.787 −100 −50 0 50 100 −100 −50 050 100 D1 r = 0.779    
+
+> actual uplift predicted uplift
+> positive skills negative skills ideal prediction: y = x centroid shift
+
+Figure 4: Observed and predicted uplift for positive and negative skills, where uplift is the pass-rate difference between skills and no skills. The combined panel and the five metric-specific panels are partitioned into negative-skill, transition, and positive-skill regions along the centroid axis. Diamond markers denote the group centroids, the dashed arrow shows the centroid shift, and the dashed diagonal is the ideal reference line y = x.D G M0.8 1.0            
+
+> B2 detail
+> DGM−1 0
+> C1 detail
+> DGM−1 0
+> C2 detail
+> 0% 20% 40% 60%
+> Downstream pass rate
+> A2 B1 B2 C1 C2 D1
+> Metric
+> −1 012
+> Metric score
+> D (--: 18.6%) G (--: 38.3%) M (--: 48.1%) Mean downstream pass rate (right axis)
+
+Figure 5: Comparison of metric profiles and downstream per-formance for skills before revision (D), LLM-only revisions (G), and metric-guided LLM revisions (M). Solid lines show the mean z-scored SkillEval scores, while horizontal dashed lines show the corresponding mean downstream pass rates on the right axis. The bottom panels provide enlarged views of B2, C1, and C2. continuous-score tasks from SkillsBench for evaluation and compare three settings: skills before revision (D), LLM-only revisions that use D without access to SkillEval scores (G), and LLM revisions guided by the dimension-level diagnos-tics of SkillEval (M). As shown in Figure 5, LLM-only revi-sion increases the mean downstream pass rate from 18.6% to 38.3%, while M further improves it to 48.1%, corresponding to gains of 29.5 percentage points over D and 9.8 percentage points over G. The metric profiles show a similar pattern. Compared with D, M improves A2 from 0.914 to 1.019, B1 from 0.896 to 1.022, C1 from −0.834 to −0.546 , C2 from 
+
+−0.631 to −0.393 , and D1 from 0.913 to 1.422, while main-taining a comparable B2 score. M also achieves higher scores than G on five of the six metrics, with C2 remaining nearly un-changed. These results indicate that SkillEval provides useful diagnostic feedback for skill revision. Guided by its metric-level scores, the LLM can focus revisions on weaker proper-0 1k 2k 3k 4k Skill length (tokens) −2 02Metric score 
+
+> A2 (r=+0.017) C1 (r=+0.045) B1 (r=-0.056) C2 (r=+0.149) B2 (r=-0.355) D1 (r=+0.119)
+
+Figure 6: Each point represents an individual skill, with its token length on the horizontal axis and corresponding met-ric score on the vertical axis. Colored lines show the fitted linear trends, and the legend reports the Pearson correlation coefficient r for each metric. ties while retaining existing strengths, producing skills with improved quality profiles and higher downstream pass rates. 
+
+Additional Analyses 
+
+Bias Analysis. We examine whether SkillEval scores are affected by the length of a skill document. For each seman-tic metric, we collect the set of skills scored by the frozen Qwen3.5-9B evaluator, represent each skill using its token length and standardized metric score. As shown in Figure 6, most metrics show only weak correlations with length, in-cluding A2 ( r = 0 .017 ), B1 ( r = −0.056 ), B2( r = −0.355 ), C1 ( r = 0 .045 ), C2 ( r = 0 .149 ), and D1 ( r = 0 .119 ), in-dicating that the learned scores are not mainly determined by document length. Based on this observation, we reduce the influence of document length during scoring. Since the bias introduced by document length can be represented as a direction in the same hidden space as the metric directions, we orthogonalize each metric direction against a precom-puted length direction before scoring. This reduces the direct influence of document length while preserving the intended Q9 Q27 L31 L32 Q9 Q27 L31 L32 1.000 0.948 0.839 0.835 0.948 1.000 0.845 0.811 0.839 0.845 1.000 0.913 0.835 0.811 0.913 1.000   
+
+> 0.5 0.6 0.7 0.8 0.9 1.0
+> Pearson correlation
+> Q9=qwen3.5-9b(main) Q27=qwen3.5-27b L31=llama3.1-8b L32=llama3.2-3b-instruct
+
+Figure 7: Analysis of the agreement between four scorer back-bones (Q9, Q27, L31, and L32), based on the equal-weight mean Pearson correlation matrix of z-scored skill scores over the six metric scopes (A2, B1, B2, C1, C2, and D1). The values summarize pairwise agreement across 1647 skills. semantic meaning of each metric. More bias removal exper-iments are provided in Appendix. 
+
+Cross-Backbone Robustness of the Metrics. We evaluate scorer robustness by comparing four backbones, Qwen3.5-9B (Q9), Qwen3.5-27B (Q27), Llama3.1-8B (L31), and Llama3.2-3B-Instruct (L32), on six metric scopes (A2, B1, B2, C1, C2, and D1), over 1647 skills. For each scope, we compute the pairwise Pearson correlation matrix over z-scored metric outputs, and then average the six matrices with equal weight. As shown in Figure 7, the scorer out-puts are highly consistent across backbones. The two Qwen models reach a Pearson correlation of 0.948, the two Llama models reach 0.913, and the cross-family pairs remain in the 0.811–0.845 range. This suggests that the scoring signal is largely preserved under backbone replacement, indicating a reasonable level of robustness in the scorer choice. 
+
+Task Dependence of Downstream Skill Utility We an-alyze whether the downstream utility of a skill is stable across different task scenarios. In this experiment, we fo-cus on reused human-written skills that appear in mul-tiple downstream tasks with identical skill content. To avoid confounding from skill composition, we only con-sider tasks where the reused skill is the only available skill. For each skill–task pair, we compute the pass-rate up-lift as the difference between the agent performance with the skill and without the skill. Figure 8 presents the task-level uplift of reused skills, where tasks are sorted by uplift within each skill. We observe that the same skill can lead to substantially different improvements across tasks. For example, the reused xlsx skill produces al-most no improvement on some tasks, but achieves a much larger uplift on tasks such as weighted-gdp-calc and 
+
+protein-expression-analysis , with a maximum 0% lowest 25% 50% mid 75% 100% highest Task percentile within each skill, sorted by uplift 020 40 60 Uplift (percentage points)  
+
+> xlsx (66.7) pddl-skills (7.4)
+
+Figure 8: Task-level pass-rate uplift of reused human-written skills. Tasks are sorted by uplift within each skill, and the leg-end reports the uplift gap between the lowest and highest task. gap of 66.7 percentage points. In contrast, pddl-skills 
+
+shows a smaller but still visible variation across its reused tasks, with a gap of 7.4 percentage points. These results sug-gest that downstream performance is strongly affected by the match between a skill and the evaluated task. A single down-stream task can show whether a skill is useful in that specific environment, but it cannot fully represent the overall quality of the skill across broader scenarios. This supports the need for complementary skill-level evaluation signals that assess reusable properties of the skill document. 
+
+Conclusion 
+
+We introduced SkillEval , an interpretable framework for evaluating the document-level quality of agent skills. By decomposing skill quality into four complementary di-mensions, SkillEval produces fine-grained quality profiles through an auditable and reproducible scoring process, while allowing potential biases to be identified and controlled. Our experiments show that these quality signals reliably distin-guish skills of different quality and are strongly associated with their utility on downstream tasks. More broadly, our findings suggest that skill quality in-volves two complementary aspects: compatibility with a par-ticular task and general properties that support reuse across different scenarios. SkillEval connects these two aspects by providing interpretable document-level signals that are infor-mative of downstream utility. We hope this work provides a foundation for more systematic skill evaluation and supports the development of skill ecosystems in which skills can be efficiently assessed, diagnosed, and refined. References 
+
+Agent Skills. n.d. Agent Skills Specification. https:// agentskills.io/specification. Accessed: 2026-07-26. Bavaresco, A.; Bernardi, R.; Bertolazzi, L.; Elliott, D.; Fer-nández, R.; Gatt, A.; Ghaleb, E.; Giulianelli, M.; Hanna, M.; Koller, A.; et al. 2025. Llms instead of human judges? a large scale empirical study across 20 nlp evaluation tasks. In Proceedings of the 63rd Annual Meeting of the Associa-tion for Computational Linguistics (Volume 2: Short Papers) ,238–255. Belrose, N.; Schneider-Joseph, D.; Ravfogel, S.; Cotterell, R.; Raff, E.; and Biderman, S. 2023. Leace: Perfect linear concept erasure in closed form. Advances in Neural Infor-mation Processing Systems , 36: 66044–66063. Chen, G. H.; Chen, S.; Liu, Z.; Jiang, F.; and Wang, B. 2024. Humans or LLMs as the judge? a study on judgement bias. In 
+
+Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , 8301–8327. Ding, K.; Zhou, Y.; Jin, C.; Tong, F.; Zhou, M.; and Metaxas, D. N. 2026. Agent Skill Evaluation and Evolution: Frame-works and Benchmarks. arXiv:2606.11435. Haghighatkhah, P.; Fokkens, A.; Sommerauer, P.; Speck-mann, B.; and Verbeek, K. 2022. Better hit the nail on the head than beat around the bush: Removing protected at-tributes with a single projection. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Pro-cessing , 8395–8416. Han, T.; Zhang, Y.; Song, W.; Fang, C.; Chen, Z.; Sun, Y.; and Hu, L. 2026. SWE-Skills-Bench: Do Agent Skills Actually Help in Real-World Software Engineering? arXiv preprint arXiv:2603.15401 .Hong, D. B.; Imani, A.; and Ahmed, I. 2026. From Anatomy to Smells: An Empirical Study of SKILL.md in Agent Skills. arXiv:2607.01456. Jiang, Y.; Li, D.; Deng, H.; Ma, B.; Wang, X.; Wang, Q.; and Yu, G. 2026. SoK: Agentic Skills – Beyond Tool Use in LLM Agents. arXiv:2602.20867. Kim, B.; Wattenberg, M.; Gilmer, J.; Cai, C.; Wexler, J.; Viegas, F.; et al. 2018. Interpretability beyond feature attri-bution: Quantitative testing with concept activation vectors (tcav). In International conference on machine learning ,2668–2677. PMLR. Lei, Y.; Wan, Z.; Zhang, J.; Alam, S.; Zhong, Z.; Huang, P.; Wang, X.; Zhang, J.; Zhou, D.; Hsieh, Y.; et al. 2026. SkillEvolBench: Benchmarking the Evolution from Episodic Experience to Procedural Skills. arXiv preprint arXiv:2605.24117 .Li, H.; Mu, C.; Chen, J.; Ren, S.; Cui, Z.; Zhang, Y.; Bai, L.; and Hu, S. 2026a. Organizing, Orchestrating, and Bench-marking Agent Skills at Ecosystem Scale. arXiv:2603.02176. Li, K.; Patel, O.; Viégas, F.; Pfister, H.; and Wattenberg, M. 2023. Inference-Time Intervention: Eliciting Truthful Answers from a Language Model. In Oh, A.; Naumann, T.; Globerson, A.; Saenko, K.; Hardt, M.; and Levine, S., eds., Advances in Neural Information Processing Systems ,volume 36, 41451–41530. Curran Associates, Inc. Li, X.; Liu, Y.; Chen, W.; You, B.; Di, Z.; He, Y.; Zheng, S.; Choe, K. W.; Sun, J.; Wang, S.; Tao, C.; Li, B.; Zhao, X.; Geng, H.; Wu, X.; Zhou, J.; Chen, X.; Xing, H.; Li, Y.; Zeng, Q.; Wang, D.; Wang, Y.; Chaim, R. B.; Jiang, P.; Shen, H.; Kong, L.; Liu, X.; Wang, R.; Liu, X.; Li, J.; Lan, X.; Lin, Y.; Ye, W.; He, J.; Li, S.; Zhang, Y.; Gao, Y.; Li, Y.; Ma, Z.; Jing, L.; Wang, T.; Li, K.; Xue, Y.; Lyu, H.; He, Y.; Tian, Y.; Wu, S.; Wang, B.; Gao, Y.; Chen, B.; Liu, L.; Cheng, S.; Bao, J.; Tong, S.; Xu, S.; Zhuo, T. Y.; Ye, T.; Qi, Q.; Li, M.; Liao, L.; Tan, Z.; Shi, C.; Tang, X.; Tankasala, S.; Yuan, B.; Qian, Y.; Tu, J.; Wang, C.; Sun, Y.; Wang, W.; Taylor, A.; Yang, Z.; Guan, C.; Dong, Z.; Zhang, X.; Dillmann, S.; chung Lee, H.; and Song, D. 2026b. SkillsBench: Benchmarking How Well Agent Skills Work Across Diverse Tasks. arXiv:2602.12670. Li, Z.; Zhang, Y.; Li, M.; Ji, Y.; Zeng, Y.; Cheng, N.; Zhu, Y.; Wang, Y.; Wang, S.; Xiao, J.; et al. 2026c. Rethinking LLM-as-a-Judge: Representation-as-a-Judge with Small Language Models via Semantic Capacity Asymmetry. arXiv preprint arXiv:2601.22588 .Liang, Q.; Wang, H.; Liang, Z.; and Liu, Y. 2026a. From Skill Text to Skill Structure: The Scheduling-Structural-Logical Representation for Agent Skills. arXiv:2604.24026. Liang, Y.; Zhong, R.; Xu, H.; Jiang, C.; Zhong, Y.; Fang, R.; Gu, J.-C.; Deng, S.; Yao, Y.; Wang, M.; et al. 2026b. Skill-net: Create, evaluate, and connect ai skills. arXiv preprint arXiv:2603.04448 .Ling, G.; Zhong, S.; and Huang, R. 2026. Agent Skills: A Data-Driven Analysis of Claude Skills for Extending Large Language Model Functionality. arXiv:2602.08004. Liu, Y.; Iter, D.; Xu, Y.; Wang, S.; Xu, R.; and Zhu, C. 2023. G-Eval: NLG Evaluation using Gpt-4 with Better Human Alignment. In Bouamor, H.; Pino, J.; and Bali, K., eds., Pro-ceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , 2511–2522. Singapore: As-sociation for Computational Linguistics. Liu, Y.; Ji, J.; An, L.; Jaakkola, T.; Zhang, Y.; and Chang, S. 2026. How Well Do Agentic Skills Work in the Wild: Benchmarking LLM Skill Usage in Realistic Settings. arXiv:2604.04323. Ma, X.; Zhang, X.; and Weng, Z. 2026. Stable and Ex-plainable Personality Trait Evaluation in Large Language Models with Internal Activations. In Liakata, M.; Moreira, V. P.; Zhang, J.; and Jurgens, D., eds., Findings of the As-sociation for Computational Linguistics: ACL 2026 , 16322– 16340. San Diego, California, United States: Association for Computational Linguistics. ISBN 979-8-89176-395-1. Moon, J.; Hwang, Y.; Lee, D.; Kang, T.; Kim, Y.; and Jung, K. 2026. Don’t judge code by its cover: Exploring biases in llm judges for code evaluation. In Findings of the Association for Computational Linguistics: EACL 2026 , 1364–1389. Park, K.; Choe, Y. J.; and Veitch, V. 2023. The linear rep-resentation hypothesis and the geometry of large language models. arXiv preprint arXiv:2311.03658 .Ravfogel, S.; Elazar, Y.; Gonen, H.; Twiton, M.; and Gold-berg, Y. 2020. Null it out: Guarding protected attributes by iterative nullspace projection. In Proceedings of the 58th an-nual meeting of the association for computational linguistics ,7237–7256. Rimsky, N.; Gabrieli, N.; Schulz, J.; Tong, M.; Hubinger, E.; and Turner, A. 2024. Steering Llama 2 via Contrastive Activation Addition. In Ku, L.-W.; Martins, A.; and Sriku-mar, V., eds., Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 15504–15522. Bangkok, Thailand: Association for Computational Linguistics. Saha, S.; Faghih, K.; and Feizi, S. 2026. Under the hood of SKILL. md: Semantic supply-chain attacks on AI agent skill registry. arXiv preprint arXiv:2605.11418 .Shaposhnikov, M.; Fortuin, N.; Stipcich, S.; Gorinova, M. I.; Heineike, A.; and Willoughby, R. 2026. A Framework for Evaluating Agentic Skills at Scale. arXiv:2606.17819. Shi, L.; Ma, C.; Liang, W.; Diao, X.; Ma, W.; and Vosoughi, S. 2025. Judging the judges: A systematic study of position bias in llm-as-a-judge. In Proceedings of the 14th Inter-national Joint Conference on Natural Language Processing and the 4th Conference of the Asia-Pacific Chapter of the Association for Computational Linguistics , 292–314. Xu, Y.; Li, L.; Sleem, L.; Gentile, N.; Song, Y.; Wang, Y.; Ji, S.; Wu, W.; and State, R. 2026. Agent Skill Frame-work: Perspectives on the Potential of Small to Medium Language Models in Industrial Environments. arXiv preprint arXiv:2602.16653 .Ying, J.; Ai, B.; Tang, W.; Liu, S.; and Cao, Y. 2026. Open-SkillEval: Automatically Auditing the Open Skill Ecosystem for LLM Agents. arXiv:2605.23657. Zheng, L.; Chiang, W.-L.; Sheng, Y.; Zhuang, S.; Wu, Z.; Zhuang, Y.; Lin, Z.; Li, Z.; Li, D.; Xing, E. P.; Zhang, H.; Gonzalez, J. E.; and Stoica, I. 2023. Judging LLM-as-a-judge with MT-bench and Chatbot Arena. In Proceedings of the 37th International Conference on Neural Information Processing Systems , NIPS ’23. Red Hook, NY, USA: Curran Associates Inc. Zhong, S.; Lu, Y.; Ning, J.; Wan, Y.; Feng, L.; Ao, Y.; Ribeiro, L. F. R.; Dreyer, M.; Ammirati, S.; and Xiong, C. 2026. SkillLearnBench: Benchmarking Continual Learning Methods for Agent Skill Generation on Real-World Tasks. arXiv:2604.20087. Zhou, Y.; Zhang, Z.; Cheng, Z.; Zhang, S.; Lan, Q.; Chen, Z.; Yang, Z.; QianyuXu; Chen, R.; Wang, H.; and Hu, S. 2026. SkillGenBench: Benchmarking Skill Generation Pipelines for LLM Agents. arXiv:2605.18693. Zhu, J.; Mao, K.; Guo, Y.; He, D.; Xu, S.; Gu, S.; and Yue, Y. 2026. SkillCoach: Self-Evolving Rubrics for Evaluating and Enhancing Agentic Skill-Use. arXiv:2607.01874. Zou, A.; Phan, L.; Chen, S.; Campbell, J.; Guo, P.; Ren, R.; Pan, A.; Yin, X.; Mazeika, M.; Dombrowski, A.-K.; et al. 2023. Representation engineering: A top-down approach to ai transparency. arXiv preprint arXiv:2310.01405 .Bias Diagnostic. 
+
+We further examine whether SkillEval scores are affected by common biases that are not part of the intended semantic meaning of each metric. In this experiment, we select rep-resentative bias variables for each metric and compute their Pearson correlations with the corresponding z-scored metric outputs. Specifically, for A2, we test description length, defined as the token length of the trigger description, since A2 is eval-uated from the trigger description. For B1, we test document length, code block count, and identifier density, where docu-ment length is measured by the token length of the skill body, code block count measures the number of Markdown code blocks, and identifier density measures the density of techni-cal identifiers such as API names, file names, field names, and numeric expressions. These variables may reflect document scale or formatting rather than description-body alignment. For B2, we test model token length and code block count, since specificity scores may be affected by longer or more code-heavy skill documents. For C1, we test numbered step count, sequential marker count, and stage coverage. Num-bered step count measures explicit ordered steps, sequential marker count measures temporal markers such as “first”, “then”, and “finally”, and stage coverage measures whether the skill covers input, processing, and output stages. These variables correspond to common workflow-format cues. For C2, we test model token length, schema-line count, and unit/type count, where schema-line count measures lines describing input fields, columns, keys, units, types, or con-straints, and unit/type count measures explicit unit or data-type expressions. These variables may affect input-output explicitness. For D1, we test model token length to examine whether failure-awareness scores are mainly driven by skill length. As shown in Figure 9, most selected bias variables show weak correlations with the corresponding metric scores. A2 has only a weak correlation with description length (r = 0 .120 ). B1 is weakly correlated with document length (r = −0.056 ), code block count ( r = −0.042 ), and iden-tifier density ( r = −0.024 ). B2 shows a moderate negative correlation with model token length ( r = −0.355 ) and a weak correlation with code block count ( r = −0.118 ). C1 is weakly correlated with numbered step count ( r = 0 .152 ), sequential marker count ( r = −0.059 ), and stage coverage (r = 0 .094 ). C2 also shows weak correlations with model token length ( r = 0 .149 ), schema-line count ( r = 0 .211 ), and unit/type count ( r = 0 .015 ). For D1, the correlation be-tween model token length and the metric score is also weak (r = 0 .119 ). These results suggest that most SkillEval scores are not mainly determined by the selected surface-level biases. At the same time, the diagnostic still reveals metric-specific sen-sitivities, such as the moderate length effect observed for B2. This provides a practical audit mechanism for SkillEval: after a metric direction is learned, we can test whether its scores align with intended semantic properties or with unintended document cues. When a bias shows a visible correlation, it can be further controlled during metric construction or re-moved by orthogonalizing the metric direction against the corresponding bias direction in hidden space. 
+
+Cross-Model Robustness of Skill Utility. 
+
+We further evaluate whether the downstream utility of skills is stable across different execution models. The evaluation data are provided by SkillsBench, which contains down-stream task results under both with-skill and no-skill con-ditions. Following the SkillsBench setting, we use results from 87 tasks evaluated with 18 downstream executor mod-els. For each task and executor model, we compute the raw uplift as the pass-rate difference between the with-skill and no-skill conditions. Since each condition is evaluated with three trials, the smallest pass-rate resolution is 1/3. We there-fore use a tolerance-aware pairwise concordance metric with margin 0.333 : for each pair of executor models, we compare task pairs only when the uplift gap is at least this margin for both models, and count whether the two models rank the task pair in the same order. As shown in Figure 10, the average concordance is 0.724 
+
+and the median concordance is 0.739 . In total, 103 out of 153 model pairs have concordance above 0.7, and 146 out of 153 model pairs are above 0.5. Several model pairs show particularly strong agreement, such as Codex/GPT-5.5 and OpenHands/Opus 4.8 ( 0.956 ), and Claude Code/Opus 4.7 and OpenHands/Opus 4.7 ( 0.931 ). At the same time, a small number of model pairs have lower agreement, with the min-imum concordance observed between OpenHands/GPT-5.4 Mini and OpenHands/Grok 4.3 ( 0.385 ). These results indicate that skill-induced uplift is largely consistent across different downstream executor models, sug-gesting that the measured utility of skills is not tied to a single execution model. However, the lower-concordance cases also show that executor choice can still affect the relative order-ing of skill benefits. Therefore, downstream skill evaluation is reasonably robust across models, but cross-model analysis remains useful for identifying model-specific sensitivity. 
+
+•
+
+Hidden-State Layer Analysis 
+
+Experimental Setup. We examine how the choice of hidden-state layer affects the metric directions learned by SkillEval. Using the frozen Qwen3.5-9B model, we sweep hidden-state indices from 4 to 32 at intervals of four. For each metric, we use the same metric-specific training pairs across layers and retain the pooling rule used in the main experiments. For metric i and hidden-state index ℓ, we project the pooled representation of a skill d onto the corresponding metric di-rection and standardize the resulting score using the training-split statistics: 
+
+z(ℓ) 
+
+> i
+
+(d) = s(ℓ) 
+
+> i
+
+(d) − μ(ℓ)
+
+> i
+
+σ(ℓ)
+
+> i
+
+.
+
+We evaluate each layer using two complementary measures. Validation AUROC measures how well the standardized scores distinguish positive skills from negative skills. Specif-ically, we fit a one-dimensional logistic classifier to the stan-20 40 60                                                      
+
+> description token length
+> −1 01
+> z-score
+> A2: description length
+> r= 0.120
+> 01000 2000 3000 4000
+> body token length
+> −2 −1 012
+> z-score
+> B1: document length
+> r= −0.056
+> 010 20 30 40
+> code block count
+> −2 −1 012
+> z-score
+> B1: code blocks
+> r= −0.042
+> 0100 200 300
+> identifier density
+> −2 −1 012
+> z-score
+> B1: identifier density
+> r= −0.024
+> 02000 4000 6000 8000
+> model token length
+> −1.5 −1.0 −0.5 0.0 0.5 1.0
+> z-score
+> B2: model token length
+> r= −0.355
+> 010 20 30
+> code block count
+> −1.5 −1.0 −0.5 0.0 0.5 1.0
+> z-score
+> B2: code blocks
+> r= −0.118
+> 020 40
+> numbered step count
+> −2 02
+> z-score
+> C1: numbered steps
+> r= 0.152
+> 010 20 30
+> sequential marker count
+> −2 02
+> z-score
+> C1: sequential markers
+> r= −0.059
+> 0123
+> stage coverage
+> −2 02
+> z-score
+> C1: stage coverage
+> r= 0.094
+> 02000 4000 6000 8000
+> model token length
+> −4 −2 02
+> z-score
+> C2: model token length
+> r= 0.149
+> 010 20 30
+> input schema line count
+> −4 −2 02
+> z-score
+> C2: schema lines
+> r= 0.211
+> 020 40 60
+> unit/type count
+> −4 −2 02
+> z-score
+> C2: unit/type count
+> r= 0.015
+> 02000 4000 6000 8000
+> model token length
+> −2 −1 012
+> z-score
+> D1: model token length
+> r= 0.119
+
+Figure 9: Bias diagnostics for SkillEval metrics on Qwen3.5-9B. Each panel shows the relationship between a selected bias variable and the corresponding z-scored metric output. dardized training scores and compute AUROC from its pre-dicted probabilities on the corresponding validation split. The mean paired margin measures the average standardized score difference within matched positive–negative validation pairs: 
+
+M (ℓ)
+
+i = 1
+
+NiNiX
+
+j=1 
+
+h
+
+z(ℓ)
+
+i (d+
+
+i,j ) − z(ℓ)
+
+i (d−
+
+i,j )
+
+i
+
+,
+
+where Ni is the number of validation pairs for metric i.A larger AUROC indicates better discrimination between positive and negative skills, while a larger paired margin indicates stronger separation within matched pairs. 
+
+Validation AUROC 
+
+Figure 11 compares the validation AUROC obtained from different hidden-state indices. A2 achieves an AUROC of 1.000 at every sampled layer, while B2 remains stable be-tween 0.970 and 0.984. B1 is more sensitive to layer choice: its AUROC increases from 0.508 at layer 4 to 0.913 at layer 16 and reaches its maximum of 0.943 at layer 20. At layer 16, C1 and C2 achieve AUROCs of 0.701 and 0.721, respec-tively, compared with their sampled maxima of 0.719 at layer 8 and 0.735 at layer 20. D1 obtains an AUROC of 0.889 at layer 16, while its highest value of 0.992 occurs at layers 4 and 8. For A2, B1, B2, C1, and C2, the AUROC at layer 16 is within 0.031 of the best sampled result. D1 exhibits greater variation across layers, although its AUROC at layer 16 re-mains substantially above the chance level of 0.5. These re-sults indicate that the layer producing the strongest discrim-ination varies across metrics, while layer 16 retains reliable discrimination for all six metrics. 
+
+Mean Paired Margin 
+
+We further evaluate each layer using the mean paired margin. As shown in Figure 12, all six metrics retain positive margins at layer 16, indicating that positive skills receive higher scores than their matched negative counterparts on average. The margins at layer 16 are 1.939 for A2, 1.356 for B1, 1.288 for CC Opus 4.7 Codex GPT-5.5 GCLI Gemini 3.1 Pro OH DeepSeek V4 Flash OH DeepSeek V4 Pro OH GLM 5.1 OH GPT-5.4 Mini OH GPT-5.5 OH Gemini 3.1 Flash Lite OH Gemini 3.1 Pro OH Gemini 3.5 Flash OH Grok 4.3 OH Kimi K2.6 OH MiniMax M2.7 OH MiniMax M3 OH Opus 4.7 OH Opus 4.8 OH Sonnet 4.6 
+
+## Downstream model 
+
+CC Opus 4.7 Codex GPT-5.5 GCLI Gemini 3.1 Pro OH DeepSeek V4 Flash OH DeepSeek V4 Pro OH GLM 5.1 OH GPT-5.4 Mini OH GPT-5.5 OH Gemini 3.1 Flash Lite OH Gemini 3.1 Pro OH Gemini 3.5 Flash OH Grok 4.3 OH Kimi K2.6 OH MiniMax M2.7 OH MiniMax M3 OH Opus 4.7 OH Opus 4.8 OH Sonnet 4.6                                                                                                                                                                                                                                                                                                                    
+
+> Downstream model
+> 1.00 0.89 0.87 0.79 0.85 0.83 0.81 0.80 0.76 0.79 0.90 0.74 0.83 0.83 0.83 0.93 0.77 0.88 0.89 1.00 0.84 0.60 0.79 0.84 0.68 0.84 0.51 0.73 0.72 0.76 0.63 0.79 0.76 0.78 0.96 0.71 0.87 0.84 1.00 0.72 0.73 0.73 0.68 0.74 0.76 0.84 0.76 0.67 0.75 0.80 0.88 0.81 0.83 0.69 0.79 0.60 0.72 1.00 0.61 0.68 0.53 0.59 0.73 0.77 0.63 0.72 0.75 0.80 0.67 0.81 0.55 0.71 0.85 0.79 0.73 0.61 1.00 0.90 0.75 0.76 0.64 0.74 0.65 0.75 0.77 0.71 0.79 0.83 0.68 0.71 0.83 0.84 0.73 0.68 0.90 1.00 0.41 0.71 0.62 0.73 0.69 0.88 0.76 0.86 0.78 0.87 0.86 0.76 0.81 0.68 0.68 0.53 0.75 0.41 1.00 0.76 0.62 0.44 0.51 0.39 0.60 0.65 0.57 0.58 0.48 0.66 0.80 0.84 0.74 0.59 0.76 0.71 0.76 1.00 0.50 0.58 0.75 0.45 0.68 0.59 0.56 0.74 0.78 0.67 0.76 0.51 0.76 0.73 0.64 0.62 0.62 0.50 1.00 0.76 0.46 0.78 0.60 0.73 0.62 0.88 0.71 0.67 0.79 0.73 0.84 0.77 0.74 0.73 0.44 0.58 0.76 1.00 0.68 0.76 0.70 0.72 0.62 0.76 0.77 0.55 0.90 0.72 0.76 0.63 0.65 0.69 0.51 0.75 0.46 0.68 1.00 0.79 0.82 0.72 0.75 0.71 0.61 0.77 0.74 0.76 0.67 0.72 0.75 0.88 0.39 0.45 0.78 0.76 0.79 1.00 0.64 0.82 0.66 0.81 0.67 0.75 0.83 0.63 0.75 0.75 0.77 0.76 0.60 0.68 0.60 0.70 0.82 0.64 1.00 0.76 0.72 0.74 0.60 0.67 0.83 0.79 0.80 0.80 0.71 0.86 0.65 0.59 0.73 0.72 0.72 0.82 0.76 1.00 0.77 0.91 0.81 0.88 0.83 0.76 0.88 0.67 0.79 0.78 0.57 0.56 0.62 0.62 0.75 0.66 0.72 0.77 1.00 0.71 0.72 0.78 0.93 0.78 0.81 0.81 0.83 0.87 0.58 0.74 0.88 0.76 0.71 0.81 0.74 0.91 0.71 1.00 0.81 0.81 0.77 0.96 0.83 0.55 0.68 0.86 0.48 0.78 0.71 0.77 0.61 0.67 0.60 0.81 0.72 0.81 1.00 0.70 0.88 0.71 0.69 0.71 0.71 0.76 0.66 0.67 0.67 0.55 0.77 0.75 0.67 0.88 0.78 0.81 0.70 1.00
+
+0.4 0.5 0.6 0.7 0.8 0.9 1.0 
+
+> Concordant task-pair fraction
+
+Figure 10: Heatmap of tolerance-aware pairwise concordance between downstream executor models using SkillsBench evaluation results. Rows and columns denote executor models, and each cell reports the fraction of task pairs for which two models produce the same relative ordering of raw skill uplift. B2, 0.754 for C1, 0.861 for C2, and 1.105 for D1. Layer 16 produces the largest sampled margins for A2, B1, and C1. For C2, its margin at layer 16 differs from the sampled maximum at layer 4 by less than 0.001. B2 and D1 obtain their largest margins at layer 32, reaching 1.340 and 1.628, respectively. The layers that maximize the paired mar-gin therefore do not always coincide with those that max-imize AUROC, showing that score separation and ranking performance provide complementary views of each metric direction. Taken together, these results show that no single hidden-state layer is optimal for every metric. 
+
+Pooling Strategy Analysis 
+
+Experimental Setup. We further examine how the pooling strategy affects the metric directions learned by SkillEval. At hidden-state index 16, we compare two general pooling strategies while keeping the model, prompts, skill pairs, and evaluation procedure fixed. Full-mean pooling averages the hidden representations of all tokens in the complete input sequence, whereas last-token pooling uses only the repre-sentation of the final token. For each pooling strategy, we re-construct the metric direction from the same metric-specific training pairs and evaluate it on the corresponding fixed val-idation split. The mean paired margin is the average difference between the standardized scores of matched positive and negative validation skills. Validation AUROC is computed from the probabilities produced by a one-dimensional logistic clas-sifier fitted to the standardized training scores. Figure 13 presents the results for all six learned metrics. 
+
+Mean Paired Margin. As shown in Figure 13(a), the pooling strategy affects the separation between matched positive and negative skills differently across metrics. Full-mean pooling Validation AUROC Main-paper layer: 16 Chance AUROC: 0.5        
+
+> 4812 16 20 24 28 32 0.5 0.6 0.7 0.8 0.9 1.0
+
+A2 Trigger clarity        
+
+> best sampled: all (1.000) L16: 1.000
+> 4812 16 20 24 28 32
+
+B1 Content consistency        
+
+> best sampled: L20 (0.943) L16: 0.913
+> 4812 16 20 24 28 32
+
+B2 Technical specificity        
+
+> best sampled: L24 (0.984) L16: 0.974
+> 4812 16 20 24 28 32 0.5 0.6 0.7 0.8 0.9 1.0
+
+C1 Workflow integrity        
+
+> best sampled: L8 (0.719) L16: 0.701
+> 4812 16 20 24 28 32
+
+C2 I/O explicitness        
+
+> best sampled: L20 (0.735) L16: 0.721
+> 4812 16 20 24 28 32
+
+D1 Failure awareness 
+
+> best sampled: L4/L8 (0.992) L16: 0.889
+
+Hidden-state index (layer) Validation AUROC Figure 11: Validation AUROC across hidden-state indices for the six learned SkillEval metrics. AUROC is computed on the corresponding validation split using predicted probabilities from a one-dimensional logistic classifier fitted to the standardized training scores. The solid vertical line and star indicate hidden-state index 16 used in the main experiments, and the dashed horizontal line denotes chance-level AUROC. Each annotation reports the best sampled layer and its AUROC together with the AUROC at layer 16. produces larger margins for A2 and B1, increasing the margin from 0.414 to 0.857 for A2 and from 0.397 to 1.459 for B1. It also gives a slightly larger margin for C2, with 0.816 compared with 0.768 under last-token pooling. In contrast, last-token pooling produces larger margins for B2, C1, and D1. Their margins increase from 1.262 to 1.889, from 0.804 to 1.400, and from 0.328 to 1.162, respectively. Averaged equally across the six metrics, the mean paired margin is 0.921 for full-mean pooling and 1.005 for last-token pooling. 
+
+Validation AUROC. Figure 13(b) shows a similar metric-dependent pattern in ranking performance. Full-mean pool-ing performs better for A2 and B1, achieving AUROCs of 0.731 and 0.926, compared with 0.621 and 0.610 under last-token pooling. Last-token pooling achieves higher AUROC for the remaining four metrics. Specifically, it improves B2 from 0.973 to 1.000, C1 from 0.703 to 0.991, C2 from 0.722 to 0.749, and D1 from 0.632 to 0.881. Its macro-average AU-ROC is 0.809, compared with 0.781 for full-mean pooling. These results indicate that pooling preference is metric dependent. Full-mean pooling is substantially stronger for A2 and B1, whereas last-token pooling provides better rank-ing performance for B2, C1, C2, and D1. C2 further shows that the strategy with the larger paired margin does not nec-essarily achieve the higher AUROC, confirming that paired separation and ranking performance capture complementary properties. Therefore, the results do not support a single pool-ing strategy for all metrics and instead motivate selecting the pooling scope according to the semantic property evaluated by each metric. 
+
+Metric-Specific Dataset Construction 
+
+Data Sources and Common Procedure. We construct a separate dataset for each of the six learned semantic metrics using three complementary sources. First, LLMs generate complete positive and negative SKILL.md documents ac-cording to metric-specific instructions. Second, we collect Validation mean paired margin Main-paper layer: 16        
+
+> 4812 16 20 24 28 32 1.850 1.875 1.900 1.925
+
+A2 Trigger clarity        
+
+> 4812 16 20 24 28 32 0.0 0.3 0.6 0.9 1.2
+
+B1 Content consistency        
+
+> 4812 16 20 24 28 32 1.20 1.24 1.28 1.32
+
+B2 Technical specificity        
+
+> 4812 16 20 24 28 32 0.4 0.5 0.6 0.7
+
+C1 Workflow integrity        
+
+> 4812 16 20 24 28 32 0.72 0.76 0.80 0.84
+
+C2 I/O explicitness        
+
+> 4812 16 20 24 28 32 1.20 1.35 1.50 1.65
+
+D1 Failure awareness 
+
+Hidden-state index (layer) Mean paired margin Figure 12: Validation mean paired margin across hidden-state indices for the six learned SkillEval metrics. The vertical axis reports the mean difference between the standardized scores of matched positive and negative validation skills. The solid vertical line and star indicate hidden-state index 16 used in the main experiments. publicly available skill documents from online sources and screen them as positive or negative examples based on the corresponding metric criteria. Therefore, the negative exam-ples are not limited to controlled rewrites of positive skills: they also include LLM-generated documents and collected documents that naturally exhibit the weakness measured by a metric. Third, we construct controlled positive–negative pairs using metric-specific operations when a clearer compar-ison is needed. The same criteria are used to filter generated, collected, and constructed examples. During controlled con-struction, we preserve the task goal, topic, tools, document structure, and non-target properties as much as possible, so that the main difference within each pair is the property eval-uated by the corresponding metric. All examples retain the data split of their source task to prevent related skills from appearing in both training and validation sets. A1 is excluded because Structural Format Validity is evaluated directly using deterministic rules. 
+
+A2: Trigger Clarity 
+
+The A2 dataset contains LLM-generated and online-collected skills whose descriptions either clearly specify or fail to specify when the skill should be used. Positive ex-amples state an explicit trigger condition and connect it to a concrete task scenario, whereas negative examples pro-vide vague conditions or only summarize the tool’s general capability. For controlled pairs, an LLM rewrites only the frontmatter description, replacing a clear trigger condition with a general tool or capability description. The skill body and all other frontmatter fields remain unchanged. We also keep the positive and negative descriptions similar in length. Generated, collected, and rewritten examples are screened using the same trigger-expression and task-scenario criteria. 
+
+B1: Content Consistency 
+
+The B1 dataset combines generated and collected skills with either consistent or inconsistent descriptions and bodies. Pos-itive examples describe the same task in the frontmatter and body, whereas negative examples contain a description that Full mean Last token Chance AUROC: 0.5     
+
+> 0.0 0.5 1.0 1.5 2.0
+
+Mean paired margin 
+
+> A2 · Trigger clarity B1 · Content consistency B2 · Technical specificity C1 · Workflow integrity C2 · I/O explicitness D1 · Failure awareness
+
+a Mean paired margin        
+
+> 0.857 0.414 1.459 0.397 1.262 1.889 0.804 1.400 0.816 0.768 0.328 1.162
+> 0.5 0.6 0.7 0.8 0.9 1.0
+
+Validation AUROC 
+
+b Validation AUROC   
+
+> 0.731 0.621 0.926 0.610 0.973 1.000 0.703 0.991 0.722 0.749 0.632 0.881
+
+Figure 13: Comparison of full-mean and last-token pooling at hidden-state index 16. Figure (a) shows the mean difference in standardized scores between matched positive and negative validation skills. Figure (b) shows the validation AUROC. Circles show full-mean pooling, squares show last-token pooling, and the dashed line marks the chance AUROC of 0.5. does not match the procedural content. To construct addi-tional controlled negatives, we preserve the original front-matter while replacing the body with one taken from a dif-ferent skill. Replacement bodies are matched to the origi-nal body in length where possible. This operation changes description–body consistency while preserving the descrip-tion, metadata format, and approximate document scale. We record the source of each replacement body and check that the frontmatter remains unchanged and that the paired bodies are different. 
+
+B2: Technical Specificity 
+
+The B2 dataset includes generated and collected skills with different levels of technical specificity. Positive examples contain task-related technical details, such as API names, function calls, parameters, configuration values, file names, schema fields, numerical constants, units, and usable code or command examples. Negative examples include LLM-generated or collected skills that provide only general techni-cal guidance. For controlled pairs, an LLM rewrites a specific skill by replacing concrete technical details with more gen-eral descriptions while preserving the frontmatter, task topic, main workflow, input–output setting, and overall structure. The rewritten document is kept close to the original in length. All candidates are screened using the amount and density of task-related technical evidence. 
+
+C1: Workflow Integrity 
+
+The C1 dataset contains generated and collected skills with complete or incomplete workflows. Positive examples pro-vide an ordered procedure that connects the input, interme-diate operations, and final output. Negative examples include skills with missing stages, disordered steps, weak transitions, or disconnected recommendations. We construct additional controlled negatives by asking an LLM to reorder dependent steps, remove an important transition, replace an ordered pro-cedure with unordered suggestions, or make the path from input to output incomplete. The task, tools, input–output set-ting, and most technical details are retained. The resulting examples are screened to ensure that workflow integrity is reduced without substantially changing the task content or other quality properties. 
+
+C2: I/O Explicitness 
+
+The C2 dataset combines generated and collected skills with different levels of input–output explicitness. Positive exam-ples specify inputs and outputs using concrete formats, fields, columns, keys, schemas, units, data types, constraints, or output labels. Negative examples include generated and col-lected documents in which this information is missing or expressed only in general terms. For controlled construc-tion, we preserve the frontmatter, task, tools, APIs, and main workflow while removing or generalizing input–output de-tails. Explicit descriptions such as CSV fields, JSON keys, units, types, and output schemas are replaced with general references to input data or result summaries. Content un-related to the input–output contract is kept unchanged, and large deletions are avoided to control document length. 
+
+D1: Failure Awareness 
+
+The D1 dataset contains LLM-generated and online-collected skills with different levels of failure awareness. Positive examples describe potential failures, boundary con-ditions, incorrect practices, diagnostic signals, or recovery strategies. Negative examples include generated and col-lected skills that omit such guidance or mention it only su-perficially. For controlled pairs, rule-based processing first removes complete failure-related sections and standalone warnings. An LLM then performs minimal edits to failure-related clauses embedded in otherwise useful sentences. The frontmatter and unrelated procedural content are preserved. The resulting examples are screened for failure-related sec-tions, explicit prohibitions, descriptions of common mis-takes, explanations of failure causes, and corrective guid-ance.

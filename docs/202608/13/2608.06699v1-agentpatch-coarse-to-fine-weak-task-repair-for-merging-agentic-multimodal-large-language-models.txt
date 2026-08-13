@@ -1,0 +1,894 @@
+Title: AgentPatch: Coarse-to-Fine Weak-Task Repair for Merging Agentic Multimodal Large Language Models
+
+URL Source: https://arxiv.org/pdf/2608.06699v1
+
+Published Time: Mon, 10 Aug 2026 00:19:51 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# AgentPatch: Coarse-to-Fine Weak-Task Repair for Merging Agentic Multimodal Large Language Models 
+
+Zibo Shao 1,2,3 , Baochen Xiong 1,2,3 , Chengdong Xu 4, Linhui Xiao 2,Kaichen Li 1,2,3 , Haoran Gong 2, Yan Li 2, Yaguang Song 2∗, Xiaoshan Yang 1,2,3 ∗
+
+1State Key Laboratory of Multimodal Artificial Intelligence Systems, Institute of Automation, Chinese Academy of Sciences, Beijing, China 
+
+2Pengcheng Laboratory, Shenzhen, China 
+
+3School of Artificial Intelligence, University of Chinese Academy of Sciences, Beijing, China 
+
+4Sun Yat-Sen University, Guangzhou, China shaozibo2023@ia.ac.cn, songyg01@pcl.ac.cn, xiaoshan.yang@nlpr.ia.ac.cn 
+
+Abstract 
+
+Agentic multimodal large language models (MLLMs) ex-tend multimodal perception and reasoning with planning, tool use, and interaction in dynamic environments. Yet cur-rent models are specialized for particular tools or environ-ments, complicating consolidation into a single generalist. We formulate Agentic MLLM Merging and identify two challenges: asymmetric capability preservation, whereby ca-pabilities with different interaction complexity are retained unevenly, producing weak tasks after merging, and behavior-critical forgetting, whereby losing decisive actions can derail long-horizon execution. We propose AgentPatch , a training-free coarse-to-fine repair framework. It selects a stable merged backbone, restores diluted weak-task-specific signals through Weak-Task Unique Residual Recovery, and applies an Agent-Guided Behavior-Critical Patch that recovers decisive behav-iors under explicit capability protection. AgentPatch produces a single static checkpoint without routing or ensembles. Exper-iments across six agentic and multimodal benchmarks show that AgentPatch improves diverse merged backbones, alle-viates weak-task degradation, and better balances weak-task recovery with the preservation of complementary search and agentic visual processing capabilities. Code is available at 
+
+https://github.com/ziboshao/AgentPatch .
+
+Introduction 
+
+Agentic multimodal large language models (MLLMs) are emerging as autonomous decision-making models that in-tegrate multimodal reasoning, external tool invocation, and interaction with dynamic environments (Yao et al. 2025). Building on recent advances in visual perception and cross-modal reasoning (Liu et al. 2023; Li et al. 2023; Zhu et al. 2023; Dai et al. 2023; Li et al. 2024; Wang et al. 2025; Bai et al. 2025a), they can organize multi-step actions, invoke tools when needed, and adapt their decisions according to environmental feedback. These capabilities enable agentic MLLMs to tackle complex tasks involving information seek-ing, computer operation, and fine-grained visual analysis. Despite their broad potential, many current agentic MLLMs remain specialized for particular capabilities or in-teraction environments. 
+
+> ∗
+
+Corresponding authors. AVG TA TSVM 
+
+Merging Methods        
+
+> 020 40 60 80
+> Performance (%)
+> 43.8 43.8 45.0 19.9 15.1 27.5 75.0 76.9 79.4
+> Search Expert 47.5 GUI Expert 42.6 Visual Expert 76.2
+> Search GUI Visual
+
+(a) Weak-task degradation. FilesDeleteFile ：Delete the file q2a8_fancy_banana.mp3 from the Notifications folder in the internal storage. GUI Expert                    
+
+> TSVM Merged Model
+> Open internal storage Open Notifications Locate q2a8_fancy_banana.mp3 LONG-PRESS the target file Enter selection mode Tap Delete Confirm deletion SUCCESS
+> Open internal storage Open Notifications Locate q2a8_fancy_banana.mp3 CLICK the target file "Open with" dialog appears Dismiss dialog Click the target file again "Open with" dialog appears again Repeated dismiss-and-click loop FAILURE
+> Behavior-critical action Behavior degradation point
+
+(b) Behavior-critical degradation. 
+
+Figure 1: Two challenges of agentic MLLM merging. 
+
+(a) Results on the development subsets show that merg-ing methods preserve heterogeneous capabilities unevenly, causing severe weak-task degradation. (b) Losing a behavior-critical action can change the environment state and trigger trajectory-level failure. For example, search agents focus on multimodal information retrieval and evidence synthesis (Wu et al. 2025; Geng et al. 2025); GUI agents translate evolving screen observations into grounded actions and multi-step workflows (Ye et al. 2025; Qin et al. 2025); and agentic visual processing mod-els acquire fine-grained evidence through operations such as cropping, zooming, and image manipulation (Zheng et al. 2025; Zhang et al. 2025). Although these specialists achieve strong performance in their target domains, their capabilities arXiv:2608.06699v1 [cs.AI] 7 Aug 2026 often transfer poorly to settings with different action spaces, tool protocols, or trajectory distributions (Feng et al. 2026). Deploying separate expert checkpoints also incurs substan-tial storage, deployment, and system-maintenance overhead. Model merging (Garipov et al. 2018; Draxler et al. 2018; Wortsman et al. 2022; Choshen et al. 2022) provides a cost-effective and modular approach to building generalist agentic MLLMs. By combining expert checkpoints with compatible architectures, typically derived from the same base model, model merging enables the transfer of complementary ca-pabilities into a single model without additional end-to-end training. Existing MLLM merging studies have largely fo-cused on composing static multimodal capabilities under fixed input–output settings, including visual question an-swering, optical character recognition, chart understanding, visual grounding, multimodal reasoning, modality expan-sion, and cross-modal alignment (Sung et al. 2023; Chen et al. 2024; Du et al. 2025; Wei et al. 2025; Shao et al. 2026). In contrast, agentic MLLMs must operate across het-erogeneous observations, tool protocols, action spaces, and long-horizon interaction trajectories, making their capability integration substantially more challenging than static multi-modal models. Merging such interactive capabilities within a single MLLM remains underexplored. We therefore formally introduce the Agentic MLLM Merging task , which aims to merge specialized agentic MLLMs developed for different tools and interactive environments into a single generalist model while maintaining balanced performance across di-verse agentic tasks. Agentic MLLM merging makes two challenges particu-larly salient. First, heterogeneous agentic capabilities are not preserved equally . Their experts capture tasks with dif-ferent interaction complexity and preservation difficulty, yet global averaging and task-agnostic conflict-resolution cri-teria do not explicitly account for this asymmetry. Conse-quently, a merged model may retain some capabilities while substantially diluting another, producing a phenomenon we call weak-task degradation . As Figure 1(a) illustrates, rep-resentative methods, including Weight Averaging (Worts-man et al. 2022), Task Arithmetic (Ilharco et al. 2022), and TSVM (Gargiulo et al. 2025), retain capabilities un-evenly, with the largest expert-to-merge gap appearing on state-dependent, multi-step interaction. Second, agentic suc-cess is trajectory-sensitive and can hinge on individual behavior-critical decisions . Unlike a static prediction, each agent action changes subsequent observations, so a single in-correct retrieval, perception, or interaction decision can redi-rect the remaining trajectory. In Figure 1(b), both models lo-cate the target file, but replacing the expert’s long-press with a click sends the merged model into an “Open with” loop and prevents completion. We call the loss of such decisive pat-terns behavior-critical forgetting . Existing merging methods primarily optimize parameter-level compatibility without ex-plicitly identifying or protecting the localized behaviors that govern trajectory success. To address these challenges, we propose AgentPatch , a training-free, coarse-to-fine framework for weak-task repair in agentic MLLM merging. AgentPatch first performs Sta-ble Backbone Selection to choose a reliable recipient from candidate training-free merges. To address weak-task degra-dation, we introduce Weak-Task Unique Residual Recov-ery , which identifies parameter updates unique to the weak-task expert and selectively restores the signals diluted during merging. Restricting recovery to weak-task-specific coordi-nates provides broad parameter-level compensation while limiting interference with complementary capabilities. To address behavior-critical forgetting, we further introduce an 
+
+Agent-Guided Behavior-Critical Patch . It contrasts recip-ient and expert trajectories to compile repair and protection behaviors, localizes their associated behavior-critical feed-forward neurons, and applies Guardian-constrained expert-directed interpolation. This behavior-level refinement re-stores decisive execution patterns while preserving comple-mentary agentic and multimodal capabilities. Our main contributions can be summarized as follows: 
+
+• We formulate a new Agentic MLLM Merging task, which aims to integrate specialized agentic MLLMs for different tools and interactive environments into a uni-fied generalist model while maintaining balanced perfor-mance across diverse agentic tasks. 
+
+• We propose AgentPatch , a training-free weak-task repair framework for agentic MLLM merging. AgentPatch com-bines stable backbone selection, weak-task residual recov-ery, and behavior-critical patching to restore degraded capabilities while reducing interference among different tasks. 
+
+• We establish systematic evaluation settings across multi-ple agentic and multimodal benchmarks. Extensive exper-iments demonstrate that AgentPatch effectively alleviates weak-task degradation and improves the overall balance of merged agentic MLLMs. 
+
+Related Work 
+
+Model Merging 
+
+Model merging integrates multiple expert checkpoints into a single model without unified retraining or additional inference-time cost. Early approaches mainly rely on weight interpolation and task-vector arithmetic. Model Soup (Worts-man et al. 2022) averages fine-tuned checkpoints, while Task Arithmetic (Ilharco et al. 2022) represents task-specific knowledge as parameter differences and composes capa-bilities through vector arithmetic. To mitigate interference, TIES-Merging (Yadav et al. 2023) removes conflicting updates through trimming and sign consensus, whereas DARE (Yu et al. 2024) improves merging via random drop-ping and rescaling of task-vector elements. Recent methods further improve merging robustness through parameter se-lection and optimization strategies. Model Stock (Jang, Yun, and Han 2024) explores interpolation among fine-tuned mod-els, while KnOTS (Stoica et al. 2024) aligns task-vector subspaces for better compatibility. Extending to MLLMs, RobustMerge (Zeng et al. 2025) and OptMerge (Wei et al. 2025) study merging across multimodal tasks and modal-ities, while PivotMerge (Shao et al. 2026) introduces post-alignment merging to integrate cross-modal projectors learned from heterogeneous multimodal pre-training. More recently, ARM (Feng et al. 2026) extends merging to interac-tive LLM agents, while complementary LLM-agent research studies execution-time multi-agent workflow adaptation (Xu et al. 2026b). However, merging multimodal agents with het-erogeneous observations, tools, and long-horizon interaction behaviors remains underexplored. 
+
+Agentic MLLMs 
+
+Agentic MLLMs combine multimodal perception and rea-soning with autonomous decision making, tool use, and sus-tained interaction with dynamic environments. A recent sur-vey organizes this area along three dimensions: agentic inter-nal intelligence, including reasoning, reflection, and mem-ory; external tool invocation, including search and visual processing; and environment interaction in virtual or phys-ical worlds (Yao et al. 2025). Representative systems have developed along specialized capability axes. Agentic search models learn when and how to issue text or image queries and synthesize retrieved evidence (Wu et al. 2025; Geng et al. 2025); agentic visual processing models iteratively crop or zoom images to acquire fine-grained evidence (Zheng et al. 2025; Zhang et al. 2025); and GUI agents translate screen ob-servations and interaction histories into grounded actions (Ye et al. 2025; Qin et al. 2025). Although these directions all involve multi-step decision making, they differ substantially in observations, tool protocols, action spaces, supervision, and reward design. Existing work therefore largely optimizes each capability within its own environment. Our work is complementary: rather than training another domain-specific agent, we study how independently developed search, GUI-interaction, and agentic visual processing experts can be con-solidated into one agentic MLLM without joint retraining. 
+
+Methodology 
+
+Task Definition 
+
+In this section, we formalize the Agentic MLLM Merging task, including its setting, constraints, and evaluation prin-ciple. Let M0 denote a base MLLM with parameters θ0,and let {Mk}k∈K be a set of expert checkpoints derived from the shared base model. We assume that these experts have compatible architectures and aligned parameterization, while being specialized for heterogeneous agentic capabili-ties or interactive environments. Each expert induces a task vector 
+
+τ k = θk − θ0, (1) where θk denotes the parameters of expert Mk.Agentic MLLM Merging aims to construct a single gen-eralist checkpoint through a merging procedure A:
+
+θ∗ = A(θ0, {τ k}k∈K ) . (2) We consider a training-free setting, where A introduces no gradient-based optimization or joint multi-environment training. The resulting model is deployed as a single check-point without expert routing or ensemble inference. For each capability k, let Ek denote its associated eval-uation environments or benchmarks, and let Sk(θ) be the corresponding aggregate score, with all metrics normalized such that higher values indicate better performance. We de-fine the expert-relative degradation of an arbitrary checkpoint 
+
+θ as 
+
+Dk(θ) = Sk(θk) − Sk(θ)max( Sk(θk), ϵ s) . (3) where ϵs > 0 is a small constant that prevents division by zero. The desired merged model should achieve strong ag-gregate performance while limiting the largest expert-relative degradation. Evaluation places the merged model in heterogeneous interactive environments and complementary multimodal benchmarks. The former assess its ability to process evolv-ing observations, select actions, invoke tools, and com-plete multi-step tasks, while the latter measure whether general multimodal capabilities remain preserved. Accord-ingly, merging quality is evaluated jointly through capability-specific scores, aggregate performance, and worst-capability degradation. 
+
+Stable Backbone Selection 
+
+We first construct a stable merged backbone as the recipient for subsequent repair. Different training-free merging opera-tors may preserve expert capabilities unevenly and introduce distinct interference patterns; applying repair to an imbal-anced initialization may therefore amplify existing capabil-ity gaps. We thus compare candidate backbones produced by multiple merging operators. Let G denote the set of candidate merging operators. Each operator Gg , g ∈ G , produces a candidate from the shared base and expert task vectors: 
+
+θ(g) = Gg (θ0, {τ k}k∈K ) , (4) Candidate selection is performed on fixed development sub-sets covering all target capabilities, while the test sets remain unseen. Rather than optimizing an individual capability, we select the candidate with the highest unweighted mean of normalized capability scores: 
+
+g∗ = arg max 
+
+> g∈G
+
+1
+
+|K| 
+
+X
+
+> k∈K
+
+Sk
+
+
+
+θ(g)
+
+, θ(1) = θ(g∗), (5) We then identify its weakest-preserved capability on the same subsets as 
+
+w = arg max  
+
+> k∈K
+
+Dk
+
+
+
+θ(1) 
+
+. (6) This stage provides both the recipient θ(1) and the target capability w for the subsequent coarse-to-fine repair. 
+
+Weak-Task Unique Residual Recovery 
+
+Although the selected backbone provides a stable starting point, it may still preserve some expert capabilities substan-tially less effectively than others. Directly injecting the com-plete task vector of the weakest-preserved expert may recover task-specific signals, but can also perturb parameter coordi-nates modified by other experts, thereby introducing negative transfer. We therefore perform a coarse parameter-level repair restricted to updates unique to the weak-task expert. Pretrained base 
+
+1. Stable Backbone Selection 2. Weak-Task Unique Residual Recovery 3. Agent-Guided Behavior-Critical Patch 
+
+Expert agentic MLLMs Search Agent 
+
+> Visual Processing Agent
+> Task Vectors
+
+Development Subsets   
+
+> Selected Backbone 𝜽 𝟏
+> Weak Task
+> 𝑤
+> Calibration evidence Parameter activity masks
+
+𝐴 #$ = 𝟏 𝜏 #$ > 𝜖 
+
+> Guardian Compiler Diagnoser
+> Weak-Task Unique Mask Construction
+
+𝑈 !" = 𝐴 !" $
+
+> #∈𝒦 ∖{!}
+
+1 − 𝐴 #"    
+
+> Weak-Task Unique Mask 𝐔 𝐰
+> Selected Backbone 𝜽 𝟏
+> Weak-Task Expert 𝜽 𝒘
+
+𝜽 𝟐 = 𝜽 𝟏 + 𝛽 𝐔 𝐰 ⊙ 𝜽 𝒘 − 𝜽 𝟏                             
+
+> Weak-Task Unique Residual Recovery Coarsely Repaired Recipient 𝜽 𝟐
+> Recipient–Expert Trajectory Pairs
+> click(File) →click(Export As) →
+> type(“sales.png”) →click(Export)
+> →click(Confirm) →terminate()
+> click(File) →click(Save As) →
+> type("sales.png") →terminate()
+> DGC Workflow
+> Expert Repair Trajectory User: Export the edited chart as “sales.png”. Agent: click File →click Export As →
+> type("sales.png") →click Export →
+> click Confirm →terminate(success) Recipient Success Trajectory User: Save the current spreadsheet and exit. Agent: hotkey("ctrl", "s") →wait() →
+> click Close →terminate(success)
+> Compiled Behavior Spans
+> Repair behavior spans Protection behavior spans
+> Behavior-Conditioned Neuron Scoring & Balanced Selection & Guardian Exclusion Parameter Activity Mask Construction Expert-Directed Whole-Neuron Interpolation
+
+GUI Agent 
+
+Candidate Backbone Construction Avg TA TSVM TIES ... ... 
+
+Candidate Backbones   
+
+> Final Merged Model 𝜽 -
+> ... ...
+
+A&... Weak-Task Expert 𝜽 𝒘   
+
+> Repaired Recipient 𝜽 𝟐
+> Recipient Success Bank
+> Successful Recipient / Preserved Capabilities
+> Repair Candidates Protected Neurons
+> User: Export the edited chart as “sales.png”.
+> Behavior-Critical Neurons
+
+Figure 2: Overview of AgentPatch. Starting from search, GUI-interaction, and agentic visual processing experts derived from a shared base model, AgentPatch first selects a stable merged backbone. It then restores weak-task-exclusive updates diluted during merging through coarse parameter-level residual recovery. Finally, the Diagnoser–Guardian–Compiler (DGC) workflow contrasts recipient and expert trajectories, compiles behavior-critical repair and protection spans, maps them to behavior-critical FFN neurons, and applies a Guardian-constrained expert-directed patch. Let w ∈ K denote the weakest-preserved capability iden-tified on the calibration set. For each scalar parameter coor-dinate p, we define the activity indicator of expert k as 
+
+Apk = 1[|τ pk | > ϵ ] , k ∈ K , (7) where ϵ filters negligible parameter variations. The weak-task unique mask is then defined as 
+
+U pw = Apw
+
+Y
+
+k∈K\{ w}
+
+(1 − Apk) . (8) This mask retains coordinates modified by the weak-task expert while excluding those that are also active in any other expert. We recover the missing weak-task residual by interpolating the selected backbone toward the corresponding expert only on these coordinates: 
+
+θ(2) = θ(1) + β Uw ⊙
+
+
+
+θw − θ(1) 
+
+, (9) where β controls the recovery strength and ⊙ denotes element-wise multiplication. Unlike directly adding the com-plete expert task vector, this operation restores only the expert-directed residual on weak-task-exclusive coordinates, providing broad capability compensation while limiting in-terference with the remaining experts. As a coarse parameter-level repair, however, it does not distinguish which local actions or behavior patterns are decisive for successful inter-action, motivating the subsequent behavior-critical patch. 
+
+Agent-Guided Behavior-Critical Patch 
+
+The coarse repair cannot distinguish behavior patterns that are decisive for successful interaction. The final stage there-fore identifies trajectory gaps, traces the corresponding feed-forward neurons, excludes neurons associated with protected capabilities, and softly interpolates the remaining neurons toward the weak-task expert. 
+
+Agent-Guided Behavior Specification For each calibra-tion task, we collect paired trajectories generated on the same task by the repaired recipient θ(2) and the weak-task expert 
+
+θw; all calibration tasks are disjoint from the test tasks. The 
+
+Diagnoser compares each pair and identifies behavior gaps for which the recipient fails while the expert succeeds. The corresponding expert behaviors form the repair evidence .To reduce collateral degradation, the Guardian gathers 
+
+protection evidence from behaviors that the recipient already performs correctly, including successful interaction patterns, valid action formats, and capabilities inherited from other ex-perts. The Compiler then converts the repair and protection evidence into token-level span selectors while preserving their environment and trajectory-step provenance. Together, these three analysis agents form the Diagnoser–Guardian– Compiler (DGC) workflow and produce two collections of behavior spans: desired expert spans to be restored and recipi-ent spans whose associated functionality should be protected. DGC is used only during offline checkpoint construction to produce auditable token-span selectors and introduces no analysis-agent dependency at inference time. 
+
+Behavior-Conditioned Neuron Scoring We apply teacher forcing to the fixed behavior trajectories and record feed-forward activations only at the compiled token positions. Let 
+
+zℓt denote the intermediate FFN activation of width dff at token t in layer ℓ. The output contributed by neuron j is 
+
+zℓt,j Wℓ
+
+> out
+
+[: , j ].Let Drep  
+
+> r
+
+denote the expert trajectories associated with repair group r, and let T rep  
+
+> e,r
+
+be the selected behavior-token positions in trajectory e. We compute the trajectory-balanced activation of neuron j as 
+
+arep  
+
+> ℓrj
+
+= 1
+
+|D rep  
+
+> r
+
+|
+
+X
+
+> e∈D rep
+> r
+
+1
+
+|T rep  
+
+> e,r
+
+|
+
+X 
+
+> t∈T rep
+> e,r
+
+zℓ,w t,j , (10) where zℓ,w t,j is obtained from the weak-task expert. Averaging first within each trajectory prevents longer action sequences from dominating the estimate. Activation magnitude alone does not reflect how strongly a neuron affects the layer output. We therefore incorporate the norm of its outgoing projection and define 
+
+crep  
+
+> ℓrj
+
+= arep  
+
+> ℓrj
+
+Wℓ,w  
+
+> out
+
+[: , j ] 2
+
+. (11) This score favors neurons that are both active on the de-sired behavior and capable of substantially influencing down-stream representations. For each repair group r, we retain a group-level fraction qr of the highest-scoring neurons in ev-ery layer: 
+
+Rℓr = TopK 
+
+
+
+{crep  
+
+> ℓrj
+
+}dff 
+
+> j=1
+
+, ⌈qr dff ⌉
+
+
+
+. (12) 
+
+Balanced Selection and Guardian Exclusion Calibration environments may contain different numbers of trajectories or behavior groups, so a global selection budget can favor evidence-rich environments. We therefore select neurons in-dependently within each group using qr before taking their union, maintaining balanced contributions across heteroge-neous environments. Protection neurons are identified analogously from pro-tected recipient spans. Specifically, activations and output contributions are computed using the recipient θ(2) . Let cprot 
+
+> ℓpj
+
+denote the resulting contribution score for protection group 
+
+p. With a protection fraction qguard , we define 
+
+Pℓp = TopK 
+
+
+
+{cprot  
+
+> ℓpj
+
+}dff 
+
+> j=1
+
+, ⌈qguard dff ⌉
+
+
+
+. (13) The final repair set is 
+
+Mℓ = [
+
+> r
+
+Rℓr
+
+!
+
+\ [
+
+> p
+
+Pℓp
+
+!
+
+. (14) We refer to the surviving neurons in Mℓ as behavior-critical neurons . A neuron associated with any protected behavior is excluded from editing, even when it also receives a high repair score. This conservative Guardian mechanism prior-itizes capability preservation over aggressive weak-task re-covery. 
+
+Expert-Directed Whole-Neuron Interpolation Let ϕℓj
+
+denote the complete parameter block associated with neu-ron j, including its incoming and outgoing connections. For every selected neuron j ∈ M ℓ, we update 
+
+ϕℓ, (3)  
+
+> j
+
+= (1 − α)ϕℓ, (2)  
+
+> j
+
++ αϕℓ,w j . (15) All unselected parameters remain unchanged. Unlike hard neuron replacement, this soft expert-directed interpolation preserves most of the recipient representation while selec-tively restoring behavior-critical expert signals. 
+
+Experiments 
+
+Experimental Setup 
+
+Models. We conduct all experiments with Qwen2.5-VL-7B (Bai et al. 2025b) as the shared base architecture. The three source experts are MMSearch-R1-7B for agentic mul-timodal search (Wu et al. 2025), GUI-Owl-7B for GUI inter-action (Ye et al. 2025), and DeepEyes-7B for agentic visual processing (Zheng et al. 2025). AgentPatch produces one static checkpoint and uses neither expert routing nor ensem-ble inference at test time. 
+
+Benchmarks. We evaluate six benchmarks covering three task types. MMSearch (Jiang et al. 2024) and Factu-alVQA (Wu et al. 2025) assess agentic multimodal search; AndroidWorld (Rawles et al. 2024) and OSWorld (Xie et al. 2024) evaluate GUI interaction in mobile and desktop en-vironments; V*Bench (Wu and Xie 2023) and HR-Bench 8K (Wang et al. 2024) assess agentic visual processing through fine-grained visual search and high-resolution im-age understanding. 
+
+Baselines. We compare AgentPatch with representative training-free merging methods, including Weight Averag-ing (Wortsman et al. 2022), Task Arithmetic (Ilharco et al. 2022), TIES-Merging (Yadav et al. 2023), TSVM (Gargiulo et al. 2025), Iso-CTS (Marczak et al. 2025), OptMerge (Wei et al. 2025), ACE-Merging (Xu et al. 2026a), and DC-Merge (Zhang et al. 2026). 
+
+Implementation details. We construct candidate back-bones using Weight Averaging, Task Arithmetic, TIES-Merging, and TSVM, and select TSVM on the fixed cali-bration partitions. The same calibration results identify GUI interaction as the weakest-preserved capability, which is tar-geted by the subsequent repair stages. The activity threshold, unique-residual coefficient, and per-group Guardian protec-tion ratio are set to ϵ = 10 −5, 0.15 , and 0.01 , respectively. We interpolate the selected behavior-critical neurons toward GUI-Owl-7B with coefficient 0.02 . No gradients or test ex-amples are used during checkpoint construction. 
+
+Main Results 
+
+Table 1 first confirms the complementary specialization of the three source experts. MMSearch-R1-7B performs best among the experts on both search benchmarks, GUI-Owl-7B leads on both GUI benchmarks, and DeepEyes-7B leads on both agentic visual processing benchmarks. Each expert’s advantage is concentrated in its target task type, motivating Method MMSearch FactualVQA AndroidWorld OSWorld V*Bench HR-Bench 8K Avg. 
+
+Expert agentic MLLMs 
+
+MMSearch-R1-7B 47.0 52.8 30.4 13.3 72.2 68.3 47.4 GUI-Owl-7B 17.2 24.9 71.2 28.5 34.4 62.6 39.8 DeepEyes-7B 29.8 33.1 16.3 12.4 84.1 70.0 41.0 
+
+Merging Methods 
+
+Weight Averaging 39.1 45.6 46.7 19.0 75.5 69.6 49.3 Task Arithmetic 41.1 43.1 43.5 15.4 76.2 69.1 48.0 TIES-Merging 0.0 7.4 44.6 19.1 2.0 61.2 22.4 TSVM 44.4 49.6 59.2 17.7 84.8 71.1 54.5 Iso-CTS 40.4 50.9 43.5 11.2 83.4 75.8 50.9 OptMerge 39.7 47.7 38.0 11.5 74.8 70.0 47.0 ACE-Merging 41.7 52.4 44.6 11.9 85.4 73.8 51.6 DC-Merge 39.7 36.2 50.0 15.6 78.2 69.7 48.2 
+
+AgentPatch 46.4 52.7 63.6 19.0 84.8 73.1 56.6 
+
+Table 1: Test-set performance across agentic and multimodal benchmarks. All values are percentages, and higher is better. Bold and underlined numbers indicate the best and second-best results, respectively, among merging methods with an available score. The overall score is reported only when all six task results are available.                   
+
+> Variant Search GUI Visual Avg. TSVM Backbone 47.0 38.5 78.0 54.5
+> +Unique Residual 51.0 39.8 77.7 56.2
+> +Behavior Patch 49.6 41.3 79.0 56.6
+
+Table 2: Component ablation by task type. Search averages MMSearch and FactualVQA; GUI averages AndroidWorld and OSWorld; Visual averages V*Bench and HR-Bench 8K. Avg. is the mean over all six benchmarks. the consolidation of their complementary capabilities into a single agentic MLLM. Conventional merging improves coverage but does not re-liably resolve this imbalance. Weight Averaging and Task Arithmetic obtain overall scores of 49.3 and 48.0, respec-tively. Among the stronger structure-aware baselines, TSVM provides the most balanced initialization, reaching 54.5 on average, while other approaches attain competitive results on individual visual benchmarks but remain weaker on GUI interaction. AgentPatch achieves the best complete overall result, im-proving the TSVM backbone from 54.5 to 56.6. It improves MMSearch, FactualVQA, AndroidWorld, OSWorld, and HR-Bench 8K while preserving V*Bench performance. In par-ticular, the gains on both AndroidWorld and OSWorld show that weak-task repair transfers across mobile and desktop interaction environments rather than overfitting to a single GUI benchmark. At the same time, the model remains close to the search expert on MMSearch and FactualVQA and to the visual expert on V*Bench, demonstrating a better balance between weak-task recovery and preservation of complemen-tary capabilities. Search GUI Visual Avg.   
+
+> 35 45 55 65 75 85
+> Score
+> 47.0 38.5 78.0 54.5 49.9 41.1 76.1 55.6 51.0 39.8 77.7 56.2
+> TSVM Weak-Task Active Weak-Task Unique
+
+Figure 3: Effect of weak-task residual support relative to the TSVM backbone. Weak-Task Active uses all coordinates active in the weak-task expert, whereas Weak-Task Unique retains only coordinates inactive in the other experts. Each task type averages the same two test benchmarks as in Table 2; Avg. is the mean over all six benchmarks. 
+
+Ablation Studies 
+
+Component-wise contributions. Table 2 evaluates the two repair stages on the selected TSVM backbone. Weak-Task Unique Residual Recovery raises the overall average from 54.5 to 56.2 while improving Search from 47.0 to 51.0 and GUI from 38.5 to 39.8. The behavior-critical patch further raises GUI from 39.8 to 41.3 and Visual from 77.7 to 79.0, yielding the best average of 56.6. These complementary gains support the coarse-to-fine design: parameter-level recovery broadly restores weak-task signals, while behavior-level re-finement strengthens decisive interaction patterns and pre-serves the integrated capability balance. 
+
+Effect of unique residual support. Figure 3 compares all active coordinates of the weak-task expert with its unique subset while keeping the backbone and residual strength fixed. Although the active region raises GUI from 39.8 to 41.1, it reduces Search and Visual by 1.1 and 1.6 points and Variant Search GUI Visual Avg. Random Neurons 50.1 35.7 77.4 54.4 w/o Guardian 47.9 36.3 78.4 54.2 Full AgentPatch 49.6 41.3 79.0 56.6 
+
+Table 3: Core design ablation for the behavior-critical patch. Random Neurons replaces behavior-conditioned localization with layer-matched random selection, while w/o Guardian disables protected-neuron exclusion. 0.10 0.15 0.20 0.30 
+
+Residual coefficient β
+
+024
+
+> Change from TSVM (points)
+
+Search GUI Visual Avg. 
+
+Figure 4: Sensitivity to the unique-residual coefficient β,reported as performance change from the TSVM backbone. lowers the overall average from 56.2 to 55.6. The weak-task-unique mask therefore does more than sparsify the update: excluding coordinates also active in other experts yields a better balance between weak-task recovery and preservation of complementary capabilities. 
+
+Effect of behavior localization and capability protection. 
+
+Table 3 disentangles the two core designs in the behavior-critical patch. Replacing behavior-conditioned localization with layer-matched random neurons reduces GUI by 5.6 points and the overall average by 2.2 points despite a higher Search score, showing that the gain does not arise from arbi-trary sparse writing. Disabling Guardian exclusion similarly lowers GUI by 5.0 points, Visual by 0.6 points, and the overall average by 2.4 points. The full design achieves the strongest balance, demonstrating the complementary roles of behavior-critical localization and Guardian-based protection in weak-task repair and capability preservation. 
+
+Analysis 
+
+Sensitivity to residual strength. Figure 4 varies only the interpolation coefficient β in Equation 9. The intermediate value β = 0 .15 achieves the best overall balance, with the highest Search average and an overall score of 56.2. Increas-ing β to 0.20 further improves GUI, but stronger residual injection shifts the balance away from Search and Visual. At 
+
+β = 0 .30 , the overall score returns to that of the original backbone. The trend confirms that weak-task recovery is not monotonic: moderate interpolation restores task-specific sig-nals, whereas overly strong injection increasingly interferes with complementary capabilities. 
+
+Recipient GUI Avg. TSVM 38 .5 → 41 .3 54 .5 → 56 .6
+
+Iso-CTS 27 .3 → 30 .0 50 .9 → 52 .0
+
+Table 4: Generalization across merged recipients. Each cell reports the task-type or six-benchmark average before and after applying AgentPatch. GUI averages AndroidWorld and OSWorld. Open Markor                                                
+
+> (a) Create and save a Markor note
+> Shared Correct Prefix Seleted Backbone 𝜽 𝟏 Final Merged Model 𝜽 "
+> Create anew note Enter target filename Type note content Reach the unsaved draft Open Chrome menu
+> (b) Enable Chrome Enhanced protection
+> Open Settings Privacy and security Open Security Reach Safe Browsing
+> type(content) -> terminate() |FAIL type(content) -> click(Save) -> terminate() |SUCCESS
+> click(left of radio) -> terminate() | FAIL click(Enhanced protection) -> terminate() |SUCCESS
+> Save omitted Click Save Click miss radio Select Enhanced protection
+
+Figure 5: Qualitative examples of behavior-critical recov-ery. Both models execute the shared correct prefix, but the selected backbone omits or misgrounds a decisive action. AgentPatch recovers the action and completes the task. 
+
+Generalization across merged recipients. Table 4 applies the same AgentPatch pipeline to TSVM and Iso-CTS, with behavior-critical neurons localized separately for each recipi-ent. For TSVM, AgentPatch improves the GUI average by 2.8 points and the overall six-benchmark average by 2.1 points; for Iso-CTS, the corresponding gains are 2.7 and 1.1 points. The consistent improvements across recipients show that the repair is not tied to a single backbone construction rule. 
+
+Case study of behavior-critical recovery. Figure 5 illus-trates how a single localized action can determine the out-come of an otherwise correct trajectory. In the Markor ex-ample, both models create the target note and enter its con-tent, but the selected backbone terminates without saving it; AgentPatch restores the missing click(Save) action and completes the task. In the Chrome example, both mod-els reach the Safe Browsing page, yet the selected backbone clicks beside the Enhanced Protection radio button. Agent-Patch grounds the action on the intended control and suc-ceeds. These cases show that AgentPatch preserves shared correct prefixes while recovering the behavior-critical ac-tions that turn near-complete trajectories into successful ex-ecutions. 
+
+Conclusion 
+
+This paper introduced Agentic MLLM Merging, a new set-ting for consolidating specialists that operate with heteroge-neous tools, observations, and interaction environments. We identified two central challenges in this setting: weak-task degradation caused by asymmetric capability preservation and the loss of behavior-critical patterns that determine long-horizon task success. To address them, we proposed Agent-Patch, a training-free, coarse-to-fine framework that selects a stable merged backbone, restores weak-task-exclusive resid-uals, and applies an agent-guided behavior-critical patch with explicit capability protection. Experiments across six agen-tic and multimodal benchmarks show that AgentPatch im-proves the overall balance of the merged model, strengthens weak interactive capabilities across mobile and desktop en-vironments, and better preserves complementary search and agentic visual processing skills. These findings show that effective agentic model consolidation requires more than re-solving global parameter conflicts: task-specific residuals and localized behaviors governing trajectory success must also be recovered. This yields a deployable generalist checkpoint without joint retraining or inference-time routing. 
+
+References 
+
+Bai, S.; Cai, Y.; Chen, R.; Chen, K.; Chen, X.; Cheng, Z.; Deng, L.; Ding, W.; Gao, C.; Ge, C.; et al. 2025a. Qwen3-VL Technical Report. arXiv preprint arXiv:2511.21631 .Bai, S.; Chen, K.; Liu, X.; Wang, J.; Ge, W.; Song, S.; Dang, K.; Wang, P.; Wang, S.; Tang, J.; Zhong, H.; Zhu, Y.; Yang, M.; Li, Z.; Wan, J.; Wang, P.; Ding, W.; Fu, Z.; Xu, Y.; Ye, J.; Zhang, X.; Xie, T.; Cheng, Z.; Zhang, H.; Yang, Z.; Xu, H.; and Lin, J. 2025b. Qwen2.5-VL Technical Report. arXiv:2502.13923. Chen, C.; Du, Y.; Fang, Z.; Wang, Z.; Luo, F.; Li, P.; Yan, M.; Zhang, J.; Huang, F.; Sun, M.; et al. 2024. Model composi-tion for multimodal large language models. arXiv preprint arXiv:2402.12750 .Choshen, L.; Venezian, E.; Slonim, N.; and Katz, Y. 2022. Fusing Finetuned Models for Better Pretraining. arXiv preprint arXiv:2204.03044 .Dai, W.; Li, J.; Li, D.; Tiong, A.; Zhao, J.; Wang, W.; Li, B.; Fung, P. N.; and Hoi, S. 2023. InstructBLIP: Towards General-Purpose Vision-Language Models with Instruction Tuning. Advances in Neural Information Processing Systems ,36: 49250–49267. Draxler, F.; Veschgini, K.; Salmhofer, M.; and Hamprecht, F. A. 2018. Essentially No Barriers in Neural Network En-ergy Landscape. In International Conference on Machine Learning , 1309–1318. PMLR. Du, Y.; Wang, X.; Chen, C.; Ye, J.; Wang, Y.; Li, P.; Yan, M.; Zhang, J.; Huang, F.; Sui, Z.; et al. 2025. Adamms: Model merging for heterogeneous multimodal large language models with unsupervised coefficient optimization. In Pro-ceedings of the Computer Vision and Pattern Recognition Conference , 9413–9422. Feng, Z.; Chen, K.; Zhao, S.; Xiong, K.; Wang, Y.; Yu, M.; Nian, J.; Xiao, C.; Cao, Y.; and Jiang, Y. 2026. ARM: Role-Conditioned Neuron Transplantation for Training-Free Generalist LLM Agent Merging. arXiv preprint arXiv:2601.07309 .Gargiulo, A. A.; Crisostomi, D.; Bucarelli, M. S.; Scarda-pane, S.; Silvestri, F.; and Rodola, E. 2025. Task singular vectors: Reducing task interference in model merging. In 
+
+Proceedings of the Computer Vision and Pattern Recogni-tion Conference , 18695–18705. Garipov, T.; Izmailov, P.; Podoprikhin, D.; Vetrov, D. P.; and Wilson, A. G. 2018. Loss Surfaces, Mode Connectivity, and Fast Ensembling of DNNs. Advances in Neural Information Processing Systems , 31. Geng, X.; Xia, P.; Zhang, Z.; Wang, X.; Wang, Q.; Ding, R.; Wang, C.; Wu, J.; Zhao, Y.; Li, K.; et al. 2025. Web-watcher: Breaking new frontier of vision-language deep re-search agent. arXiv preprint arXiv:2508.05748 .Ilharco, G.; Ribeiro, M. T.; Wortsman, M.; Gururangan, S.; Schmidt, L.; Hajishirzi, H.; and Farhadi, A. 2022. Editing models with task arithmetic. arXiv preprint arXiv:2212.04089 .Jang, D.-H.; Yun, S.; and Han, D. 2024. Model stock: All we need is just a few fine-tuned models. In European Conference on Computer Vision , 207–223. Springer. Jiang, D.; Zhang, R.; Guo, Z.; Wu, Y.; Lei, J.; Qiu, P.; Lu, P.; Chen, Z.; Fu, C.; Song, G.; Gao, P.; Liu, Y.; Li, C.; and Li, H. 2024. MMSearch: Benchmarking the Potential of Large Models as Multi-modal Search Engines. arXiv preprint arXiv:2409.12959 .Li, F.; Zhang, R.; Zhang, H.; Zhang, Y.; Li, B.; Li, W.; Ma, Z.; and Li, C. 2024. LLaVA-NeXT-Interleave: Tackling Multi-Image, Video, and 3D in Large Multimodal Models. arXiv preprint arXiv:2407.07895 .Li, J.; Li, D.; Savarese, S.; and Hoi, S. 2023. BLIP-2: Boot-strapping Language-Image Pre-Training with Frozen Image Encoders and Large Language Models. In International Con-ference on Machine Learning , 19730–19742. PMLR. Liu, H.; Li, C.; Wu, Q.; and Lee, Y. J. 2023. Visual Instruction Tuning. Advances in Neural Information Processing Systems ,36: 34892–34916. Marczak, D.; Magistri, S.; Cygert, S.; Twardowski, B.; Bag-danov, A. D.; and van de Weijer, J. 2025. No Task Left Behind: Isotropic Model Merging with Common and Task-Specific Subspaces. In International Conference on Machine Learning .Qin, Y.; Ye, Y.; Fang, J.; Wang, H.; Liang, S.; Tian, S.; Zhang, J.; Li, J.; Li, Y.; Huang, S.; et al. 2025. Ui-tars: Pioneering automated gui interaction with native agents. arXiv preprint arXiv:2501.12326 .Rawles, C.; Clinckemaillie, S.; Chang, Y.; Waltz, J.; Lau, G.; Fair, M.; Li, A.; Bishop, W.; Li, W.; Campbell-Ajala, F.; Toyama, D.; Berry, R.; Tyamagundlu, D.; Lillicrap, T.; and Riva, O. 2024. AndroidWorld: A Dynamic Benchmark-ing Environment for Autonomous Agents. arXiv preprint arXiv:2405.14573 .Shao, Z.; Xiong, B.; Yang, X.; Song, Y.; Zhang, Q.; Chen, H.; and Xu, C. 2026. PivotMerge: Bridging Heterogeneous Multimodal Pre-training via Post-Alignment Model Merg-ing. arXiv preprint arXiv:2604.22823 .Stoica, G.; Ramesh, P.; Ecsedi, B.; Choshen, L.; and Hoff-man, J. 2024. Model Merging with SVD to Tie the Knots. 
+
+arXiv preprint arXiv:2410.19735 .Sung, Y.-L.; Li, L.; Lin, K.; Gan, Z.; Bansal, M.; and Wang, L. 2023. An empirical study of multimodal model merging. 
+
+arXiv preprint arXiv:2304.14933 .Wang, W.; Ding, L.; Zeng, M.; Zhou, X.; Shen, L.; Luo, Y.; and Tao, D. 2024. Divide, Conquer and Combine: A Training-Free Framework for High-Resolution Image Per-ception in Multimodal Large Language Models. arXiv preprint arXiv:2408.15556 .Wang, W.; Gao, Z.; Gu, L.; Pu, H.; Cui, L.; Wei, X.; Liu, Z.; Jing, L.; Ye, S.; Shao, J.; et al. 2025. InternVL3.5: Advancing Open-Source Multimodal Models in Versatility, Reasoning, and Efficiency. arXiv preprint arXiv:2508.18265 .Wei, Y.; Cheng, R.; Jin, W.; Yang, E.; Shen, L.; Hou, L.; Du, S.; Yuan, C.; Cao, X.; and Tao, D. 2025. Unifying Multi-modal Large Language Model Capabilities and Modalities via Model Merging. arXiv preprint arXiv:2505.19892 .Wortsman, M.; Ilharco, G.; Gadre, S. Y.; Roelofs, R.; Gontijo-Lopes, R.; Morcos, A. S.; Namkoong, H.; Farhadi, A.; Carmon, Y.; Kornblith, S.; et al. 2022. Model Soups: Av-eraging Weights of Multiple Fine-Tuned Models Improves Accuracy without Increasing Inference Time. In Inter-national Conference on Machine Learning , 23965–23998. PMLR. Wu, J.; Deng, Z.; Li, W.; Liu, Y.; You, B.; Li, B.; Ma, Z.; and Liu, Z. 2025. Mmsearch-r1: Incentivizing lmms to search. 
+
+arXiv preprint arXiv:2506.20670 .Wu, P.; and Xie, S. 2023. V*: Guided Visual Search as a Core Mechanism in Multimodal LLMs. arXiv preprint arXiv:2312.14135 .Xie, T.; Zhang, D.; Chen, J.; Li, X.; Zhao, S.; Cao, R.; Toh, J. H.; Cheng, Z.; Shin, D.; Lei, F.; Liu, Y.; Xu, Y.; Zhou, S.; Savarese, S.; Xiong, C.; Zhong, V.; and Yu, T. 2024. OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments. arXiv preprint arXiv:2404.07972 .Xu, B.; Wu, H.; Lin, H.; Huang, W.; Zhu, B.; Shu, Y.; and Qin, C. 2026a. ACE-Merging: Data-Free Model Merg-ing with Adaptive Covariance Estimation. arXiv preprint arXiv:2603.02945 .Xu, C.; Ke, K.; Liu, Z.; Wei, J.; Shao, Z.; Guo, W.; and Yu, C. 2026b. EvoMAS: Learning Execution-Time Workflows for Multi-Agent Systems. arXiv preprint arXiv:2605.08769 .Yadav, P.; Tam, D.; Choshen, L.; Raffel, C. A.; and Bansal, M. 2023. Ties-merging: Resolving interference when merg-ing models. Advances in Neural Information Processing Systems , 36: 7093–7115. Yao, H.; Zhang, R.; Huang, J.; Zhang, J.; Wang, Y.; Fang, B.; Zhu, R.; Jing, Y.; Liu, S.; Li, G.; et al. 2025. A survey on agentic multimodal large language models. arXiv preprint arXiv:2510.10991 .Ye, J.; Zhang, X.; Xu, H.; Liu, H.; Wang, J.; Zhu, Z.; Zheng, Z.; Gao, F.; Cao, J.; Lu, Z.; et al. 2025. Mobile-agent-v3: Fundamental agents for gui automation. arXiv preprint arXiv:2508.15144 .Yu, L.; Yu, B.; Yu, H.; Huang, F.; and Li, Y. 2024. Language Models Are Super Mario: Absorbing Abilities from Homol-ogous Models as a Free Lunch. In International Conference on Machine Learning .Zeng, F.; Guo, H.; Zhu, F.; Shen, L.; and Tang, H. 2025. Ro-bustMerge: Parameter-Efficient Model Merging for MLLMs with Direction Robustness. In The Thirty-ninth Annual Con-ference on Neural Information Processing Systems .Zhang, H.-C.; Zhou, Z.-H.; Luo, M.-L.; Di, S.; Zhang, M.-L.; and Wei, T. 2026. DC-Merge: Improving Model Merg-ing with Directional Consistency. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition .Zhang, Y.; Lu, X.; Yin, S.; Fu, C.; Chen, W.; Hu, X.; Wen, B.; Jiang, K.; Liu, C.; Zhang, T.; et al. 2025. Thyme: Think beyond images. In NeurIPS 2025 Fourth Workshop on Deep Learning for Code .Zheng, Z.; Yang, M.; Hong, J.; Zhao, C.; Xu, G.; Yang, L.; Shen, C.; and Yu, X. 2025. Deepeyes: Incentivizing" thinking with images" via reinforcement learning. arXiv preprint arXiv:2505.14362 .Zhu, D.; Chen, J.; Shen, X.; Li, X.; and Elhoseiny, M. 2023. MiniGPT-4: Enhancing Vision-Language Understand-ing with Advanced Large Language Models. arXiv preprint arXiv:2304.10592 .Supplementary Material for 
+
+# AgentPatch: Coarse-to-Fine Weak-Task Repair for Merging Agentic Multimodal Large Language Models 
+
+Zibo Shao 1,2,3 , Baochen Xiong 1,2,3 , Chengdong Xu 4, Linhui Xiao 2,Kaichen Li 1,2,3 , Haoran Gong 2, Yan Li 2, Yaguang Song 2∗, Xiaoshan Yang 1,2,3 ∗
+
+> 1
+
+State Key Laboratory of Multimodal Artificial Intelligence Systems, Institute of Automation, Chinese Academy of Sciences, Beijing, China 
+
+> 2
+
+Pengcheng Laboratory, Shenzhen, China 
+
+> 3
+
+School of Artificial Intelligence, University of Chinese Academy of Sciences, Beijing, China 
+
+> 4
+
+Sun Yat-Sen University, Guangzhou, China shaozibo2023@ia.ac.cn, songyg01@pcl.ac.cn, xiaoshan.yang@nlpr.ia.ac.cn 
+
+A Additional Method Details 
+
+A.1 Overall Algorithm 
+
+Algorithm 1 AgentPatch: Training-Free Coarse-to-Fine Weak-Task Repair 
+
+Require: Base θ0; aligned experts {θk }k∈K ; merging operators 
+
+G; calibration partitions {C k }k∈K 
+
+Ensure: Final merged checkpoint θ(3) 
+
+1: Stage 1: Stable backbone selection 
+
+2: τ k ← θk − θ0, ∀k ∈ K 
+
+3: for each merging operator g ∈ G do 
+
+4: θ(g) ← G g (θ0, {τ k }k∈K )
+
+5: ¯Sg ← |K| −1 P 
+
+> k∈K
+
+Sk (θ(g))
+
+6: end for 
+
+7: g∗ ← arg max g ¯Sg , θ(1) ← θ(g∗)
+
+8: w ← arg max k Dk (θ(1) )
+
+9: Stage 2: Weak-task unique residual recovery 
+
+10: U pw ← 1[|τ pw | > ϵ ] Q  
+
+> k̸=w
+
+1[|τ pk | ≤ ϵ]
+
+11: θ(2) ← θ(1) + βUw ⊙ (θw − θ(1) )
+
+12: Stage 3: Agent-guided behavior-critical patch 
+
+13: Collect paired weak-task trajectories Hrep and successful re-cipient trajectories Hprot .14: (Srep , Sprot ) ← DGC( Hrep , Hprot )
+
+15: crep  
+
+> ℓrj
+
+← arep  
+
+> ℓrj
+
+∥Wℓ,w  
+
+> out
+
+[: , j ]∥2
+
+16: cprot  
+
+> ℓpj
+
+← aprot  
+
+> ℓpj
+
+∥Wℓ, (2) out [: , j ]∥2
+
+17: Rℓ ← S 
+
+> r
+
+TopK( crep  
+
+> ℓr :
+
+, ⌈qr dff ⌉)
+
+18: Pℓ ← S 
+
+> p
+
+TopK( cprot  
+
+> ℓp :
+
+, ⌈qguard dff ⌉)
+
+19: Mℓ ← R ℓ \ P ℓ
+
+20: θ(3) ← θ(2) 
+
+21: for each j ∈ M ℓ and layer ℓ do 
+
+22: ϕℓ, (3)  
+
+> j
+
+← (1 − α)ϕℓ, (2)  
+
+> j
+
++ αϕℓ,w j
+
+23: end for 
+
+24: return θ(3) 
+
+Algorithm 1 gives an executable summary of the com-plete AgentPatch pipeline. In particular, backbone selection produces the recipient θ(1) and the weakest-preserved capa-
+
+> ∗
+
+Corresponding authors. 
+
+Benchmark Pool Dev. Test Dev./Pool Dev./Test 
+
+MMSearch 171 20 151 11.7% 13.2% FactualVQA 1,800 120 1,680 6.7% 7.1% AndroidWorld 116 24 92 20.7% 26.1% OSWorld 369 74 295 20.1% 25.1% V*Bench 191 40 151 20.9% 26.5% HR-Bench 8K 800 80 720 10.0% 11.1% 
+
+Table 1: Development and test partitions. “Pool” denotes the complete evaluated benchmark pool. We report both the development share of the pool and its size relative to the test complement. bility w, which jointly determine the subsequent repair target. DGC is invoked only during offline checkpoint construction, so the procedure outputs a single static checkpoint with no analysis-agent, expert-routing, or ensemble dependency at inference time. 
+
+A.2 Development and Test Partitions 
+
+Table 1 specifies the fixed partitions used throughout the pa-per. For each benchmark, the development partition supports candidate selection, weak-capability identification, or offline repair construction, whereas the reported test partition is its disjoint complement. 
+
+A.3 Stable Backbone Selection Details 
+
+We instantiate the candidate set G with Weight Averaging, Task Arithmetic, TIES-Merging, and TSVM. All four candi-dates use the same base and aligned expert checkpoints and are evaluated with identical inference protocols on fixed cal-ibration partitions. No test example participates in candidate selection or weak-capability identification. For capability k, let Bk be its associated calibration bench-marks and let sb(θ) ∈ [0 , 1] denote the score of model θ on benchmark b after metric normalization. We aggregate the benchmarks belonging to the same capability as 
+
+Sk(θ) = 1
+
+|B k|
+
+X
+
+> b∈B k
+
+sb(θ). (1) Development set WA TA TIES TSVM 
+
+MMSearch20 45.0 50.0 0.0 50.0 
+
+FactualVQA120 42.5 37.5 0.0 40.0 AndroidWorld24 20.8 16.7 25.0 37.5 
+
+OSWorld74 18.9 13.5 13.5 17.6 V*Bench40 77.5 85.0 5.0 87.5 
+
+HR-Bench 8K80 72.5 68.8 65.0 71.3 
+
+Average 46.2 45.2 18.1 50.6 
+
+Table 2: Performance (%) of all Stage-1 candidate backbones on the six fixed development partitions. The average is the un-weighted mean of the six scores; WA and TA denote Weight Averaging and Task Arithmetic. Following the main paper, with ϵs > 0 denoting a small con-stant that prevents division by zero, we measure the preser-vation of capability k by its expert-relative degradation 
+
+Dk(θ) = Sk(θk) − Sk(θ)max( Sk(θk), ϵ s) , (2) Because each capability has two benchmarks, this aggre-gation is equivalent to the unweighted mean over the six development scores. Table 2 compares every candidate on the same current development partitions. TSVM provides the highest six-benchmark average and is selected as θ(1) .We then identify the weakest-preserved capability as w =arg max k∈K Dk(θ(1) ), which selects GUI interaction. Sub-sequent stages therefore use the TSVM recipient and GUI ex-pert evidence. The common evaluator assigns zero to TIES-Merging on the two search partitions because its checkpoint yields no valid extracted answers. 
+
+A.4 Implementation Hyperparameters 
+
+Table 3 consolidates the concrete settings used to construct the reported AgentPatch checkpoint. Ratios in Stage 3 are applied per behavior group and per layer. The protection budget counts group-balanced Guardian calibration exam-ples, not protected neurons; the latter are obtained by taking the union of the per-group selections. 
+
+B DGC Workflow and Behavior Evidence Construction 
+
+The Diagnoser–Guardian–Compiler (DGC) workflow trans-lates execution-level evidence into auditable behavior spans for the final repair stage. DGC determines which behav-iors should be restored or protected, while the behavior-conditioned activation procedure determines where they are represented. Table 5 summarizes the evidence contract that separates the three agents. 
+
+B.1 Trajectory Evidence Pools 
+
+For each calibration task i, we record its benchmark and task identifiers, instruction, environment observations, serialized action sequence, and evaluator outcome. The repaired recip-ient θ(2) and the weak-task expert θw are executed on the same task, forming a paired record 
+
+ei =
+
+
+
+bi, u i, τ (2)  
+
+> i
+
+, τ wi , y (2)  
+
+> i
+
+, y wi
+
+
+
+, (3)                                                          
+
+> Stage Component Setting
+> 1Candidate operators Weight Averaging, Task Arithmetic, TIES-Merging, and TSVM 1Task Arithmetic scale λTA = 0 .3
+> 1Parameter scope Visual merger and language model 1Selected recipient θ(1) : TSVM 2Weak-task expert θw: GUI-Owl-7B 2Activity threshold ϵ= 10 −5
+> 2Residual coefficient β= 0 .15
+> 3Calibration evidence AndroidWorld24 and OSWorld74 3Repair groups 4 AndroidWorld + 12 OSWorld 3Activation statistic Absolute mean 3Selection score Output contribution 3Repair ratio qr0.0075 /AndroidWorld group; 0.0025 /OSWorld group 3Guardian ratio qguard 0.01 per protection group 3Guardian budget Bg512 group-balanced calibration examples 3Interpolation α= 0 .02
+> 3Layer scope All 28 decoder FFN layers; no filter 3Write unit Whole FFN neuron (gate/up rows and down col-umn; bias if present) 3DGC analysis model gpt-5.5 ; temperature 0
+> 3DGC context Full trajectories; no step/example truncation 3DGC output Strict JSON schema; 32,768-token generation limit
+
+Table 3: Complete implementation settings for the reported AgentPatch model. where bi and ui identify the benchmark and task, τ (2)  
+
+> i
+
+and τ wi
+
+are the two trajectories, and y(2)  
+
+> i
+
+and ywi are their evaluator outcomes. The two evidence pools are deliberately separated: 
+
+Repair Evidence Pool  
+
+> Paired same-task trajectories
+> θ(2) : verified underperformance
+> θw: verified corrective behavior
+> Output: expert behavior spans
+
+Protection Evidence Pool 
+
+> Recipient-success bank Correct weak-task behaviors Complementary capabilities to preserve
+> Output: recipient behavior spans
+
+Repair evidence consists exclusively of paired records ad-mitted to the fixed strict-gap pool; support records are not promoted into repair targets. Complete trajectories provide the environment state and execution context surrounding each action. Protection evidence instead comes from suc-cessful recipient behaviors and complementary capabilities to preserve. All calibration tasks are disjoint from the test partitions. 
+
+B.2 Diagnoser: Mining Behavior-Critical Gaps 
+
+The Diagnoser aligns the recipient and expert trajectories and locates a behaviorally meaningful divergence associated with the expert’s advantage. It jointly considers the task instruc-tion, observations, action arguments, evaluator feedback, and the actions following the divergence. The result is expressed as a reusable workflow behavior rather than as a task-specific command string. In the GUI-targeted instantiation reported here, examples include establishing the correct input focus, invoking the required interaction type, navigating the ap-propriate menu hierarchy, and confirming a state-changing operation. Each diagnosed group records its behavioral intent, target environment, failure mode, matcher hints, and exact source records. The benchmark, task identifier, and supporting ac-tion step make every repair behavior traceable to an observed gap. Related gaps may share a behavior group, but all strict source records are retained. Only expert-supported spans re-ceive the boost polarity; incorrect recipient actions assist diagnosis but are not compiled into a negative update branch. 
+
+B.3 Guardian: Constructing Protection Evidence 
+
+The Guardian identifies behaviors whose associated param-eters should be excluded from repair. It operates on the recipient-success bank and groups evidence by the capability being preserved. In the GUI-targeted instantiation reported here, protection evidence includes already-correct interac-tion workflows and valid action formats, together with com-plementary capabilities such as search-query formulation, evidence-grounded answers, fine-grained visual judgment, high-resolution reasoning, and general tool-use schemas. Failure-only records may reveal a potential interference risk, but they cannot by themselves establish a protection group. Every protection group retains typed provenance linking it to recipient- or shared-success examples. Guardian proposes no weight changes and never converts protected examples into repair targets. Its selectors instead define the protected neuron union, so editing is constrained by evidence of func-tionality already present in the recipient rather than by a generic distance heuristic. 
+
+B.4 Compiler: Executable Span Selectors and Auditing 
+
+The Compiler converts the Diagnoser and Guardian outputs into two canonical collections: repair groups and protection groups. A compiled group contains a name, behavior tokens, executable matchers, source-task provenance, and evidence references. Matchers use literal, regular-expression, parsed action-field, or within-action sequence rules. Because ac-tivation calibration serializes one action record at a time, a multi-step workflow description is retained as group-level in-tent, while every selected span must be grounded in an action that is actually present in the corresponding trajectory. For a serialized action sequence xi and a matched character interval [air , b ir ) from group r, tokenizer offset mappings convert the match into behavior-token positions 
+
+Ti,r = {t | offset( xi,t ) ∩ [air , b ir )̸ = ∅} . (4) The resulting repair positions select expert tokens, whereas protection positions select recipient tokens. The Com-piler narrows overly broad selectors and records unresolved repair–protection conflicts; final protection is enforced at the neuron level by Guardian exclusion. It also enforces two fail-closed provenance checks: the union of repair-group sources must cover all supplied strict gaps, and every protection group must be backed by recipient-success evidence. Table 4 traces an AndroidWorld Markor calibration ex-ample from a recipient–expert gap to an executable repair selector paired with independent recipient-success protec-tion evidence.           
+
+> Stage Audited artifact
+> Observed gap On MarkorCreateNoteFromClipboard , the recipi-ent misses part of the focus–paste–save workflow while the expert succeeds. Diagnoser Emits repair group markor_filename_focus_ paste_save with expert-supported action steps. Guardian Draws successful Markor-edit and valid mobile-action evi-dence from the independent recipient-success bank. Compiler Compiles Diagnoser repair evidence and Guardian protec-tion evidence into executable token selectors; repair spans overlapping protected behavior are narrowed or excluded.
+
+Table 4: An audited DGC compilation trace. The repair and protection branches originate from different trajectory records and meet only at Compiler overlap resolution. 
+
+B.5 DGC Prompt Templates 
+
+The DGC agents use structured prompt templates with strict JSON outputs. The templates below provide the parameter-ized instruction and input–output framework used by DGC. Run-specific payloads—including trajectories, screenshots, and behavior profiles—are replaced with descriptive place-holders in angle brackets. At the framework level, DGC accepts trajectories from any identified weak capability. Since GUI interaction is identified as the weakest-preserved capability in our experiments, the instantiated payload schemas below use AndroidWorld and OSWorld trajectories as repair evidence, while search and vi-sual behaviors provide complementary protection evidence. 
+
+Diagnoser prompt template. The Diagnoser prompt asks the agent to read paired recipient–expert weak-task trajecto-ries and identify behavior-critical gaps where the expert pro-vides a clear corrective behavior. The prompt explicitly dis-ables negative suppression: every editable target must move the recipient toward the expert on expert-supported spans. 
+
+Prompt 1. Diagnoser behavior-gap template.                                                                                                 
+
+> [SYSTEM PROMPT]
+> You are the Behavior-Critical Gap Diagnoser for expert-directed weak-task repair. Read the supplied paired trajectories and identify behavior-critical gaps for which the current merged model underperforms while the weak-task expert provides aconcrete corrective behavior. Use only the supplied evidence. Compare the task instruction, observations, actions, evaluator feedback, and subsequent environment states; do not infer an unsupported success or failure. Use only strict_gap_records. Every output group must cite at least one supplied strict-gap record, and the union of source_records over all groups must cover every supplied strict gap. When context_policy.mode is full, inspect the complete trajectory and retain all distinct provenance. Support records must not be promoted into repair groups. Describe reusable workflow behaviors rather than memorizing task titles. Matchers must select the
+
+Agent Evidence source Compiled output Constraint 
+
+Diagnoser Paired recipient–expert gaps Repair behavior groups grounded in expert action spans Only expert-supported behaviors are emitted; incorrect recipient actions do not form a negative update branch. Guardian Recipient-success and shared-success evidence Protection behavior groups grounded in recipient action spans Failure-only records cannot establish pro-tection; protected functionality must al-ready be present. Compiler Behavior groups and serialized trajectories Executable token-span selectors with task/step provenance Protection takes precedence over repair, and incomplete provenance fails closed. 
+
+Table 5: Evidence contract of the DGC workflow. Each agent has a distinct evidence source, compiled artifact, and safety constraint. 
+
+Agent Prompt goal Required input fields Output schema anchor 
+
+Diagnoser Mine expert-directed behavior gaps without creating a suppres-sion branch. 
+
+strict_gap_records ; full tra-jectory context; strict-gap coverage au-dit. 
+
+behavior_gap_groups : intent, cur-rent failure, expert repair direction, matchers, source records, evidence refs. Guardian Protect recipient-owned behavior using successful evidence rather than failure-only heuristics. Search/FVQA, visual, and GUI ex-ample sets separated into success, shared-success, current-only-success, and failure records. 
+
+protected_behavior_groups :protected capability, tokens, matchers, source tasks, risk if modified, evidence refs. Compiler Convert Diagnoser and Guardian groups into executable span selec-tors with auditable provenance. Agent outputs, matcher hints, full seri-alized trajectories, required strict-gap coverage list, and protection evidence. 
+
+repair_token_groups ,
+
+protected_token_groups ,conflict rules, calibration policy, next repair spec. 
+
+Table 6: Prompt I/O schema summary for the reported DGC instantiation. The templates expose the same information boundaries as the implementation: repair is expert-directed, protection is recipient-success-grounded, and compilation is deterministic and auditable.                                                                                     
+
+> expert-side corrective action spans and must be executable as literal, regular-expression, JSON-field, or within-action sequence matchers. Prefer selectors that generalize across similar actions, while retaining exact source records and evidence references. Emit no negative suppression or protection groups. Every repair group must target the LLM and set target_modules to exactly ["llm"]. Return one valid JSON object and no surrounding Markdown.
+> [USER PROMPT]
+> {"payload_version": "<PAYLOAD_VERSION>", "context_policy": {"mode": "full", "record_omission_allowed": false, "action_window": "complete_trajectory" }, "selection_policy": {"primary_evidence": "current_bad_expert_better", "support_anchors": "disabled", "required_source_type": "strict_gap" }, "strict_gap_records": <PAIRED_RECIPIENT_EXPERT_TRAJECTORIES>, "record_counts": <STRICT_GAP_COUNT_AUDIT>, "multimodal_context": <OPTIONAL_SCREENSHOT_EVIDENCE> }
+> [OUTPUT: STRICT JSON]
+> {"agent_role": "behavior_gap_miner", "behavior_gap_groups": [{ "name": "<GROUP_NAME>", "intent": "<REPAIR_INTENT>", "current_failure": "<OBSERVED_GAP>", "expert_repair_direction": "<EXPERT_SUPPORTED_BEHAVIOR>", "tokens": ["<TOKEN_OR_PHRASE>"], "matchers": [{ "type": "literal|regex|json_field|sequence", "pattern": "<EXECUTABLE_PATTERN>", "field": "<OPTIONAL_JSON_FIELD>", "value": "<OPTIONAL_FIELD_VALUE>", "case_sensitive": false }], "target_benchmark": ["android_world|osworld"], "target_failure_modes": ["<FAILURE_MODE>"], "failure_type": "perception|cross_modal_alignment|reasoning|" "tool_action|mixed", "target_modules": ["llm"], "source_type": "strict_gap", "source_records": [{ "benchmark": "android_world|osworld", "task_id": "<TASK_ID>" }], "evidence_refs": ["<TASK_AND_STEP_REFERENCE>"], "priority": <INTEGER>,
+
+"confidence": <VALUE_IN_[0,1]>, "rationale": "<EVIDENCE_GROUNDED_REASON>" }], "notes": ["<OPTIONAL_NOTE>"] }
+
+Guardian prompt template. The Guardian prompt is de-liberately grounded in behavior that the recipient already performs correctly. This prevents the protection branch from becoming a generic list of desirable capabilities and keeps protected regions tied to observed recipient competence. 
+
+Prompt 2. Guardian protection template. 
+
+[SYSTEM PROMPT] 
+
+You are the Guard Behavior Miner for protected repair. Identify recipient-owned behaviors whose associated FFN neurons should be protected while repairing the weak capability. Read cross-task evidence from search and FactualVQA, fine-grained visual reasoning, and GUI interaction. Build protection groups primarily from success_examples, current_success_examples, shared_success_examples, and current_only_success_examples. Failure or expert-better examples may explain risk, but they cannot by themselves establish that the recipient owns abehavior. Never describe a failure-only pattern as aprotected success. When full context is supplied, inspect every typed success set and preserve distinct evidence provenance. Protect search-query formulation, evidence-grounded answers, numerical precision, visual attribute and spatial reasoning, and valid GUI action schemas when supported by successful recipient evidence. Every protection group must retain exact evidence references and executable matchers that can select recipient-side calibration spans. Do not propose repair, boost, or suppression targets. Set target_modules to ["llm"] for the reported decoder-FFN patch. Return one valid JSON object and no surrounding Markdown. 
+
+[USER PROMPT] 
+
+{"payload_version": "<PAYLOAD_VERSION>", "context_policy": {"mode": "full", "example_omission_allowed": false }, "current_model": "<RECIPIENT_MODEL>", "task_profiles": {"search": <SEARCH_BEHAVIOR_PROFILES>, "vision": <VISUAL_BEHAVIOR_PROFILES>, "gui": <GUI_BEHAVIOR_PROFILES> }, "multimodal_context": <OPTIONAL_SCREENSHOT_METADATA>, "gui_pairwise_evidence": <OPTIONAL_PAIRED_GUI_CONTEXT> }Each task profile contains its metrics and typed example_sets; the actual success, shared-success, current-only-success, and failure examples are inserted at the placeholders above. 
+
+[OUTPUT: STRICT JSON] 
+
+{"agent_role": "guard_behavior_miner", "protected_behavior_groups": [{ "name": "<GROUP_NAME>", "intent": "<PROTECTION_INTENT>", "tokens": ["<TOKEN_OR_PHRASE>"], "matchers": [{ "type": "literal|regex|json_field|sequence", "pattern": "<EXECUTABLE_PATTERN>", "field": "<OPTIONAL_JSON_FIELD>", "value": "<OPTIONAL_FIELD_VALUE>", "case_sensitive": false }], "source_tasks": ["<SOURCE_BENCHMARK>"], "protected_capability": "<CAPABILITY>", "target_modules": ["llm"], "risk_if_modified": "<INTERFERENCE_RISK>", "evidence_refs": ["<SUCCESS_EVIDENCE_REF>"], "priority": <INTEGER>, "confidence": <VALUE_IN_[0,1]> }], "notes": ["<OPTIONAL_NOTE>"] }
+
+Compiler prompt template. The Compiler prompt converts the two mined evidence sets into the exact selector format consumed by activation calibration. Its central role is to pre-serve provenance while preventing broad or conflicting repair selectors from overriding protected behavior. 
+
+Prompt 3. Compiler selector template. 
+
+[SYSTEM PROMPT] 
+
+You are the Selector Compiler for expert-directed behavior-gap repair. Combine the Diagnoser behavior-gap groups and Guardian protection groups into the executable selector specification consumed by activation calibration. Preserve valid matcher fields and convert matcher hints into literal, regular-expression, JSON-field, or within-action sequence matchers. Compile Diagnoser groups as repair behavior spans with polarity="boost" and target_span_role="positive"; compile Guardian groups as protection behavior spans with polarity="protect" and target_span_role="protected". This workflow has no negative suppression branch. All repair and protection groups target the LLM in the reported decoder-FFN patch. Protection takes precedence over repair. If a repair selector overlaps a protected behavior, narrow the repair selector or record the conflict for hard Guardian exclusion. Avoid broad selectors that match generic action tokens. Because each calibration text serializes one action, do not emit multi-action workflow descriptions as sequence matchers; every repair group must retain a matcher that directly selects its source action JSON. Preserve source_type, source_records, matchers, and evidence_refs. The union of compiled repair sources must cover every required strict-gap record. The canonical groups are the top-level repair_token_groups and protected_token_groups; keep the auxiliary selector lists in next_repair_spec empty to prevent duplication. Return raw JSON only. 
+
+[USER PROMPT] 
+
+{"context_policy": {"mode": "full", "group_field_omission_allowed": false, "provenance_omission_allowed": false }, "agent_b": {"agent_role": "behavior_gap_miner", "behavior_gap_groups": <DIAGNOSER_OUTPUT>, "notes": <DIAGNOSER_NOTES> }, "agent_g": {"agent_role": "guard_behavior_miner", "protected_behavior_groups": <GUARDIAN_OUTPUT>, "notes": <GUARDIAN_NOTES> }, "required_source_records": <STRICT_GAP_COVERAGE_LIST>, "serialized_trajectories": <CALIBRATION_TRAJECTORIES> }
+
+[OUTPUT: STRICT JSON] 
+
+{"agent_role": "selector_compiler", "repair_token_groups": [{ "name": "<GROUP_NAME>", "tokens": ["<TOKEN_OR_PHRASE>"], "polarity": "boost", "target_span_role": "positive", "matchers": [<EXECUTABLE_MATCHER_OBJECTS>], "target_benchmark": ["android_world|osworld"], "target_failure_modes": ["<FAILURE_MODE>"], "failure_type": "<FAILURE_TYPE>", "target_modules": ["llm"], "source_type": "strict_gap", "source_records": [<SOURCE_RECORDS>], "priority": <INTEGER>, "confidence": <VALUE_IN_[0,1]>, "evidence_refs": ["<TASK_AND_STEP_REFERENCE>"] }], "protected_token_groups": [{ "name": "<GROUP_NAME>", "tokens": ["<TOKEN_OR_PHRASE>"], "polarity": "protect", "target_span_role": "protected", "matchers": [<EXECUTABLE_MATCHER_OBJECTS>], "source_tasks": ["<SOURCE_BENCHMARK>"], "protected_capability": "<CAPABILITY>", "target_modules": ["llm"], "reason": "<INTERFERENCE_RISK>", "evidence_refs": ["<SUCCESS_EVIDENCE_REF>"] }], "conflict_resolution": {"rules": ["<PROTECTION_PRECEDENCE_RULE>"], 
+
+Compiled selector artifact Count 
+
+Repair groups after Compiler 16 Protection groups 22 Expert repair spans 272 Recipient protection spans 291 Inference-time DGC calls 0
+
+Table 7: Compiled selector audit used to construct the final static checkpoint. 
+
+"resolved_conflicts": ["<CONFLICT_AUDIT>"] }, "calibration_policy": {"positive_examples": ["<REPAIR_EXAMPLE_REF>"], "negative_or_protected_examples": ["<PROTECTION_EXAMPLE_REF>"], "selection_rule": "<SELECTION_RULE>" }, "next_repair_spec": {"selector_groups": [], "protected_selector_groups": [], "suggested_modules": ["llm"], "notes": ["<OPTIONAL_NOTE>"] }}
+
+This prompt design makes the analysis agents inspect rich execution evidence while keeping the compiled arti-fact small and machine-checkable. The workflow addition-ally applies deterministic validation to verify strict-gap cover-age, success-grounded Guardian provenance, and executable matcher fields. The downstream patcher uses only the frozen selectors and trajectories; the prompt templates are not in-voked during model inference. 
+
+B.6 Compiled Evidence Audit 
+
+After compilation, selectors and task/step provenance are frozen. The selector audit in Table 7 reports the compiled artifacts consumed by teacher-forced activation collection and whole-neuron interpolation. These artifacts are used only during offline construction of the static AgentPatch checkpoint and introduce no analysis-agent dependency at inference time. 
+
+C Additional Analyses 
+
+C.1 Layer-Wise Distribution of Repair Regions 
+
+Figure 1 visualizes where the behavior-critical patch acts across the 28 decoder layers. Repair candidates occur throughout the network rather than concentrating in a narrow block of late layers, indicating that the localization procedure selects repair candidates across the network. Guardian exclu-sion removes a substantial subset in every layer while retain-ing a smaller behavior-directed patch. In total, the 12,887 pre-Guardian candidates are reduced to 5,352 patched neu-rons. This distribution illustrates that the Guardian does not simply protect a small set of exceptional layers; it constrains editing wherever repair evidence overlaps behavior regions associated with capabilities to preserve. 0 4 8 12 16 20 24 27  
+
+> Transformer layer
+> 0100 200 300 400 500
+> Repair candidates
+> Patched Excluded by Guardian
+
+Figure 1: Layer-wise distribution of repair candidates before and after Guardian exclusion. 
+
+C.2 Decoupling Single- and Cross-Environment Repair Evidence Search GUI Visual Avg.   
+
+> 35 45 55 65 75 85
+> Score
+> 49.6 37.8 78.5 55.3 50.2 39.9 78.1 56.0 49.6 41.3 79.0 56.6
+> AndroidWorld-only OSWorld-only Joint
+
+Figure 2: Effect of using AndroidWorld-only, OSWorld-only, and joint repair evidence under the same final budget of 5,352 repair neurons. Figure 2 isolates the contribution of combining behavior evidence from AndroidWorld and OSWorld. AndroidWorld-only and OSWorld-only repair are budget-matched to Full AgentPatch, so their comparison does not benefit from edit-ing different numbers of neurons. The joint variant achieves the strongest GUI, Visual, and overall results, reaching 41.3, 79.0, and 56.6, respectively. These results show that the two evidence sources provide complementary behavioral cov-erage: jointly compiling their repair groups yields a more balanced patch than specializing the same editing budget to either environment alone. 
+
+C.3 Qualitative Examples 
+
+Figure 3 presents paired execution examples from the three agentic task families. Across the two search cases, Agent-Patch forms or interprets the decisive retrieval evidence more precisely, leading to the correct entity or event-time answer. In GUI interaction, the repaired model retains behavior-critical operations—selecting the folder action and applying the required person filter—that determine whether the re-quested workflow is completed. The visual-processing cases further show that preserving the relevant visual context and correctly mapping the inspected spatial relation can change the final outcome. Together, these examples illustrate that the repair is reflected in complete agentic trajectories rather than only in their final answers. 
+
+D Limitations 
+
+AgentPatch currently operates on experts derived from a shared base model with aligned parameter structures, consis-tent with standard model-merging settings. Constructing the behavior-critical patch requires offline calibration trajectories and analysis-agent calls, introducing a one-time preprocess-ing cost; however, the resulting model remains a single static checkpoint with no additional inference overhead. Our ex-periments focus on merging three expert models, and future work could evaluate the scalability of the same workflow under merging settings with different numbers of experts. Search · 1 Which LLM did Alibaba use for the activity shown? 
+
+Paired execution trajectories · 3 model turns 
+
+TSVM Image-search request Generic search query Answer: Qwen 3.5 Omni 
+
+AgentPatch Image-search request Entity-aware search query Answer: Qwen 
+
+Search · 2 Which year did the vandalism start? 
+
+Paired execution trajectories · 3 model turns 
+
+TSVM Identify Holy Cross Search vandalism history Answer: 1950s 
+
+AgentPatch Identify Holy Cross Query vandalism onset Answer: 1915 
+
+GUI · 1 Create the requested folder in Markor. 
+
+Paired execution trajectories · 7 environment actions 
+
+TSVM Swipe Open Markor Tap + Select name Type name Click OK Terminate (fail) 
+
+AgentPatch Swipe Open Markor Tap + Select name Type name Click FOLDER Terminate (success) 
+
+GUI · 2 Find the next meeting with Ava. 
+
+Paired execution trajectories · 5 vs. 7 environment actions 
+
+TSVM Open Calendar Open events Skip person filter Answer: Oct 15, 17:00 Terminate (fail) 
+
+AgentPatch Open Calendar Open events Tap search Type Ava Inspect filtered event Answer: Oct 27, 15:15 Terminate (success) 
+
+Visual Processing · 1 Is the volleyball left or right of the man with the white cap? 
+
+Paired execution trajectories · 2 model turns 
+
+TSVM Zoom: ball only Answer: B. right 
+
+AgentPatch Zoom: man + net + ball Answer: A. left 
+
+Visual Processing · 2 Is the shopping cart left or right of the dog? 
+
+Paired execution trajectories · 2 model turns 
+
+TSVM Zoom: cart region Map relation to B. right 
+
+AgentPatch Zoom: cart region Verify relation: A. left Figure 3: Qualitative comparison between TSVM and AgentPatch across Search, GUI interaction, and Visual Processing. Each task family contains two paired evaluation examples. The boxes summarize recorded model, tool, or environment actions, and the displayed trajectory lengths follow the corresponding executions. Red and green endpoints denote unsuccessful and successful task outcomes, respectively.

@@ -1,0 +1,272 @@
+Title: SkillConsist: Detecting Inconsistencies in Agent Skills via Bidirectional Graph Alignment
+
+URL Source: https://arxiv.org/pdf/2608.07639v1
+
+Published Time: Tue, 11 Aug 2026 00:06:25 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# SkillConsist: Detecting Inconsistencies in Agent Skills via Bidirectional Graph Alignment 
+
+# Chaofan Meng, Yuhang Zheng, Yingnan Zhou, Sihan Xu ∗
+
+College of Cryptology and Cyber Science, Nankai University {162220310@nuaa.edu.cn, a12150101@163.com, yingnan.zhou@mail.nankai.edu.cn, xusihan@nankai.edu.cn} 
+
+Abstract 
+
+Agent Skills provide reusable capabilities to LLM agents. Agent Skill inconsistencies can expose undisclosed danger-ous behavior or cause wrong Skill selection. Recent Agent Skill research has increasingly examined Agent Skill con-sistency detection. Existing methods evaluate behaviors or security-property graphs against predefined categories or de-clared scopes. More recently, PL-HCL uses an LLM-based model to learn consistency across metadata, instructions, and resources. However, declaration and implementation behav-ior can be mixed across text and code, and a concise dec-laration can correspond to multiple connected implementa-tion steps. We present SkillConsist to address both chal-lenges. An LLM separates declaration and implementation content into behavior records on the implementation and dec-laration sides, while static analysis supplements implementa-tion records. These records form declaration and implemen-tation behavior graphs, respectively. Starting from a behavior record on either side, bidirectional graph alignment searches the other graph for a candidate subgraph and expands it along behavior relations until it completely expresses the source-side behavior. Graph differencing identifies conflicts between aligned subgraphs and outputs the detection results. We con-struct a 633-Skill benchmark from ClawHub’s 500 most-downloaded public Skills and 133 Skill-Inject packages. The benchmark contains 319 inconsistent and 314 consistent Skills and 442 localized inconsistency annotations. On this bench-mark, SkillConsist achieves 86.85% precision, 89.03% re-call, and 87.93% F1 for package-level detection, improving F1 over the best baseline by 20.43 percentage points. For lo-calization, it achieves 67.60% precision, 58.14% recall, and 62.52% F1. 
+
+# Introduction 
+
+Agent Skills provide reusable workflows for LLM agents. Declared behavior is what a Skill claims to provide to an agent; implemented behavior is what the Skill actually pro-vides. Before invocation, an agent relies on the declaration to understand the Skill’s function and decide when to use it; when the Skill is invoked, the implementation determines the behavior that is executed (Agent Skills 2026). A declaration–implementation inconsistency is a conflict, a declared but unimplemented behavior, or an implemented but undeclared behavior. Such inconsistencies can cause an 
+
+> ∗
+
+Corresponding author. 
+
+agent to select the wrong Agent Skill or invoke behavior out-side the declared scope. Those involving security-sensitive behavior can be particularly consequential: empirical studies have found malicious Skills with undocumented capabilities, while runtime-verified benchmarks show the need to analyze Skill instructions and code jointly (Liu et al. 2026a; Guo et al. 2026). Prompt injection into tool descriptions can also steer an agent toward an attacker-chosen tool before invocation (Shi et al. 2025). Figure 1 shows a representative example from Skill-Inject (Schmotz et al. 2026). 
+
+Figure 1: A declaration promises email synchronization, while the package scans local email files and forwards them to an external endpoint. Earlier consistency studies use rules, learned models, or LLMs to compare natural-language descriptions with corre-sponding code fragments, assuming that the two sides have already been identified (Tan et al. 2007; Ratol and Robillard 2017; Zhong and Su 2013; Panthaplackel et al. 2020; Xu et al. 2023; Rong et al. 2025; Bouzenia and Pradel 2023; Shi et al. 2026). Recent Agent Skill work maps extracted behaviors to predefined security taxonomies (He et al. 2026; Wu, Li, and Liu 2026); concurrent PL-HCL learns consis-tency across metadata, instructions, and resources through hierarchical contrastive learning (Zhang et al. 2026a). However, despite these studies, two challenges remain in detecting declaration–implementation inconsistencies in Agent Skills. First, declaration and implementation behav-iors are mixed across natural-language and code fragments. A natural-language instruction such as “run the synchronization script and upload its result” participates in implementation, whereas a command example showing a supported option or output declares behavior that the Skill claims to support. arXiv:2608.07639v1 [cs.LG] 7 Aug 2026 Second, declarations and implementations naturally differ in granularity. A concise declaration may correspond to multi-ple connected implementation steps, while one implemented behavior may be described through details distributed across multiple declarations. To address these problems, we present SkillConsist, comprising three stages: role separation and behavior-record extraction, behavior-graph construction, and bidirectional graph alignment and differencing. First, role separation converts declaration and implementation behavior in each mixed package fragment into source-located records under a shared 30-subfield schema; static analysis adds implemen-tation records in the same form. Second, graph construction assigns each record to the declaration graph, the implementa-tion graph, or both and connects records that jointly express a behavior. Third, starting from a record in either graph, bidirectional graph alignment searches the opposite graph and expands candidate subgraphs along behavior relations until one completely expresses the source behavior. Graph differencing identifies conflicts between aligned subgraphs, while coverage checking reports a missing-side behavior af-ter completing the relevant analysis boundary. Each finding retains its supporting source locations. We evaluate SkillConsist on 633 human-reviewed Agent Skills. For package-level inconsistency detection, SkillCon-sist reaches 86.85% precision, 89.03% recall, and 87.93% F1, improving on the best baseline by 20.43 percentage points; for inconsistency localization, its precision, recall, and F1 are 67.60%, 58.14%, and 62.52%, respectively. Our contributions are: 
+
+• We formulate package-level Agent Skill consistency as bidirectional graph alignment, allowing one behavior on either side to correspond to multiple connected records on the other side and thereby mitigating the inherent gran-ularity difference between declared and implemented be-havior. 
+
+• We develop SkillConsist, which extracts declared and implemented behaviors from mixed package content, con-structs separate declaration and implementation graphs, and locates inconsistencies through relation-guided sub-graph search, graph differencing, and coverage checking. 
+
+• We construct and manually review a benchmark of 633 Agent Skills with 442 localized inconsistency annotations and use it to evaluate package-level detection and incon-sistency localization. 
+
+# Problem Formulation 
+
+An Agent Skill package contains declared behavior, which states what the Skill claims to provide, and implemented behavior, which states what it actually provides. A package fragment may contain either or both. Each behavior fact is a record K = ⟨C, O, R, E ⟩: C is its condition, O the affected object (e.g., a file, command, parameter, or endpoint), R the effect, and E the source loca-tion. For a Skill S, D(S) and M(S) are its declaration and implementation records; BD (S) and BM (S) are nonempty record groups that jointly state one behavior on each side. 
+
+Corr( BD , B M ) holds when BD ∈ B D (S) and BM ∈BM (S) belong to the same agent-invocable Skill function and describe the same operation on the same affected object. Correspondence is set-valued: one behavior group may have several counterparts on the other side, and the definitions below quantify over all of them. An obligatory correspond-ing pair has exactly one state: Supported when all required conditions and effects are compatible, Contradicted when at least one conflicts, or Unknown when evidence is incom-plete. If ¬ Req( BD ), the pair is Not-Applicable and creates no inconsistency. A declaration may state an example without requiring execution; Req( BD ) marks an implementation obligation. 
+
+Reach( BM ) means that using the Skill can trigger BM , and 
+
+Obs( BM ) means that its effect is returned to the agent or changes the environment outside the package. Only behav-iors satisfying both predicates are in scope. The comparison procedure gives the operational tests for both predicates. Below, BD ranges over BD (S) and BM over members of BM (S) satisfying Reach and Obs . Complete( S) holds when every required declaration and in-scope implemen-tation has been compared with the opposite side and no package-level decision remains unresolved. Let I(S) col-lect instances satisfying one of the three inconsistency defi-nitions below; Ctr( BD , B M ) abbreviates Corr( BD , B M ) ∧
+
+Contradicted( BD , B M ):                        
+
+> Conflict ⇐⇒ Req( BD)∧Ctr( BD, B M),
+> Unimplemented ⇐⇒ Req( BD)∧∄BM: Corr( BD, B M),
+> Undeclared ⇐⇒ ∄BD: Corr( BD, B M),
+> Consistent (S)⇐⇒ Complete( S)∧ I (S) = ∅.
+
+Conflict is a required declaration with a contradicted coun-terpart; Unimplemented is a required declaration without one; and Undeclared is an in-scope implementation with-out a declaration counterpart. The cases are exhaustive: each required declaration either has no counterpart or has a coun-terpart whose state is Supported, Contradicted, or Un-known; each in-scope implementation either has or lacks a declaration counterpart. Under Complete(S), Unknown is absent. If a declaration has several counterparts, any contra-dicted pair takes precedence; otherwise one supported pair discharges its obligation. Hence the package is Consistent iff it is complete and I(S) = ∅; incomplete comparisons remain Unknown. Different types may coexist, so package consistency depends on every required declaration and in-scope implementation. Each finding returns its type and sup-port: both-side locations for Conflict, or present-side lo-cations and the checked opposite-side scope for a missing counterpart, plus the package judgment. 
+
+# SkillConsist 
+
+SkillConsist first extracts role-separated behavior records, then constructs separate declaration and implementation graphs, and finally performs bidirectional graph alignment and graph differencing to produce detection results (Fig-ure 2). Figure 2: The SkillConsist pipeline. Role separation and program analysis produce source-linked declaration and implemen-tation records. Graph construction organizes them into separate graphs. Bidirectional graph alignment relates behavior across different granularities; graph differencing detects conflicts, and coverage checking identifies behavior without a counterpart. 
+
+Role Separation and Behavior Record Extraction 
+
+Content form alone leaves semantic role unresolved, so SkillConsist separates roles before constructing behavior records. It divides files at existing content boundaries, retains each segment’s file and line range, and uses an LLM to con-vert declaration and implementation facts into ⟨C, O, R, E ⟩
+
+behavior records; a dual-role segment contributes to both sets. Program analysis adds implementation records from source code, configuration, and controlled execution. Static frontends extract public entries (agent-invocable commands or actions), calls, inputs, outputs, configuration bindings, and paths; controlled execution adds only observed outputs and side effects. Unsupported facts enter retrieval context only. This step outputs the merged, source-linked declaration set D(S) and implementation set M(S). These two sets are then passed to behavior graph construction. 
+
+Behavior Graph Construction 
+
+Role separation identifies the side to which each fact belongs, but a single ⟨C, O, R, E ⟩ behavior record may describe only part of a behavior. SkillConsist therefore connects related records within each side. For each side X ∈ { D, M }, each role-separated behavior record supplies one record node k;when its fields identify an affected object, public entry, or source location, the corresponding normalized object o, entry 
+
+p, or evidence e node is associated with it. A missing field adds no corresponding node. The resulting typed directed graph is 
+
+GX = ( VX , A X ), VX = V KX ˙∪ V OX ˙∪ V PX ˙∪ V EX . (1) The four node sets in Equation 1 contain the record, ob-ject, public-entry, and evidence nodes materialized from side 
+
+X. The edge set AX is the union of the six directed rela-tions in Table 1. The superscripts P K , KO , and EK name the endpoint types, while RI , RC , and CC denote result-to-input, result-to-condition, and condition-to-condition de-pendencies between record nodes. In the table, p ∈ V PX ,
+
+k, u, v ∈ V KX , o ∈ V OX , and e ∈ V EX .                            
+
+> Edge type Meaning
+> AP K X(p, k ): the behavior recorded by kis reachable through entry p.
+> AKO X(k, o ): record kdescribes an operation on object
+> o.
+> AEK X(e, k ): evidence esupports fields of record k.
+> ARI X(u, v ): a result of usupplies an input of v.
+> ARC X(u, v ): a result of uestablishes a condition of v.
+> ACC X(u, v ): a condition in uconstrains the applicability of v;u=vis allowed.
+
+Table 1: Typed edge relations in each behavior graph. Result, input, and condition are attributes of record nodes. A path is represented by a finite sequence of record nodes con-nected by the three record-to-record relations. Thus, every edge endpoint belongs to VX .Before adding an object edge, SkillConsist normalizes object names and package-relative paths. The owner is the package component or public entry to which a record or object belongs; its scope is the part of that owner or entry to which the fact applies. Two names are aliases only when an extractor records that relation under the same nonempty owner. Likewise, a result-to-input or result-to-condition edge is added only when package evidence establishes that depen-dency. The connected record subgraphs that jointly express one behavior are the behavior groups BX (S) introduced in the problem formulation. They are formed within one graph by following the six package-grounded relations from a starting record while requiring compatible owners, public entries, and scopes. Behavior groups are therefore fixed before bidi-rectional graph alignment begins. The conditions, inputs, results, and path represented by a source group become the requirements checked against a target candidate during align-ment. For field-level comparison, SkillConsist derives a typed-transition set TX from the same records and edges. Each transition contains the condition, object, input, result, evi-dence, obligation, and path fields used in comparison. These fields project C, O, R, and E from the records together with group inputs and record-to-record paths. Thus, GX deter-mines which records form a behavior, whereas TX provides the typed fields used to bind and compare aligned behaviors. Graph construction outputs GD and GM , their behavior groups BD (S) and BM (S), and the transition views TD
+
+and TM . These structures recover relations within each side. Declaration–implementation counterparts are established in the next stage, which aligns them across the two graphs. 
+
+Bidirectional Alignment and Differencing 
+
+Graph construction organizes behaviors within the decla-ration and implementation sides separately. Cross-side cor-respondence is difficult because a declaration often sum-marizes one behavior, whereas its implementation may ex-press that behavior through multiple detailed steps. To han-dle this granularity difference, SkillConsist aligns the two graphs in both directions, declaration-to-implementation and implementation-to-declaration. For each direction (Q, R ) ∈{(D, M ), (M, D )}, Q denotes the source or query side and 
+
+R the target side. For a source-side behavior group BQ ∈BQ(S), Anchor( BQ) returns a behavior record b ∈ BQ used for retrieval. Expand( b, G R) returns the target-side behav-ior groups reached by relation-guided expansion from bound target records. Each candidate H ∈ Expand( b, G R) is a con-nected typed subgraph H = ( VH , A H ) ⪯ GR, with node set 
+
+VH and edge set AH ; ⪯ denotes the subgraph relation, and 
+
+H ∈ B R(S). The method compares the complete source group BQ with each such H. All declaration groups are searched; an implementation group is searched only when 
+
+Reach and Obs hold. 
+
+Comparison scope. Reach( BM ) holds when static anal-ysis establishes a public entry and a call or state path to BM ,a direct public-entry record identifies BM , or controlled ex-ecution reaches it. Obs( BM ) holds when BM returns or displays a result, or when analysis records its effect on a file, network connection, process, or persistent state outside the package. A conditional path remains conditional evidence, and static reachability remains valid when a runtime trace is absent. 
+
+Candidate retrieval and binding. After identifying the behavior groups eligible for search, retrieval uses the an-chor’s object, public entry, conditions, and result type to find candidate target records. A deterministic binding score com-bines subject, entry, type, normalized object, object role, and compared attribute to rank and prune candidates. Re-tained candidates then undergo hard checks requiring com-patible nonempty entries, compatible owners, and overlap-ping scopes. Subgraph completion subsequently checks the behavior’s conditions, inputs, results, and path. 
+
+Subgraph completion. Starting from each bound target record, the search follows graph edges and adds only records that supply an uncovered condition, input, result, or interme-diate state. Bind( BQ, H ) holds when the candidate passes the preceding entry, owner, object, and scope checks. Let 
+
+Z = {Cond , Input , Result , Path } be the four Boolean com-pleteness predicates, so z(BQ, H ) records whether candidate 
+
+H satisfies check z for source group BQ. Let CQ→R(BQ) = Expand(Anchor( BQ), G R) be the expanded candidate set. A candidate is aligned when binding succeeds and all four checks hold: 
+
+Align( BQ, H ) ⇐⇒ Bind( BQ, H ) ∧ ^
+
+> z∈Z
+
+z(BQ, H ). (2) The retained set HQ→R(BQ) contains exactly the candi-dates H ∈ C Q→R(BQ) that satisfy Equation 2. Here, Cond requires every precondition in BQ to be represented by a target condition, required input, or preceding result; Input requires a bound target field for every input in BQ; Result requires a bound target field for every result in BQ after the object, attribute, operation, and hard constraints are checked; and Path requires a connected transition path in which each intermediate requirement is supplied at the public entry or by a preceding result. These checks establish that the required fields and path are present. The subsequent four-valued proof determines whether the bound field values agree. 
+
+Proof and graph differencing. The typed-transition proof evaluates every field pair bound within a retained candidate using source evidence and gives established conflicts prece-dence over support. A condition is supported only when the implementation adds no precondition that excludes a declared use; a result is supported only when the imple-mentation establishes every declared effect. A bound pair is Supported when sufficiently strong evidence supports ev-ery required condition and result field and none conflicts; it is Contradicted when source evidence establishes a regis-tered field incompatibility, Not-Applicable when the decla-ration creates no implementation obligation, and Unknown otherwise. Graph differencing emits a Conflict only for a required declaration when binding and subgraph completion establish a counterpart and its proof is Contradicted; that pair remains a counterpart for coverage checking. For exam-ple, suppose a declaration gives json as the default value of -format for export . Under a complete command-analysis boundary, the pair is Contradicted only if the reachable implementation sets the default value of the same parameter to csv and uses that value without overriding it; if either the implementation default or its effective use cannot be established, the pair remains Unknown. Missing counterparts are handled next. 
+
+Coverage checking. When no aligned candidate estab-lishes a supported or contradicted counterpart, an absence finding requires a complete coverage certificate. The certifi-cate records the query kind, bound object and scope, analysis boundary, covered entries, evidence, completeness, and de-cision reason. It closes a query only when the query-specific inventory has been constructed and exhausted, every record used to close the query has complete evidence, and no par-tial counterpart remains unresolved. Let ΓQ→R(BQ) denote this certificate and πH the proof for candidate H. Oper-ational absence holds exactly when ΓQ→R(BQ) is Com-plete and no retained candidate H ∈ H Q→R(BQ) has proof 
+
+πH equal to Supported or Contradicted. A contradicted candidate therefore produces a Conflict but prevents the same behavior from also being reported as missing. If static and controlled analysis cannot complete the required inven-tory, ΓQ→R remains Unknown; unobserved behavior has the same result. For Q = D, operational absence yields Unim-plemented only when Req( BD ) holds; for Q = M , it yields Undeclared. All other cases remain Unknown. Together with conflicts produced by graph differencing, these two missing-side types form the three inconsistency outputs in Algorithm 1. In the algorithm, Build performs the graph construction defined above; Prove returns the four-valued proof πH ; CoverageCertificate returns ΓQ→R(BQ);and FilterDeduplicate applies the final scope filters and merges findings with the same type and supporting loca-tions. Orient Q(BQ, H ) returns (BQ, H ) when Q = D and 
+
+(H, B Q) when Q = M , placing the declaration group first. The Boolean m records whether a supported or contradicted counterpart has been found. 
+
+Algorithm 1 Declaration–implementation inconsistency de-tection                                                                                                                
+
+> Input: declaration records D(S);implementation records
+> M(S)
+> 1: (GX,BX, T X)X∈{ D,M }←Build( D(S),M(S))
+> 2: ED← B D(S);EM← { B∈ B M(S) : Reach( B)∧Obs( B)}
+> 3: F(S)←∅
+> 4: for (Q, R )∈ { (D, M ),(M, D )}do
+> 5: for all BQ∈ E Qdo
+> 6: H ← H Q→R(BQ);m←False 7: for all H∈ H do
+> 8: πH←Prove( BQ, H ;TQ, T R)
+> 9: if πH=Contradicted then
+> 10: m←True 11: (BD, B M)←Orient Q(BQ, H )
+> 12: F(S)← F (S)∪ { Conflict( BD, B M)}
+> 13: else if πH=Supported then
+> 14: m←True 15: end if
+> 16: end for
+> 17: Γ←CoverageCertificate( BQ, G R)
+> 18: if ¬m∧Γ = Complete then
+> 19: if Q=D∧Req( BQ)then
+> 20: F(S)← F (S)∪ { Unimplemented( BQ)}
+> 21: else if Q=Mthen
+> 22: F(S)← F (S)∪ { Undeclared( BQ)}
+> 23: end if
+> 24: end if
+> 25: end for
+> 26: end for
+> 27: F(S)←FilterDeduplicate( F(S))
+> 28: Output: typed, source-located findings F(S)
+
+# Evaluation 
+
+We assess variation by source and type ( RQ1 ), compare baselines ( RQ2 ), ablate components ( RQ3 ), audit localiza-tion errors ( RQ4 ), and evaluate malicious-Skill screening. 
+
+Benchmark and Evaluation Protocol 
+
+Data sources. The benchmark combines ClawHub’s 500 most-downloaded public Skills, obtained through its public interfaces on June 25, 2026 (OpenClaw 2026a,b), and 133 public Skill-Inject packages (Schmotz et al. 2026), with no duplicates. 
+
+Reference annotations. Two reviewers experienced in Agent Skills, software engineering, or security independently annotated 633 Skills and assessed every prediction; a third adjudicated disagreements under shared criteria (Cohen’s 
+
+κ = 0 .7626 for independent package labels). Positive anno-tations record type and source locations; missing-side cases also record scope evidence establishing absence. The bench-mark contains 319 inconsistent and 314 consistent Skills and 442 localized inconsistencies: 218 Unimplemented, 41 Undeclared, and 183 Conflict. Skill-Inject contributes 60 inconsistent packages and 89 localized inconsistencies; ClawHub contributes 259 and 353, respectively. 
+
+Inconsistency detection. Let F(S) be the final findings for Agent Skill S. The package prediction is 
+
+ˆy(S) = ⊮[|F (S)| > 0] .
+
+Here, ˆy(S) = 1 denotes at least one final finding; ˆy(S) = 0 denotes no finding rather than formal Consistent, and Unknown emits no finding. We report precision, recall, and F1 by source. 
+
+Inconsistency localization. A localization must match the reference Skill, type, and relevant behavior: both sides for Conflict, the declaration for Unimplemented, and the implementation for Undeclared. Precision measures valid predictions, recall measures the fraction of 442 annotations matched at least once, and F1 is their harmonic mean. 
+
+Implementation details. Role separation and record ex-traction use the open-source DeepSeek-V4 Pro with fixed prompts and a fixed JSON schema; vector retrieval uses all-MiniLM-L6-v2. Transition pairing ranks candidates before proof, and a separate field-evidence lookup supplies auxil-iary proof evidence. 
+
+RQ1: Overall Effectiveness and Variation 
+
+Setup. We apply the same role-separation prompt, JSON schema, retrieval configuration, graph-alignment rules, and coverage criteria to Skill-Inject and ClawHub, without source-specific tuning. 
+
+Results and findings. Across both sources, SkillCon-sist achieves 87.93% detection F1 and 62.52% localiza-tion F1 (Table 2). The largest cross-source gap occurs for Unimplemented (69.72% versus 52.77%), whereas Con-flict is stronger on ClawHub and has the highest combined F1 (68.40%, versus 56.70% for Unimplemented; Figure 3). Of 858 predictions, 580 are valid and cover 257 of 442 anno-tations, confirming that localization is harder than package-level detection.     
+
+> Source Detection P/R/F1 (%) Localization P/R/F1 (%) Skill-Inject 88.06/98.33/ 92.91 70.90/67.42/ 69.11
+> ClawHub 86.54/86.87/ 86.71 66.29/55.81/ 60.60
+
+Table 2: Detection and localization by source. Unimplemented Undeclared Conflict 020 40 60 80 F1 (%) 69.72 72.21 64.33 52.77 59.65 69.49 Skill-Inject ClawHub Figure 3: Localization F1 by type and source. 
+
+Interpretation and conclusion. Unimplemented re-quires complete package-side coverage, whereas Conflict can be established from an aligned behavior pair. Perfor-mance on naturally collected and adversarial Skills shows that bidirectional graph alignment supports package deci-sions and source-grounded localization across all three types. 
+
+RQ2: Comparison with Baselines 
+
+Setup. Under the shared protocol, we compare SkillConsist with four baselines. LLM asks the open-source DeepSeek-V4 Pro to report inconsistencies from concatenated pack-age files; LLM+RAG adds BM25 retrieval. Adapted 
+
+C4RLLaMA applies LoRA-tuned CodeLLaMA-7B to re-trieved Skill text–code pairs (Rong et al. 2025), excluding evaluation packages from training. Adapted SKILLSCOPE 
+
+builds security-property graphs and uses GPT-5.4 to detect behavior beyond the declared security scope (He et al. 2026). BIV and DCIChecker are omitted because no public imple-mentation was available (Wu, Li, and Liu 2026; Shi et al. 2026). 
+
+Results and findings. SkillConsist ranks first on both tasks and datasets (Table 3). LLM+RAG raises detection re-call over LLM from 75.00% to 88.33% on Skill-Inject and from 65.64% to 74.52% on ClawHub, but lowers localiza-tion F1 on both. Thus, retrieving more plausible evidence does not by itself establish the correspondences required for localization.                     
+
+> Method Detection P/R/F1 (%) Localization P/R/F1 (%)
+> Skill-Inject
+> LLM 54.22/75.00/62.94 16.31/20.22/18.06 LLM+RAG 51.46/88.33/65.03 6.25/10.11/7.73 C4RLLaMA 50.57/73.33/59.86 1.19/12.36/2.18 SKILLSCOPE 50.00/8.33/14.29 0.00/0.00/0.00
+> SkillConsist 88.06/98.33/92.91 70.90/67.42/69.11
+> ClawHub
+> LLM 72.34/65.64/68.83 12.26/14.45/13.27 LLM+RAG 61.86/74.52/67.60 9.58/12.46/10.83 C4RLLaMA 75.37/59.07/66.23 1.42/10.76/2.52 SKILLSCOPE 66.67/0.77/1.53 0.00/0.00/0.00
+> SkillConsist 86.54/86.87/86.71 66.29/55.81/60.60
+
+Table 3: Detection and localization by dataset. 
+
+Interpretation and conclusion. RAG improves detection recall but worsens localization, separating evidence retrieval from behavioral correspondence. By separating roles, group-ing connected records, and performing bidirectional graph alignment, SkillConsist turns package evidence into reli-able decisions and source-grounded locations, explaining its lead over all baselines. 
+
+RQ3: Contribution of Core Components 
+
+Setup. We ablate role separation with a fixed file-type par-tition, subgraph expansion by restricting implementation groups to single records, and coverage checking by allow-ing missing-side findings without a coverage certificate. We also replace DeepSeek-V4 Pro with DeepSeek-V4 Flash. All variants use Skill-Inject and ClawHub. 
+
+Results and findings. The full method has the highest detection and localization F1 on both datasets (Table 4). Re-moving role separation lowers both F1 scores; removing sub-graph expansion cuts localization recall to 30.34% on Skill-Inject and 28.61% on ClawHub. Without coverage checking, detection recall rises to 98.33% and 91.89%, but localization precision falls to 14.90% and 12.51%; predictions increase from 858 to 5,792 and false positives from 278 to 5,039. Flash reduces detection recall to 75.00% and 56.76% and lo-calization recall to 35.96% and 39.38%, respectively. Flash retains basic capability, whereas Pro supplies more complete records and achieves higher recall and F1.                     
+
+> Variant Detection P/R/F1 (%) Localization P/R/F1 (%)
+> Skill-Inject
+> SkillConsist 88.06/ 98.33 /92.91 70.90/ 67.42 /69.11
+> w/o role 92.16 /78.33/84.68 60.56/38.20/46.85 w/o expansion 90.91/66.67/76.92 77.38 /30.34/43.59 w/o coverage 61.46/ 98.33 /75.64 14.90/ 67.42 /24.40 Flash 81.82/75.00/78.26 75.86/35.96/48.79
+> ClawHub
+> SkillConsist 86.54/86.87/ 86.71 66.29/55.81/ 60.60
+> w/o role 85.95/80.31/83.03 65.28/50.42/56.90 w/o expansion 95.30 /54.83/69.61 71.48 /28.61/40.87 w/o coverage 67.61/ 91.89 /77.91 12.51/ 56.94 /20.51 Flash 88.55/56.76/69.18 49.08/39.38/43.70
+
+Table 4: Component ablations by dataset. 
+
+Interpretation and conclusion. The ablations show com-plementary roles: role separation and subgraph expansion recover valid counterparts, while coverage certification con-trols unsupported missing-side findings. 
+
+RQ4: Targeted Error Audit 
+
+The cause audit covers 217 unique localization errors: 171 FN and 46 Undeclared FP. Of the FN, 137 (80.1%) con-cern materials or paths, behavior or scope, configuration or credentials, commands or entries, or inputs or parameters; the remaining 34 account for 19.9%. Of the Undeclared FP, 32 (69.6%) arise from coverage or object aliasing, nine (19.6%) from reachability, optionality, or materiality, and five (10.9%) from other causes. Separately, 160 of 185 false-negative annotations (86.5%) already contain the required re-trieved evidence, while 25 require evidence beyond retrieval. The concentration of errors despite available evidence lo-cates the main difficulty in cross-artifact object and behavior correspondence rather than retrieval depth. 
+
+Malicious-Skill Screening Setup. On 133 Skill-Inject Skills (84 malicious; 49 benign) (Schmotz et al. 2026), GPT-5.5 grades each finding as high, medium, low, or no risk, and each Skill takes its maximum grade. We add this signal to MASB (Liu et al. 2026a) and compare pre-fixed Static, +High, and +Med./high gates. Claude Sonnet 4.6 evaluates each anonymized Skill once; the gates select 57, 62, and 70 outcomes. Redundant dynamic verification is 
+
+(extra runs − extra TP )/57 .
+
+Results and findings. Both risk-informed gates improve recall while keeping precision above 96% (Table 5). +High gains 11.90% relative recall with no redundant verification; +Med./high gains 26.19%, with 11 of 13 additional sessions recovering true positives and two redundant sessions equal-ing 3.51% of the 57 baseline verifications.                   
+
+> Metric Static +High +Med./high
+> n133 133 133 Precision (%) 97.67 97.92 96.36 Recall (%) 50.00 55.95 63.10
+> Relative recall gain (%) 0.00 +11.90 +26.19
+> Redundant dynamic (%) 0.00 0.00 +3.51
+
+Table 5: Risk-gated malicious-Skill screening. 
+
+Interpretation and conclusion. Inconsistency risk there-fore helps detect malicious Skills, substantially improving recall at low additional cost. 
+
+# Related Work 
+
+Related work spans Agent Skill security, text–code consis-tency, and structured behavior representations. 
+
+Agent Skill security and safeguards. Empirical studies and benchmarks characterize malicious Skills, ecosystem at-tacks, and agent safety (Li et al. 2026; Liu et al. 2026b,a; Hou et al. 2026; Schmotz et al. 2026; Jia et al. 2026; Guo et al. 2026; Hu et al. 2026); runtime defenses use safe-guards, formal specifications, and sandboxes to constrain tool use (Debenedetti et al. 2024; Wang, Poskitt, and Sun 2025; Hossain et al. 2026; Mou et al. 2026; Adam et al. 2026). SKILLSCOPE and BIV compare predefined secu-rity properties or capabilities (He et al. 2026; Wu, Li, and Liu 2026), whereas SkillConsist examines declaration– implementation correspondence across package behaviors. Concurrent PL-HCL learns package-level consistency across metadata, instructions, and resources (Zhang et al. 2026a); SkillConsist instead separates mixed declaration and im-plementation roles and performs bidirectional graph align-ment over connected behavior groups to source-locate find-ings. 
+
+Text–code consistency and traceability. Rules, static analysis, learned models, and LLMs detect mismatches under predefined text–code comparison units (Tan et al. 2007; Ratol and Robillard 2017; Zhong and Su 2013; Panthaplackel et al. 2020; Steiner and Zhang 2022; Xu et al. 2023; Rong et al. 2025; Bouzenia and Pradel 2023; CoDAT Authors 2026; Shi et al. 2026; Borovits et al. 2022; Ouyang and Hua 2021). Re-cent work adds program analysis, cross-language filtering, documentation-generated tests, or artifact retrieval (Zhang et al. 2026b; Xu et al. 2026; Kiecker et al. 2026; Borg, Rune-son, and Ardo 2014). These methods assume known docu-ment and code roles and boundaries. Agent Skill content can serve either role, and one behavior can span artifacts; Skill-Consist therefore separates roles and performs bidirectional graph alignment over connected behavior groups. 
+
+Skill and graph representations. Tool-learning work standardizes instructions or surveys their use (Yuan et al. 2025; Xu et al. 2025), while Skill Coverage derives instruc-tion constraints to test whether execution trajectories exercise documented behavior (Tan, Huang, and Sun 2026). Proce-dure, tool-transition, and program graphs represent work-flows, tool transitions, or code dependencies (Blumenfeld and Webber 2026; Jia and Li 2026; Weiser 1981; Ferrante, Ottenstein, and Warren 1987; Yamaguchi et al. 2014). These representations support documentation, retrieval, execution analysis, or testing. SkillConsist instead builds paired dec-laration and implementation graphs from package artifacts and uses bidirectional graph alignment to identify conflicts and missing counterparts. 
+
+# Conclusion 
+
+SkillConsist detects and source-localizes declaration– implementation inconsistencies through bidirectional graph alignment. On 633 human-reviewed Agent Skills, it achieves 87.93% detection F1 and 62.52% localization F1, exceeding the best detection baseline by 20.43 points. Ablations confirm the complementary roles of role separation, subgraph expan-sion, and coverage checking in recovering valid counterparts and controlling unsupported missing-side findings. The re-sulting inconsistency findings also improve malicious-Skill screening recall under selectable verification budgets. 
+
+# References 
+
+Adam, J.; Lu, Y.; Raghavan, D.; Schwarzkopf, M.; and Vasi-lakis, N. 2026. Towards practically-secure tools for AI agents. In Proceedings of the Sixth European Workshop on Machine Learning and Systems , 215–224. Agent Skills. 2026. Specification. https://agentskills.io/ specification, accessed July 28, 2026. Blumenfeld, Z.; and Webber, J. 2026. AIP: A Graph Representation for Learning and Governing Agent Skills. 
+
+arXiv preprint arXiv:2606.04781 . https://arxiv.org/abs/2606. 04781. Borg, M.; Runeson, P.; and Ardo, A. 2014. Recovering from a decade: A systematic mapping of information retrieval ap-proaches to software traceability. Empirical Software Engi-neering , 19(6): 1565–1616. https://doi.org/10.1007/s10664-013-9255-y. Borovits, N.; Kumara, I.; Nucci, D. D.; Krishnan, P.; Palma, S. D.; Palomba, F.; Tamburri, D. A.; and van den Heuvel, W.-J. 2022. FindICI: Using Machine Learning to Detect Lin-guistic Inconsistencies between Code and Natural Language Descriptions in Infrastructure-as-Code. Empirical Software Engineering , 27(7): 178. https://doi.org/10.1007/s10664-022-10215-5. Bouzenia, I.; and Pradel, M. 2023. When to say what: Learn-ing to find condition-message inconsistencies. In Proceed-ings of the 45th IEEE/ACM International Conference on Soft-ware Engineering , 868–880. CoDAT Authors. 2026. CoDAT: Code Maintenance, Synthe-sis, and Verification via LLM-Based Documentation. ACM AIWare 2026 submission, OpenReview: https://openreview. net/forum?id=KrZFjm773r. Debenedetti, E.; Zhang, J.; Balunovic, M.; Beurer-Kellner, L.; Fischer, M.; and Tramèr, F. 2024. AgentDojo: A dy-namic environment to evaluate prompt injection attacks and defenses for LLM agents. In Advances in Neural In-formation Processing Systems , volume 37, 82895–82920. https://doi.org/10.52202/079017-2636. Ferrante, J.; Ottenstein, K. J.; and Warren, J. D. 1987. The program dependence graph and its use in optimization. ACM Transactions on Programming Languages and Systems , 9(3): 319–349. https://doi.org/10.1145/24039.24041. Guo, W.; Zeng, W.; Liu, C.; Jia, X.; Xu, Y.; Tang, L.; Fang, Y.; and Liu, Y. 2026. MalSkillBench: A Runtime-Verified Benchmark of Malicious Agent Skills. arXiv preprint arXiv:2606.07131 . https://arxiv.org/abs/2606.07131. He, W.; Li, Y.; Fu, B.; Xing, H.; Fan, X.; Zhang, Z.; and Niu, B. 2026. Do skill descriptions tell the truth? Detecting undisclosed security behaviors in code-backed LLM skills. 
+
+arXiv preprint arXiv:2605.12875 . https://arxiv.org/abs/2605. 12875. Hossain, E.; Nipu, M. M. H.; Ornee, T. N.; Rana, R.; and Yousefi, N. 2026. NEXUS: Structured Runtime Safety for Tool-Using LLM Agents. arXiv preprint arXiv:2607.19356 .https://arxiv.org/abs/2607.19356. Hou, Y.; Yang, Z.; Pang, Z.; and Ma, X. 2026. SkillSieve: A hierarchical triage framework for detecting malicious AI agent skills. arXiv preprint arXiv:2604.06550 . https://arxiv. org/abs/2604.06550. Hu, Y.; Jia, Y.; Li, M.; Song, D.; and Gong, N. 2026. Mal-Tool: Malicious tool attacks on LLM agents. arXiv preprint arXiv:2602.12194. https://arxiv.org/abs/2602.12194. Jia, J.; and Li, Q. 2026. AutoTool: Efficient Tool Selection for Large Language Model Agents. Proceedings of the AAAI Conference on Artificial Intelligence , 40(37): 31265–31273. https://doi.org/10.1609/aaai.v40i37.40389. Jia, X.; Liao, J.; Qin, S.; Gu, J.; Ren, W.; Cao, X.; Liu, Y.; and Torr, P. 2026. SkillJect: Effectively automating skill-based prompt injection for skill-enabled agents. arXiv preprint arXiv:2602.14211 . https://arxiv.org/abs/2602.14211. Kiecker, T.; Sparka, J. A.; Reuter, M.; Ziegler, A.; and Grunske, L. 2026. CASCADE: Detecting Inconsistencies between Code and Documentation with Automatic Test Gen-eration. Proceedings of the ACM on Software Engineering ,3(FSE): 3816–3838. https://doi.org/10.1145/3808175. Li, Z.; Wu, J.; Ling, X.; Cui, X.; and Luo, T. 2026. To-wards secure agent skills: Architecture, threat taxonomy, and security analysis. arXiv preprint arXiv:2604.02837 .https://arxiv.org/abs/2604.02837. Liu, Y.; Chen, Z.; Zhang, Y.; Deng, G.; Li, Y.; Ning, J.; and Zhang, L. Y. 2026a. “Do Not Mention This to the User”: Detecting and Understanding Malicious Agent Skills in the Wild. arXiv preprint arXiv:2602.06547 . https://arxiv.org/ abs/2602.06547. Liu, Y.; Wang, W.; Feng, R.; Zhang, Y.; Xu, G.; Deng, G.; Li, Y.; and Zhang, L. 2026b. Agent skills in the wild: An empir-ical study of security vulnerabilities at scale. arXiv preprint arXiv:2601.10338 . https://arxiv.org/abs/2601.10338. Mou, Y.; Xue, Z.; Li, L.; Liu, P.; Zhang, S.; Ye, W.; and Shao, J. 2026. ToolSafe: Enhancing Tool Invocation Safety of LLM-Based Agents via Proactive Step-Level Guardrail and Feedback. arXiv preprint arXiv:2601.10156 . https://arxiv. org/abs/2601.10156. OpenClaw. 2026a. ClawHub. https://docs.openclaw.ai/ clawhub, accessed July 23, 2026. OpenClaw. 2026b. HTTP API. https://docs.openclaw.ai/ clawhub/http-api, accessed July 23, 2026. Ouyang, W.; and Hua, B. 2021. ′R: Towards Detecting and Understanding Code-Document Violations in Rust. In 2021 IEEE International Symposium on Software Reliability En-gineering Workshops , 189–197. Panthaplackel, S.; Li, J. J.; Gligoric, M.; and Mooney, R. J. 2020. Deep just-in-time inconsistency detection between comments and source code. arXiv preprint arXiv:2010.01625 . https://arxiv.org/abs/2010.01625. Ratol, I. K.; and Robillard, M. P. 2017. Detecting fragile comments. In Proceedings of the 32nd IEEE/ACM Inter-national Conference on Automated Software Engineering ,112–122. Rong, G.; Yu, Y.; Liu, S.; Tan, X.; Zhang, T.; Shen, H.; and Hu, J. 2025. Code comment inconsistency detection and rectification using a large language model. In Proceedings of the 47th IEEE/ACM International Conference on Software Engineering , 1832–1843. Schmotz, D.; Beurer-Kellner, L.; Abdelnabi, S.; and An-driushchenko, M. 2026. Skill-Inject: Measuring agent vulnerability to skill file attacks. arXiv preprint arXiv:2602.20156 . https://arxiv.org/abs/2602.20156. Shi, J.; Yuan, Z.; Tie, G.; Zhou, P.; Gong, N. Z.; and Sun, L. 2025. Prompt Injection Attack to Tool Selection in LLM Agents. arXiv preprint arXiv:2504.19793 . https://arxiv.org/ abs/2504.19793. Shi, Y.; Zhang, X.; Zhang, X.; Shen, X.; Ouyang, H.; Qiu, H.; Zhang, M.; and Yang, M. 2026. Description-code inconsis-tency in real-world MCP servers: Measurement, detection, and security implications. arXiv preprint arXiv:2606.04769 .https://arxiv.org/abs/2606.04769. Steiner, T.; and Zhang, R. 2022. Code comment inconsis-tency detection with BERT and Longformer. arXiv preprint arXiv:2207.14444. https://arxiv.org/abs/2207.14444. Tan, B.; Huang, X.; and Sun, Y. 2026. Skill Coverage: A Test Adequacy Metric for Agent Skills. arXiv preprint arXiv:2606.20659 . https://arxiv.org/abs/2606.20659. Tan, L.; Yuan, D.; Krishna, G.; and Zhou, Y. 2007. /* iCom-ment: Bugs or bad comments? */. In Proceedings of the 21st ACM Symposium on Operating Systems Principles , 145–158. https://doi.org/10.1145/1294261.1294276. Wang, H.; Poskitt, C. M.; and Sun, J. 2025. AgentSpec: Customizable runtime enforcement for safe and reliable LLM agents. arXiv preprint arXiv:2503.18666 . https://arxiv.org/ abs/2503.18666. Weiser, M. 1981. Program slicing. In Proceedings of the 5th International Conference on Software Engineering , 439– 449. Wu, Y.; Li, T.-L.; and Liu, H. 2026. Behavioral integrity veri-fication for AI agent skills. arXiv preprint arXiv:2605.11770 .https://arxiv.org/abs/2605.11770. Xu, S.; Yao, Y.; Xu, F.; Gu, T.; Xu, J.; and Ma, X. 2023. Data quality matters: A case study of obsolete comment de-tection. In Proceedings of the 45th IEEE/ACM International Conference on Software Engineering , 781–793. Xu, W.; Huang, C.; Gao, S.; and Shang, S. 2025. LLM-based agents for tool learning: A survey. Data Science and Engineering , 10: 533–563. https://doi.org/10.1007/s41019-025-00296-9. Xu, X.; Wahab, Z.; Holmes, R.; and Lemieux, C. 2026. DocPrism: Multi-Lingual Detection of Incorrectness Incon-sistencies Between Code and Documentation. In Proceed-ings of the 35th ACM SIGSOFT International Symposium on Software Testing and Analysis . To appear. Yamaguchi, F.; Golde, N.; Arp, D.; and Rieck, K. 2014. Modeling and discovering vulnerabilities with code property graphs. In Proceedings of the 35th IEEE Symposium on Security and Privacy , 590–604. Yuan, S.; Song, K.; Chen, J.; Tan, X.; Shen, Y.; Ren, K.; Li, D.; and Yang, D. 2025. EASYTOOL: Enhancing LLM-based agents with concise tool instruction. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , 951–972. Zhang, C.; Gao, Y.; Hur, J.; Zhang, J.; and Samtani, S. 2026a. Cross-Layer Misalignment Detection in Agent Skills: A Progressive Loading-Aware Contrastive Learning Ap-proach. arXiv preprint arXiv:2607.10534. https://arxiv.org/ abs/2607.10534. Zhang, J.; Chen, J.; Zhang, T.; Li, Y.; Wu, D.; Wang, Y.; Gao, J.; Chen, T.; and Chen, Z. 2026b. Detecting Code-Comment Inconsistencies in Smart Contracts by Combining LLM and Program Analysis. Proceedings of the ACM on Software Engineering , 3(FSE): 2350–2372. https://doi.org/10.1145/ 3808112. Zhong, H.; and Su, Z. 2013. Detecting API documentation errors. In Proceedings of the 28th ACM SIGPLAN Confer-ence on Object-Oriented Programming, Systems, Languages, and Applications , 803–816.
