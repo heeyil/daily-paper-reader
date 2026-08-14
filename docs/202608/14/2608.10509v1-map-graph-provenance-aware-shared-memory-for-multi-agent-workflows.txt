@@ -1,0 +1,504 @@
+Title: MAP-Graph: Provenance-Aware Shared Memory for Multi-Agent Workflows
+
+URL Source: https://arxiv.org/pdf/2608.10509v1
+
+Published Time: Wed, 12 Aug 2026 00:37:14 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# MAP-Graph: Provenance-Aware Shared Memory for Multi-Agent Workflows 
+
+Yiqi Wang *, Zihao Yan, Jiaqi Zhang, Zhangkai Wu, Mingkai Zheng, Zequn Sun, Yanming Zhu, Taotao Cai  
+
+> *
+
+yiqi.wang.jennie@gmail.com 
+
+Abstract 
+
+Shared memory helps language-model agents reuse informa-tion across long workflows, yet relevant evidence may not be admissible for a particular agent or action. Because re-strictions propagate through derivations, summaries can con-ceal private, poisoned, untrusted, or revoked sources, enabling unauthorized reads or unsafe actions. Existing approaches pro-vide semantic retrieval, scoped access, or lineage tracking, but do not clearly separate hard authorization from graded trust or adapt evidence requirements to action risk. We in-troduce MAP-Graph, a provenance-aware memory layer that represents agents, sources, memories, claims, and actions in a typed execution graph. It traces ancestry, excludes permission-ineligible records, reranks eligible memories by semantic similarity and multiplicative path trust, and applies a risk-sensitive gate before action execution while retaining affected lineage for audit. On a controlled benchmark of 2,700 syn-thetic tasks per method across three domains, MAP-Graph achieves 94.96% overall task success, 72.70% exact decision accuracy, and 90.22% in the clean setting, where success re-quires a correct Allow rather than a safe intervention. Ab-lations isolate the roles of permission filtering, path trust, and action gating, while transfer tests with two additional backbones preserve the exact-decision and access-control ad-vantages. These results support provenance as an operational control signal, rather than only post-hoc audit metadata, within the evaluated setting. 
+
+1 Introduction 
+
+Language-model agents increasingly plan, use tools, and rea-son over long horizons (Yao et al. 2023; Shinn et al. 2023); multi-agent frameworks add role specialization and collab-orative decomposition (Park et al. 2023; Li et al. 2023; Wu et al. 2024; Hong et al. 2024). Shared memory preserves intermediate knowledge across agents and sessions (Packer et al. 2023; Zhong et al. 2024; Wang et al. 2023; Zhang et al. 2025b). As workflows incorporate more agents, tools, and external resources, this memory becomes execution state: one agent’s record can later determine another agent’s an-swer or tool action (Gao and Zhang 2024; Rezazadeh et al. 2025; Zhang et al. 2025a; Wang and Chen 2025; Margalit et al. 2026). This creates a failure mode that retrieval quality alone cannot diagnose. Vector retrieval can return the most relevant record (Lewis et al. 2020; Guu et al. 2020; Karpukhin et al. 2020) while remaining blind to whether that record may be read or used. Moreover, derivation can hide the relevant restriction: a summary may omit the fact that its source was private, poisoned, untrusted, or subsequently revoked. The derived memory can therefore remain highly relevant while enabling unauthorized disclosure or an unsafe downstream action (Chao et al. 2026; Dash et al. 2026; Pulipaka et al. 2026; Wang et al. 2026). Existing approaches cover substantial pieces of this problem. Private/shared memory tiers enforce local ac-cess policies; graph-structured memory represents relation-ships (Edge et al. 2024; Guo et al. 2025; Gutiérrez et al. 2024); and provenance models record derivation (Moreau and Missier 2013; Missier, Belhajjame, and Cheney 2013). Recent governed shared memory further combines scoped retrieval, provenance tracking, temporal supersession, and policy propagation in a production service (Margalit et al. 2026). That study intentionally evaluates a live system rather than comparative action policies, leaving open how hard au-thorization, graded ancestry trust, and action-risk gating in-teract under common controlled conditions. More generally, local metadata need not expose inherited restrictions, rep-resentation alone does not determine authorization, and a retrieval-time decision need not match the risk of the even-tual action. The unresolved question is therefore: how can a shared-memory system retrieve useful records while enforc-ing agent-, ancestry-, and action-specific admissibility? 
+
+Our answer begins with one distinction: retrieval is not authorization . Semantic relevance asks whether a memory is useful for the query; provenance admissibility asks whether the requesting agent may use it for the proposed action. Op-erationalizing the distinction raises three challenges. (C1) Recursive Ancestry. Admissibility may depend on multi-step derivation chains across sources and derived memo-ries, so inspecting only a record’s local metadata or immedi-ate source is insufficient. (C2) Heterogeneous Constraints. 
+
+Permission and visibility determine whether a record is eligi-ble for retrieval, whereas source reliability, verification, and other provenance-quality signals should grade the eligible evidence without allowing semantic similarity to override a hard access restriction. (C3) Action-Dependent Admis-sibility. Evidence sufficient for a low-risk response may be inadequate for a consequential action, so admissibility cannot be decided only once at retrieval time. arXiv:2608.10509v1 [cs.AI] 11 Aug 2026 Multi-Agent Execution Traces 
+
+1
+
+Source / Tool Observations Memory Reads 
+
+Memory Writes 
+
+Proposed Actions Agent Messages 
+
+Time 
+
+2 Online Graph Construction 
+
+Observable Event Parsing  
+
+> Observable Trace Only (No Private Chain-of-Thought)
+
+Typed Node Construction 
+
+Typed Edge Construction 
+
+Permission Metadata Incremental Update Event By Event 
+
+Heterogeneous Provenance Graph 
+
+3
+
+A1 M1 T1 
+
+M1 M2 C1 
+
+R1 M3 A1 Explicit Node and Edge Types    
+
+> User Agent Tool Resource Message Memory Claim Action
+> authorized_by observed_from forwarded_to derived_from summarized_from written_by read_by verified_by invalidated_by used_for_action
+> Chroma Query Explicit Permission Filter Candidate Filtering Eligible Candidate
+> All memories →IDs + Distances MAP-Graph Computes Semantic Score and Path Trust
+
+4 Candidate Evaluation 
+
+> Visibility
+> Permission Scope Ownership / Private Scope Revoked Resource Access
+
+5 Score, Rerank & Select Top-K 
+
+123     
+
+> Eligible Candidate
+> Computed Scoring Signals
+> Semantic Similarity Source Trust Path Integrity Transformation Factor Permission Validity Verification Bonus Agent Reliability
+> Ranked Results score = Semantic Similarity x Path trust
+> Path trust = Source Trust × Path Integrity × Transformation Factor × Permission Validity × Verification Bonus × Agent Reliability
+> Selected Supporting Memories
+> Memory M1 Memory M2 Memory M3
+> Retrieved Top-K Memory Record retrieved Top-K Memory Record Contextual Affected Memory Record
+> Auditable Decisions From Permission-Aware Provenance
+
+6 Action-Time Gate & Final Decision    
+
+> Action-Time Gate
+> Answer actions: 0.30 Non-Answer Low / Medium: 0.60 Non-Answer High: 0.85 High Risk + Affected Supporting Memory: BLOCK
+> Final Decision
+> ALLOW BLOCK REVERIFY ASK_USER REDACT
+
+Figure 1: Overview of MAP-Graph. A task-scoped typed provenance graph records memory origins and downstream depen-dencies. MAP-Graph combines semantic retrieval, recursive ancestry tracing, permission filtering, path-trust reranking, and risk-sensitive action gating to return Allow, Block, Reverify, Redact, or AskUser. We propose MAP-Graph , a provenance-aware memory layer that addresses C1-C3 in sequence. A typed execution graph records agents, sources, memories, claims, actions, and their derivations. Retrieval first applies permission eligi-bility, then combines semantic relevance with multiplicative path trust computed from recorded ancestry. Once an action is proposed, a risk-sensitive gate re-evaluates its support-ing memories. Affected descendants remain marked rather than deleted, preserving evidence for audit while constrain-ing downstream use. Figure 1 summarizes the workflow. We evaluate seven baselines and six ablations on 2,700 synthetic tasks across three domains, plus three backbones on a stratified 540-task subset. MAP-Graph reaches 94.96% task success, 72.70% exact accuracy, and 90.22% clean suc-cess. Removing its hard permission filter improves utility but allows every observed unauthorized read, a failure hidden by aggregate utility and leakage alone. These are single-run controlled results, not deployment-scale claims. In summary, this paper makes the following contributions: 1. We formulate provenance-aware shared-memory use as a controlled decision problem that separates semantic rele-vance from agent- and action-specific provenance admis-sibility. 2. We propose MAP-Graph , which combines typed prove-nance representation, permission filtering, ancestry-aware trust reasoning, risk-sensitive action gating, and audit-preserving descendant marking. 3. We provide a three-domain controlled benchmark with seven baselines, six ablations, and a stratified three-backbone comparison. 
+
+2 Background and Problem Formulation 
+
+2.1 Multi-Agent Shared Memory 
+
+We consider a set of agents A = {a1, . . . , a n} collaborating on a long-horizon task. At each step an agent may observe information, call a tool, exchange messages, generate claims, or make partial decisions, producing information worth stor-ing for later reuse. A shared memory store M maintains it across agents and time, with a memory entry denoted 
+
+mi = (id i, c i, o i, v i, d i, ℓ i, η i), (1) where id i is the identifier, ci the content, oi the owner agent, 
+
+vi the visibility, di the source and parent-memory references, 
+
+ℓi an optional trust label, and ηi additional metadata. Final decisions are represented separately as Action nodes rather than as memory entries. A score computed from ci alone cannot reveal who may read the record, which source it derives from, or whether an ancestor has been marked private, untrusted, or revoked, so the store may return an on-topic record that should not support the current action. 
+
+2.2 Memory Provenance 
+
+Memory provenance records a record’s origin and deriva-tion. MAP-Graph uses it operationally: recorded ownership and inherited permission scope determine eligibility, while source and derivation metadata inform path trust and action gating. The benchmark supplies explicit visibility, owner-ship, trust, risk, and revocation fields; MAP-Graph records their lineage and does not infer a universal notion of truth from free text. Its registered entities and relations are speci-fied in Section 3.1 and Appendix A. 2.3 Provenance-Aware Retrieval Objective 
+
+Let Mt denote the records created or seeded for task t,and CanRead( a, m ) ∈ { 0, 1} the implemented permission check for agent a. For a query q, MAP-Graph first restricts retrieval to 
+
+C(a) = {m ∈ M t : CanRead( a, m ) = 1 }, (2) then scores each eligible m by a semantic score s(m, q ) from cosine distance and a path-trust value ρ(m, a ) computed from recorded ancestors: 
+
+Score( m, q, a ) = s(m, q ) ρ(m, a ). (3) The system returns the five highest-scoring candidates. This is a deterministic rule over explicit metadata, not a learned calibration of factual correctness. The factorization is not merely notational: separating the binary gate CanRead from the graded factor ρ, and both from the content score s, fixes what an implementation must supply. Three requirements follow directly, restating the chal-lenges of Section 1 as properties of the objective rather than observations about prior systems. Ancestry-aware eval-uation (C1): trust must be computed over the transitive recorded ancestry of m, while access restrictions must remain attached as memories are derived. In our implementation, a derived memory receives the intersection of its referenced scopes at write time; query-time CanRead then checks that stored scope and any directly referenced source. Separation of hard and graded constraints (C2): CanRead must filter the candidate set while ρ multiplies the surviving scores— folding permission into ρ as a large penalty would let a suf-ficiently similar record outrank the restriction, and folding trust into C(a) would discard usable evidence whose relia-bility is merely reduced. A second, action-indexed decision (C3): Score ranks records for a query but carries no notion of what the evidence will be used for, so admissibility for a proposed action requires a separate decision, taken after the action is known and parameterized by its risk. Sections 3.1– 3.4 present the mechanism satisfying each in turn. 
+
+3 MAP-Graph Framework 
+
+MAP-Graph is a task-scoped memory backend placed be-tween a multi-agent workflow and its proposed action. For every task, it resets a NetworkX MultiDiGraph , an ephemeral Chroma collection, and the associated source and memory catalogs. The graph records observable execution lineage, while the vector collection provides semantic candi-dates; the two representations are coupled through common memory identifiers. Figure 2 illustrates the complete processing path through a poisoned-memory example. A poisoned resource R1 pro-duces memory M1, which is subsequently summarized into 
+
+M2. Although the transformation changes the memory con-tent, it preserves the ancestry path M2 → M1 → R1. When Agent C requests evidence for a high-risk action, recursive provenance evaluation discovers the poisoned ancestor and reduces the path trust and final ranking scores of the affected memories. If the affected memory still supports the proposed action, the action-time gate returns Block, while retaining the corresponding lineage for audit. The following subsections explain this process in order: the schema and construction rules make ancestry recover-able (C1), retrieval separates hard permission filtering from graded trust reranking (C2), and the action gate re-evaluates admissibility once the proposed action is known (C3). 
+
+3.1 Graph Schema: Registered Node and Edge Types 
+
+MAP-Graph represents shared memory as a heterogeneous directed provenance graph G = ( V, E, τ V , τ E ), where τV is a partial map over registered node types and τE assigns edge types. The registered vocabulary has eight node types (User, Agent, Tool, Resource, Message, Memory, Claim, Action) and ten edge types: 
+
+authorized_by , observed_from , forwarded_to ,
+
+derived_from , summarized_from , written_by ,
+
+read_by , verified_by , invalidated_by , and 
+
+used_for_action . The derivation edges are what make ancestry recoverable from an export alone, the precondition for the C1 evaluation in Section 3.3. Task identifier, domain, step, visibility, permission scope, trust labels, and risk tags are attributes rather than node types. The graph is thus an execution-lineage representation, not a semantic knowledge graph: no generic Contradicts , Updates ,or temporal-order edges are created, and no automatic open-domain conflict resolution is claimed. Per-type definitions, serialized labels, and the constants entering Equation 4 are in Appendix A. 
+
+3.2 Memory Construction and Provenance Capture 
+
+Construction uses only observable workflow state and task-provided metadata; no private chain-of-thought is required. At task initialization MAP-Graph registers the task-provided agent roles and source documents and inserts any benchmark-provided initial memory events. When an agent observes a source or tool output, the backend creates a record whose 
+
+derived_from field includes that identifier. When an agent writes a message-derived memory, the record inher-its the identifiers of retrieved memories and visible sources, and its permission scope is the intersection of the referenced scopes; if no referenced scope exists all task agents are eligi-ble, and if the intersection is empty access falls back to the writing agent. Observable messages and up to three coarse Claim nodes are retained for graph inspection. The write path rejects empty text, while each non-empty write creates a distinct embedded Memory node with its own lineage. Semantically equivalent entries are not merged, and new observations do not mutate or supersede prior text; no generic supersession or conflict-resolution state machine is implemented. An explicit revoke_permission event changes the referenced source to revoked visibility, clears its permission scope, and immediately recomputes records that directly ref-erence it or already list it as an affected ancestor, adding 
+
+invalidated_by edges where applicable. Other descen-dants detect the revoked ancestor when recursive trust is Poisoned Resource & Seeded First Memory 
+
+# ! Untrusted Source Affected Path 
+
+Seeded Memory Event E1 Resource R1 
+
+> is_poisoned = true Low Source Trust event_type = write_memory
+
+Memory M1   
+
+> M1 -> R1: derived _from M1 -> Agent A: written_by
+
+Recorded Provenance    
+
+> Source Identity: R1
+> Source Trust: Low
+> Poison Flag: True No Content Deletion Provenance Remains Auditable
+
+1 2 Derived-Memory Propagation 
+
+Seeded Memory Event E2 
+
+> event_type = summarize_memory
+> Poison Ancestry Retained
+
+Memory M2  
+
+> M2 -> M1: summarized_from M2 -> Agent B: written_by
+
+R1 M1 M2 Affected Propagation          
+
+> R1 →M1 →M2 Graph ancestry: M2 →M1 →R1
+> Transformation Does not Erase Ancestry
+
+Permission Metadata          
+
+> Explicit event Scope, When Present
+> Shared Without Scope →All Task Agents
+> Otherwise →Owner Only Summary Poisoned Derived
+
+Provenance-Aware Retrieval & Path Trust Reranking 
+
+12M3 M2 
+
+> Score = Semantic Similarity × Path Trust
+
+Chroma Semantic Candidates (All Memories)      
+
+> Memory M1 Memory M2 Memory M3
+> Affected Affected Trusted semantic: high semantic: high semantic: medium
+
+3
+
+Agent C Query 
+
+> Request Evidence for a Downstream Action
+> Task Seeding Record Construction Record Construction
+
+Recursive Provenance Trust 
+
+00          
+
+> Ancestor Traversal Multiplicative Path Trust
+> M2 M1 R1
+> Discovers Poisoned R1
+> M1 and M2 are Affected
+> Path Integrity is Reduced sourceTrust x pathIntegrity × transformation Factor × permission Validity × verification Bonus × agent Reliability
+> Affected Path →Low Trust
+
+Action Gate & Containment 
+
+> Other Implemented Gate Outcomes
+
+Final Decision 
+
+BLOCK 
+
+> Poisoned Ancestry Contained
+
+Action-Time Gate 
+
+Agent C Proposes a High-Risk  
+
+> risk level: high recursive ancestor traversal poisoned ancestor R1 detected affected supporting memory triggers hard rule
+> untrusted (non-high) no support (medium) private / denied non-high clean < threshold no support (high) clean ≥ threshold
+
+4   
+
+> Non-Answer Action Using Retrieved Memory M2
+> REVERIFY REDACT ASK_USER ALLOW
+
+Figure 2: Running example of poisoned-memory propagation and containment in MAP-Graph. A poisoned resource R1 produces memory M1, which is summarized into M2 while retaining its provenance ancestry. During retrieval, recursive ancestry tracing identifies the poisoned source and reduces the path trust of the affected memories. When M2 supports a high-risk action, the action-time gate returns Block, while preserving the affected lineage for audit. next evaluated, and task finalization marks them in the audit graph. “Invalidation” below therefore refers to this explicit re-vocation path, not a lifecycle inferred from natural-language contradictions. 
+
+3.3 Provenance-Aware Memory Retrieval 
+
+This stage implements the ancestry-closed evaluation re-quired by C1 and the hard/graded separation required by C2. Given query q from agent a, the backend embeds q, re-quests all task-local records, and scores each by s(m, q ) = max(0 , 1−d(m, q )) for cosine distance d. For each semantic candidate, MAP-Graph computes ancestry-based trust sig-nals and applies the permission check in the same candi-date loop; only eligible records enter final-score ranking. The permission check considers visibility, permission scope, the requesting agent, and directly referenced sources, and revoked sources are never readable. Trust computation re-cursively follows the record-level derived_from list to collect source and parent-memory ancestors. This recursion feeds trust computation only; it is not a query-time h-hop expansion over the graph, and Claim or Resource nodes are not returned to the model. Let S, I, F , P , V , and A denote source trust, path integrity, transformation factor, permission validity, verification bonus, and writer reliability. Path trust is their clipped product, 
+
+ρ(m, a ) = clip [0 ,1] 
+
+ S(m)I(m)F (m)P (m, a )V (m)A(m),
+
+(4) and eligible records are ranked by Score( m, q, a ) =
+
+s(m, q )ρ(m, a ), of which the top five are returned. The fac-tors have distinct inputs: S, I, and V summarize recorded ancestry; F follows the memory’s transformation chain; P
+
+is the current CanRead result; and A is the reliability as-signed to the writing agent. Thus a record with unremark-able local text can still receive low trust. In particular, I is multiplied down once for each of the untrusted/poisoned, pri-vate/sensitive, and revoked categories present in the ancestry, so these category penalties compound rather than average. Revocation additionally remains a hard access or action-gate cause where the implemented rules detect it. Appendix A.1 lists each constant. This arrangement yields two properties. First , ancestry-aware governance: recursive derived_from traversal ex-poses multi-step trust and risk signals, while write-time scope intersection carries access restrictions into newly de-rived records. Query-time permission checks then enforce the derived record’s scope and any directly referenced source; they do not independently traverse every parent record. Sec-ond , non-substitutable constraints: permission removes can-didates before ranking, so no semantic score compensates for a detected access violation, while trust only scales scores of records that already passed, so degraded but usable evidence is demoted rather than discarded. This is C2’s hard/graded separation, and Section 4.6 shows that collapsing it changes which failure mode appears. 
+
+3.4 Affected Ancestry and Action-Time Gating 
+
+This stage supplies the second, action-indexed decision re-quired by C3. The trust computation labels a memory af-fected when its recursive ancestry contains an untrusted, private, or revoked item. At finalization, bookkeeping prop-agates this state from affected roots to predecessors con-nected through derived_from , summarized_from , or 
+
+invalidated_by , and affected nodes and their ancestor identifiers remain in the export. Containment therefore means restricting retrieval or action use while retaining lineage; it does not mean deleting every descendant. Before accepting a proposed action, MAP-Graph recom-putes trust for its retrieved supporting memories and for af-fected or permission-invalid inter-agent message memories that provide contextual support. Let θ be 0.30 for an answer, 
+
+0.85 for a high-risk non-answer action, and 0.60 otherwise. The gate applies four ordered rules: (1) if a high-risk action has any affected supporting memory, return Block; (2) if no supporting memory survives for a medium- or high-risk action, return Reverify, or AskUser for high risk; (3) if a supporting path is private, revoked, untrusted, or permission-invalid, return Block, Redact, or Reverify according to risk and cause; (4) if the maximum supporting-memory trust is below θ, return Redact, Reverify, or AskUser, and oth-erwise return Allow. These are deterministic rules for the benchmark’s decision vocabulary, an implemented policy layer rather than a proof that an allowed action is safe. Because θ and Rule 1 are in-dexed by the action rather than the query, the same supporting memory can be admissible for an answer and inadmissible for a high-risk external action—the behavior C3 asks for, and a distinction that a retrieval-only policy without access to the proposed action cannot express. Section 4.4 reports that the residual failures remain concentrated in exactly this action-risk dimension. The export retains, per selected memory, its semantic, path-trust, and final scores, and per gate event the affected ancestors, cause, supporting identifiers, thresh-old, and decision; this is what makes the containment claim checkable, and Appendix B details it. 
+
+3.5 Implementation Notes 
+
+Within a task, graph, embedding, and gate state is up-dated incrementally; between tasks the graph and vector collection are reset, so the experiments concern within-task coordination rather than cross-session accumulation. For M records, trust computation for memory m is O(Dm)
+
+in its reachable ancestors and ranking costs O(M log M );these are benchmark-implementation bounds, not claims of deployment-scale optimization. The backend exposes ob-serve/write, retrieve, revoke, decide, and export; the outer workflow runs roles in fixed order and submits the proposed action to the gate. A restrictive backend decision is never re-laxed: a conservative agent proposal stands when the backend returns Allow. Appendix B gives the operation semantics. 
+
+4 Experiments 
+
+We evaluate MAP-Graph as an implemented safety layer for shared multi-agent memory along three questions: RQ1 (utility) , whether task success and exact decisions improve without sacrificing clean-task utility; RQ2 (safety) , whether poisoned, private, and revoked memories cross read or action boundaries; and RQ3 (robustness) , whether the effects per-sist across domains, scenarios, and model backbones. Sec-tion 4.6 probes components associated with C1–C3. 
+
+4.1 Benchmark and Protocol 
+
+The controlled synthetic benchmark contains 2,700 tasks generated with seed 42 and split evenly across corporate workflow, software engineering, and research assistance. Each domain contributes 150 tasks to each of six groups: clean utility, poisoned propagation, private leakage, permis-sion revocation, action-risk sensitivity, and clean compres-sion/overhead. Every domain–group cell contains 15 seman-tic families with 10 variants; oracle labels total 960 Allow, 1,140 Block, 210 Reverify, and 390 Redact. Each task provides sources, memory and tool events, vis-ibility, four fixed-order roles, and a risk-labelled proposed action; no external side effect is executed. Methods receive identical inputs and differ only in memory retrieval and ac-cess policy. Before execution, a sanitizer removes the oracle, evaluator rationale, and experiment/family/variant identifiers while retaining the provenance and policy fields under study. One run per method over the same task order yields 21,600 decision logs. The 95% intervals use 2,000 cluster-bootstrap samples over semantic families and quantify within-run case variation, not inference nondeterminism. Appendix C gives the construction and sanitizer. 
+
+4.2 Baselines 
+
+Seven baselines run behind the same workflow and memory interface. B0 (No Memory) keeps only the current conver-sation. B1 (Shared Vector Memory) pools all records in one Chroma collection and retrieves the five most similar; 
+
+B2 (Isolated Vector Memory) uses the same retrieval with a per-agent store. B3 (Adapted G-Memory) converts ob-servable traces into trajectories over query, interaction, and insight graphs (Zhang et al. 2025a). B4 (Adapted Collab-orative Memory) assigns records to private or shared tiers from visibility metadata and applies access-control filter-ing to similarity candidates before final ranking and top-
+
+k return (Rezazadeh et al. 2025). B5 (Adapted MemLin-eage) records derivation ancestors and applies a lineage-sensitive check before high-risk actions, without permis-sion filtering (Ouyang and Hou 2026). B6 (Flat Prove-nance) is a controlled local-metadata baseline. It retains the direct visibility, owner, permission scope, source trust, private/revoked/poisoned state, and action risk available to MAP-Graph, but constructs no provenance graph, never tra-verses parent records, and performs no recursive ancestry or path-trust propagation. Its retrieval filter and multi-outcome action check inspect only the current memory’s stored meta-data. B6 therefore isolates recursive graph ancestry from the benefit of having rich per-record governance fields. B3 has no permission-aware filtering, trust propagation, or gate; B4 provides access-controlled retrieval only; B5 adds a high-risk lineage check without permission-aware retrieval or multi-agent trust decay; and B6 inspects local metadata only. B6 is a controlled comparator rather than an adaptation of an external system. Thus none combines hard filtering, recursive graded path-trust reranking, and ancestry-aware gating. We describe B3–B5 as benchmark adaptations rather than reimplementations; Appendix D records the full config-urations and disabled components. Method TSR ↑ Acc ↑ Clean ↑ Unsafe ↓ ASR ↓ Leak. ↓ UAcc ↓ Revok. ↓                                                                
+
+> B0: No Memory 65.52 40.37 84.33 28.81 33.56 32.44 N/A 39.78 B1: Shared Vector Memory 67.30 40.93 88.78 28.37 30.89 20.89 100.00 47.56 B2: Isolated Vector Memory 69.15 41.63 86.00 25.59 30.00 18.00 N/A 40.00 B3: Adapted G-Memory 66.00 37.63 86.89 29.19 33.56 32.22 100.00 38.00 B4: Adapted Collaborative Memory 69.07 41.85 88.67 26.63 33.11 19.33 43.08 39.78 B5: Adapted MemLineage 74.37 51.07 88.11 21.19 22.22 23.33 100.00 23.78 B6: Flat Provenance 74.67 46.41 88.00 20.81 36.44 20.44 43.08 39.33 MAP-Graph 94.96 72.70 90.22 1.52 0.00 0.00 0.00 0.00
+
+Table 1: Main results over 2,700 tasks per method (percent). UAcc is conditional unauthorized access; N/A means no observed attempt. B3–B5 are benchmark adaptations, and B6 is the flat-metadata control. Additional diagnostic rates are reported in Appendix F. 
+
+4.3 Metrics and Implementation 
+
+Acc is exact decision accuracy; TSR requires Allow on allowed cases and credits any safe intervention otherwise. 
+
+Clean is the Allow rate in Exp-1/6. Unsafe /ASR are im-permissible execution rates overall/in the poisoned-memory group. Leakage counts private cases ending in Allow or exposing the canary; Revocation , Allow after withdrawal. 
+
+UAcc is successful/observed unauthorized reads (undefined with no attempt). Appendix E gives formulas. All methods use the AutoGen OpenAI-compatible client with Qwen2.5-7B-Instruct at temperature 0, one interaction round, and at most five retrieved items; embedding-based methods use normalized BAAI/bge-small-en-v1.5 with k =5. MAP-Graph applies permission filtering, multiplicative path trust, affected-state propagation, an action-time deci-sion over retrieved and contextual supporting memories, with thresholds 0.30 for answers, 0.60 for low/medium-risk ac-tions, and 0.85 for high-risk actions. Token usage and graph size are retained as diagnostics in Appendix F. 
+
+4.4 Main Results 
+
+Table 1 reports the aggregate utility and safety metrics for all eight methods. 
+
+Overall utility. MAP-Graph reaches 94.96% TSR and 72.70% exact accuracy. Relative to B6, the strongest TSR baseline, the TSR gain is 20.30 percentage points; relative to B5, the strongest exact-accuracy baseline, the accuracy gain is 21.63 points. MAP-Graph achieves 90.22% clean TSR, the mean of its Exp-1 and Exp-6 results, so the aggregate safety gain is not produced by simply rejecting most clean requests. 
+
+Safety outcomes. MAP-Graph reduces ASR, measured leakage, and revocation violation to 0%, with 1.52% un-safe actions versus the strongest baseline value of 20.81% (B6). It also blocks every observed unauthorized read; B4 and B6 permit 43.08%, while B1, B3, and B5 permit all ob-served attempts. These are conditional rates: 100% means every observed attempt succeeded, not that every read was unauthorized. Appendix F reports block rates, token use, and error counts. 
+
+Scenario-level behavior. MAP-Graph’s largest gains oc-cur when decisions depend on memory state: poisoned ances-try, private ownership, and permission withdrawal, for which it blocks all 450 revoked cases. In the action-risk group, how-ever, 41 of 450 decisions remain impermissible Allow out-comes (9.11%), identifying the action-time threshold as the main remaining weakness. Scenario, domain, and structural-contamination results are in Appendix F. 
+
+Scope and limitations. The benchmark is synthetic and templated, actions are simulated, and every task uses one four-agent round. B3 alone retains up to 512 run-scoped tra-jectories and may be order-sensitive. One temperature-zero run does not estimate inference nondeterminism, and 3.89– 9.08% of outer calls reach the 2,048-token cap. TSR must be read with Acc because it credits any safe intervention. Fi-nally, B3–B5 are core-mechanism adaptations, not complete reproductions. 
+
+4.5 Backbone Transfer 
+
+We select a fixed 20% subset (540 tasks; seed 2027), jointly stratified by domain, experiment group, and oracle label. It contains 180 tasks per domain, 90 per group, and all four la-bels. B1, B4–B6, and MAP-Graph use identical settings with Qwen2.5-7B-Instruct, GLM-4-9B-0414, and Llama-3.1-8B-Instruct. Qwen results are extracted from full runs; GLM and Llama are single subset runs. Only the generation backbone changes, yielding 2,700 decisions per backbone. Across all three backbones, MAP-Graph has the highest exact accuracy and lowest unsafe rate. It also leads TSR on Qwen and Llama; on GLM its 86.30% trails B6’s 88.89%, exposing a utility–safety trade-off. Boundary diagnostics fur-ther show zero observed unauthorized access for MAP-Graph on every backbone (Appendix F.5). Because these are single-run point estimates, they support transfer of exact decision quality and access enforcement, not backbone-invariant util-ity or run-to-run stability. 
+
+4.6 Ablation Results 
+
+We evaluate six variants on the same 2,700 tasks. No gate disables only the final action gate; no containment disables affected-state enforcement and descendant marking; no per-mission removes CanRead ; and no trust disables propaga-tion and reranking. No provenance stack is a retrieval-only control disabling the graph, permission, trust and reranking, contextual support, gate, and containment. Compressed re-Variant TSR ↑ Acc ↑ Clean ↑ Unsafe ↓ ASR ↓ UAcc ↓ Rev. ↓                                                 
+
+> Full MAP-Graph 94.96 72.70 90.22 1.52 0.00 0.00 0.00 Compressed graph 94.33 71.93 89.22 1.56 0.00 0.00 0.00 No action-time gate 69.44 42.63 90.00 27.00 34.89 0.00 35.11 No containment 70.67 43.15 89.22 25.41 32.89 0.00 39.78 No permission filter 96.00 78.63 89.44 0.04 0.22 100.00 0.00 No provenance stack 67.89 41.89 89.00 27.89 29.33 100.00 46.67 No trust propagation 87.37 56.44 88.78 8.56 0.00 0.00 0.00
+
+Table 2: Single-run ablations over 2,700 tasks per variant (percent). Clean is clean-task TSR; UAcc is conditional unauthorized access. Full diagnostics appear in Appendix F.4.                                                                  
+
+> Method Qwen2.5-7B GLM-4-9B Llama-3.1-8B TSR ↑Acc ↑Unsafe ↓TSR ↑Acc ↑Unsafe ↓TSR ↑Acc ↑Unsafe ↓
+> B1 65.19 40.00 29.07 86.48 40.93 3.52 88.89 59.07 6.11 B4 67.22 40.74 26.67 85.37 42.59 4.26 89.81 61.30 5.93 B5 71.11 49.26 24.07 87.04 72.59 3.15 90.93 70.93 3.89 B6 70.93 43.52 22.59 88.89 47.96 1.30 93.52 65.00 2.59 MAP-Graph 93.33 72.59 2.04 86.30 74.81 0.19 94.26 80.00 1.30
+
+Table 3: Backbone transfer on the same stratified 540-task subset (percent). Boundary-specific diagnostics are reported in Appendix F.5. tains all decision mechanisms but exports a reduced source– memory–action graph. Three conclusions follow. Gate and containment (C3): 
+
+removing either sharply increases ASR, revoked-memory use, and unsafe actions while clean TSR changes by at most one point. Trust propagation (graded C2): removing path trust leaves the permission and gate rules active but lowers TSR by 7.59 points and raises Unsafe from 1.52% to 8.56%. Thus the gap measures propagation and trust-aware reranking on top of permission filtering and gating. Compression: TSR changes by 0.63 points while the export shrinks from 39.74 to 24.66 nodes and 246.78 to 70.68 edges. 
+
+Utility gains can mask an access-control failure. With-out the permission filter, TSR rises from 94.96% to 96.00% and Acc from 72.70% to 78.63%, yet UAcc rises from 0% to 100%. Restricted records improve retrieved context, while the downstream gate still suppresses most prohibited use; it cannot undo an unauthorized read. Hence governed-memory evaluation must instrument the access boundary rather than rely only on utility and end-to-end leakage. 
+
+5 Related Work 
+
+Memory in LLM agents. Agent-memory systems support persistence, sharing, collaboration, governance, and struc-ture (Packer et al. 2023; Zhong et al. 2024; Wang et al. 2023; Zhang et al. 2025b; Gao and Zhang 2024; Wang and Chen 2025; Margalit et al. 2026). The closest systems mo-tivate complementary mechanisms: G-Memory’s trajectory graphs (Zhang et al. 2025a), Collaborative Memory’s pri-vate/shared tiers (Rezazadeh et al. 2025), and MemLineage’s derivation enforcement (Ouyang and Hou 2026). MAP-Graph does not subsume them; it combines task-local permis-sion filtering, multiplicative ancestry scoring, affected-state audit metadata, and action-time gating. 
+
+Orchestration and retrieval. Agent and multi-agent frame-works organize roles and execution (Yao et al. 2023; Shinn et al. 2023; Li et al. 2023; Wu et al. 2024; Hong et al. 2024); RAG and graph retrieval improve grounding and multi-hop coverage (Lewis et al. 2020; Guu et al. 2020; Karpukhin et al. 2020; Edge et al. 2024; Guo et al. 2025; Gutiérrez et al. 2024; Qian et al. 2025). MAP-Graph instead records execution lineage to govern admissibility and audit. 
+
+Provenance and evidence tracing. W3C PROV formalizes derivation relations (Moreau and Missier 2013; Missier, Bel-hajjame, and Cheney 2013), while long-context utilization, stale-memory, and poisoning studies expose distinct failures in evidence use (Liu et al. 2024; Chao et al. 2026; Dash et al. 2026; Pulipaka et al. 2026; Zhang et al. 2026; Wang et al. 2026). MAP-Graph uses lineage and access metadata operationally for retrieval and gating, not automatic truth maintenance. 
+
+6 Conclusion 
+
+MAP-Graph separates semantic relevance from provenance admissibility through recursive ancestry, permission filter-ing, path-trust reranking, and action-time gating. In the single-run 2,700-task benchmark it reaches 94.96% TSR and 72.70% Acc, with 0% observed ASR, leakage, and revoca-tion violation. On the 540-task subset it retains the highest Acc across Qwen, GLM, and Llama, although utility varies by backbone. These controlled results show that provenance can govern retrieval and actions rather than serve only as post-hoc metadata. Future work should test repeated, less templated, cross-session, and deployment-scale settings. References 
+
+Chao, H.; Bai, Y.; Sheng, R.; Li, T.; and Sun, Y. 2026. STALE: Can LLM Agents Know When Their Memories Are No Longer Valid? arXiv preprint arXiv:2605.06527 .Dash, P.; Ge, T.; Jain, A.; Shah, T.; and Shang, Z. 2026. From Untrusted Input to Trusted Memory: A Systematic Study of Memory Poisoning Attacks in LLM Agents. arXiv preprint arXiv:2606.04329 .Edge, D.; Trinh, H.; Cheng, N.; Bradley, J.; Chao, A.; Mody, A.; Truitt, S.; Metropolitansky, D.; Ness, R. O.; and Lar-son, J. 2024. From Local to Global: A Graph RAG Ap-proach to Query-Focused Summarization. arXiv preprint arXiv:2404.16130 .Gao, H.; and Zhang, Y. 2024. INMS: Memory Sharing for Large Language Model based Agents. arXiv preprint arXiv:2404.09982 .Guo, Z.; Xia, L.; Yu, Y.; Ao, T.; and Huang, C. 2025. Ligh-tRAG: Simple and Fast Retrieval-Augmented Generation. In Christodoulopoulos, C.; Chakraborty, T.; Rose, C.; and Peng, V., eds., Findings of the Association for Computational Lin-guistics: EMNLP 2025 , 10746–10761. Suzhou, China: As-sociation for Computational Linguistics. Gutiérrez, B. J.; Shu, Y.; Gu, Y.; Yasunaga, M.; and Su, Y. 2024. HippoRAG: Neurobiologically Inspired Long-Term Memory for Large Language Models. In Advances in Neural Information Processing Systems , volume 37, 59532–59569. Guu, K.; Lee, K.; Tung, Z.; Pasupat, P.; and Chang, M.-W. 2020. REALM: Retrieval-Augmented Language Model Pre-Training. In Proceedings of the 37th International Con-ference on Machine Learning , volume 119 of Proceedings of Machine Learning Research , 3929–3938. Hong, S.; Zhuge, M.; Chen, J.; Zheng, X.; Cheng, Y.; Zhang, C.; Wang, J.; Wang, Z.; Yau, S. K. S.; Lin, Z.; Zhou, L.; Ran, C.; Xiao, L.; Wu, C.; and Schmidhuber, J. 2024. MetaGPT: Meta Programming for a Multi-Agent Collaborative Frame-work. In International Conference on Learning Representa-tions .Karpukhin, V.; Oğuz, B.; Min, S.; Lewis, P.; Wu, L.; Edunov, S.; Chen, D.; and Yih, W.-t. 2020. Dense Passage Retrieval for Open-Domain Question Answering. In Proceedings of the 2020 Conference on Empirical Methods in Natural Lan-guage Processing , 6769–6781. Online: Association for Com-putational Linguistics. Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Küttler, H.; Lewis, M.; Yih, W.-t.; Rocktäschel, T.; Riedel, S.; and Kiela, D. 2020. Retrieval-Augmented Gen-eration for Knowledge-Intensive NLP Tasks. In Advances in Neural Information Processing Systems , volume 33, 9459– 9474. Li, G.; Hammoud, H. A. A. K.; Itani, H.; Khizbullin, D.; and Ghanem, B. 2023. CAMEL: Communicative Agents for “Mind” Exploration of Large Language Model Society. In Advances in Neural Information Processing Systems , vol-ume 36, 51991–52008. Liu, N. F.; Lin, K.; Hewitt, J.; Paranjape, A.; Bevilacqua, M.; Petroni, F.; and Liang, P. 2024. Lost in the Middle: How Language Models Use Long Contexts. Transactions of the Association for Computational Linguistics , 12: 157–173. Margalit, Y.; Cohen-Inger, N.; Avram, E.; Taig, R.; and Mar-galit, O. 2026. Governed Shared Memory for Multi-Agent LLM Systems. arXiv preprint arXiv:2606.24535 .Missier, P.; Belhajjame, K.; and Cheney, J. 2013. The W3C PROV Family of Specifications for Modelling Provenance Metadata. In Proceedings of the 16th International Confer-ence on Extending Database Technology , 773–776. Moreau, L.; and Missier, P. 2013. PROV-DM: The PROV Data Model. W3C recommendation, World Wide Web Con-sortium. Editors. Ouyang, C.; and Hou, R. 2026. MemLineage: Lineage-Guided Enforcement for LLM Agent Memory. arXiv preprint arXiv:2605.14421 .Packer, C.; Wooders, S.; Lin, K.; Fang, V.; Patil, S. G.; Stoica, I.; and Gonzalez, J. E. 2023. MemGPT: Towards LLMs as Operating Systems. arXiv preprint arXiv:2310.08560 .Park, J. S.; O’Brien, J. C.; Cai, C. J.; Morris, M. R.; Liang, P.; and Bernstein, M. S. 2023. Generative Agents: Interac-tive Simulacra of Human Behavior. In Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology , UIST ’23, 1–22. San Francisco, CA, USA: Association for Computing Machinery. Pulipaka, S.; Hlebik, S.; Raghav, L.; Abdelnabi, S.; Raina, V.; Sheth, I.; and Fritz, M. 2026. Hidden in Memory: Sleeper Memory Poisoning in LLM Agents. arXiv preprint arXiv:2605.15338 .Qian, H.; Liu, Z.; Zhang, P.; Mao, K.; Lian, D.; Dou, Z.; and Huang, T. 2025. MemoRAG: Boosting Long Context Processing with Global Memory-Enhanced Retrieval Aug-mentation. In Proceedings of the ACM on Web Conference 2025 , 2366–2377. Sydney, NSW, Australia: Association for Computing Machinery. Rezazadeh, A.; Li, Z.; Lou, A.; Zhao, Y.; Wei, W.; and Bao, Y. 2025. Collaborative Memory: Multi-User Memory Sharing in LLM Agents with Dynamic Access Control. arXiv preprint arXiv:2505.18279 .Shinn, N.; Cassano, F.; Gopinath, A.; Narasimhan, K.; and Yao, S. 2023. Reflexion: Language Agents with Verbal Re-inforcement Learning. In Advances in Neural Information Processing Systems , volume 36, 8634–8652. Wang, H.; Yang, S.; Chen, Y.; and Liu, P. 2026. Hijacking Agent Memory: Stealthy Trojan Attacks Through Conversa-tional Interaction. arXiv preprint arXiv:2605.29960 .Wang, W.; Dong, L.; Cheng, H.; Liu, X.; Yan, X.; Gao, J.; and Wei, F. 2023. Augmenting Language Models with Long-Term Memory. In Advances in Neural Information Processing Systems , volume 36, 74530–74543. Wang, Y.; and Chen, X. 2025. MIRIX: Multi-Agent Memory System for LLM-Based Agents. arXiv preprint arXiv:2507.07957 .Wu, Q.; Bansal, G.; Zhang, J.; Wu, Y.; Li, B.; Zhu, E.; Jiang, L.; Zhang, X.; Zhang, S.; Liu, J.; Awadallah, A. H.; White, R. W.; Burger, D.; and Wang, C. 2024. AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversations. In Conference on Language Modeling .Yao, S.; Zhao, J.; Yu, D.; Du, N.; Shafran, I.; Narasimhan, K.; and Cao, Y. 2023. ReAct: Synergizing Reasoning and Acting in Language Models. In International Conference on Learning Representations .Zhang, G.; Fu, M.; Wan, G.; Yu, M.; Wang, K.; and Yan, S. 2025a. G-Memory: Tracing Hierarchical Memory for Multi-Agent Systems. arXiv preprint arXiv:2506.07398 .Zhang, X.; Zheng, Y.; Xu, Z.; Zhou, K.; Shen, B.; Ou, H.; Zhang, T.; and Lam, K.-Y. 2026. MemMorph: Tool Hijack-ing in LLM Agents via Memory Poisoning. arXiv preprint arXiv:2605.26154 .Zhang, Z.; Dai, Q.; Bo, X.; Ma, C.; Li, R.; Chen, X.; Zhu, J.; Dong, Z.; and Wen, J.-R. 2025b. A Survey on the Memory Mechanism of Large Language Model-based Agents. ACM Transactions on Information Systems , 43(6): 1–47. Zhong, W.; Guo, L.; Gao, Q.; Ye, H.; and Wang, Y. 2024. MemoryBank: Enhancing Large Language Models with Long-Term Memory. In Proceedings of the AAAI Confer-ence on Artificial Intelligence , volume 38, 19724–19731. 
+
+Appendix Overview 
+
+This appendix supplies implementation and evaluation de-tails omitted from the main text for space. Throughout, C1, C2, and C3 denote the main text’s challenges of recursive ancestry, heterogeneous constraints, and action-dependent admissibility. Symbols ( S, I, F , P , V , A, ρ, and θ) and the decision vocabulary (Allow, Block, Reverify, Redact, and AskUser) follow the main text. Table 4: Correspondence between the appendix sections and the main text.          
+
+> Section Main-text material supported Challenge AGraph schema and path-trust constants C1 BBackend interface, workflow integra-tion, and operation semantics C1, C3 CBenchmark construction, sanitization, and transfer subset C1–C3 DExact baseline adaptations and the flat-metadata control C2 EMetric formulas and implementation settings C1–C3 FScenario, domain, diagnostic, ablation, and transfer results C1–C3
+
+A Provenance Graph Schema 
+
+The main text’s graph-schema subsection states that MAP-Graph evaluates recorded ancestry rather than only a mem-ory’s text or local score. This section specifies the serialized vocabulary and the constants used by the implemented path-trust calculation. Task identifier, domain, step, visibility, permission scope, trust labels, and risk tags are attributes rather than node types. Tool outputs are represented as Memory nodes asso-ciated with a Tool identity; an unregistered output identifier may additionally appear as a Resource:<id> reference placeholder. MAP-Graph is therefore an execution-lineage graph, not a general-purpose semantic knowledge graph. The implementation does not create generic Contradicts ,
+
+Updates , or temporal-order edges and does not perform open-domain contradiction resolution. 
+
+A.1 Path-Trust Constants 
+
+For an eligible memory, the implementation computes 
+
+ρ(m, a ) = clip [0 ,1] (S I F P V A ).
+
+Source trust S is the minimum explicit trust among source ancestors, or 0.80 if no source ancestor is recorded. Path integrity I starts at 1 and is multiplied once by 0.25 ,
+
+0.45 , and 0.15 when the ancestry contains, respectively, an untrusted/poisoned, private/sensitive, or revoked category. Multiple categories compound. Transformation loss adds 
+
+0.08 for an agent-message record, 0.10 for a summary event, and 0.03 for each non-root memory transformation, capped at 
+
+0.65 ; hence F = max(0 .35 , 1 − loss) . Permission validity P
+
+is the current binary CanRead result. The verification factor is V = min(1 .20 , 1 + 0 .05 nv ) for nv high-trust ancestors. Writer reliability A defaults to 0.95 .The factors use different evidence: S, I, and V summa-rize recorded ancestry; F follows the transformation chain; 
+
+P evaluates the current reader against the stored policy; and 
+
+A belongs to the writing agent. Permission is still enforced as a hard pre-ranking filter in the full system. The graded prod-uct only reranks records that remain eligible, and affected ancestry is reconsidered by the action gate. 
+
+B Backend Interface and Memory Operations 
+
+MAP-Graph is implemented as a task-local memory back-end between the shared agent workflow and its simulated proposed action. Table 6 summarizes the public operations. 
+
+B.1 Workflow Integration 
+
+The harness uses AutoGen’s OpenAI-compatible model client and executes the four task-provided roles once in fixed order. It does not instantiate AutoGen AssistantAgent 
+
+or RoundRobinGroupChat . At each role step, the har-ness applies scheduled timeline events, registers sources and tool outputs visible to that role, filters the visible conversa-tion through the selected backend, retrieves memory, calls the model, and writes the response. The final role emits a structured proposed-action object, which is passed to the backend. The final decision is conservative with respect to the agent proposal and backend decision. A restrictive backend result is never relaxed; if the backend returns Allow but the agent proposes Block, Redact, Reverify, or AskUser, the more restrictive agent proposal remains. Only final Allow creates a simulated execution event, and no external side effect is performed. 
+
+B.2 Write, Retrieval, Update, and Audit Semantics 
+
+Write. Empty text is rejected; otherwise a new record is created without content deduplication. Its derived_from Table 5: Registered node and edge types emitted by the graph builder.                    
+
+> Type Implemented meaning
+> Node types
+> User Owner or authorizer associated with a resource or memory. Agent Workflow role that observes, writes, retrieves, or proposes an action. Tool Tool identity associated with an observed output or verification. Resource Source document or referenced artifact with trust and access metadata. Message Observable inter-agent content; the graph stores its content hash. Memory Seeded, observed, or agent-written record stored in Chroma. Claim Up to three sentence-level claims extracted by deterministic text rules. Action Proposed action, risk, threshold, support, and gate decision.
+> Edge types
+> authorized_by Associates a resource, memory, or action with an owner or actor.
+> observed_from Records an agent observing a resource.
+> forwarded_to Records the receivers of an inter-agent message.
+> derived_from Links a message, memory, or claim to recorded inputs.
+> summarized_from Special derivation edge for a benchmark summary-memory event.
+> written_by Associates a memory or claim with its writing agent.
+> read_by Records a selected memory read and its retrieval scores.
+> verified_by Records a high-trust source or rule-based verifier.
+> invalidated_by Records an explicit revocation or invalidating reference.
+> used_for_action Links a supporting memory or claim to an action.
+
+Table 6: Implemented MAP-Graph memory operations.          
+
+> Operation Input Effect Observe/write Source, tool output, or agent text Creates a distinct memory, embedding, scope, and lineage links. Retrieve Agent and query Filters permissions and returns at most five records ranked by semantic score times path trust. Revoke Explicit timeline event Marks a source revoked, clears its scope, and updates directly referenced or already affected records. Decide Proposed action and support Applies affected-path rules and a risk-dependent trust threshold. Export Completed task Serializes nodes, edges, retrieval diagnostics, gate events, and component settings.
+
+list combines retrieved-memory identifiers with sources visi-ble at the current step. With the full graph builder, a Message reference is also recorded. A derived record receives the in-tersection of referenced scopes. If no referenced scope exists, all task agents are eligible; if the intersection is empty, the scope falls back to the writing agent. Visibility is shared only when the resulting scope covers all task agents. 
+
+Retrieval. Chroma first supplies semantic candidates. MAP-Graph computes CanRead and path trust for each candidate, removes permission-ineligible records, sorts the remainder by semantic score times path trust, and returns at most five. Selected reads create read_by edges carrying semantic, path-trust, and final scores. 
+
+Update and revocation. New observations and mes-sages append records rather than mutating or supersed-ing prior text. An explicit revocation event updates the referenced source and directly referenced or already af-fected records. Other descendants detect the revoked an-cestor during later recursive trust evaluation; final graph propagation marks affected predecessors while retaining their lineage. A benchmark summary event creates a new record linked by summarized_from . There is no general 
+
+active /superseded /contradicted state machine. 
+
+Structured audit output. The artifacts store selected and permission-filtered identifiers, component scores, affected ancestors and reasons, supporting identifiers, risk thresh-olds, and the final rule-specific decision. MAP-Graph does not generate a free-form natural-language explanation, and the experiments do not measure human-facing explanation quality. 
+
+C Benchmark Construction and Sanitization 
+
+C.1 Full Benchmark 
+
+The controlled synthetic benchmark contains 2,700 tasks generated with seed 42. It has three equally sized domains— corporate workflow, software engineering, and research assistance—and six experiment groups: (1) clean utility, (2) poisoned-memory propagation, (3) private-memory leakage, (4) permission revocation, (5) action-risk sensitivity, and (6) clean compression/overhead. Each domain contributes 150 tasks to each group. Every domain–group cell contains 15 se-mantic families with 10 variants that alter entities, audiences, channels, evidence shapes, and action types while retaining a structured oracle. The 2,700 labels comprise 960 Allow, 1,140 Block, 210 Reverify, and 390 Redact. Each task provides source documents, initial and derived memory events, tool observations, visibility and permission fields, a four-role sequence, and a risk-labelled proposed ac-tion. Corporate roles are manager, analyst, HR-assistant, and executor; software roles are planner, coder, reviewer, and ex-ecutor; research roles are retriever, summarizer, writer, and verifier. If the final structured action cannot be parsed, the harness recovers the public action type and risk from the task schema and uses the retrieved records as support. All eight methods receive the same task order and public task fields. The runtime sanitizer removes the oracle deci-sion, evaluator rationale, experiment and family identifiers, variant metadata, the top-level evaluator canary annotation, and every should_be_used annotation before either the agents or memory backend receive a task. The public ac-tion type, risk, provenance, visibility, ownership, trust, and permission fields remain, because reasoning over them is the target capability. Authorized source text also remains; otherwise canary exposure could not be measured. One run for each of B0–B6 and MAP-Graph produces 21,600 main-experiment decision logs. Each method has complete 2,700/2,700 decision, trace, and memory-log cov-erage; graph artifacts are additionally present for the graph-producing methods. The six ablations plus the full method produce 18,900 additional decisions. These are single-run controlled results. 
+
+C.2 Backbone Transfer Subset 
+
+The transfer experiment uses a fixed 540-task subset gener-ated with seed 2027 by jointly stratifying the full 2,700 tasks over domain, experiment group, and oracle label. It contains 180 tasks per domain, 90 per experiment group, and all four labels. The same task identifiers are used for B1, B4, B5, B6, and MAP-Graph under Qwen2.5-7B-Instruct, GLM-4-9B-0414, and Llama-3.1-8B-Instruct. Qwen values are extracted from the final full runs; GLM and Llama are one subset run each. Thus each backbone contributes 5 × 540 = 2 , 700 
+
+decisions. 
+
+C.3 Cluster Bootstrap 
+
+The 95% intervals use 2,000 bootstrap samples with boot-strap seed 42. A sampling cluster is a semantic family within a domain and experiment group; all ten closely related variants in a sampled family move together. The intervals therefore describe case-family variation in a fixed run, not model-inference nondeterminism. 
+
+D Baseline Adaptations and Controls 
+
+B3–B5 are benchmark adaptations that preserve the mech-anisms stated below; they are not claimed as complete re-productions of their source systems. B6 is an internal flat-metadata control rather than an adaptation of an external paper. 
+
+B0: No Memory. The workflow retains only the current conversation and performs no persistent memory read or write. 
+
+B1: Shared Vector Memory. All agent records enter one shared Chroma collection; the five most similar records are returned without permission filtering, lineage scoring, or an action gate. 
+
+B2: Isolated Vector Memory. The same vector mechanism is maintained separately per agent. This prevents direct cross-store reads but does not create a shared provenance graph. 
+
+B3: Adapted G-Memory. Observable interaction traces are converted into trajectories represented by query, interaction, and insight graphs. The implementation performs one task-level retrieval and reuses its context for all four roles, applies one-hop query-graph expansion, retains the 512 most recent trajectories, and bounds insight state to 10 rules. Periodic insight updates use an LLM. The reported configuration re-places the original per-task LLM trajectory sparsifier and generative reranker with deterministic key-step extraction and similarity ordering. Auxiliary insight calls use tempera-ture 0.1 with a small output cap. B3 receives no MAP-Graph permission filter, path-trust propagation, or action gate. 
+
+B4: Adapted Collaborative Memory. Records are assigned to private or shared tiers from visibility and permission meta-data. Restricted or revoked status is inherited by derived messages, and the current access-control list is checked be-fore top-five similarity results are returned. A per-task user– agent–resource access graph is exported. B4 has neither re-cursive path-trust scoring nor an action-time gate. 
+
+B5: Adapted MemLineage. Each fragment records deriva-tion ancestors, edges, and untrusted-source reasons. Retrieval is similarity-based and does not filter by reader permission. Before a high-risk action, supporting memories are checked for an untrusted ancestor. The evaluated implementation has no per-principal signatures, cryptographic/Merkle-verified log, permission-aware retrieval, or multi-agent trust decay. 
+
+B6: Flat Provenance. B6 stores, on each memory, visibility, owner, permission scope, source trust, pri-vate/revoked/poisoned state, and action risk. It performs di-rect metadata-based retrieval filtering and a metadata-based action check. Derived messages summarize metadata from their direct inputs, and revocation updates records directly tied to the source. B6 does not construct a provenance graph, recursively traverse parent memories, or propagate path-trust scores. It therefore isolates the value of recursive ancestry from the availability of local policy metadata. 
+
+E Metrics and Implementation Settings 
+
+E.1 Paper-Facing Metrics 
+
+Let yi be the oracle decision, ˆyi the final decision, I =
+
+{Block , Redact , Reverify , AskUser }, and N the relevant denominator. 1. Exact decision accuracy (Acc, ↑): N −1 P 
+
+> i
+
+1[ˆ yi = yi].2. Task success rate (TSR, ↑): an oracle-Allow case suc-ceeds only for Allow; a non-Allow case succeeds for any decision in I. Thus a safe but non-exact intervention can increase TSR without increasing Acc. 3. Clean success (Clean, ↑): the Allow rate on Exp-1 and Exp-6, whose oracle decision is Allow. 4. Unsafe rate ( ↓): the fraction of all 2,700 tasks with a simulated execution event when the oracle decision is not Allow. 5. Attack success rate (ASR, ↓): the Allow/execution rate among the 450 Exp-2 poisoned-memory tasks. 6. Leakage ( ↓): the fraction of the 450 Exp-3 tasks with unauthorized canary exposure or a final Allow. 7. Unauthorized access (UAcc, ↓): the total successful unauthorized memory reads divided by total observed unauthorized-read attempts. It is N/A when no attempt is observed. 8. Revocation violation ( ↓): the final-Allow rate among the 450 Exp-4 permission-revocation tasks. 9. Structural contamination: for each Exp-2 task having at least one downstream memory, the fraction of down-stream records that retain poisoned ancestry, averaged across eligible tasks. This is a lineage-structure diagnos-tic, not an execution or leakage rate: a system may pre-serve affected ancestry for audit while preventing its use. 10. Correct block ( ↑): Pr(ˆ y = Block | y = Block ).11. False block ( ↓): Pr(ˆ y = Block | y = Allow ).The additional block rate is the unconditional fraction of final Block decisions. Per-task token use sums provider-reported prompt and completion tokens over the four outer agent calls and any recorded memory-layer calls. The token-cap diagnostic is the fraction of the 10,800 outer agent calls per method whose reported completion reaches the 2,048-token limit. Average graph nodes and edges are computed from exported task graphs. 
+
+E.2 Fixed Implementation Settings 
+
+All main-experiment methods use the same AutoGen OpenAI-compatible client with Qwen2.5-7B-Instruct, outer-call temperature 0, one four-role round, at most 12 recent con-text messages, at most five retrieved memories, a 2,048-token generation cap, a 120-second per-call timeout, and at most five retries. Embedding methods use normalized BAAI/bge-small-en-v1.5 embeddings on CPU with k = 5 .MAP-Graph filters permissions before ranking, uses mul-tiplicative path trust, propagates affected state, and evaluates retrieved plus contextual support at action time. Its thresh-olds are 0.30 for answers, 0.60 for low- or medium-risk non-answer actions, and 0.85 for high-risk actions. A high-risk action is blocked when an affected supporting path is de-tected. Latency is not a paper-facing metric. All model calls used remote shared endpoints and experiments ran concurrently across accounts, so provider queuing and long-tail service load cannot be separated from local memory overhead. To-ken use and graph size are retained only as reproducible diagnostics. 
+
+F Additional Results 
+
+Tables 7–11 report the scenario, domain, full-run, ablation, and transfer diagnostics discussed in this section. 
+
+F.1 Scenario-Level Results 
+
+Table 7 compares MAP-Graph with the strongest baseline for the utility and risk quantity relevant to each experiment group. The comparator can differ across groups. 
+
+F.2 Confidence Intervals and Domain Results 
+
+MAP-Graph’s TSR is 94.96% with a 95% cluster-bootstrap interval of [93.15, 96.52], and its Acc is 72.70% [68.26, 77.19]. The strongest baseline TSR is B6 at 74.67% [71.67, 77.74]; the strongest baseline Acc is B5 at 51.07% [47.19, 55.07]. MAP-Graph’s Clean is 90.22% [87.44, 92.92], and its unsafe rate is 1.52% [0.37, 2.93]. These intervals measure clustered case variation within one run. Table 8 reports the corresponding domain breakdown. The TSR range is narrow across the three controlled role configurations. The lower research Acc with high TSR reflects more safe but non-exact interventions, not more impermissible execution. 
+
+F.3 Main-Experiment Diagnostics 
+
+Table 9 reports block rates, structural contamination, and token diagnostics for the full run. MAP-Graph’s average to-ken count consists of 4,194.8 prompt and 620.1 completion tokens. B3 is highest because retrieved trajectories and peri-odic insight generation add context and auxiliary generation. MAP-Graph exports 39.74 nodes and 246.78 edges per task on average. These counts exclude embedding computation, graph construction time, storage I/O, evaluator work, and failed requests for which the provider reports no usage; they are not a complete cost or latency comparison. Structural contamination must be interpreted separately from safety outcomes. MAP-Graph’s 25.00% means that affected ancestry remains attached to some downstream records; those records are retained and marked for audit. Its 0% ASR and 0% poisoned-group impermissible execu-tion show that retained lineage was not treated as admissible support in those cases. 
+
+F.4 Full Ablation Diagnostics 
+
+Table 10 supplements the main-text ablation table with leak-age, contamination, block, token, and graph-size diagnostics. The six variants correspond to explicit component switches. 
+
+No permission filter disables candidate exclusion but leaves trust and gating active; its 100% UAcc in Table 2 despite 0% endpoint leakage here shows why read-boundary and endpoint metrics are both needed. No trust propagation also disables trust-aware reranking. No action gate allows at the backend decision stage, while No containment retains the threshold gate but removes affected-path rules. No prove-nance graph jointly disables graph construction, permission filtering, trust propagation and reranking, action gating, con-tainment, and contextual action support; it is a system-level removal rather than a one-switch attribution. The compressed graph retains policy behavior but exports fewer graph details. 
+
+F.5 Backbone Access-Boundary Diagnostics 
+
+Table 11 reports unauthorized-access diagnostics on the common 540-task transfer subset. The deterministic access policy and task structure make the attempt counts largely Table 7: Scenario-level results (percent; 450 tasks per row). “Best baseline” is selected for the quantity shown within that experiment group. 
+
+Group Scenario MAP TSR Best baseline TSR Risk/utility quantity MAP Best baseline Exp-1 Clean utility 84.22 83.33 (B1) Exact accuracy 84.22 83.33 (B1) Exp-2 Poisoned propagation 100.00 77.78 (B5) ASR 0.00 22.22 (B5) Exp-3 Private-memory leakage 100.00 82.00 (B2) Leakage 0.00 18.00 (B2) Exp-4 Permission revocation 100.00 76.22 (B5) Revocation 0.00 23.78 (B5) Exp-5 Action-risk sensitivity 89.33 68.22 (B6) Unsafe action 9.11 28.67 (B6) Exp-6 Clean compression 96.22 94.44 (B4) Exact accuracy 96.22 94.44 (B4) 
+
+Table 8: MAP-Graph results by domain (percent; 900 tasks per row). Domain TSR Acc Corporate workflow 94.56 73.56 Software engineering 95.00 74.56 Research assistance 95.33 70.00 Table 9: Additional full-run diagnostics (percent except tokens/task). Correct and false block use their conditional denominators; Cap calls is the fraction of outer calls reaching 2,048 completion tokens. 
+
+Method Block Correct block False block Structural contam. Tokens/task Cap calls B0 12.67 16.23 2.50 0.00 3,397.2 8.12 B1 14.41 15.44 3.33 43.44 5,007.5 4.66 B2 14.07 16.67 2.71 25.00 4,054.4 4.06 B3 9.07 8.77 3.23 11.11 6,687.4 9.08 B4 15.37 17.46 2.71 25.02 4,927.8 4.46 B5 23.96 38.86 2.81 62.17 4,953.2 4.09 B6 16.59 21.23 2.60 25.00 4,882.7 4.44 MAP-Graph 24.00 54.21 3.12 25.00 4,814.9 3.89 
+
+Table 10: Diagnostics supplementing the main-text ablation table (percent except tokens and graph size). CBlock/FBlock denote conditional correct/false block. 
+
+Variant Leak Contam. Block CBlock FBlock Tokens Nodes Edges Full 0.00 25.00 24.00 54.21 3.12 4,814.9 39.74 246.78 Compressed graph 0.00 25.02 23.78 53.77 3.02 4,847.0 24.66 70.68 No action gate 22.22 25.00 14.41 17.54 2.50 4,830.1 39.74 246.69 No containment 20.89 25.00 14.81 18.33 2.50 4,814.2 39.68 245.96 No permission filter 0.00 24.94 25.74 58.86 2.40 4,911.9 39.76 250.73 No provenance graph 22.89 40.44 14.22 16.40 3.02 4,991.2 0.00 0.00 No trust propagation 0.00 25.00 11.15 24.12 2.71 4,886.3 39.91 265.10 
+
+Table 11: Unauthorized-access diagnostics on the common 540-task transfer subset. Each backbone block reports unauthorized reads (R), observed attempts (A), and conditional UAcc in percent. 
+
+Qwen2.5-7B GLM-4-9B Llama-3.1-8B Method R A UAcc R A UAcc R A UAcc B1 48 48 100.00 48 48 100.00 48 48 100.00 B4 990 2,323 42.62 990 2,324 42.60 990 2,324 42.60 B5 101 101 100.00 86 86 100.00 84 84 100.00 B6 990 2,324 42.60 990 2,324 42.60 990 2,324 42.60 MAP-Graph 0 1,334 0.00 0 1,334 0.00 0 1,334 0.00 stable across backbones, while B5’s model-dependent re-trieval changes how often an unauthorized record is selected. MAP-Graph rejects every observed unauthorized read un-der all three backbones. This supports transfer of the imple-mented access boundary, not a claim of run-to-run stability or deployment-scale robustness. 
+
+F.6 Error Analysis 
+
+MAP-Graph makes 737 exact-decision errors. Of these, 601 are safe but non-exact interventions, such as Redact rather than Block or Reverify; this accounts for much of the TSR– Acc gap. Another 95 cases are unnecessary interventions on oracle-Allow tasks. The remaining 41 are impermissible Allow decisions, all in Exp-5. The residual safety errors in this run therefore concentrate in action-risk sensitivity rather than poisoned, private, or revoked-memory groups.

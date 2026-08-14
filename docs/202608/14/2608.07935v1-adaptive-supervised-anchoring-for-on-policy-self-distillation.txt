@@ -1,0 +1,627 @@
+Title: Adaptive Supervised Anchoring for On-Policy Self-Distillation
+
+URL Source: https://arxiv.org/pdf/2608.07935v1
+
+Published Time: Tue, 11 Aug 2026 00:26:55 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Adaptive Supervised Anchoring for On-Policy Self-Distillation 
+
+Meilin Yang *, Zixuan Ding *,1 , Jianhao Nie, Weite Zhang, Yuxin Zhang, Zhiming Shao, Li Yu †,1 , Zhe Fu †,1 
+
+Abstract 
+
+On-policy self-distillation (OPSD) adapts a language model by distilling guidance from a frozen teacher on trajectories sampled from the student. Its effectiveness, however, depends critically on the quality of those trajectories. We show that when student rollouts drift from target trajectories, condition-ing the teacher on off-target prefixes substantially weakens its task-relevant supervision. Controlled prefix-corruption ex-periments expose this failure mode, which we term rollout-conditioned signal degradation. To address this problem, we propose a unified training framework that separates two com-plementary supervision pathways. The first retains rollout-conditioned distribution matching, providing guidance on states the student actually visits. The second applies su-pervised cross-entropy on canonical ground-truth contexts, avoiding the incompatibility of imposing target tokens on er-roneous rollout prefixes. Token-level rollout–target alignment is used to adapt the strength of the canonical-context anchor, emphasizing it during cold start and relaxing it as rollout quality improves. Experiments across multiple model scales, two task families, and general-reasoning benchmarks show that the proposed approach improves task acquisition over OPSD while preserving general capabilities, resulting in a more favorable empirical plasticity–stability trade-off. These findings identify context quality as a central bottleneck in on-policy self-distillation and demonstrate the value of separating rollout-conditioned guidance from canonical supervision. 
+
+Introduction 
+
+On-policy distillation (OPD) provides dense token-level su-pervision on student-generated trajectories, but typically re-quires white-box access to a separate, vocabulary-compatible teacher with substantial memory and serving overhead (Agar-wal et al. 2024; Gu et al. 2024). On-policy self-distillation (OPSD) offers an appealing alternative: the teacher and stu-dent share the same base model, while privileged context, such as a verified solution, gives the teacher task-relevant in-formation unavailable to the student (Zhao et al. 2026; Shen-feld et al. 2026). This makes OPSD an appealing approach to acquiring new tasks without excessive loss of pretrained capabilities. 
+
+> *
+
+Equal contribution. †Corresponding authors. 
+
+> 1
+
+Renmin University of China, Beijing, China. Correspon-dence to Li Yu (buaayuli@ruc.edu.cn ) and Zhe Fu (zhefu@ruc.edu.cn ). 
+
+Yet this design relies on an implicit assumption: privi-leged task knowledge remains accessible when the teacher is evaluated on the student’s own prefixes. This assumption is fragile for tasks whose output schemas, action spaces, or reasoning protocols are weakly represented in pretraining. Before acquiring these conventions, the student can rapidly enter contexts that depart from valid trajectories. Although the teacher still observes the target solution, that information need not translate into target-aligned next-token guidance under an off-target prefix. To test this assumption, we conduct a controlled diag-nostic study. The same frozen privileged teacher achieves 80.4% target-token accuracy under canonical prefixes, but only 6.5% when conditioned on natural student rollouts be-fore adaptation. We then progressively corrupt canonical pre-fixes while keeping the problem, target solution, and teacher fixed. Accuracy decreases monotonically to 3.8% as cor-ruption increases. We refer to this phenomenon as rollout-conditioned signal degradation : privileged guidance that is strongly target-aligned under canonical prefixes can become substantially less informative on off-target student contexts. The student-generated states that make OPSD on-policy can therefore also weaken the supervision that distillation is in-tended to provide. A natural response is to introduce ground-truth supervi-sion, but the two straightforward combinations are struc-turally inadequate. Applying cross-entropy directly under a diverged rollout prefix can make the canonical target token semantically inconsistent with its conditioning context, creat-ing a target–context mismatch. Performing SFT before OPSD avoids this mismatch, but only by hard-partitioning training into two regimes: the student receives no rollout-conditioned guidance before the switch and no canonical supervision afterward, irrespective of its evolving rollout quality. The method consequently depends on a manually chosen switch-ing point. These limitations expose a deeper supervision– context incompatibility : rollout-conditioned distillation re-quires student-generated prefixes to preserve on-policy state coverage, whereas ground-truth supervision requires canon-ical prefixes to preserve target validity. This suggests a 
+
+context-validity principle : each supervision target should be evaluated under a context in which it remains semantically meaningful. To resolve this incompatibility, we propose Supervised arXiv:2608.07935v1 [cs.LG] 8 Aug 2026 Distillation Steering (SDS) , a context-separated framework that evaluates each target under a conditioning context in which it remains semantically valid. SDS retains rollout-conditioned self-distillation on student-generated prefixes and computes canonical-context anchoring through an inde-pendent student forward pass. The two branches update the same trainable parameters while keeping their conditioning prefixes strictly separated. Crucially, SDS replaces a fixed anchoring coefficient with an adaptive weight derived from rollout–target token-level similarity, strengthening canoni-cal anchoring when alignment is poor and reducing it as alignment improves. The anchoring contribution is thus co-ordinated with the student’s current behavior rather than gov-erned by a predefined training stage. Figure 1 illustrates the framework. We evaluate SDS across Qwen3-1.7B, Qwen3-4B, and Qwen3-8B on two domain-adaptation tasks, ToolAlpaca and SimpleMath, and assess general-capability retention on AIME 2024, MATH-500, and ARC-Challenge. SDS im-proves domain-task acquisition over OPSD while retain-ing more general capability than SFT. Training dynamics and comparisons with rollout-context cross-entropy, fixed-weight variants, and staged SFT-to-OPSD training further support context separation and adaptive anchoring. The main contributions are: 
+
+• We identify rollout-conditioned signal degradation , a context-dependent failure mode in privileged on-policy self-distillation, and link it to prefix quality through nat-ural rollouts and controlled prefix corruption. 
+
+• We formulate context-valid supervision as a design prin-ciple and propose Supervised Distillation Steering (SDS) , which combines context-separated supervision with alignment-dependent adaptive anchoring. 
+
+• Experiments across three model scales demonstrate im-proved acquisition on two domain tasks and stronger general-capability retention than SFT. Training-dynamics analyses and ablations further support the two key design components. 
+
+Related Work 
+
+On-Policy Distillation and Self-Distillation 
+
+Knowledge distillation (Hinton, Vinyals, and Dean 2015; Gou et al. 2021) transfers knowledge from a teacher to a student model. In the LLM era, distillation has further in-corporated teacher-generated rationales as additional super-vision (Hsieh et al. 2023). OPD instead trains the student on its own generations rather than static teacher demonstrations. GKD (Agarwal et al. 2024) matches token-level teacher dis-tributions on student rollouts, while MiniLLM (Gu et al. 2024) optimizes a reverse-KL objective on student-sampled text. Self-distillation further shares the same base model be-tween teacher and student. SDFT (Shenfeld et al. 2026) and OPSD (Zhao et al. 2026) provide the teacher with privi-leged context—expert demonstrations and verified reason-ing traces, respectively—while the student observes only the original question and learns on-policy from the teacher’s dis-tribution. This privileged design ties the teacher signal to the context it is queried under, and a pattern mismatch between teacher and student responses can miscalibrate token-level supervision and destabilize training (Yang, Wang, and Zhang 2026). Prior remedies correct this signal within the rollout context, for example by steering the teacher logits; we instead separate supervision so that it is evaluated under the context in which it remains valid, and set its weight online from token-level sequence similarity between rollout and target rather than following a preset schedule. 
+
+Capability Preservation in Post-Training 
+
+Task-specific adaptation risks eroding general capabilities, a degradation classically framed as catastrophic forgetting (Kirkpatrick et al. 2017) and documented for large language models under continual fine-tuning (Luo et al. 2023). Recent work has further examined post-training forgetting at the level of individual pretrained capabilities, showing that aggregate retention scores can obscure substantial variation across ca-pabilities and training stages (Harmon et al. 2026). Broader surveys categorize capability-preserving adaptation meth-ods into rehearsal-, regularization-, and parameter-efficient approaches, underscoring the persistent plasticity–stability trade-off in continual adaptation of large language models (Shi et al. 2025). Among these directions, on-policy learning forgets less than supervised fine-tuning at matched performance (Shen-feld, Pari, and Agrawal 2025; Chen et al. 2025), low-rank adaptation limits parameter drift relative to full fine-tuning (Biderman et al. 2024), and other approaches preserve capa-bilities via adapter bypassing or partial parameter freezing (Han et al. 2025; Hui et al. 2025). SDS instead combines rollout-conditioned self-distillation with a standard LoRA adapter, requiring no routing, freezing mechanism, or sepa-rate retention dataset. 
+
+Method 
+
+We first formalize OPSD and introduce the notation used throughout this section. Because OPSD evaluates teacher supervision on student-generated prefixes, its learning sig-nal may become unreliable as the rollout departs from a valid solution trajectory. We therefore organize our analysis around three research questions that progressively examine whether the teacher signal remains informative, why it de-grades, and whether direct cross-entropy supervision can recover the missing task signal. This diagnosis motivates SDS, which separates rollout-conditioned distillation from canonical-context supervision. 
+
+Preliminaries 
+
+On-Policy Self-Distillation OPSD instantiates both teacher and student from the same base model, but decouples them along two axes: conditioning context and parameter up-date. Given a task-adaptation dataset S = {(xi, y⋆i )}Ni=1 , let the privileged input xPI = [ x; y⋆] denote the concatenation of the problem and its ground-truth solution. Let θ0 denote the initial parameters at the start of training. The teacher policy pT (· | xPI ) ≜ pθ0 (· | xPI ) is frozen at θ0 throughout training and conditions on this privileged input, while the 1. Shared sampling           
+
+> Training pair
+> (𝑥, 𝑦 ∗)~𝒟
+> Student
+> On-policy rollout
+> 𝑦 "~𝑀 !"∆!
+> 3. Joint update
+> 𝑀 !"∆!
+> 2A. Conditioned OPSD 2B. Canonical-context anchor
+> student teacher
+> 𝑝 !⋅ |𝑥, 𝑦 ˆ"# 𝑝 $⋅ |𝑥 %& , 𝑦 ˆ"#
+> Canonical target
+> 𝑥; 𝑦 ∗
+> rollout–target alignment
+> sim 𝑦 ˆ , 𝑦 ∗
+> adaptive weight
+> 𝑤 anchor
+> independent student pass
+> 𝑝 !𝑦 ∗∣ 𝑥, 𝑦 #$ ∗
+> ! 𝒟
+> !
+> 𝑝 "‖ 𝑝 #
+> ℒ!"#$"%%&$"'(
+> ℒ!"#$"%%&$"'( + 𝛼 $ 𝑤 &()*'+ $ ℒ &()*'+
+> Update parameters
+> Δ𝜃 ← Δ𝜃 − 𝜂𝛻 "# ℒ
+> ×
+> ℒanchor
+> y1
+> 𝛼 $ 𝑤 &()*'+ $ ℒ &()*'+
+
+Figure 1: Overview of Supervised Distillation Steering (SDS). Given a training pair (x, y∗), the student produces a rollout ˆy.The distillation branch aligns the student with the privileged teacher pT (· | xPI ) on the rollout context, while the anchoring branch computes Lanchor under the canonical prefix y∗
+
+> <t
+
+. Its contribution is controlled by the alignment-dependent weight 
+
+wanchor , and the combined objective updates the shared parameters ∆θ.
+
+student policy pS (· | x) ≜ pθ0+∆ θ (· | x) carries the train-able increment ∆θ, which is updated continuously during training, and observes only the problem. Because the teacher sees the target solution, its next-token distribution is sharper and better aligned with correct trajectories. At each step the student generates an on-policy rollout ˆy ∼
+
+pS (· | x). Both policies evaluate this rollout: at position t they produce next-token distributions ptT = pT (· | xPI , ˆy<t ) and 
+
+ptS = pS (· | x, ˆy<t ) over the same student-generated prefix. The OPSD objective minimises the trajectory-averaged per-token divergence between these two distributions, providing dense supervision at every token position on the student’s own behaviour distribution: 
+
+LOPSD = 1
+
+|ˆy|
+
+> |ˆy|
+
+X
+
+> t=1
+
+D ptT ∥ ptS
+
+, (1) where D is an f -divergence such as forward KL or the gener-alised Jensen–Shannon divergence. Gradients propagate only through the student’s logits pθ0+∆ θ ; the teacher pθ0 remains fixed at the initial checkpoint throughout training and never receives gradient updates. With the OPSD formulation in place, we now examine the reliability of its rollout-conditioned teacher signal. 
+
+RQ1: Does the Teacher Remain Informative Under Student Rollouts? 
+
+Equation 1 relies on the teacher distribution pT (· | xPI , ˆy<t )
+
+remaining informative under student-generated prefixes. We examine whether this condition holds before the student has adapted to the target task. To quantify the available teacher signal, we define the target-token accuracy under a context sequence c as 
+
+Acc T (c) = E(x,y∗),t 
+
+h
+
+1
+
+n
+
+arg max  
+
+> v
+
+pT (v | xPI , c <t ) = y∗
+
+> t
+
+oi 
+
+,
+
+(2) where c = y∗ uses canonical prefixes and c = ˆy
+
+uses student-rollout prefixes. We further define the signal-retention ratio as 
+
+ρ(ˆ y) = Acc T (ˆ y)Acc T (y∗) . (3) 
+
+Empirical observation. We evaluate Qwen3-1.7B and Qwen3-4B on a fixed set of 200 SimpleMath examples before task-specific training. Under canonical prefixes, the teacher achieves target-token accuracies of 78.0% and 80.4%, respec-tively. In contrast, the corresponding student rollouts attain only 2.5% and 1.0% exact-match accuracy. Conditioning the teacher on these rollouts reduces its target-token accuracy to 3.0% and 6.5%, yielding retention ratios of 3.8% and 8.1%. Together, these results show that a teacher that is accurate under canonical contexts may provide little task-relevant su-pervision under student-generated contexts. We refer to this loss as rollout-conditioned signal degradation .
+
+RQ2: Does Context Degradation Cause Teacher Signal Loss? 
+
+The natural-rollout results in RQ1 show that teacher accuracy collapses under student-generated contexts, but they conflate student policy quality with the teacher’s sensitivity to its con-ditioning context. To disentangle these factors, we conduct two complementary analyses: a controlled prefix corruption 
+
+experiment that probes the effect of context degradation, and a real-rollout binning analysis that examines whether the same relationship appears under naturally generated pre-fixes. The controlled experiment enables us to vary prefix quality while holding the input and target trajectory fixed, thereby isolating the effect of context degradation on the teacher signal. However, synthetic corruption may introduce error patterns that differ from those produced by an actual stu-dent policy. The rollout-binning analysis therefore provides a complementary view by testing whether teacher signal qual-ity varies systematically with trajectory quality within real student rollouts. Together, these analyses determine whether the degradation observed in RQ1 reflects genuine sensitiv-ity to conditioning context rather than an artifact of either poor overall student performance or the chosen corruption procedure. 
+
+Controlled prefix corruption. Starting from a ground-truth trajectory y∗, we randomly replace a fraction ϵ ∈ [0 , 1] 
+
+of its prefix tokens with uniformly sampled vocabulary items, yielding a corrupted context ˜y(ϵ). We measure teacher target-token accuracy as a proxy for task-relevant signal fidelity. 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.8 1.0          
+
+> Corruption Rate
+> 0.0 0.2 0.4 0.6 0.8
+> Teacher Top-1 Accuracy
+> 80.4% 3.8% natural rollout ≈5%
+> (a) Synthetic: Teacher Accuracy
+> [.91,1.0] [.83,.91] [.23,.32] [.15,.23]
+> First Error Position Bin (near-correct →early error)
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Teacher Top-1 Accuracy
+> 82.7% (n=46) 79.4% (n=5) 27.1% (n=34) 20.5% (n=115)
+> (b) Real Rollout: Teacher Accuracy
+
+Figure 2: Teacher target-token accuracy under controlled and natural context degradation on Qwen3-4B SimpleMath. (a) 
+
+Accuracy decreases from 80.4% to 3.8% as synthetic corrup-tion increases. (b) Post-divergence accuracy increases from 20.5% for early-error rollouts to 82.7% for nearly correct rollouts. Error bars show within-bin standard deviation. Figure 2(a) reports results on Qwen3-4B using 200 Sim-pleMath samples. Teacher accuracy decreases monotonically with the corruption rate, from 80.4% at ϵ = 0 to 3.8% at 
+
+ϵ = 1 . The fully corrupted setting is close to the approxi-mately 5% accuracy observed under natural cold-start roll-outs (dashed line). These results show that the teacher’s abil-ity to predict target tokens is highly sensitive to the quality of its conditioning prefix. 
+
+Validation on real student rollouts. To examine whether this relationship also appears under naturally generated con-texts, we collect 200 rollouts from an SDS student at training step 50 and bin them by first error position , defined as the nor-malized location of the earliest token-level divergence from the ground-truth trajectory. To avoid mechanically credit-ing nearly correct rollouts for their longer correct prefixes, teacher accuracy is computed only over target positions fol-lowing the first divergence. Figure 2(b) shows a consistent monotonic association. Teacher accuracy is 20.5% for early-diverging rollouts (bin 
+
+[0 .15 , 0.23] ) and increases to 82.7% for nearly correct roll-outs (bin [0 .91 , 1.0] ). Thus, the relationship observed un-der controlled corruption is also present in natural student-generated contexts. Together, the two analyses provide evi-dence that degraded prefixes reduce the accessibility of task-relevant teacher knowledge, rather than the controlled result being solely an artifact of random token corruption. 
+
+RQ3: Is Naive Cross-Entropy Injection Sufficient? 
+
+The analysis above shows that task-relevant teacher fidelity deteriorates under degraded contexts. A natural remedy is therefore to supplement the OPSD objective in Eq. (1) with a ground-truth cross-entropy term, thereby directly injecting task-relevant supervision: 
+
+Lnaive CE = − 1
+
+|y∗|
+
+> |y∗|
+
+X
+
+> t=1
+
+log pS (y∗ 
+
+> t
+
+| x, ˆy<t ) , (4) 
+
+Lnaive OPSD+CE = LOPSD + λCE Lnaive CE , (5) where λCE controls the contribution of direct ground-truth supervision. Note that the OPSD term LOPSD is averaged over the aligned token span T where distillation is evaluated, while the cross-entropy term Lnaive CE is averaged over the full output sequence length |y∗|.However, this construction introduces a subtle but critical semantic mismatch. The supervised target y∗ 
+
+> t
+
+is evaluated under the student’s rollout prefix ˆy<t rather than under its canonical prefix y∗
+
+> <t
+
+. When the rollout has already diverged, 
+
+y∗ 
+
+> t
+
+is no longer necessarily the appropriate next token for that prefix. The cross-entropy loss therefore optimizes for a target that is semantically inconsistent with the condition-ing context and can provide an unreliable learning signal during early training. Consistent with this concern, Naive OPSD+CE achieves only 55.20% accuracy on SimpleMath and its AIME general-reasoning performance drops to 3.33% in Table 3. These outcomes motivate context separation but do not by themselves identify a gradient-conflict mechanism. These findings motivate SDS, which evaluates rollout-conditioned distillation and ground-truth anchoring under separate, semantically valid contexts. 
+
+Supervised Distillation Steering 
+
+We propose Supervised Distillation Steering (SDS), a context-separated training objective. SDS combines a rollout-conditioned distillation term with a ground-truth-conditioned anchoring term. The two terms share the same trainable student parameters ∆θ, while their conditioning contexts are kept strictly separate. The distillation term aligns the student with the teacher under the rollout context [x; ˆ y],whereas the anchoring term provides target-based guidance under the ground-truth context [x; y∗]. The strength of the anchoring term is adaptively determined by the similarity between the current rollout and the target trajectory. 
+
+Context-Separated Anchoring The anchoring branch evaluates a teacher-forcing cross-entropy loss on the ground-truth prefix. Given input x and canonical trajectory y∗:
+
+Lanchor = − 1
+
+|y∗|
+
+> |y∗|
+
+X
+
+> t=1
+
+log pS (y∗ 
+
+> t
+
+| x, y∗
+
+> <t
+
+) . (6) The context separation is enforced at the forward-pass level: this loss is computed on [x; y∗], while the distillation loss uses [x; ˆ y]. The two branches share the same trainable parameters ∆θ; their conditioning contexts remain separate. This design directly addresses the mismatch identified in Eq. 4, where the target token y∗ 
+
+> t
+
+is scored under a diverged rollout prefix ˆy<t . By evaluating y∗ 
+
+> t
+
+under its own canonical prefix y∗
+
+> <t
+
+, the anchoring gradient operates in a context where the target token is semantically valid. We use full separation rather than partial alternatives such as selective token masking or mixed prefixes. The controlled perturbation results in Figure 2(a) show that teacher accuracy degrades monotonically with prefix corruption ratio, so any context that retains rollout-prefix components still carries degraded signal. Full separation avoids this by construction. 
+
+Adaptive Anchoring Weight The anchoring branch should contribute more when student rollouts diverge from the target and less as alignment improves. We define sim(ˆ y, y∗) as a lightweight token-level similarity that quan-tifies the overlap between rollout and target sequences. Any graded sequence-level similarity can fill this role; our default instantiation and an ablation over alternatives are given in Appendix C. The adaptive anchoring weight is 
+
+wanchor = 1 − sim(ˆ y, y∗). The full SDS objective at the token level is: 
+
+LSDS = 1
+
+|ˆy|
+
+> |ˆy|
+
+X
+
+> t=1
+
+D(pT (· | xPI , ˆy<t ) ∥ pS (· | x, ˆy<t )) + α w anchor 
+
+− 1
+
+|y∗|
+
+> |y∗|
+
+X
+
+> t=1
+
+log pS (y∗ 
+
+> t
+
+| x, y∗
+
+> <t
+
+)
+
+ . (7) where α controls the maximum contribution of the an-choring term. Following OPSD, we instantiate D as the gen-eralized Jensen–Shannon divergence. For a mixing weight 
+
+β ∈ [0 , 1] , let mβ = βp T + (1 − β)pS . The divergence is defined as 
+
+JSD β (pT ∥pS ) = βD KL (pT ∥mβ )+ (1 − β)DKL (pS ∥mβ ). (8) The generalized Jensen–Shannon divergence is bounded, preventing the loss from growing unbounded when the teacher and student distributions differ substantially. Impor-tantly, the two terms in Eq. 7 are evaluated under distinct prefixes: ˆy<t for rollout-conditioned distillation and y∗ 
+
+> <t
+
+for ground-truth supervision. Since wanchor is computed from the current policy’s rollout at each step, the anchoring strength adjusts automatically as training progresses shown in Figure 4. 
+
+Experiments 
+
+Setup 
+
+Models and datasets. We select Qwen3 for its open weights, which enable reproducible self-distillation unlike proprietary systems such as GPT-4 (OpenAI 2023), and its competitive performance relative to similarly sized open-weight models such as Llama (Llama Team 2024; Yang et al. 2025).We evaluate its 1.7B, 4B, and 8B variants on two adaptation tasks with distinct output structures: the SDFT-processed version of ToolAlpaca (Tang et al. 2023; Shen-feld et al. 2026), which requires multi-turn structured tool calls, and SimpleMath (Murias 2024), which requires dec-imal arithmetic under a prescribed reasoning template and fixed four-decimal answer format. Task acquisition is mea-sured on the held-out test set of each adaptation task. We as-sess transfer-side capability retention on AIME 2024 (Zhang and Math-AI 2024), MATH-500 (Lightman et al. 2024), and ARC-Challenge (Clark et al. 2018), none of which is used for task-specific training. 
+
+Baselines. We compare four primary methods, all trained on the same dataset: (1) SFT , standard supervised fine-tuning with cross-entropy loss; (2) GRPO (Shao et al. 2024), group relative policy optimization with binary outcome rewards; (3) OPSD (Zhao et al. 2026), on-policy self-distillation with privileged teacher guidance; and (4) SDS (ours), OPSD with supervised distillation steering. We further compare SDS with naive OPSD+CE, fixed-weight hybrids, and two-stage SFT →OPSD training to isolate the effects of context sepa-ration, adaptive weighting, and endogenous scheduling (see the Ablation Studies section). 
+
+Implementation details. All methods use LoRA (Hu et al. 2022) applied to all attention and MLP modules. For OPSD and SDS, the teacher is served via colocated vLLM. All re-ported results are averaged over three random seeds to reduce variance. Full hyperparameters and evaluation configurations are provided in Appendix A. 
+
+Main Results 
+
+Task Acquisition Table 1 presents results on the task ac-quisition benchmarks across model sizes. SDS substantially improves task acquisition over OPSD across all three model sizes, especially on SimpleMath. On the Qwen3-4B model, SDS achieves 72.06% Pass@12 on Tools (vs. 70.10% for SFT and 62.75% for OPSD) and 62.43% overall accuracy on SimpleMath (vs. 56.43% for SFT and 23.23% for OPSD). On Tools, SFT remains com-petitive at 1.7B and 8B, where its direct supervision on expert trajectories is sufficient and capability erosion is less critical. However, SDS achieves the best or near-best SimpleMath performance across all scales, and its advantage grows with task difficulty (e.g., multiplication and division). Combined with its substantially better general capability retention (Ta-ble 2), SDS offers a more favorable trade-off than SFT for scenarios where both task performance and general capabil-ity matter. 
+
+General Capability Preservation Table 2 presents results on mathematical and science-reasoning benchmarks for the Qwen3-4B model. SFT substantially degrades all three transfer-side probes: AIME24 Avg@8 drops from 72.92% to 38.33%, MATH-500 Avg@8 from 95.63% to 56.00%, and ARC-Challenge accuracy from 92.15% to 66.13%; format compliance also falls from 98.12% to 73.29%. OPSD preserves the evaluated capabilities well but re-mains weak at task acquisition. SDS occupies the middle ground, retaining 93.2% of base AIME24 Avg@8 and 95.2% of ARC-Challenge accuracy while achieving the best Qwen3-4B task performance in Table 1. In comparison, SFT retains only 52.6% of base AIME24 Avg@8 and 71.8% of base ARC-Challenge accuracy. MATH-500 differences are smaller, with all methods ex-cept SFT retaining over 93% Avg@8. On ARC-Challenge, SDS remains below OPSD and GRPO but substantially out-performs SFT and preserves a 95.69% format rate. Ap-pendix D.1 reports the corresponding cross-scale reten-tion results. Pure OPSD remains the strongest preservation-oriented baseline, whereas SDS provides substantially stronger task acquisition. 
+
+The Pareto Trade-off Figure 3 summarizes the empiri-cal plasticity–stability trade-off. Starting from the same base model, SFT acquires the target task but substantially degrades AIME24 performance, whereas OPSD preserves AIME24 Model Size Method Tools SimpleMath Pass@12 ↑ Turn Acc. ↑ Overall Acc. ↑ Add. (+) ↑ Sub. (−) ↑ Mul. (×) ↑ Div. (÷) ↑
+
+Qwen3-1.7B Base 61.76 40.65 2.93 5.20 5.60 0.53 0.40 SFT 69.61 48.41 51.20 98.40 99.20 0.80 6.40 GRPO 67.65 46.44 44.50 90.00 86.13 1.33 0.40 OPSD 67.16 44.53 17.80 30.80 36.80 1.20 2.40 SDS 68.63 51.36 51.00 97.20 98.00 0.80 8.00 Qwen3-4B Base 61.76 46.15 3.77 7.60 4.53 2.53 0.40 SFT 70.10 50.00 56.43 100.00 100.00 1.20 24.40 GRPO 64.22 46.32 55.20 92.40 95.20 15.60 17.60 OPSD 62.75 46.99 23.23 44.53 44.40 3.20 0.80 SDS 72.06 51.01 62.43 99.20 98.80 25.20 26.53 Qwen3-8B Base 69.12 49.91 2.13 4.67 3.20 0.40 0.27 SFT 76.47 49.45 55.57 100.00 100.00 0.80 21.47 GRPO 67.16 49.62 43.07 82.13 86.80 1.33 2.00 OPSD 68.63 50.29 10.33 26.80 11.60 1.60 1.20 SDS 70.59 53.10 56.97 99.60 100.00 1.60 26.53 
+
+Table 1: Task acquisition across model sizes. SDS substantially improves over OPSD on SimpleMath and remains competitive with SFT. 
+
+Method AIME24 MATH-500 ARC-Challenge Avg@8 Pass@8 Maj@8 Avg@8 Pass@8 Maj@8 Acc. Format Base 72.92 80.00 80.00 95.63 98.40 97.00 92.15 98.12 SFT 38.33 80.00 73.33 56.00 84.60 80.60 66.13 73.29 GRPO 61.25 76.67 70.00 93.75 97.60 96.00 90.58 96.63 OPSD 71.25 86.67 80.00 94.90 98.20 96.00 91.30 97.10 SDS 67.98 86.67 83.33 93.65 98.20 95.00 87.75 95.69 
+
+Table 2: Capability preservation on Qwen3-4B after Sim-pleMath adaptation. but learns SimpleMath less effectively. SDS achieves a stronger balance by separating the two objectives: rollout-conditioned distillation maintains distributional continuity, while canonical-context anchoring supplies task supervision. 
+
+Training Dynamics of Adaptive Anchoring To under-stand how SDS coordinates its two supervision branches, we examine the dynamics of adaptive anchoring and rollout-conditioned distillation. Figure 4 shows that early student 0 20 40 60 Task Performance SimpleMath Acc. (%)  
+
+> 50 60 70 80 90 100 110 Capability Retention (AIME24 Avg@8 / Base %)  Base OPSD SFT
+> capability collapse
+> Ideal
+> Task
+> Capability
+> Neither
+> Base
+> Base OPSD SFT SDS (Ours)
+
+Figure 3: Task acquisition versus AIME24 capability reten-tion on Qwen3-4B. SDS achieves 62.43% SimpleMath ac-curacy while retaining 93.2% of the base AIME24 Avg@8, providing a favorable empirical plasticity–stability trade-off. 0 50 100 150 200          
+
+> Training Step
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Seq. Similarity / Weight  w
+> Phase transition (step ≈10)
+> Task acquisition Capability preservation
+> Seq. Similarity Anchoring Weight w
+> distillation
+> 0.000 0.005 0.010 0.015 0.020 0.025 0.030 0.035 0.040
+> distillation
+> 1510 15 20 25 0.0 0.5 1.0
+> Step 0 –25 (zoom)
+
+Figure 4: Training dynamics of SDS on Qwen3-8B. Adaptive anchoring is stronger early in training, decreases to a nonzero level, and continuously coordinates with rollout-conditioned distillation without a hard stage switch. rollouts are poorly aligned with the ground-truth trajectories, resulting in a large wanchor and strong canonical anchoring. As alignment improves, the anchoring weight decreases and the distillation branch gains influence. The rollout-conditioned distillation divergence initially rises during rapid adaptation and then declines as student rollouts become more compati-ble with the privileged teacher. Notably, wanchor does not decay to zero. It stabilizes at a lower but nonzero level and continues to vary with rollout quality. This behavior is consistent with a negative-feedback mechanism: anchoring is strengthened when alignment is poor, relaxed as valid trajectories emerge, and retained to correct subsequent deviations. SDS therefore does not implement a hard SFT-to-OPSD switch. Instead, it continuously balances canonical anchoring and rollout-conditioned distillation according to the student’s evolving behavior, avoiding fixed weighting and a manually specified transition point. 
+
+Ablation Studies 
+
+Table 3 isolates the three design choices that distinguish SDS from simpler alternatives: context separation, adaptive weighting, and endogenous scheduling.                        
+
+> Variant Control Acc. AIME-S SDS ( α= 0 .2)Full 62.43 67.98 Naive OPSD+CE Ctx. mismatch 55.20 3.33 Isolated SFT, w= 1 Fixed weight 57.20 56.25 Isolated SFT, w= 0 .5Fixed weight 35.40 72.48 SFT →OPSD Manual sched. 55.03 35.42
+
+Table 3: SDS ablations on Qwen3-4B SimpleMath. AIME-S is AIME24 Avg@8. 
+
+Context isolation. Naive OPSD+CE injects ground-truth cross-entropy directly into the rollout-conditioned computa-tion graph, precisely the target–context mismatch analyzed in the RQ3 analysis. It achieves only 55.20% accuracy and 3.33% AIME Avg@8 — the latter representing near-total col-lapse of general reasoning. By contrast, SDS computes the anchoring loss under canonical prefixes and reaches 62.43% accuracy with 67.98% AIME Avg@8. This confirms that context validity, not supervision quantity, is the fundamen-tal bottleneck: the same ground-truth signal that helps under canonical prefixes actively harms under mismatched rollout prefixes. 
+
+Adaptive weighting. Fixed-weight isolated SFT removes the closed-loop schedule while preserving context isolation. With w = 1 (always-on anchoring), task accuracy reaches 57.20% but AIME degrades to 56.25%, indicating that persistent hard supervision erodes general capability. With 
+
+w = 0 .5, task accuracy collapses to 35.40% while AIME rises to 72.48%, showing that insufficient anchoring fails to guide task acquisition. No fixed weight simultaneously achieves strong task performance and capability preservation, con-firming that the alignment-aware schedule is essential for navigating the trade-off. 
+
+Endogenous vs. manual scheduling. SFT →OPSD uses a two-stage pipeline with a manual transition, providing the same supervision signals as SDS but in fragmented stages. It achieves 55.03% accuracy and 35.42% AIME Avg@8, underperforming SDS on both axes. This demonstrates that fragmenting the supervision signal across stages introduces a discontinuity that the endogenous, closed-loop transition in SDS avoids. 
+
+Analysis and Discussion 
+
+Why context isolation works. The ablation results reveal a principle that, to our knowledge, has not been explicitly articulated in the distillation literature: where supervision is computed matters more than how much is applied. Naive OPSD+CE and SDS use identical ground-truth signals and identical loss functions, yet differ drastically in outcome be-cause one evaluates targets under mismatched rollout prefixes and the other under canonical prefixes. This suggests that future work on combining on-policy and off-policy signals should consider context compatibility as a design constraint alongside weighting and scheduling. 
+
+Choice of alignment metric. The closed-loop anchoring weight depends on the distance between student rollouts and ground-truth targets. Appendix C compares four alternatives. SDS remains stable across the tested graded metrics, with limited differences in AIME 2024 retention, whereas binary exact match is less effective on multiplication. 
+
+Role of α in the plasticity–stability trade-off. The scal-ing hyperparameter α controls the maximum influence of the anchoring branch and governs where SDS operates on the plasticity–stability plane. On Qwen3-4B SimpleMath, 
+
+α = 0 .2 yields the best overall balance (62.43% task accu-racy, 93.2% AIME retention); α = 0 .1 shifts toward capa-bility preservation (56.73% task accuracy, 97.7% retention), while α = 0 .5 shifts toward task acquisition without sur-passing α = 0 .2 on accuracy (57.13%, 82.8% retention). This mirrors the fixed-weight ablation, where always-on an-choring ( w = 1 ) reaches only 57.20%: excessive anchor-ing suppresses the on-policy exploration that OPSD relies on, since canonical supervision dominates the update be-fore the student explores enough of its own rollout space for teacher guidance to take effect. The adaptive weight wanchor 
+
+relaxes anchoring as alignment improves, but a high α still raises supervision intensity beyond what this exploration– exploitation balance can absorb. α therefore acts as an inter-pretable knob, with lower values favoring capability retention and higher values favoring task acquisition. 
+
+Computational overhead. SDS introduces one additional student forward pass per training step due to the independent anchoring branch. Compared to two-stage pipelines (SFT warm-up followed by OPSD), SDS avoids a separate SFT phase and its associated training budget, while eliminating manual transition tuning. In practice, the overhead is approx-imately 30–40% of a single OPSD step, which we consider a reasonable cost given the performance gains and the elim-ination of stage scheduling. 
+
+Limitations. Our evaluation is confined to a single model family, Qwen3, and two adaptation tasks, leaving the gen-eralization of SDS across model families and broader task settings unverified. Moreover, controlled prefix corruption provides only a tractable proxy for context degradation and cannot fully reproduce the structured, history-dependent er-rors that emerge in natural student rollouts. Future work should evaluate SDS across diverse model families and de-velop more realistic, semantically grounded corruption pro-cesses. 
+
+Conclusion 
+
+We studied how conditioning context affects the validity of heterogeneous supervision during on-policy task adaptation. In OPSD with privileged teacher context, teacher guidance degrades as student rollouts depart from valid trajectories, revealing a mismatch between on-policy state coverage and canonical target validity. SDS addresses this mismatch by separating rollout-conditioned distillation from canonical an-choring and coordinating them through rollout–target align-ment. Across model scales and tasks, SDS consistently im-proves task acquisition over OPSD while preserving substan-tially more reasoning performance than SFT, achieving the most favorable trade-off among the evaluated methods. 
+
+References 
+
+Agarwal, R.; Vieillard, N.; Zhou, Y.; Stanczyk, P.; Ramos, S.; Geist, M.; and Bachem, O. 2024. On-Policy Distillation of Language Models: Learning from Self-Generated Mis-takes. In The Twelfth International Conference on Learning Representations (ICLR) .Biderman, D.; Portes, J.; Ortiz, J. J. G.; Paul, M.; Greengard, P.; Jennings, C.; King, D.; Havens, S.; Chiley, V.; Frankle, J.; Blakeney, C.; and Cunningham, J. P. 2024. LoRA Learns Less and Forgets Less. arXiv preprint arXiv:2405.09673 .Chen, H.; Razin, N.; Narasimhan, K.; and Chen, D. 2025. Re-taining by Doing: The Role of On-Policy Data in Mitigating Forgetting. arXiv preprint arXiv:2510.18874 .Clark, P.; Cowhey, I.; Etzioni, O.; Khot, T.; Sabharwal, A.; Schoenick, C.; and Tafjord, O. 2018. Think You Have Solved Question Answering? Try ARC, the AI2 Reasoning Chal-lenge. arXiv preprint arXiv:1803.05457 .Gou, J.; Yu, B.; Maybank, S. J.; and Tao, D. 2021. Knowledge Distillation: A Survey. International Journal of Computer Vision , 129(6): 1789–1819. Gu, Y.; Dong, L.; Wei, F.; and Huang, M. 2024. MiniLLM: Knowledge Distillation of Large Language Models. In The Twelfth International Conference on Learning Representa-tions (ICLR) .Han, J.; Du, L.; Du, H.; Zhou, X.; Wu, Y.; Zhang, Y.; Zheng, W.; and Han, D. 2025. SLIM: Let LLM Learn More and For-get Less with Soft LoRA and Identity Mixture. In Proceed-ings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies , 4792–4804. Association for Computational Linguistics. Harmon, J.; Hochlehnert, A.; Bethge, M.; and Prabhu, A. 2026. Mapping Post-Training Forgetting in Language Models at Scale. In The Fourteenth International Conference on Learning Representations (ICLR) .Hendrycks, D.; Burns, C.; Kadavath, S.; Arora, A.; Basart, S.; Tang, E.; Song, D.; and Steinhardt, J. 2021. Measuring Mathematical Problem Solving with the MATH Dataset. In 
+
+NeurIPS Datasets and Benchmarks Track .Hinton, G.; Vinyals, O.; and Dean, J. 2015. Distill-ing the Knowledge in a Neural Network. arXiv preprint arXiv:1503.02531 .Hsieh, C.-Y.; Li, C.-L.; Yeh, C.-K.; Nakhost, H.; Fujii, Y.; Ratner, A.; Krishna, R.; Lee, C.-Y.; and Pfister, T. 2023. Dis-tilling Step-by-Step! Outperforming Larger Language Mod-els with Less Training Data and Smaller Model Sizes. In 
+
+Findings of the Association for Computational Linguistics: ACL 2023 , 8003–8017. Toronto, Canada: Association for Computational Linguistics. Hu, E. J.; Shen, Y.; Wallis, P.; Allen-Zhu, Z.; Li, Y.; Wang, S.; Wang, L.; and Chen, W. 2022. LoRA: Low-Rank Adapta-tion of Large Language Models. In The Tenth International Conference on Learning Representations (ICLR) .Hui, T.; Zhang, Z.; Wang, S.; Xu, W.; Sun, Y.; and Wu, H. 2025. HFT: Half Fine-Tuning for Large Language Models. In 
+
+Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics , 12791–12819. Association for Computational Linguistics. Kirkpatrick, J.; Pascanu, R.; Rabinowitz, N.; Veness, J.; Des-jardins, G.; Rusu, A. A.; Milan, K.; Quan, J.; Ramalho, T.; Grabska-Barwinska, A.; Hassabis, D.; Clopath, C.; Ku-maran, D.; and Hadsell, R. 2017. Overcoming catastrophic forgetting in neural networks. Proceedings of the National Academy of Sciences , 114(13): 3521–3526. Lightman, H.; Kosaraju, V.; Burda, Y.; Edwards, H.; Baker, B.; Lee, T.; Leike, J.; Schulman, J.; Sutskever, I.; and Cobbe, K. 2024. Let’s Verify Step by Step. In The Twelfth Interna-tional Conference on Learning Representations (ICLR) .Llama Team. 2024. The Llama 3 Herd of Models. CoRR ,abs/2407.21783. Luo, Y.; Yang, Z.; Meng, F.; Li, Y.; Zhou, J.; and Zhang, Y. 2023. An Empirical Study of Catastrophic Forgetting in Large Language Models During Continual Fine-tuning. 
+
+arXiv preprint arXiv:2308.08747 .Murias, X. 2024. Simple-Math: 2+2=4 4-1=3. https: //huggingface.co/datasets/fblgit/simple-math. OpenAI. 2023. GPT-4 Technical Report. CoRR ,abs/2303.08774. Shao, Z.; Wang, P.; Zhu, Q.; Xu, R.; Song, J.; Bi, X.; Zhang, H.; Zhang, M.; Li, Y. K.; Wu, Y.; and Guo, D. 2024. DeepSeekMath: Pushing the Limits of Mathemati-cal Reasoning in Open Language Models. arXiv preprint arXiv:2402.03300 .Shenfeld, I.; Damani, M.; Hübotter, J.; and Agrawal, P. 2026. Self-Distillation Enables Continual Learning. arXiv preprint arXiv:2601.19897 .Shenfeld, I.; Pari, J.; and Agrawal, P. 2025. RL’s Razor: Why Online Reinforcement Learning Forgets Less. arXiv preprint arXiv:2509.04259 .Shi, H.; Xu, Z.; Wang, H.; Qin, W.; Wang, W.; Wang, Y.; Wang, Z.; Ebrahimi, S.; and Wang, H. 2025. Continual Learning of Large Language Models: A Comprehensive Sur-vey. ACM Computing Surveys , 58(5): 1–42. Tang, Q.; Deng, Z.; Lin, H.; Han, X.; Liang, Q.; Cao, B.; and Sun, L. 2023. ToolAlpaca: Generalized Tool Learning for Language Models with 3000 Simulated Cases. arXiv preprint arXiv:2306.05301 .Yang, A.; Li, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.; Yu, B.; Gao, C.; Huang, C.; Lv, C.; Zheng, C.; Liu, D.; Zhou, F.; Huang, F.; Hu, F.; Ge, H.; Wei, H.; Lin, H.; Tang, J.; Yang, J.; Tu, J.; Zhang, J.; Yang, J.; Yang, J.; Zhou, J.; Zhou, J.; Lin, J.; Dang, K.; Bao, K.; Yang, K.; Yu, L.; Deng, L.; Li, M.; Xue, M.; Li, M.; Zhang, P.; Wang, P.; Zhu, Q.; Men, R.; Gao, R.; Liu, S.; Luo, S.; Li, T.; Tang, T.; Yin, W.; Ren, X.; Wang, X.; Zhang, X.; Ren, X.; Fan, Y.; Su, Y.; Zhang, Y.; Zhang, Y.; Wan, Y.; Liu, Y.; Wang, Z.; Cui, Z.; Zhang, Z.; Zhou, Z.; and Qiu, Z. 2025. Qwen3 Technical Report. arXiv preprint arXiv:2505.09388 .Yang, Y.; Wang, X.; and Zhang, W. 2026. OGLS-SD: On-Policy Self-Distillation with Outcome-Guided Logit Steering for LLM Reasoning. arXiv preprint arXiv:2605.12400 .Zhang, Y.; and Math-AI, T. 2024. American Invitational Mathematics Examination (AIME) 2024. Zhao, S.; Xie, Z.; Liu, M.; Huang, J.; Pang, G.; Chen, F.; and Grover, A. 2026. Self-Distilled Reasoner: On-Policy Self-Distillation for Large Language Models. arXiv preprint arXiv:2601.18734 .Zhao, Y.; Huang, J.; Hu, J.; Wang, X.; Mao, Y.; Zhang, D.; Zhang, H.; Jiang, Z.; Wu, Z.; Ai, B.; Wang, A.; Zhou, W.; and Chen, Y. 2024. SWIFT: A Scalable lightWeight Infras-tructure for Fine-Tuning. arXiv preprint arXiv:2408.05517 .Appendix A Detailed Experimental Setup 
+
+A.1 Common Models and Training Framework 
+
+We experiment with three scales of the Qwen3 family (Yang et al. 2025): Qwen3-1.7B, Qwen3-4B, and Qwen3-8B. For SDS and OPSD, we employ self-distillation : the teacher is the base model with the LoRA adapter disabled, while the student is the LoRA-adapted version. This isolates the effect of the training objective from teacher quality. Across both task families, LoRA uses rank 64, scaling factor 128, dropout 0.05, and targets the q, k, v, o, gate , up , and down projection modules. All experiments are built on ms-swift 4.1.3 (Zhao et al. 2024). SDS and OPSD extend its GKD trainer with task-specific external plugins, SFT uses supervised fine-tuning, and GRPO provides a reinforcement-learning baseline. Because SimpleMath and Tool-Use differ substantially in sequence length and rollout cost, their optimizer, batching, and generation configurations are reported separately below. To ensure robustness, each method–model combination is trained with three independent random seeds (42, 43, 44). All results reported in the main text are the mean over these three runs. Standard deviations are omitted from the main tables for readability but are available upon request. 
+
+A.2 SimpleMath 
+
+Dataset and Data Formatting We use SimpleMath , a controlled arithmetic benchmark comprising four operations ( +, −,
+
+×, ÷) on decimal operands. The training set contains 2,500 samples (625 per operation) with chain-of-thought (CoT) solutions wrapped in <think> ... </think> tags, followed by the numeric answer rounded to 4 decimal places. The test set contains 12,500 samples (3,125 per operation). For evaluation, we draw a fixed stratified subset of 1,000 problems (250 per operation, seed 42) from this test set; all reported SimpleMath accuracies use this subset. All samples share the system prompt: 
+
+“You are a precise arithmetic calculator. Your task is to compute the result of the given arithmetic expression. Think through the calculation step by step, then provide the final numerical result with 4 decimal places.” 
+
+Each method uses a format-appropriate variant of the training data: SDS and OPSD use messages + output_text 
+
+(student sees only system and user turns; ground truth is injected into the teacher prompt); SFT uses standard chat format with an assistant turn; GRPO uses messages + solution (numeric answer only, for reward computation). 
+
+Training Configuration All four methods share identical LoRA and optimiser hyperparameters to ensure a fair comparison (Table 4). Method-specific parameters are listed in Table 5. Training is conducted on NVIDIA H20 GPU (143 GB) using ms-swift 4.1.3 (Zhao et al. 2024) with vLLM 0.11.0 for on-policy rollout generation.                      
+
+> Parameter Value
+> LoRA Configuration
+> Rank ( r) / Alpha ( αLoRA )64 / 128 Dropout 0.05 Target modules q,k,v,o,gate, up,down_proj
+> Optimiser (AdamW)
+> Learning rate 5×10 −5
+> Schedule Cosine (no warmup) Weight decay 0.1
+> (β1, β 2, ϵ )(0 .9,0.95 ,10 −8)
+> Max gradient norm 1.0
+> Training
+> Batch size (per device ×grad. accum.) 8×4 = 32
+> Precision bfloat16 Attention FlashAttention-2 Gradient checkpointing ✓
+
+Table 4: Shared hyperparameters across all methods. 
+
+GRPO rewards. We use two reward functions: (1) Format reward (weight 0.1): returns 1.0 if the output contains valid 
+
+<think> ... </think> tags followed by a parseable numeric answer, and 0.0 otherwise; (2) Answer reward (weight 1.0): returns 1.0 if the extracted answer matches the ground truth after normalisation to 4 decimal places, and 0.0 otherwise. Parameter SDS OPSD SFT GRPO                 
+
+> Rollout Sampling
+> Temperature 0.6 0.6 —0.6 Top-p0.8 0.8 —0.8 Top-k128 128 ——
+> vLLM (Colocate)
+> Max model length 4096 4096 —4096
+
+Table 5: Method-specific hyperparameters. All distillation methods (SDS, OPSD) use self-distillation with λ=1 .0. Parameters not listed inherit from Table 4.            
+
+> Commands: SDS/OPSD use swift rlhf -rlhf_type gkd ; SFT uses swift sft ; GRPO uses swift rlhf -rlhf_type grpo .
+
+Variant Modification Loss 
+
+Naive OPSD+CE CE on rollout prefix LOPSD + 0 .2 · L CE (y∗ | xrollout )
+
+Fixed w=0 .5 Constant weight (no adaptation) 
+
+LOPSD + 0 .1 · L CE (y∗ | xcanonical )
+
+Fixed w=1 .0 Constant weight (full SFT) LOPSD + 0 .2 · L CE (y∗ | xcanonical )
+
+α=0 .1 Lower SFT coefficient LOPSD + 0 .1 · w · L CE (y∗ | xcanonical )
+
+α=0 .5 Higher SFT coefficient LOPSD + 0 .5 · w · L CE (y∗ | xcanonical )
+
+Table 6: Ablation variants. All use the same LoRA/optimiser configuration as SDS. “Canonical” denotes a separate forward pass with the GT prefix; “Rollout” denotes the student’s on-policy prefix. 
+
+Baselines and Ablation Variants We design five ablation variants (Table 6) to isolate the contribution of each SDS component. All variants use Qwen3-4B with identical base hyperparameters from Table 4. 
+
+Evaluation Protocol We evaluate task acquisition on SimpleMath and capability preservation on three transfer-side reasoning benchmarks. 
+
+SimpleMath. We use greedy decoding (temperature=0) with max_tokens =512. We extract the text after the </think> 
+
+tag and compare it to the ground-truth label via exact string matching. We report overall accuracy and per-operation breakdown. 
+
+AIME 2024. We evaluate on all 30 problems from the American Invitational Mathematics Examination 2024. For each problem, we sample n=8 solutions at temperature 1.0 with top-p=0 .95 and max_tokens =38,912. Answers are extracted from \boxed{} and graded using math_verify with a 5-second timeout per comparison, falling back to normalised string matching on failure. We report Pass@8 (at least one correct), Avg@8 (fraction of correct solutions), and Majority Vote@8 (most common answer is correct). 
+
+MATH-500. We use the 500-problem subset from HuggingFaceH4/MATH-500 (Hendrycks et al. 2021) with the same generation and grading configuration as AIME 2024. 
+
+ARC-Challenge. We use ARC-Challenge (Clark et al. 2018) as a transfer-side probe of science reasoning. We report answer accuracy and format rate, defined as the fraction of responses that satisfy the required answer format. 
+
+SimpleMath AIME 2024 MATH-500 
+
+Problems 1,000 (stratified) 30 500 Solutions / problem ( n) 1 8 8Temperature 0 (greedy) 1.0 1.0 Top-p — 0.95 0.95 Max tokens 512 38,912 38,912 Max model length 2,048 40,960 40,960 Answer extraction Post-</think> text \boxed{} \boxed{} 
+
+Grading Exact string match math_verify math_verify 
+
+Metrics Accuracy (%) Pass@8, Avg@8, MajVote@8 Pass@8, Avg@8, MajVote@8 
+
+Table 7: Evaluation configuration summary for SimpleMath and the mathematical reasoning benchmarks. A.3 Tool-Use 
+
+Dataset and Trajectory Formatting We evaluate on a multi-turn tool-use benchmark built around the ReAct prompting paradigm. Each sample provides a natural-language task together with a tool catalogue containing tool names, descriptions, documentation, and usage instructions. The model must emit a sequence of Action /Action Input turns, each invoking a tool with a JSON argument, followed by a Final Answer . The training set contains 4,046 samples with golden multi-turn trajectories and answers; the test set contains 68 problems drawn from held-out tools and queries. Each method uses a format-appropriate view of the data. SDS and OPSD consume the raw JSON through an external ms-swift plugin, which constructs the user message and injects the golden trajectory into the teacher prompt. SFT converts each golden trajectory into standard chat messages and trains on the assistant turn. GRPO consumes the prompt and golden answer while using the golden trajectory only inside its per-turn reward functions. 
+
+Parameter Value 
+
+Epochs 2Effective batch size 64 Max context / completion 8,192 / 1,024 Learning rate 1 × 10 −5
+
+Max gradient norm 1.0 Warmup ratio 0.05 Precision bfloat16 Attention FlashAttention-2 Optimizer AdamW (fused) 
+
+Table 8: Core tool-use training configuration. Method-specific exceptions are reported in Table 9.                                        
+
+> Parameter SDS OPSD SFT GRPO (1.7B) GRPO (4B/8B)
+> Learning rate 1×10 −51×10 −51×10 −55×10 −51×10 −5
+> LR schedule cosine cosine linear linear cosine AdamW β20.95 0.95 0.999 0.999 0.95 Top-p/ Top-k0.95 / −10.95 / −1—0.8 / 128 0.8 / 128 vLLM max model length 8,192 8,192 —8,192 8,192 Effective batch size 64 64 64 64 64
+
+Table 9: Method-specific hyperparameters for tool-use. GRPO is separated into the two-GPU 1.7B setting and the single-GPU 4B/8B setting. 
+
+> †Qwen3-1.7B SDS saves every 15 steps.
+
+Evaluation Protocol We evaluate all methods on the 68 held-out problems. For each problem, we sample 12 trajectories at temperature 1.0, top-p = 0 .95 , and max_new_tokens =2,048. Trajectories are parsed into Action /Action Input 
+
+turns and compared with the golden trajectory. Pass@12 is the fraction of problems with at least one fully correct trajectory; Majority Vote@12 checks whether the most frequent final answer matches the golden answer; Turn Accuracy averages exact 
+
+(Action , Action Input ) matches; and Format Rate measures the fraction of turns with a valid JSON Action Input .
+
+Parameter Value 
+
+Problems 68 Solutions per problem 12 Temperature / Top-p 1.0 / 0.95 Max new tokens 2,048 Max model length 8,192 Tensor parallel size 2Answer extraction Action-turn parsing Grading Exact match to golden trajectory Metrics Pass@12, Turn Acc 
+
+Table 10: Tool-use evaluation configuration. A.4 Implementation and Compute Resources 
+
+For SDS, ground-truth token IDs are pre-encoded and cached to avoid repeated tokenization. The canonical-context CE branch performs an independent student forward pass on the prompt and ground-truth trajectory, while rollout generation and teacher inference use colocated vLLM. The adaptive token-F1 weight is recomputed from the current rollout and target at every batch. 
+
+B Additional Training and Mechanistic Diagnostics 
+
+B.1 Rollout-Context Signal Retention 
+
+Figure 5(a) provides a training-time complement to the controlled corruption diagnostic in RQ2. It tracks rollout-context teacher accuracy during Qwen3-4B self-distillation with LoRA on SimpleMath, using 200 samples per checkpoint. The teacher reaches 
+
+Acc T (y∗) = 80 .4% under canonical prefixes, but under OPSD rollout prefixes its accuracy remains around 5% throughout training ( ρ ≈ 0.06 ). In contrast, SDS raises rollout-context teacher accuracy to 46.5% by step 100. Since the teacher is frozen, this improvement comes from the canonical anchoring branch improving the student policy early enough that subsequent rollout prefixes become more compatible with the teacher’s target-relevant distribution. 
+
+B.2 Training Dynamics Across Model Scales 
+
+Figure 5(b) complements the Qwen3-8B dynamics in Figure 4. On Qwen3-1.7B, rollout–target token F1 improves rapidly during the early acquisition phase while the adaptive anchoring strength decreases. The OPSD loss changes concurrently as the rollout distribution moves toward trajectories on which the frozen teacher provides a more informative target distribution. Together, the 1.7B and 8B results show that SDS implements the intended closed-loop schedule without a manually selected switching step. 0 25 50 100 150 237 
+
+> Training Step
+> 020 40 60 80
+> Teacher Top-1 Accuracy (%)
+> random
+> 20× drop
+> 80.4%
+> 4.9% 46.5%
+> Rollout-Context Teacher Accuracy
+> GT context (upper bound) OPSD (rollout ctx) SDS (rollout ctx)
+
+(a) 0 50 100 150 200            
+
+> Training Step
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Seq. Similarity / Weight  w
+> Phase transition (step ≈10)
+> Task acquisition Capability preservation
+> Seq. Similarity Anchoring Weight w
+> KL (OPSD)
+> 0.00 0.01 0.02 0.03 0.04
+> KL  (OPSD Loss)
+> 1510 15 20 25 0.0 0.5 1.0
+> Step 0 –25 (zoom)
+
+(b) 
+
+Figure 5: Additional training diagnostics. (a) Rollout-context teacher accuracy for OPSD and SDS on Qwen3-4B SimpleMath; the dashed line denotes canonical-prefix accuracy. (b) Qwen3-1.7B SDS training dynamics, including token F1, adaptive anchoring strength, and the OPSD loss. 
+
+C Distance Metric Ablations 
+
+A central SDS design choice is the similarity function sim(ˆ y, y∗) used to compute the anchoring weight wanchor = 1 − sim 
+
+(Eq. 7). In principle, sim can be any function that maps two token sequences to [0 , 1] and increases with their agreement. Our default is the token-level F1 defined below. The remaining three metrics serve as controlled alternatives to verify that SDS is not sensitive to this choice. 
+
+C.1 Study Design and Metric Definitions 
+
+Task and model. All variants use Qwen3-4B self-distillation (teacher = base model with LoRA disabled) and are trained on SimpleMath, with evaluation identical to the main experimental setup. The variants differ only in the distance metric used to compute wanchor .Let y = ( y1, . . . , y n) denote the predicted answer-token sequence and y∗ = ( y∗ 
+
+> 1
+
+, . . . , y ∗
+
+> m
+
+) the ground-truth answer-token sequence. 
+
+Token Edit Distance (Levenshtein). dED (y, y∗) = Lev (y, y∗)/ max( |y|, |y∗|), where Lev (·, ·) counts the minimum inser-tions, deletions, and substitutions needed to transform one sequence into the other. 
+
+Token F1. For the default metric, P = |S(y) ∩ S(y∗)|/|S(y)|, R = |S(y) ∩ S(y∗)|/|S(y∗)|, F1 = 2 P R/ (P + R), and 
+
+w = 1 − F1, where S(·) denotes the set of unique tokens. 
+
+ROUGE-L F1. With L = LCS (y, y∗), Plcs = L/ |y|, Rlcs = L/ |y∗|, F1 = 2 Plcs Rlcs /(Plcs + Rlcs ), and w = 1 − F1.
+
+Exact match. Exact match uses w = ⊮[ˆ a̸ = a∗].Distance Metric Reported Acc. + − × ÷                       
+
+> Token F1(default) 62.43% 99.2 98.8 25.2 26.5 Exact Match 56.5% 99.6 96.8 3.6 26.0 ROUGE-L F162.4% 98.8 93.6 29.6 27.6 Token Edit Distance 62.4% 100.0 97.6 27.2 24.8
+
+Table 11: Distance metric ablation on SimpleMath (1,000 stratified test samples, greedy decoding).                        
+
+> Distance Metric SimpleMath pass@8 avg@8 maj@8
+> Token F1(default) 62.43% 86.7 67.9 83.3
+> Exact Match 56.5% 83.3 66.2 76.7 ROUGE-L F162.4% 83.3 66.2 80.0 Token Edit Distance 62.4% 83.3 68.3 80.0
+
+Table 12: Transfer evaluation on AIME 2024 (30 competition problems, temperature = 1.0, 8 samples per problem). 
+
+C.2 Analysis and Practical Recommendations 
+
+The results reveal three key findings. 
+
+Finding 1: SDS is robust to the choice among graded distance metrics. Token F1 reaches 62.43%, while ROUGE-L F1 and Token Edit Distance both reach 62.4%. Their per-operation results are also similar: all three achieve 98.8–100.0% on addition, 93.6–98.8% on subtraction, 25.2–29.6% on multiplication, and 24.8–27.6% on division. These results show that SDS is not sensitive to the specific graded distance function used to compute w.
+
+Finding 2: Graded distance information is more effective than exact match. Exact Match reaches 56.5%, below the 62.40–62.43% achieved by the graded metrics. Exact Match provides only a binary signal ( w ∈ { 0, 1}) and therefore discards information about the degree of disagreement between a prediction and its target. The difference is most pronounced on multiplication, where Exact Match achieves 3.6% accuracy compared with 25.2–29.6% for the graded metrics. This suggests that a continuous notion of “how wrong” an answer is provides a more useful correction signal for harder operations. 
+
+Finding 3: General-capability transfer is stable across metrics. Table 12 shows similar AIME 2024 transfer performance across all four metrics: pass@8 ranges from 83.3% to 86.7%, avg@8 from 66.2% to 68.3%, and maj@8 from 76.7% to 83.3%. Token F1 obtains the strongest pass@8 and maj@8 results, while Token Edit Distance obtains the highest avg@8. Overall, the transfer results indicate that the distance metric has limited impact on the general mathematical reasoning capability acquired during SDS training. Taken together, these results support token F1 as a simple and effective default. ROUGE-L F1 and Token Edit Distance are comparably strong alternatives, whereas binary Exact Match provides a less informative training signal and underperforms on SimpleMath. 
+
+D Additional Model-Scale Analysis 
+
+D.1 Mathematical Reasoning Retention Across Model Scales 
+
+We further examine mathematical reasoning retention on AIME 2024 for Qwen3-1.7B and Qwen3-8B. Together with the Qwen3-4B results in Table 2, these evaluations characterize how the task-acquisition–retention trade-off changes with model scale. For both Qwen3-1.7B and Qwen3-8B, each method’s checkpoint is selected by the highest SimpleMath accuracy on a held-out validation split (250 problems, disjoint from training and the test subset), and AIME 2024 is evaluated once at that checkpoint. 
+
+Qwen3-1.7B. Table 13 reports the Qwen3-1.7B results. SDS and SFT achieve comparable SimpleMath accuracy (51.0% vs. 51.2%; Table 1), but SDS retains substantially more AIME 2024 performance: its Pass@8, Avg@8, and Majority Vote@8 are 56.7%, 37.9%, and 36.7%, respectively, compared with 16.7%, 4.6%, and 13.3% for SFT. SDS also maintains a substantially higher format rate than SFT (96.2% vs. 53.8%). Pure OPSD retains more AIME 2024 performance than SDS at this model scale, reaching 66.7% Pass@8 and 40.4% Avg@8. However, its SimpleMath accuracy is only 17.8%, compared with 51.0% for SDS. These results place SDS between SFT and OPSD: it achieves task acquisition comparable to SFT while preserving substantially more mathematical reasoning capability, although it does not retain as much as pure OPSD. 
+
+Qwen3-8B. Table 14 reports the Qwen3-8B results. SDS retains substantially more mathematical reasoning capability than SFT. It improves Avg@8 from 39.6% to 67.9%, Pass@8 from 76.7% to 86.7%, Majority Vote@8 from 66.7% to 83.3%, and Method Pass@8 Avg@8 Maj@8 Format                 
+
+> Base Model 76.7% 48.3% 63.3% 98.3% Pure OPSD 66.7% 40.4% 53.3% 100.0% SDS 56.7% 37.9% 36.7% 96.2% Pure SFT 16.7% 4.6% 13.3% 53.8%
+
+Table 13: Mathematical reasoning retention on AIME 2024 for Qwen3-1.7B (30 problems, temperature = 1 .0, eight samples per problem, and max generation tokens = 38 ,912 ). format compliance from 78.3% to 99.2%. Relative to the base model, SDS is 3.3 percentage points lower in Pass@8 and 8.8 points lower in Avg@8, while matching its 83.3% Majority Vote@8. Compared with pure OPSD, SDS achieves the same Pass@8 (86.7%) and a higher Majority Vote@8 (83.3% vs. 80.0%), but a lower Avg@8 (67.9% vs. 74.2%). Combined with the SimpleMath results in Table 1, where SDS reaches 56.97% accuracy compared with 10.33% for OPSD and 55.57% for SFT, these results show that SDS provides a more favorable task-acquisition– retention trade-off than either baseline in the evaluated Qwen3-8B setting.                     
+
+> Method Pass@8 Avg@8 Maj@8 Format
+> Base Model 90.0% 76.7% 83.3% 99.2% Pure OPSD 86.7% 74.2% 80.0% 100.0% SDS 86.7% 67.9% 83.3% 99.2% Pure SFT 76.7% 39.6% 66.7% 78.3%
+
+Table 14: Mathematical reasoning retention on AIME 2024 for Qwen3-8B (30 problems, temperature = 1 .0, eight samples per problem, and max generation tokens = 38 ,912 ). 
+
+Cross-scale summary. Across Qwen3-1.7B, Qwen3-4B, and Qwen3-8B, SDS consistently retains substantially more of the evaluated mathematical reasoning capability than SFT while achieving comparable or stronger SimpleMath task acquisition. Pure OPSD generally retains the strongest Avg@8 performance, but its substantially weaker SimpleMath accuracy indicates limited task acquisition. These cross-scale results support the intended role of SDS as a middle-ground objective that improves task adaptation without incurring the severe reasoning degradation observed under SFT.

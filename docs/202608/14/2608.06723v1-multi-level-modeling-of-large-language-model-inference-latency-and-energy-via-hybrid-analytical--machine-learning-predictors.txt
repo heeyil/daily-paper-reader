@@ -1,0 +1,445 @@
+Title: Multi-Level Modeling of Large Language Model Inference Latency and Energy via Hybrid Analytical–Machine-Learning Predictors
+
+URL Source: https://arxiv.org/pdf/2608.06723v1
+
+Published Time: Mon, 10 Aug 2026 00:21:36 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Multi-Level Modeling of Large Language Model Inference Latency and Energy via Hybrid Analytical–Machine-Learning Predictors 
+
+# Saeid Shokoufa 
+
+University of Southern California Los Angeles, California, USA shokoufa@usc.edu 
+
+# Mohammad Erfan Sadeghi 
+
+University of Southern California Los Angeles, California, USA sadeghim@usc.edu 
+
+# Mehdi Kamal 
+
+University of Southern California Los Angeles, California, USA mehdi.kamal@usc.edu 
+
+# Massoud Pedram 
+
+University of Southern California Los Angeles, California, USA pedram@usc.edu 
+
+## Abstract 
+
+The rapid scaling of Large Language Models (LLMs) has signif-icantly increased computational cost, energy consumption, and inference latency, making accurate estimation essential for sustain-able artificial intelligence deployment and hardware-aware design. In this work, we introduce Hybrid Modeling for Energy and Latency of LLMs (HYMELL), a hybrid three-level framework for estimating LLM inference latency and energy by combining analytical model-ing with machine learning (ML). HYMELL models LLM execution through a three-level hierarchy: analytical estimation of primi-tive operations, ML prediction of higher-level components, and an end-to-end model that captures system-level overheads across both prefill and decode phases. The framework supports diverse architectures, including dense and mixture-of-experts (MoE) feed-forward networks (FFNs), as well as multi-head attention (MHA) and grouped-query attention (GQA) mechanisms. Evaluated on an NVIDIA H100 graphics processing unit (GPU), HYMELL achieves high predictive accuracy; notably, for LLaMA 3 8B, it attains less than 5% error for both prefill and decode phases. By predicting execution costs directly from architectural parameters, it enables fast, hardware-free design space exploration and energy-efficient optimization. 
+
+## CCS Concepts 
+
+• Hardware → Power estimation and optimization ; Platform power issues ; Energy metering .
+
+## Keywords 
+
+Large Language Models, Power Estimation, Energy Modeling, GPU Energy Consumption, Latency Estimation 
+
+## 1 INTRODUCTION 
+
+Neural networks (NNs), particularly large language models (LLMs), have become central to modern AI. Most LLMs are based on the Transformer architecture introduced in Attention Is All You Need 
+
+[1] and are commonly implemented as either dense or mixture-of-experts (MoE) models [2]. Their rapid scaling and deployment, however, have introduced substantial energy costs [3, 4]; for exam-ple, training GPT-3 was estimated to consume about 1,287 MWh of electricity and produce 552 tCO 2e [5]. Consequently, extensive Input Embedding    
+
+> Normalization
+> KV
+> Linear 2
+> Activation Function
+> Linear 3
+> Q
+> Normalization
+> FFN
+> Token Prediction
+> Attention Block x N H
+> x L Layer
+> User Prompt (prefill) / previous generated token (decode)
+> 1st (prefill) / Next (decode) token is generated
+> Scaled Dot Product
+> Attention
+> Linear 1
+
+Figure 1: General architecture of an LLM ( 𝐿 and 𝑁 𝐻 represent the number of layers and attention heads, respectively). 
+
+research has focused on reducing NN and LLM energy through tech-niques such as pruning, quantization, efficient attention, sparsity, and memory-efficient serving [6–14]. NNs, and especially LLMs, are now used across a wide range of applications, including natural-language processing, engineering, healthcare, finance, law, and education [15–24]. Their rapidly growing adoption makes efficient and accurate modeling of LLM inference latency and energy in-creasingly important. As shown in Figure 1, despite implementation differences, most LLMs share a common architecture of stacked layers comprising attention mechanisms (multi-head attention (MHA) or grouped-query attention (GQA)) and feed-forward networks (FFNs; dense arXiv:2608.06723v1 [cs.LG] 7 Aug 2026 or mixture-of-experts (MoE)). At a lower level of execution, these components map to general matrix multiplications (GEMMs) and element-wise or nonlinear operations (e.g., normalization, soft-max). While GEMMs dominate prefill computation, memory-bound element-wise operations account for a significant share of total energy, especially during autoregressive decoding. LLM inference consists of two phases with distinct character-istics. In the prefill phase, the full input sequence is processed in parallel, making it largely compute-bound due to large matrix multiplications. In contrast, the decode phase generates tokens autoregressively, with increasing reliance on key-value (KV) cache accesses, making it latency-sensitive and often memory-bound. These differences motivate separate modeling of performance and energy across phases. In this paper, we introduce Hybrid Modeling for Energy and Latency of LLMs (HYMELL), a hybrid model for energy and latency during LLM inference. HYMELL adopts a three-stage modeling approach: (1) Operator-level modeling: Analytical models first estimate the latency and energy costs of primitive operations, including normalization, softmax, and GEMM. (2) Block-level modeling: These estimates are then used by ma-chine learning (ML) models to predict the cost of block-level components, including attention and feed-forward network (FFN) blocks. (3) System-level modeling: Finally, an ML model aggregates the predicted block costs together to estimate the end-to-end inference latency and energy consumption of the full LLM. Our goal is to build accurate and interpretable predictors that gen-eralize across sequence lengths and batching regimes, enabling energy-aware deployment and design decisions for both dense and sparse MoE-based LLMs. 
+
+## 2 RELATED WORK 
+
+A growing body of work has explored methods for predicting the runtime (latency) and energy consumption of LLMs. AMALI (Analytical Model for Accurately Modeling LLM Infer-ence) [25] proposes a detailed analytical model for LLM inference on modern graphics processing units (GPUs) by explicitly capturing low-level architectural behavior. While it achieves high accuracy, it relies on extensive manual modeling and calibration, requiring detailed per-kernel and per-workload analysis. This strong depen-dence on GPU microarchitectural knowledge makes the approach complex and less accessible. Moreover, adapting the model to new LLM architectures or kernels requires repeated analysis, limiting scalability. LIFE [26] introduces a hardware-agnostic analytical framework that models operator-level compute and memory behavior. How-ever, it depends on explicit hardware specifications, such as com-pute throughput and memory bandwidth, as well as efficiency as-sumptions. Adapting the framework to new models or optimizations requires manual reconfiguration of its components. In addition, its reliance on a simulation pipeline and a configuration-driven work-flow increases system complexity and limits deployment ease. SweetSpot [27] presents an analytical model to estimate the energy efficiency of LLM inference based on the complexity of computation and memory access. Although effective, it requires deriving detailed equations tied to transformer internals and work-load structure. This limits flexibility when adapting to new models or unseen behaviors, as extending the approach requires manual reformulation. Furthermore, its structured analytical pipeline adds modeling overhead compared to more data-driven approaches. The work in [28] investigates the use of inference time as a proxy to estimate energy consumption in API-based LLMs. However, this relies on the assumption that latency directly correlates with energy, which may not hold under varying hardware utilization, parallelism strategies, or system-level overheads. As a result, the method cannot capture fine-grained architectural or workload-dependent effects, providing only coarse-grained estimates. 
+
+## 3 METHODOLOGY 
+
+Figure 2 summarizes the HYMELL framework. HYMELL uses a three-level hierarchy to predict LLM inference latency and energy. Level 1 models primitive operators, including GEMM, Softmax, and RMSNorm, using analytical estimators based on operator dimen-sions and regime-specific features. Level 2 feeds these primitive pre-dictions, together with architectural parameters, into lightweight MLPs to estimate attention and FFN block costs, capturing resid-ual overheads such as reshaping, masking, activation, and routing. Level 3 combines the block-level predictions with global model parameters, including layers, sequence length, batch size, and in-ference mode, to estimate end-to-end latency and energy for both prefill and decode. 
+
+## 3.1 RMSNorm Estimator (Analytical) 
+
+Normalization is a lightweight operation applied independently to each token in every LLM layer. Although each invocation is inex-pensive, repeated use across layers and tokens incurs non-negligible latency and energy consumption, especially during autoregressive decoding. In modern transformer-based LLMs, RMSNorm has largely re-placed traditional layer normalization (LayerNorm). Therefore, in this work, we model normalization using RMSNorm. Nevertheless, the proposed estimation methodology can be easily extended to other normalization variants, as they exhibit similar reduction- and element-wise execution patterns. To capture execution behavior, we adopt a two-regime estimator that distinguishes between launch-bound and memory-bound exe-cution based on the total number of processed elements. For each regime, execution time and energy are modeled as: 
+
+𝐸 RMSNorm = 𝛼 𝐸  
+
+> 5
+
+𝑁 · 𝑑 model + 𝛼 𝐸  
+
+> 4
+
+𝑁 · log 2 (𝑑 model )+𝛼 𝐸  
+
+> 3
+
+𝑑 model + 𝛼 𝐸  
+
+> 2
+
+𝑁 + 𝛼 𝐸  
+
+> 1
+
+log 2 (𝑑 model ) + 𝛼 𝐸 
+
+> 0
+
+(1) 
+
+𝑇 RMSNorm = 𝛼 𝑇  
+
+> 5
+
+𝑁 · 𝑑 model + 𝛼 𝑇  
+
+> 4
+
+𝑁 · log 2 (𝑑 model )+𝛼 𝑇  
+
+> 3
+
+𝑑 model + 𝛼 𝑇  
+
+> 2
+
+𝑁 + 𝛼 𝑇  
+
+> 1
+
+log 2 (𝑑 model ) + 𝛼 𝑇 
+
+> 0
+
+(2) where 𝑁 is the number of tokens and 𝑑 model is the hidden dimen-sion, and 𝛼 𝐸 𝑖 and 𝛼 𝑇 𝑖 are regression coefficients. The execution regime is determined by the total workload: when 𝑁 · 𝑑 model is below a threshold 𝑡ℎ RMS , the operation is launch-bound; otherwise, it is memory-bound. This separation improves modeling accuracy, particularly for small problem sizes. Each term in the estimator 
+
+> 2
+
+Figure 2: Overview of the HYMELL hierarchical prediction framework. Level 1 analytically models primitive GPU operators. Level 2 predicts block-level execution using lightweight MLPs. Level 3 combines block-level estimates with architectural parameters to predict end-to-end latency and energy. 
+
+captures a specific physical aspect: 𝑑 model represents per-token op-erations and vector-length-dependent memory accesses; 𝑁 reflects the linear scaling with the sequence length; 𝑁 · 𝑑 model serves as a proxy for total compute and dominant memory traffic; log 2 (𝑑 model )
+
+and 𝑁 · log 2 (𝑑 model ) model the depth and aggregate cost of tree-based reductions; and the bias accounts for fixed kernel launch and synchronization overheads. This two-regime formulation captures distinct execution behav-iors without increasing model complexity, reducing error for small tensors while maintaining accuracy at scale. Overall, normalization is best characterized as a memory-bound operator with non-negligible fixed overhead. Consequently, explic-itly modeling normalization as a base operator yields more accurate time and energy estimates than approximating its cost using aggre-gate FLOP-based metrics. 
+
+## 3.2 Softmax Base Estimator (Analytical) 
+
+Softmax is a core operator in the self-attention mechanism that transforms attention scores into normalized attention weights. In LLMs, it is applied to an 𝑁 × 𝑁 attention matrix under a causal mask, ensuring each token attends only to previous tokens. Despite its simplicity, softmax is invoked across layers and attention heads, leading to substantial memory traffic and non-negligible latency and energy cost. The Softmax execution exhibits two distinct behaviors depending on the length of the sequence 𝑁 . Similar to RMSNorm, we adopt a two-regime estimator to capture launch-bound and memory-bound execution. For each regime, execution time and energy are modeled as: 
+
+𝐸 Softmax = 𝛽 𝐸  
+
+> 3
+
+𝑁 2 + 𝛽 𝐸  
+
+> 2
+
+𝑁 + 𝛽 𝐸  
+
+> 1
+
+log 2 (𝑁 ) + 𝛽 𝐸  
+
+> 0
+
+(3) 
+
+𝑇 Softmax = 𝛽 𝑇  
+
+> 3
+
+𝑁 2 + 𝛽 𝑇  
+
+> 2
+
+𝑁 + 𝛽 𝑇  
+
+> 1
+
+log 2 (𝑁 ) + 𝛽 𝑇  
+
+> 0
+
+(4) where 𝑁 is the number of input tokens, and 𝛽 𝐸 𝑖 and 𝛽 𝑇 𝑖 denote the regression coefficients for energy and latency, respectively. The execution regime is determined by 𝑁 : if 𝑁 < 𝑡ℎ Softmax , the operation is launch-bound; otherwise, it is memory-bound. The kernel-launch-dominated regime corresponds to small 𝑁 ,where kernel-launch latency, masking logic, and synchronization overhead dominate execution. The memory-bound regime corre-sponds to larger 𝑁 , where global memory reads, writes, and normal-ization traffic dominate both time and energy consumption. Each 
+
+> 3
+
+term in the estimator captures a distinct component of causal soft-max execution: 𝑁 represents the number of independent softmax normalizations (one per row); 𝑁 2 captures the dominant mem-ory traffic and total computations of the attention matrix; log 2 (𝑁 )
+
+models the reduction depth for normalization and associated syn-chronization overhead; and the bias accounts for fixed overheads such as kernel launch latency, instruction dispatch, and masking control flow, which dominate at small 𝑁 .Softmax is predominantly a memory-bound operator, with en-ergy consumption driven primarily by quadratic memory access rather than floating-point computation. Separating kernel-launch dominated and memory-bound regimes prevents systematic error at small 𝑁 and captures bandwidth-driven scaling at larger 𝑁 .
+
+## 3.3 GEMM Estimator (Analytical) 
+
+General matrix multiplication (GEMM) is a dominant building block of LLM inference, appearing in linear projections and feed-forward layers. On NVIDIA GPUs, these GEMMs are typically executed us-ing cuBLAS (CUDA Basic Linear Algebra Subprograms), a closed-source, highly optimized library that selects among multiple inter-nal algorithms depending on matrix dimensions, data type, and hardware constraints. Its execution time and energy consumption depend on several interacting factors, including the total number of operations, memory access patterns, arithmetic intensity, and the specific kernel implementation chosen by cuBLAS, such as dif-ferent tiling strategies, tensor-core utilization, and multiplication schemes. The cost of GEMM computation for 𝐶 𝑁 ×𝑀 = 𝐴 𝑁 ×𝐾 × 𝐵 𝐾 ×𝑀 
+
+scales as O( 𝑀𝑁 𝐾 ). We define the total floating-point workload as 𝐹 = 2𝑀𝑁 𝐾 . The next factor is memory traffic, represented in bytes as 𝐵 in = (𝑀 + 𝑁 )𝐾 · 𝑏 & 𝐵 out = 𝑀𝑁 · 𝑏 . where 𝑏 denotes bytes per element. We also consider the arithmetic intensity (AI) defined as AI = 𝐹 𝐵 in +𝐵 out , which quantifies the ratio of computation to memory traffic. GEMM performance and energy exhibit distinct regimes depend-ing on problem size and arithmetic intensity. We therefore partition GEMMs into five execution behaviors defined by thresholds on to-tal work 𝐹 and arithmetic intensity (AI). The kernel-launch-bound regime corresponds to very small problems where 𝐹 < 𝐹 launch .For all other regimes ( 𝐹 ≥ 𝐹 launch ), the behavior is determined by arithmetic intensity: 
+
+• kernel-launch-bound: 𝐹 < 𝐹 launch 
+
+• memory-bound: AI < 𝐴𝐼 low 
+
+• balanced (memory-dominant): 𝐴𝐼 low ≤ AI < 𝐴𝐼 mid 
+
+• balanced (compute-dominant): 𝐴𝐼 mid ≤ AI < 𝐴𝐼 high 
+
+• compute-bound: AI ≥ 𝐴𝐼 high 
+
+This separation isolates kernel-launch overhead for small prob-lems and distinguishes memory- and compute-dominated behavior at larger scales. The threshold parameters 𝐹 launch , 𝐴𝐼 low , 𝐴𝐼 mid , and 
+
+𝐴𝐼 high are defined as part of the category definitions above. Beyond workload, memory traffic, and AI, GEMM time and en-ergy depend strongly on achievable GPU utilization. In matrix multiplication, independent output elements can be computed in parallel in the 𝑀 and 𝑁 dimensions, whereas accumulation along the 𝐾 dimension is inherently serial due to the operation’s structure. To capture this behavior, we define a parallelism factor as 𝑃𝐹 = 𝑀𝑁 𝐾 .This reflects parallel work over 𝑀, 𝑁 relative to serialization over 𝐾 .Larger PF indicates higher parallelism and utilization, while large 
+
+𝐾 increases serialization and reduces efficiency. The inverse term PF −1 captures regimes where limited parallelism leads to higher execution cost. The selected features were obtained via ablation, retaining only those with significant predictive contribution. For each regime, GEMM time and energy are modeled as: 
+
+𝐸 GEMM = 𝛾 𝐸 
+
+> 10
+
+PF · 𝐹 + 𝛾 𝐸  
+
+> 9
+
+PF · 𝐵 in + 𝛾 𝐸  
+
+> 8
+
+AI · 𝐵 in + 𝛾 𝐸  
+
+> 7
+
+𝐹 + 𝛾 𝐸  
+
+> 6
+
+PF 
+
++𝛾 𝐸  
+
+> 5
+
+AI + 𝛾 𝐸  
+
+> 4
+
+𝐵 out + 𝛾 𝐸  
+
+> 3
+
+𝐵 in + 𝛾 𝐸  
+
+> 2
+
+log 10 (𝐹 ) + 𝛾 𝐸  
+
+> 1
+
+PF −1 + 𝛾 𝐸 
+
+> 0
+
+(5) 
+
+𝑇 GEMM = 𝛾 𝑇 
+
+> 10
+
+PF · 𝐹 + 𝛾 𝑇  
+
+> 9
+
+PF · 𝐵 in + 𝛾 𝑇  
+
+> 8
+
+AI · 𝐵 in + 𝛾 𝑇  
+
+> 7
+
+𝐹 + 𝛾 𝑇  
+
+> 6
+
+PF 
+
++𝛾 𝑇  
+
+> 5
+
+AI + 𝛾 𝑇  
+
+> 4
+
+𝐵 out + 𝛾 𝑇  
+
+> 3
+
+𝐵 in + 𝛾 𝑇  
+
+> 2
+
+log 10 (𝐹 ) + 𝛾 𝑇  
+
+> 1
+
+PF −1 + 𝛾 𝑇 
+
+> 0
+
+(6) Each term in the estimator captures a distinct component of GEMM execution: 
+
+• 𝐹 and log 10 (𝐹 ): Capture total compute and small-kernel effects such as launch overhead and scheduling inefficiencies. 
+
+• 𝐵 in and 𝐵 out : Represent dominant memory traffic from read-ing input and writing output. 
+
+• AI: Captures the balance between computation and memory, distinguishing execution regimes. 
+
+• PF: Represents the available parallelism in 𝑀 and 𝑁 relative to the depth of reduction in 𝐾 , influencing GPU utilization. 
+
+• PF −1: Captures serialization effects for limited parallelism. 
+
+• Interaction terms (PF · 𝐹 , PF · 𝐵 in , AI · 𝐵 in ): Capture in-teractions between compute workload, memory traffic, and available parallelism. For example, (PF · 𝐹 ) reflects how addi-tional computation scales differently depending on available parallelism. 
+
+## 3.4 Attention Block Estimator (ML-based) 
+
+The attention block is dominated by matrix multiplications and softmax operations. We therefore estimate its execution time and energy using the GEMM and Softmax base estimators. The GEMM estimator is applied to the linear projections that generate query ( 𝑄 ), key ( 𝐾 ), and value ( 𝑉 ), as well as to 𝑄𝐾 𝑇 , the attention-weighted value 𝑆𝑜 𝑓 𝑡𝑚𝑎𝑥 (𝑄𝐾 𝑇 ) · 𝑉 , and the output projection. The Softmax estimator normalizes the attention score matrix. However, several operations are not explicitly captured, includ-ing tensor reshaping (e.g., head splitting and concatenation), mask-ing, and other lightweight memory operations. While individually inexpensive, these collectively introduce non-negligible overhead. To capture these residual costs, we employ a multilayer percep-tron (MLP) correction model. It takes as input the predicted time and energy from GEMM and softmax estimators, along with ar-chitectural parameters such as number of heads, head dimension, and sequence length, and predicts total attention block time and energy. This enables modeling of both dominant kernel costs and attention-specific overheads. 
+
+> 4
+
+The model supports both multi-head attention (MHA) and grouped-query attention (GQA). During autoregressive decoding, each for-ward pass processes a single newly generated token, so the operator-level query length is fixed at 𝑁 = 1; however, this does not re-move the dependence on context length. Let 𝐿 KV denote the KV-cache length. In the 𝑄𝐾 𝑇 multiplication, the GEMM dimensions are 
+
+(1, 𝑑 head ) × ( 𝑑 head , 𝐿 KV ), so the cache length appears as the output dimension. Similarly, for 𝑆𝑜 𝑓 𝑡𝑚𝑎𝑥 (𝑄𝐾 𝑇 )𝑉 , the GEMM dimensions are (1, 𝐿 KV ) × ( 𝐿 KV , 𝑑 head ), where 𝐿 KV appears as the reduction di-mension. Thus, increasing context length is explicitly modeled through the GEMM dimensions and the corresponding softmax input size, even though only one new token is processed per decod-ing step. During prefill, the estimators use the full prompt length. The attention estimator is implemented as an MLP with 𝐿 attn layers and hidden dimension 𝐷 attn .
+
+## 3.5 FFN Block Estimator (ML-based) 
+
+The feed-forward network (FFN) block is dominated by dense ma-trix multiplications. In gated variants, it consists of two parallel up projections followed by a down projection. We estimate their execution time and energy using the GEMM estimator, applied to the up projections (expanding to the intermediate dimension) and the down projection (mapping back to the model dimension). Between these projections, the FFN includes lightweight opera-tions such as activations (e.g., Gaussian error linear unit (GELU) and sigmoid linear unit (SiLU)), element-wise multiplications, and inter-mediate memory accesses. Although small relative to GEMMs, they introduce additional overhead not captured by the base estimators. To account for this, we use the same MLP-based correction model as in the attention block. It takes as input the predicted time and en-ergy of the projections, along with architectural parameters such as model dimension ( 𝑑 model ) and intermediate dimension ( 𝑑 intermediate ), and predicts total FFN execution time and energy. The formulation also supports MoE architectures. Since experts share the same structure, base estimators are applied to a repre-sentative expert, while the number of experts, top-𝑘 routing, and shared expert dimension (if present) are provided as additional MLP inputs to predict total MoE FFN cost. During decoding, estimators use 𝑁 = 1, while during prefill, they use the prompt length. The FFN estimator is implemented as an MLP with 𝐿 ffn layers and hidden dimension 𝐷 ffn .
+
+## 3.6 End-to-End Estimator (ML-based) 
+
+Using the operator- and block-level models, we first estimate the execution time and energy of the dominant components in each LLM layer: RMSNorm, attention, and FFN, which account for most computation and memory traffic during inference. These predic-tions are then fed into a final ML-based estimator, together with global features such as model dimension ( 𝑑 model ), number of layers, sequence length, batch size, inference mode (decode vs. prefill), and MoE configuration. This estimator predicts total LLM inference time and energy, cap-turing system-level effects not modeled at lower levels. In particular, this stage is harder to predict due to complex interactions between layers, including lightweight operations between components and runtime overheads such as kernel launches, synchronization, and cross-layer scheduling. By combining block-level predictions with  
+
+> (a) Attention runtime vs. heads (b) Attention energy vs. heads
+
+Figure 3: Effect of the number of attention heads on execution time and energy for 𝑑 model = 4096 and 𝑞 heads = 𝑘𝑣 heads .
+
+global features, it provides accurate end-to-end estimates. The esti-mator is implemented as a lightweight MLP with 𝐿 final layers and hidden dimension 𝐷 final .
+
+## 4 Applications in Optimization 
+
+The proposed framework enables efficient exploration of the LLM architectural design space by directly predicting execution time and energy from architectural parameters, serving as a fast surrogate for hardware evaluation. One key application is architecture-level optimization for energy or latency. Given a model configuration, the estimator evaluates variations in parameters such as the number of attention heads, key-value heads, model dimension ( 𝑑 model ), feed-forward dimension (𝑑 intermediate ), number of layers, and MoE settings. By sweeping these parameters, it identifies configurations that minimize energy or runtime. As an example, we vary the number of attention heads while fixing 𝑑 model = 4096 and using equal query and key-value heads. For a single attention layer in prefill ( 𝑁 = 1024), Fig. 3 shows that 64 heads achieve the lowest energy, followed by 32, while 16 and 128 remain competitive. Very large headcounts increase time and energy due to reduced parallel efficiency and higher overhead. More broadly, the estimator supports joint optimization across parameters. For instance, increasing 𝑑 model while reducing layers can preserve capacity while improving efficiency. Similarly, jointly tuning 𝑑 model , 𝑑 intermediate , attention heads, and key-value heads en-ables hardware-aware designs. This approach applies at both block level (attention/FFN) and full-model level for energy- or latency-optimized LLM architectures. 
+
+## 5 EXPERIMENTS AND RESULTS 5.1 Data Collection and Measurements 
+
+Time was measured using CUDA events, and energy was measured with NVML by reading the GPU energy counter before and after each measured region. To reduce noise, each operator or configu-ration was repeated until the cumulative execution time exceeded 10 seconds; per-execution latency and energy were then obtained by dividing the total time and energy by the number of repeti-tions. For large prefill workloads whose individual executions were already long, we used five repetitions, since the longer measure-ment window makes NVML granularity noise negligible. All exper-iments were conducted in bfloat16 (BF16) precision. To avoid cache 
+
+> 5
+
+Table 1: Accuracy of the RMSNorm estimator. 
+
+Time Energy Regime MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Launch-bound 1.288 0.240156 3.233 0.979766 Memory-bound 2.098 0.999759 3.516 0.999451 Average 1.693 0.619958 3.375 0.989609 
+
+Table 2: Accuracy of the Softmax estimator. 
+
+Time Energy Regime MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Launch-bound 2.869 0.996185 2.583 0.999042 Memory-bound 3.661 0.999982 1.251 0.999970 Average 3.265 0.998084 1.917 0.999506 reuse effects and reflect realistic memory behavior, we rotated pre-generated weight sets across runs. We constructed datasets that span diverse architectural configurations (varying model dimen-sions, layers, sequence lengths, batch sizes, dense/MoE FFNs, and MHA/GQA) for both prefill and decode modes. The end-to-end eval-uation used a dataset of approximately 1,200 model configurations profiled with HuggingFace Transformers. We trained MLP-based regressors for attention, FFN, and full-model latency and energy prediction. Inputs and targets were stan-dardized using training-set statistics. All estimators used 4-hidden-layer MLPs. The attention estimators used 384 hidden units and Smooth L1 loss, optimized with AdamW using a learning rate of 5 × 10 −5 and weight decay of 10 −5 for 2,000 epochs. The FFN esti-mators used width 64 and MSE loss, optimized with AdamW using a learning rate of 2 × 10 −3 and weight decay of 10 −6 with early stopping. The full-model prefill and decode estimators used width 32 and MSE loss on log-transformed latency and energy, optimized with AdamW using a learning rate of 2 × 10 −3 and weight decay of 10 −6 for 100 epochs. We trained the full-model estimators in log-space because this objective better matches relative-error eval-uation and produced the lowest MAPE in our experiments. While the current evaluation is conducted on an NVIDIA H100 NVL GPU, HYMELL’s hierarchical design is fundamentally hardware-portable. Adapting the framework to new architectures (e.g., earlier GPU generations or alternative accelerators) does not require re-designing the architecture; it only necessitates re-profiling the hard-ware to update the analytical regression coefficients (e.g., 𝛼, 𝛽, 𝛾 ) and fine-tuning the lightweight MLPs on the new target’s data. Because ML estimators are implemented as lightweight MLPs ( 𝐿 attn , 𝐿 ffn ,
+
+𝐿 final ) operating on low-dimensional architectural features rather than raw tensor data, their training overhead is trivial. Further-more, generating the 1,200 profiling configurations is a one-time automated hardware cost that requires significantly less manual engineering effort than re-deriving structural equations for purely analytical models [26, 27]. We report prediction quality using mean absolute percentage error (MAPE) and the coefficient of determination ( 𝑅 2). 
+
+Table 3: Accuracy of the GEMM estimator. 
+
+Time Energy Regime MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Launch-bound 5.587 0.834 6.134 0.930 Memory-bound 6.819 0.993 5.861 0.996 Balanced (mem-dom) 5.974 0.993 5.189 0.992 Balanced (comp-dom) 9.399 0.960 7.294 0.979 Compute-bound 4.141 0.999 4.472 0.998 Average 6.384 0.956 5.790 0.979 
+
+## 5.2 Evaluation 
+
+Tables 1 and 2 report the accuracy of operator-level estimators across execution regimes. The estimators achieve high accuracy, with MAPE below 4% for Softmax and below 4% for RMSNorm, demonstrating the effectiveness of HYMELL. In the launch-bound regime of RMSNorm, execution time is dominated by kernel launch overhead and remains nearly constant across configurations. This results in a low variance in ground-truth measurements and therefore a lower 𝑅 2, despite a low prediction error. The regime thresholds are 𝑡ℎ Softmax = 1024 for softmax and 
+
+𝑡ℎ RMS = 2.5 × 10 6 for RMSNorm. Table 3 reports the accuracy of the GEMM estimator in execution regimes, with MAPE generally below 7% for both time and energy, indicating stable performance in diverse workload characteristics. Regimes are defined by total work 𝐹 and arithmetic intensity (AI): 
+
+𝐹 thr = 8.39 × 10 6 floating-point operations (FLOPs), AI 𝑙𝑜𝑤 = 81 .92, AI 𝑚𝑖𝑑 = 166 .05, and AI ℎ𝑖𝑔ℎ = 288 .91 FLOPs/byte. Higher errors in balanced regimes stem from transitions between memory- and compute-bound behavior, where GPU utilization and scheduling vary. Additionally, cuBLAS dynamically selects kernels and tiling strategies based on input dimensions and AI, introducing perfor-mance discontinuities that make these regimes harder to model. Tables 4 and 5 report the accuracy of ML-based estimators for attention and FFN. Both achieve high accuracy, with MAPE below 3% for attention and below 6% for FFN. For attention, prefill ex-hibits higher 𝑅 2 since computation scales with sequence length and dominant GEMM and Softmax operations are well modeled. During decoding, each inference step computes only the newly generated token while reusing cached keys and values from pre-vious tokens. Consequently, the computational workload outside the attention kernel remains effectively constant across decoding steps. Although attention still depends on the KV-cache length, on modern GPUs this dependence is largely memory-bandwidth dom-inated and grows much more slowly than the prefill workload. As a result, the measured decode latency exhibits substantially lower variance than prefill across the evaluated context lengths, which explains the lower 𝑅 2 despite the very low MAPE. For FFN, the estimator accurately captures both dense and MoE architectures. Slightly higher error in MoE arises from additional routing and memory overhead for expert selection and aggregation. Overall, these results show that the ML-based block estimators effectively capture residual computation and memory overhead beyond the analytical operator models. 
+
+> 6
+
+Table 4: Accuracy of the attention block estimator. 
+
+Time Energy Mode MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Prefill 3.514 0.9997 4.237 0.9996 Decode 0.441 0.9276 0.599 0.9996 Average 1.978 0.9636 2.418 0.9996 
+
+Table 5: Accuracy of the FFN block estimator. 
+
+Time Energy Architecture MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Dense FFN 4.063 0.9998 4.612 0.9998 MoE FFN 5.168 0.9946 6.333 0.9951 Average 4.616 0.9972 5.473 0.9975 
+
+Table 6: End-to-end LLM prediction accuracy. 
+
+Time Energy Configuration MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Prefill (Dense) 10.179 0.9938 9.969 0.9860 Decode (Dense) 8.194 0.8968 10.771 0.8117 Prefill (MoE) 12.772 0.9527 13.091 0.9477 Decode (MoE) 12.776 0.9221 13.305 0.9101 Average 10.980 0.9414 11.784 0.9139 Table 6 reports end-to-end prediction accuracy on held-out LLM architectures. The model achieves ∼10% MAPE for both time and energy across dense and MoE models. Higher error compared to operator- and block-level estimators is expected, as end-to-end pre-diction must capture additional effects such as kernel scheduling, cross-layer memory interactions, and framework overheads. Never-theless, high 𝑅 2 values indicate accurate modeling of performance trends across diverse architectures. Furthermore, while memory op-timizations like PageAttention [29] and FlashAttention [12, 30, 31] alter memory layout and improve utilization to enable larger batch sizes, they do not fundamentally change the computational work-load. Because batch size is explicitly modeled as an input feature in HYMELL, our framework naturally captures the performance and energy implications of these optimizations without requiring changes to the underlying estimators. While our evaluation focuses on uniform batch configurations, modern serving engines employ continuous batching with hetero-geneous sequence lengths. In such settings, multiple requests are processed jointly within shared kernels, leading to non-trivial inter-actions in computation and memory access patterns. Since HYMELL models operator costs as a function of input dimensions, it can be extended to heterogeneous batches by evaluating the effective ag-gregated workload at the kernel level rather than simply summing independent requests. This allows the model to approximate the combined execution cost while accounting for shared computation and improved hardware utilization. 
+
+Table 7: HYMELL per-sequence accuracy compared with AMALI’s reported aggregate MAPE on LLaMA 3 8B with batch size 1. Mode Seq Len Time Error (%) Energy Error (%) AMALI HYMELL AMALI HYMELL                                         
+
+> Prefill 256 15.56 5.65 –2.60 1024 15.56 4.44 –4.03 2048 15.56 1.60 –1.67 4096 15.56 5.09 –3.38
+> MAPE 15.56 4.19 –2.92 Decode 256 34.90 1.64 –2.04 1024 34.90 1.16 –1.22 2048 34.90 1.79 –1.09 4096 34.90 1.71 –1.00
+> MAPE 34.90 1.58 –1.34
+
+Figure 4: Normalized prediction accuracy (batch=1). Top: time (ground truth normalized to 1). Bottom: energy (ground truth normalized to 1). 
+
+Table 7 reports HYMELL’s per-sequence prediction error for LLaMA 3 8B with batch size 1 and compares it with AMALI’s re-ported aggregate MAPE for prefill and decode. AMALI reports cycle-prediction MAPE of 15 .56% for prefill and 34 .90% for decode, but does not provide per-sequence errors or energy estimates. There-fore, the AMALI values are repeated across sequence lengths only as an aggregate reference baseline, not as per-sequence measure-ments. In contrast, HYMELL predicts measured wall-clock latency and energy for each sequence length, achieving 4 .19% time MAPE and 2 .92% energy MAPE for prefill, and 1 .58% time MAPE and 1 .34% energy MAPE for decode. Unlike AMALI’s analytical cycle-level model, HYMELL predicts measured hardware latency and energy, capturing runtime overheads, scheduling effects, and frequency behavior while also enabling system-level energy prediction. 
+
+> 7
+
+Table 8: Cross-device ablation on an NVIDIA RTX A6000 GPU. 
+
+Time Energy Configuration MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Prefill (Dense) 9.102 0.9814 8.425 0.9805 Decode (Dense) 6.718 0.9742 7.342 0.9747 Prefill (MoE) 9.366 0.9734 9.367 0.9728 Decode (MoE) 7.379 0.9813 9.352 0.9379 Average 8.141 0.9776 8.622 0.9665 Figure 4 presents the normalized prediction accuracy of HYMELL for execution time and energy across three representative mod-els—LLaMA 3 8B [32], Mistral 7B [33], and Qwen 1.5 2.7B MoE [34] (2.7B active parameters)—over different sequence lengths with batch size 1. Results are shown for both prefill and decode stages, where ground-truth values are normalized to one, and predictions are plotted relative to them. Across all configurations, predictions closely match the ground truth, with errors below 5%, demonstrat-ing that HYMELL accurately captures both compute- and memory-dominated behaviors. The consistent accuracy across diverse archi-tectures and workloads highlights the robustness and generalizabil-ity of the proposed model. 
+
+## 5.3 Generalization and Extensibility 
+
+To further validate that HYMELL is not tied to a single hardware platform, we repeated the model-level evaluation on an NVIDIA RTX A6000 GPU. This experiment serves as a cross-device abla-tion: the same hierarchical modeling flow is retained, while the hardware-specific profiling data and learned coefficients are up-dated for the A6000. As shown in Table 8, HYMELL achieves strong accuracy on the new device for both dense and MoE models, with average MAPE values of 8 .141% for time and 8 .622% for energy. These results demonstrate that the proposed analytical–ML de-composition transfers well across GPU generations once the target hardware is profiled, supporting the hardware-portable design of the framework. We also evaluate HYMELL on a linear-attention variant to test ar-chitectural extensibility beyond the softmax-based attention blocks used in most current LLMs. Although linear attention is not the dominant attention mechanism in contemporary LLM deployments, it is an important example of a structurally different attention for-mulation. Table 9 shows that HYMELL can estimate both latency and energy for this variant with low error, achieving average MAPE values of 1 .910% for time and 2 .278% for energy. This confirms that new attention mechanisms can be incorporated by adding the corre-sponding block-level profiling data and estimator, without changing the overall multi-level modeling framework. Currently, HYMELL focuses on single-GPU inference execution. However, the framework’s block-level modularity naturally lends itself to multi-GPU scaling. To model large-scale models that re-quire tensor parallelism (TP), the framework can be extended by introducing an additional analytical estimator for collective com-munication primitives and by incorporating network bandwidth as a global feature in the end-to-end MLP predictor. 
+
+Table 9: Architectural ablation on linear attention. 
+
+Time Energy Configuration MAPE (%) 𝑅 2 MAPE (%) 𝑅 2
+
+Prefill 3.360 0.9980 3.740 0.9958 Decode 0.460 0.9999 0.815 0.9999 Average 1.910 0.9990 2.278 0.9979 
+
+## 6 CONCLUSIONS 
+
+We introduced HYMELL, a hybrid multi-level framework for pre-dicting LLM inference latency and energy consumption. By combin-ing regime-aware analytical modeling for GPU operators (GEMM, Softmax, RMSNorm) with machine learning predictors for higher-level components and full-system execution, HYMELL bridges low-level hardware behavior and high-level architecture. Evaluated on NVIDIA H100 GPUs, HYMELL achieves high predictive accuracy (MAPE of 1.9%–6.3% at block levels and less than 5% for Llama3, Mistral, and Qwen models) across diverse configurations, including GQA and MoE paradigms in both prefill and decode phases. By predicting execution costs directly from architectural parameters, HYMELL enables rapid, hardware-free design space exploration, serving as an adaptable foundation for energy-efficient AI deploy-ment. 
+
+## References              
+
+> [1] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin. Attention is all you need. In Advances in Neural Information Processing Systems , volume 30, 2017. [2] William Fedus, Barret Zoph, and Noam Shazeer. Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity. Journal of Machine Learning Research , 23(120):1–39, 2022. [3] Roy Schwartz, Jesse Dodge, Noah A. Smith, and Oren Etzioni. Green ai, 2019. [4] Alexandra Sasha Luccioni, Yacine Jernite, and Emma Strubell. Power hungry processing: Watts driving the cost of AI deployment? In Proceedings of the 2024 ACM Conference on Fairness, Accountability, and Transparency , pages 85–99, 2024. [5] David Patterson, Joseph Gonzalez, Quoc V. Le, Chen Liang, Lluis-Miquel Munguia, Daniel Rothchild, David So, Maud Texier, and Jeff Dean. Carbon emissions and large neural network training. arXiv preprint arXiv:2104.10350 , 2021. [6] Song Han, Huizi Mao, and William J. Dally. Deep compression: Compressing deep neural networks with pruning, trained quantization and huffman coding. In International Conference on Learning Representations , 2016. [7] Seyedeh Atiyeh Abbasi Jalal, Ragib Ahsan, Zezhi Wu, Mirbehrad Mousavi, and Rehan Kapadia. Integration of oscillator-based feature extraction for energy-efficient convolutional neural networks. Journal of Applied Physics , 139(23), 2026. [8] Marissa J Strumolo, Zhaohong Sun, Iliya Larimojarad, Rehan Kapadia, and Richard L Brutchey. Data driven control of defect formation in solution de-posited sb2se3 thin films. Advanced Materials Interfaces , 12(24):e00798, 2025. [9] Elias Frantar, Saleh Ashkboos, Torsten Hoefler, and Dan Alistarh. GPTQ: Ac-curate post-training quantization for generative pre-trained transformers. In
+> International Conference on Learning Representations (ICLR) , 2023. [10] Tim Dettmers, Mike Lewis, Younes Belkada, and Luke Zettlemoyer. LLM.int8(): 8-bit matrix multiplication for transformers at scale. In Advances in Neural Information Processing Systems (NeurIPS) , 2022. [11] Tri Dao, Daniel Y. Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. Flashatten-tion: Fast and memory-efficient exact attention with io-awareness. In Advances in Neural Information Processing Systems , volume 35, 2022. [12] Tri Dao. Flashattention-2: Faster attention with better parallelism and work partitioning, 2023. [13] Elias Frantar and Dan Alistarh. SparseGPT: Massive language models can be accurately pruned in one-shot. In International Conference on Machine Learning (ICML) , 2023. [14] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with PagedAttention. In ACM SIGOPS Symposium on Operating Systems Principles (SOSP) , 2023.
+> 8
+
+[15] Mark Chen, Jerry Tworek, Heewoo Jun, et al. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 , 2021. [16] Armin Abdollahi, Mehdi Kamal, and Massoud Pedram. Unified LLM model for power, performance, and area prediction from hardware code. In Ninth Conference on Machine Learning and Systems , 2026. [17] Armin Abdollahi, Saeid Shokoufa, Negin Ashrafi, Mehdi Kamal, and Massoud Pedram. Hdlforge: A two-stage multi-agent framework for efficient verilog code generation with adaptive model escalation, 2026. [18] Alireza Golkarieh, Parsa Razmara, Ahmadreza Lagzian, Amirhosein Dolatabadi, and Seyed Jalaleddin Mousavirad. Semi-supervised gan with hybrid regulariza-tion and evolutionary hyperparameter tuning for accurate melanoma detection. 
+
+Scientific Reports , 15(1):31977, 2025. [19] Arya Fayyazi, Mehdi Kamal, and Massoud Pedram. Coft: Counterfactual-conformal decoding for fair chain-of-thought reasoning in large language models. 
+
+arXiv preprint arXiv:2605.30641 , 2026. [20] Tina Khezresmaeilzadeh, Jiang Zhang, Dimitrios Andreadis, and Konstantinos Psounis. Preserving privacy and utility in llm-based product recommendations. 
+
+arXiv preprint arXiv:2505.00951 , 2025. [21] Karan Singhal, Shekoofeh Azizi, Tao Tu, et al. Large language models encode clinical knowledge. Nature , 620:172–180, 2023. [22] Shijie Wu, Ozan Irsoy, Steven Lu, et al. BloombergGPT: A large language model for finance. arXiv preprint arXiv:2303.17564 , 2023. [23] Neel Guha, Julian Nyarko, Daniel E. Ho, et al. LegalBench: A collaboratively built benchmark for measuring legal reasoning in large language models. In Advances in Neural Information Processing Systems , volume 36, 2023. [24] Enkelejda Kasneci, Kathrin Seßler, Stefan Küchemann, et al. ChatGPT for good? on opportunities and challenges of large language models for education. Learning and Individual Differences , 103:102274, 2023. [25] Shiheng Cao, Junmin Wu, Junshi Chen, Hong An, and Zhibin Yu. Amali: An analytical model for accurately modeling llm inference on modern gpus. In 
+
+Proceedings of the 52nd Annual International Symposium on Computer Architecture ,pages 1495–1508, 2025. [26] Rajeev Patwari, Ashish Sirasao, and Devleena Das. Forecasting llm inference performance via hardware-agnostic analytical modeling, 2025. [27] Hiari Pizzini Cavagna, Andrea Proia, Giacomo Madella, Giovanni B. Espos-ito, Francesco Antici, Daniele Cesarini, Zeynep Kiziltan, and Andrea Bartolini. Sweetspot: An analytical model for predicting energy efficiency of llm inference, 2026. [28] Lars Krupp, Daniel Geißler, Francisco M. Calatrava-Nicolas, Vishal Banwari, Paul Lukowicz, and Jakob Karolus. This is taking too long – investigating time as a proxy for energy consumption of llms, 2026. [29] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with pagedattention, 2023. [30] Tri Dao, Daniel Y. Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. Flashat-tention: Fast and memory-efficient exact attention with io-awareness, 2022. [31] Jay Shah, Ganesh Bikshandi, Ying Zhang, Vijay Thakkar, Pradeep Ramani, and Tri Dao. Flashattention-3: Fast and accurate attention with asynchrony and low-precision, 2024. [32] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. [33] Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, De-vendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. Mistral 7b, 2023. [34] Jinze Bai, Shuai Bai, Yunfei Chu, Zeyu Cui, Kai Dang, Xiaodong Deng, Yang Fan, Wenbin Ge, Yu Han, Fei Huang, Binyuan Hui, Luo Ji, Mei Li, Junyang Lin, Runji Lin, Dayiheng Liu, Gao Liu, Chengqiang Lu, Keming Lu, Jianxin Ma, Rui Men, Xingzhang Ren, Xuancheng Ren, Chuanqi Tan, Sinan Tan, Jianhong Tu, Peng Wang, Shijie Wang, Wei Wang, Shengguang Wu, Benfeng Xu, Jin Xu, An Yang, Hao Yang, Jian Yang, Shusheng Yang, Yang Yao, Bowen Yu, Hongyi Yuan, Zheng Yuan, Jianwei Zhang, Xingxuan Zhang, Yichang Zhang, Zhenru Zhang, Chang Zhou, Jingren Zhou, Xiaohuan Zhou, and Tianhang Zhu. Qwen technical report. 
+
+arXiv preprint arXiv:2309.16609 , 2023.

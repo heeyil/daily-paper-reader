@@ -1,0 +1,538 @@
+Title: DOCSCHISEL: Adaptive Tool Documentation Optimization Framework for LLM Agents
+
+URL Source: https://arxiv.org/pdf/2608.10037v1
+
+Published Time: Wed, 12 Aug 2026 00:04:58 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# DOCS CHISEL : Adaptive Tool Documentation Optimization Framework for LLM Agents 
+
+You Lu ∗, Kun Zhang ∗, Bihuan Chen ∗, Xin Peng ∗∗College of Computer Science and Artificial Intelligence, Fudan University, China 
+
+Abstract —Large language models (LLMs) increasingly rely on external tools to accomplish complex real-world tasks, making tool documentation a critical grounding resource for LLM agents. Existing studies mainly focus on improving the tool-use capabilities of LLM agents, while largely treating tool documentation as a fixed input. Although several recent works attempt to optimize tool documentation through rewriting or compression, little is known about how the information contained in tool documentation affects agent performance across different settings. To bridge this gap, we conduct a large-scale empirical study on tool documentation for LLM agents. Our study reveals substantial heterogeneity in the information fields provided by existing tool documentation. Moreover, the effectiveness of different informa-tion fields is highly dependent on the task domain, LLM backbone, and agent paradigm, indicating that no fixed tool documentation can consistently generalize across diverse agent settings. Motivated by these findings, we propose D OCS CHISEL , an adap-tive tool documentation optimization framework for LLM agents. DOCS CHISEL analyzes failed execution traces of a target LLM agent to identify documentation-related issues, and iteratively optimizes tool documentation by adding, removing, and refining information fields for each tool. We evaluate D OCS CHISEL against two state-of-the-art baselines, i.e., EASY TOOL and DRAFT. Experimental results show that D OCS CHISEL improves the task success rate of LLM agents by 95.89% over the original tool documentation and by 75.15%, on average, over existing baselines, while incurring limited optimization time and token overhead. 
+
+I. I NTRODUCTION 
+
+Large language models (LLMs) [12, 34] have demonstrated strong capabilities across diverse tasks [11, 18, 20], such as code generation, question answering, and data analysis. To execute real-world tasks, LLMs increasingly rely on external tools, e.g., web browsers, code interpreters, and file systems, leading to the emergence of tool-use LLM agents (referred to as LLM agents hereafter) [13, 38, 40, 44, 54, 56]. Emerging LLM agent ecosystems, including agent development platforms [4, 7], tool hosting platforms [37, 43], and agent evaluation suites [27, 53], provide large collections of reusable tools and standardized tool interfaces. These tools are typically accompanied by tool documentation that includes several information fields about their functionalities, invocation constraints, and other details, helping LLM agents understand and invoke tools correctly. Traditional API documentation has long been studied in software engineering, primarily to improve its readability, com-pleteness, and usability for developers [5, 6, 24, 30, 32, 33, 39, 46, 49]. However, tool documentation for LLM agents differs in both audience and content. The documentation consumers are LLM agents that must infer tool functionality and generate exe-cutable tool invocations directly from in-context documentation. Meanwhile, the documentation emphasis shifts from general API understanding to task-oriented tool use, requiring informa-tion such as usage conditions, parameter semantics, invocation constraints, and output interpretation. As such documentation guides runtime tool selection and invocation, ambiguity or missing information can lead to incorrect tool invocations and cascading task failures. Thus, tool documentation should be viewed not only as a human-readable reference, but also as a critical grounding resource whose quality heavily affects the task success rate of LLM agents [19, 40, 58]. 
+
+Literature. Despite the importance of tool documentation, existing studies [8, 22, 25, 27, 41, 45, 47, 55, 60] mainly focus on adding or improving tool-use capabilities of LLM agents from the perspectives of tool construction, tool retrieval, tool invocation, and evaluation. While these studies have signifi-cantly advanced the development of LLM agents, they usually treat tool documentation as a fixed given input, without sys-tematically examining how documentation itself affects LLM agent behavior and task success rate. Only a few recent studies [9, 10, 14, 29, 42, 58] explicitly optimize tool documentation for LLM agents. For instance, E ASY TOOL [58] standardizes diverse tool documentation into concise tool instructions with a unified template, thereby reducing the context overhead caused by documentation, whereas DRAFT [42] iteratively refines tool documentation based on outputs of external tools. How-ever, these approaches mostly optimize tool documentation within existing information fields through rewriting, correction, standardization, or compression. They pay less attention to whether the documentation fields themselves are sufficient, redundant, or suitable for different LLM agents. In practice, tool documentation across LLM agent ecosys-tems may differ substantially in the information fields it pro-vides. However, it remains unclear whether the utility of these information fields varies across agent settings. For example, do agents powered by less capable LLM backbones benefit more from explicit usage examples? Do multi-agent paradigms place greater demands on usage guidance and invocation constraints? These observations raise a fundamental question, i.e., what information fields are provided by existing tool documentation, and how do these information fields affect the task success rate of LLM agents under different agent settings? 
+
+Empirical Study. To understand tool documentation for LLM agents and its impact on task success rate, we conduct a large-scale empirical study across 14 tool-use datasets collected from LLM agent ecosystems. Specifically, we investigate their information field composition, and evaluate the task success arXiv:2608.10037v1 [cs.LG] 10 Aug 2026 TABLE I: Overview of the Collected Tool-Use Datasets                                
+
+> Dataset #Tools Description
+> WorkBench [48] 26 A tool-use LLM agent benchmark with sandboxes, realistic office tasks, databases, and executable tools. API-Bank [27] 2,211 A comprehensive evaluation benchmark with diverse APIs and multi-turn dialogues for LLM agents. ToolLLM [40] 16,464 A large-scale suite of real-world APIs for evaluating multi-step tool invocations by LLM agents. APIBench [38] 1,645 A massive API corpus for studying LLM connectivity to thousands of remote APIs. ToolAlpaca [50] 426 A simulated dataset with diverse tool APIs and structured tool documentation for training LLMs. AnyToolBench [8] 13 A benchmark for hierarchical, large-scale tool calling with self-reflective LLM agents. ToolBench [53] 232 A benchmark for evaluating open-source LLMs on tool manipulation and invocation tasks. ShortcutsBench [45] 1,414 A large-scale benchmark based on Apple Shortcuts, containing real APIs, user queries, and action sequences. WildToolBench [57] 1,600 A tool-use benchmark grounded in real-world user behavior patterns and realistic multi-step scenarios. SWE-bench [23, 54] 15 A software engineering benchmark requiring LLM agents to resolve real GitHub issues via repository tools. CRMArena [21] 27 A domain-specific benchmark for professional CRM tasks in realistic enterprise environments.
+> τ-bench [55] 28 A benchmark for interactions among tools, agents and users with domain-specific tools and dialogues. TooLe [22] 390 A meta-tool benchmark for deciding whether to invoke tools and selecting appropriate tools. ToolLens [41] 464 A tool-retrieval dataset designed for multi-tool scenarios, emphasizing complete and diverse tool selection.
+
+rate of two different LLM agent paradigms ( i.e., ReAct [56] and Multi-Agent [51]) on WorkBench [48], using three different LLM backbones ( i.e., GPT-4o [35], GLM-5 [59] and Claude Haiku 4.5 [3]). We design the following research questions.  
+
+> •
+
+RQ1 Composition Analysis. What information fields are commonly contained in different tool documentation?  
+
+> •
+
+RQ2 Impact Analysis. How do different information fields affect the task success rate of LLM agents across different task domains, LLM backbones, and agent paradigms? Our results reveal that existing tool documentation in agent ecosystems exhibits substantial heterogeneity in field composi-tion, while different information fields have different impacts on task success rate of LLM agents across task domains, LLM backbones, and agent paradigms. Specifically, we identify 17 information fields, among which only tool name and function-ality description are provided by all 14 datasets, while usage guidance and invocation constraint appear in only two datasets. Moreover, the same information field may have different or even opposite effects under different agent settings. On average, adding or removing a single information field changes the task success rate of LLM agents by 6.34 percentage points in absolute terms. These findings demonstrate that fixed tool documentation cannot generalize well across different LLM agent settings and should be optimized adaptively. 
+
+Our Approach. Motivated by these insights, we propose DOCS CHISEL , an adaptive tool documentation optimization framework for LLM agents. Specifically, given a target LLM agent, D OCS CHISEL first executes representative tool-use queries with the original tool documentation, and collects failed agent execution traces. Then, D OCS CHISEL analyzes these failed traces to identify documentation-related issues, and uses LLMs to iteratively revise tool documentation. Instead of simply rewriting tool documentation into a shorter or more general form, D OCS CHISEL optimizes both the content and structure of tool documentation by adding, removing, or refining infor-mation fields for each tool, thereby generating adaptive tool documentation for different LLM agent settings to improve both tool invocation correctness and task success rate. 
+
+Evaluation. We implement a prototype of D OCS CHISEL , and conduct experiments on 74 tools across 9 task domains selected from WorkBench [48] and API-Bank [27] to demonstrate its effectiveness and efficiency, compared with two state-of-the-art baselines, i.e., EASY TOOL [58] and DRAFT [42]. Experimental results demonstrate that D OCS CHISEL consistently improves task success rate under diverse agent settings by 95.89% com-pared with using the original tool documentation, and achieves an average of 75.15% improvement compared with baselines. Besides, D OCS CHISEL maintains practical optimization effi-ciency, requiring 12.65 minutes per tool, on average, to optimize the tool documentation for LLM agents. 
+
+Contribution. This work makes the following contributions.  
+
+> •
+
+We conduct a systematic empirical study on tool documenta-tion for LLM agents, revealing the varying effectiveness of different information fields across different agent settings.  
+
+> •
+
+We design and implement an adaptive tool documentation optimization framework, D OCS CHISEL , for LLM agents, thereby improving the tool invocation correctness and task success rate of LLM agents.  
+
+> •
+
+We conduct extensive experiments to demonstrate the effec-tiveness and efficiency of D OCS CHISEL .II. E MPIRICAL STUDY 
+
+To systematically investigate the two research questions intro-duced in Sec. I, we present a large-scale empirical study on the information field composition of different tool documentation, and evaluate the task success rate of different LLM agent settings with different tool documentation. 
+
+A. Study Design 
+
+Documentation Collection. We collect tool documentation from 14 representative datasets shown in Table I, covering diverse tool-use scenarios, e.g., workflow execution, mobile automation, and software engineering tasks. We select these datasets based on the following criteria: (1) providing rich tool collections and corresponding tool documentation, (2) covering different task domains and execution environments, (3) having strong community influence and being widely used in recent studies on LLM agents. In total, we collect 24,955 tools along with their corresponding tool documentation. 
+
+LLM Selection and Agent Paradigm Setting. To eval-uate the effectiveness of tool documentation under different LLM agent settings, we select three representative LLMs as agent backbones, i.e., GPT-4o [35], GLM-5 [59], and Claude Haiku 4.5 [3], covering diverse model families widely used in recent LLM agents. We further instantiate two agent paradigms, i.e., a ReAct agent implemented with LangChain [25], and a Multi-Agent system implemented with AutoGen [51]. 
+
+Evaluation Metric. We use task success rate (TS) to mea-sure whether an LLM agent successfully completes user queries. Given a test suite containing tool-use queries Q, for each query 
+
+qi ∈ Q , we denote its execution outcome as s(qi). s(qi) = 1 
+
+indicates that the task is correctly completed, and s(qi) = 0 
+
+otherwise. We compute the task success rate as TS =
+
+> 1
+> |Q|
+
+P|Q|  
+
+> i=1
+
+I(s(qi) = 1) , where I(·) is the indicator function. 
+
+RQ Setup. For RQ1 , we manually inspect the tool documen-tation from the 14 datasets we collected in Table I. Because these datasets use different formats and inconsistent information field names, three authors independently extracted candidate information fields, and then aligned semantically equivalent information through discussion using unified names following the most commonly used field names in the collected datasets. Disagreements were resolved by consensus to reduce individual bias. Based on the final aligned taxonomy, we report the cov-erage ratio of each type of information field across datasets. For RQ2 , we conduct the empirical evaluation using the tool documentation provided in WorkBench [48], which contains 26 tools from five task domains, i.e., data analysis, email management, calendar management, project management, and customer relationship management (CRM). We modify the tool documentation by removing or adding one information field at a time while keeping all remaining fields unchanged according to the taxonomy derived from RQ1 . Specifically, if the target information field already exists in the tool documentation, we remove it to measure the impact of missing information. Other-wise, we manually supplement the information field based on the original documentation and dataset-provided metadata, e.g., 
+
+tool code and correct execution outcome, to measure the impact of additional information. Based on these documentation vari-ants, we conduct controlled experiments to investigate whether the effectiveness of information fields remains consistent across different task domains, LLM backbones, and agent paradigms. First, to study whether the impact varies across task domains, we use GPT-4o with the ReAct agent, and evaluate documenta-tion variants on the five task domains in WorkBench. Second, to study whether the impact varies across LLM backbones, we focus on the data analysis domain and the ReAct agent, and repeat the experiments with three different LLM backbones, 
+
+i.e., GPT-4o, GLM-5, and Claude Haiku 4.5. Third, to study whether the impact varies across agent paradigms, we fix the data analysis domain and GPT-4o, and compare the results under the ReAct and Multi-Agent paradigms. In all experiments, we keep the query set, prompt template, and execution environment unchanged within each comparison. 
+
+B. Composition Analysis (RQ1) 
+
+After manually analyzing the collected tool documentation, we observe that tools within the same dataset usually follow a consistent documentation convention, i.e., tools in the same dataset tend to contain the same set of information fields. However, such conventions vary across datasets, leading to different field compositions in existing tool documentation. TABLE II: Prevalence of Information Fields across Datasets                                     
+
+> Information Field Brief Description Prevalence
+> Tool Name (TN) Invocation identifier of target tool 14/14 Functionality Description (FD) Tool purpose and capability 14/14 Task Domain (TD) Application scenario or category 6/14 Input Parameter Name (IPN) Input argument identifier 13/14 Input Parameter Description (IPD) Input argument semantics 12/14 Input Parameter Type (IPT) Input data types or formats 13/14 Default Parameter Value (DPV) Default input parameter values 3/14 Parameter Required Flag (PRF) Required argument indicator 10/14 Parameter Optional Flag (POF) Optional argument indicator 7/14 Return Parameter Name (RPN) Output argument identifier 4/14 Return Parameter Description (RPD) Output argument semantics 5/14 Return Parameter Type (RPT) Output data types or formats 5/14 Code Implementation (CI) Tool implementation snippets 5/14 Usage Example (UE) Concrete invocation examples 4/14 Response Template (RT) Expected tool response format 4/14 Usage Guidance (UG) Tool usage recommendations 2/14 Invocation Constraint (IC) Invocation conditions or restrictions 2/14
+
+We identify 17 common information fields, and report their prevalence across the 14 datasets. As shown in Table II, fields describing tool identity and input schemas are widely adopted. 
+
+Tool name and functionality description appear in all datasets, while input parameter name , input parameter description , and 
+
+input parameter type appear in most datasets. In contrast, fields supporting task-oriented tool use and result interpretation, such as default parameter value , return parameter name , return parameter type , usage example and response template , are provided much less consistently. Usage guidance and invocation constraint appear in only two datasets. 
+
+Findings. Existing tool documentation shows cross-dataset heterogeneity in information field composition. Although tools within the same dataset follow a consistent convention, different datasets provide different sets of information fields. 
+
+C. Impact Analysis (RQ2) 
+
+Fig. 1 reports the change in TS after adding or removing one information field from the original tool documentation. Black x-axis labels denote removed fields, while red labels denote added fields. As shown in Fig. 1a-1c, under GPT-4o with ReAct, the evaluated fields exhibit both consistent and domain-dependent effects. Among the 17 fields, only 6 fields show the same effect direction across all three domains. Removing tool name (TN), 
+
+task domain (TD), return parameter type (RPT), response template (RT), or parameter optional flag (POF) consistently decreases TS, whereas adding invocation constraint (IC) consis-tently improves it. For example, removing TD decreases TS by 3.75 to 13.75 percentage points, while adding IC improves it by 0.75 to 11.25 percentage points. In contrast, the remaining fields show domain-dependent effects. Adding parameter required flag (PRF), for instance, changes TS by +2.50, -5.61, and +0.75 percentage points in data analysis, email management, and calendar management, respectively. Due to space limitations, results for project management and customer relationship management are provided on our website [1]. The effects also vary across LLM backbones. As shown in Fig. 1a, Fig. 1d, and Fig. 1e, when fixing the domain and agent paradigm, 12 of the 17 fields exhibit different effect directions across GPT-4o, GLM-5, and Claude Haiku 4.5. For example, removing POF decreases TS for GPT-4o and GLM-5, but improves it by 7.5 percentage points for Claude Haiku 4.5. This indicates that different LLM backbones rely on different TN FD TD IPN IPD IPT DPV PRF POF RPN RPD RPT CI UE RT UG IC -0.15 -0.10 -0.05 0.00 0.05 0.10 0.15 (a) Data Analysis+GPT+ReAct TN FD TD IPN IPD IPT DPV PRF POF RPN RPD RPT CI UE RT UG IC -0.10 -0.05 0.00 0.05 0.10 (b) Email+GPT+ReAct TN FD TD IPN IPD IPT DPV PRF POF RPN RPD RPT CI UE RT UG IC -0.04 -0.02 0.00 0.02 0.04 (c) Calendar+GPT+ReAct TN FD TD IPN IPD IPT DPV PRF POF RPN RPD RPT CI UE RT UG IC -0.10 -0.05 0.00 0.05 0.10 
+
+(d) Data Analysis+GLM+ReAct TN FD TD IPN IPD IPT DPV PRF POF RPN RPD RPT CI UE RT UG IC -0.10 -0.05 0.00 0.05 0.10 (e) Data Analysis+Claude+ReAct TN FD TD IPN IPD IPT DPV PRF POF RPN RPD RPT CI UE RT UG IC -0.15 -0.10 -0.05 0.00 0.05 0.10 0.15 (f) Data Analysis+GPT+Multi-Agent 
+
+Fig. 1: Impact of Information Fields on Task Success Rate across Task Domains, LLM Backbones, and Agent Paradigms documentation information. A similar variation is observed across agent paradigms. As shown in Fig. 1a and Fig. 1f, replacing ReAct with Multi-Agent reverses the effects of several fields, including functionality description (FD), input parameter description (IPD), parameter required flag (PRF), and RT. Therefore, although some fields provide stable benefits or harms, the effectiveness of fields depends on the task domain, LLM backbone, and agent paradigm. 
+
+Findings. Different information fields in tool documentation have different impacts on task success rate of LLM agents across task domains, LLM backbones, and agent paradigms. 
+
+D. Empirical Insights 
+
+The empirical study provides two insights for tool documen-tation optimization. First, no fixed documentation convention can consistently generalize across different LLM agent settings, since the effectiveness of information fields may vary across task domains, LLM backbones, and agent paradigms. Second, an effective tool documentation optimizer should adaptively adjust the information field composition based on the LLM agent setting according to different execution feedback. III. M ETHODOLOGY 
+
+Motivated by the empirical insights in Sec. II, we propose DOCS CHISEL , an adaptive framework for optimizing tool documentation for LLM agents. Given a target LLM agent, a set of tools with their original documentation, and a set of queries with execution ground truth, D OCS CHISEL generates optimized tool documentation for each tool under the target agent setting. The key idea is to perform tool documentation optimization at the information-field level for each tool under the guidance of failed execution traces of the target agent. 
+
+A. Approach Overview 
+
+Fig. 2 shows the approach overview. First, D OCS CHISEL 
+
+performs domain-aware execution profiling with the original tool documentation (Sec. III-B). In this stage, when the target Tool Set with Original Documentation 
+
+> Queries with Execution Ground Truth
+> Target LLM Agent
+
+……  
+
+> ……
+> Tools
+> 4
+
+Final Documentation Selection Optimized Tool Documentation Task Success  
+
+> Candidate Documentation Set Final Documentation
+> 2
+
+Memory-Guided Documentation Optimization  
+
+> 3
+
+Candidate Evaluation and Feedback Update   
+
+> Failed Traces
+> Tool Documentation Memories
+> Information Field Set Add Remove Refine
+> LLM
+> New Documentation Failed Traces
+> Re-Execution Evaluation Token Cost
+
+Domain 1   
+
+> Optimization Set Validation Set
+> Optimization Set Validation Set Memories
+
+Domain 1 
+
+> Optimization Set Validation Set
+
+Domain 1 
+
+> Optimization Set Validation Set
+> Domain N
+> Candidate Documentation Set
+
+Fig. 2: Approach Overview of D OCS CHISEL 
+
+agent is equipped with tools from multiple task domains, DOCS CHISEL organizes the tools and queries by task domain. Within each domain, it associates each tool with the queries whose execution requires that tool, and partitions these tool-associated queries and their execution ground truth into optimization and validation sets. It then executes the target agent to collect traces on each tool’s optimization set and obtain its initial task success rate on the corresponding validation set. Then, D OCS CHISEL enters an iterative optimization loop for each tool in the current task domain. At each iteration, DOCS CHISEL performs memory-guided documentation op-timization for the target tool using the queries associated with that tool in the optimization set (Sec. III-C). Given the original tool documentation, the latest failed execution traces collected in the optimization set, the field optimization memories of the current domain, and the information field set, D OCS CHISEL uses an LLM-based exploration process to generate new tool documentation, including adding missing information fields, removing distracting or redundant fields, and refining ambiguous or incomplete fields. Each generated tool documentation is then evaluated through agent re-execution to update the feedback (Sec. III-D). D OCS CHISEL first executes the target agent with the generated tool documentation on the optimization set to obtain new failed traces, and updates the field optimization memories for the next round of tool documentation generation. Then, it evaluates the generated tool documentation on its validation set to update the candidate documentation set. Once the maximum number of optimization iterations for the target tool is reached, D OCS CHISEL selects the best documentation from its candidate set (Sec. III-E). It then repeats the optimization process for the next tool until all tools in the current domain have been processed. 
+
+B. Domain-Aware Execution Profiling 
+
+Our empirical study shows that different task domains rely on different information fields in tool documentation. Meanwhile, a user query may require the agent to invoke multiple tools within the same domain to complete the task, making the effectiveness of one tool’s documentation related to other semantically relevant tools. Therefore, we first organize tools and queries by task domain, so that subsequent documentation optimization can be performed within each domain and exploit the domain-specific information field optimization experience. For task domain c, let Tc denote the tools in this domain and let D0
+
+c = {d0
+
+t | t ∈ T c} denote the tool documentation set composed of original documentation d0
+
+t for each tool t. Let 
+
+Qc,t denote the domain-associated queries whose ground-truth executions involve tool t. A query involving multiple tools belongs to multiple tool-specific query sets. We partition each 
+
+Qc,t into an optimization set Qopt c,t and a validation set Qval c,t . We further denote the collections of tool-specific optimization and validation query sets in domain c as Qopt c = {Q opt c,t | t ∈ T c}
+
+and Qval c = {Q val c,t | t ∈ T c}, respectively. Then, we execute the target LLM agent on both sets using the original tool documentation D0
+
+c . For queries in Qopt c,t , we collect execution traces, which include the user query, the reasoning steps, invoked tools, tool inputs, tool outputs, and available error messages. Let F0
+
+c = {F 0
+
+c,t | t ∈ T c} and S0
+
+c = {S 0
+
+c,t | t ∈ T c}
+
+denote the failed and successful execution trace collections obtained using the original tool documentation D0
+
+c , where F0
+
+c,t 
+
+and S0
+
+c,t represent the failed and successful traces involving tool t, respectively. The failed traces are used as evidence for optimizing tool documentation, while the successful traces are retained for regression checking. For queries in validation sets, we record the initial task success rate TS 0
+
+c = {TS 0
+
+c,t | t ∈ T c}
+
+of the target LLM agent as a reference before documentation optimization. Finally, the output of this stage is a profiling result ⟨T c, D0
+
+c , Qopt c , Qval c , F0
+
+c , S0
+
+c , TS 0
+
+c ⟩ for each task domain. 
+
+C. Memory-Guided Documentation Optimization 
+
+Within each task domain c, D OCS CHISEL optimizes the orig-inal tool documentation d0
+
+t of each tool t ∈ T c iteratively. At iteration n, instead of directly asking an LLM to rewrite the current documentation [9, 58], D OCS CHISEL decomposes the optimization process into three LLM-assisted steps, i.e., failed trace diagnosis , field operation planning , and optimized docu-mentation generation , as illustrated in Fig. 3. The diagnosis step identifies why the LLM agent fails under the current Tool Documentation  
+
+> Failed Traces Memories
+
+Diagnosis  
+
+> Failed Trace
+> : send_email(recipient="kofi") : Invalid recipient email address : Input Parameter Type
+> Failed Trace
+> : object has no attribute 'items' : Invoke the tool with wrong args : Input Parameter Name
+> Failed Trace
+> : final_answer: "no action" : Tool call without execution : Usage Guidance
+> LLM
+> Tool Name :send_email
+> Input Parameter :recipient (str, Required): Qualified email address in the format name@domain.com. items (str,Required): ... ... ... ... ... ... ... ... ... ... ... ...
+> Usage Guidance :Extract all arguments from the task context and invoke the tool directly. Do not stop at final_answer to ask for confirmation when the required arguments are available. You should call the function using send_email(recipient, subject)
+> LLM
+
+Generation 
+
+> LLM
+
+Planning  
+
+> Add Input Parameter Type Reason : Clarify that recipient must be a qualified email address.
+> Remove Input Parameter Name Reason : Wrong parameter name in the documentation leads to failure.
+> Refine Usage Guidance Reason : The last step of function calling should be clarified explicitly.
+> Information Field Set
+
+Fig. 3: Memory-Guided Documentation Optimization #Task Prompt:       
+
+> Your task is to diagnose failed execution traces for tool documentation optimization. Given the current tool documentation: {Current Documentation} ,the failed trace: {Failed Trace} , identify why the agent fails and attribute it to possible information fields: {Information Field List} .Return a diagnosis record in the form:
+> {"Failure Evidence": " " , "Behavior Mismatch": " " ,"Related Fields": [] }
+
+#Memory Mechanisms:  
+
+> Below are recurring failure patterns in this domain: {Diagnosis Memory}
+> Use them to distinguish isolated failures from documentation-related issues.
+
+Failed Trace Diagnosis 
+
+Fig. 4: Prompt Template for Failed Trace Diagnosis documentation. The planning step maps the diagnosed issues to possible field-level operations. The generation step applies the planned operations to produce new tool documentation dnt .
+
+Failed Trace Diagnosis. At iteration n, D OCS CHISEL first diagnoses the failed execution traces Fn−1
+
+c,t collected from opti-mization set Qopt c,t under the latest documentation dn−1
+
+t . Since execution failures may be caused by factors beyond tool documentation, we prompt an LLM to inspect each failed trace together with the current documentation dn−1
+
+t , the ground truth, and the diagnosis memory Mdiag 
+
+c of the current task domain. The diagnosis memory stores domain-specific failure patterns observed in previous iterations, including frequently occurring agent errors and their potentially related information fields. By referring to such memory, the LLM can reuse diagnosis experience accumulated from previous iterations, rather than analyzing each failed trace in isolation. Fig. 4 shows the template of the diagnosis prompt for the LLM. Specifically, the LLM is required to summarize the failure evidence, identify the mismatch between agent behaviors and expected tool invocations, and infer the potentially responsible information fields from those summarized in Table II for failure cases. Formally, for each failed trace f ∈ F n−1
+
+c,t , we obtain a diagnosis record rf = ⟨ef , b f , Hf ⟩, where ef denotes the summarized failure evidence, bf denotes the agent behavior mismatch with respect to the ground truth, and Hf denotes the set of potentially related information fields. The diagnosis records of all failed traces form the set Rnt = {rf | f ∈ F n−1
+
+c,t },which is then passed to the field operation planning step. 
+
+Field Operation Planning. After obtaining the diagnosis set Rnt , D OCS CHISEL further plans how to revise the tool documentation at the information-field level. Given Rnt , the #Task Prompt:  
+
+> Your task is to plan operations for revising the tool documentation. Given the diagnosis records: {Diagnosis Records} , the original documentation:
+> {Original Documentation} , decide which fields should be added, removed, or refined. Return an operation plan in the form:
+> {"Operation": "Add/Remove/Refine", "Target Field": " ", "Reason": " "}
+
+#Memory Mechanisms:  
+
+> Below are historical operation experiences in this domain: {Planning Memory}
+> Use them to merge duplicated operations and avoid conflicting revisions.
+
+Field Operation Planning Fig. 5: Prompt Template for Field Operation Planning original documentation d0 
+
+> t
+
+, and the planning memory Mplan 
+
+> c
+
+of the current task domain, we prompt an LLM to map the diagnosed issues to concrete information field operations. Here, 
+
+d0 
+
+> t
+
+serves as the semantic anchor for planning operations, preventing the optimization process from drifting away from the original tool documentation semantics. The planning memory stores domain-specific operation experience observed in previous iterations, including which field operations are useful for addressing certain failure patterns. For example, missing invocation conditions can be mapped to adding invocation constraints, distracting usage examples or implementation snippets can be mapped to removing redundant fields, and confusion between similar tools can be mapped to refining functionality descriptions or usage guidance. By referring to such memory, D OCS CHISEL avoids planning field operations from each failed trace in isolation, and instead exploits historical optimization experience from related tools in the same domain. Fig. 5 shows the template of the planning prompt for the LLM. Specifically, the LLM is required to examine each diagnosis record in Rnt , determine whether the diagnosed issue requires adding, removing, or refining an information field, and provide the rationale for the operation. Formally, for each diagnosis record rf ∈ R nt , we obtain an information-field operation plan pf = {⟨ of , h f , g f ⟩ |
+
+hf ∈ H f }, where of ∈ { ADD , REMOVE , REFINE } denotes the planned operation, hf ∈ H f denotes the target information field, and gf denotes the reason for applying this operation. Since different failed traces may lead to duplicated or conflict-ing operations, we merge trace-level plans into a unified opera-tion plan Pnt by removing duplicated operations and resolving conflicts according to their supporting diagnosis records, the planning memory, and the original documentation. The resulting plan Pnt specifies which information fields should be added, removed, or refined in the next documentation generation step. 
+
+Optimized Documentation Generation. Given the unified operation plan Pnt , D OCS CHISEL generates new tool documen-tation for tool t, using the original documentation d0 
+
+> t
+
+as the generation anchor to preserve the original tool semantics and reduce the risk of information drift during repeated rewriting. To guide the generation process, D OCS CHISEL further in-corporates the generation memory Mgen  
+
+> c
+
+of the current task domain. The generation memory stores domain-specific editing experience observed in previous iterations, including field expressions that are effective for mitigating certain failure patterns, generation constraints, and edits that may introduce #Task Prompt:    
+
+> Your task is to generate optimized tool documentation. Given the original documentation: {Original Documentation} and the unified operation plan: {Operation Plan} , apply the planned field-level operations to produce new documentation. Preserve the original documentation as much as possible, and only add, remove, or refine fields specified by the operation plan. Return the result in the form:
+> {"Optimized Documentation": " "}
+
+#Memory Mechanisms:  
+
+> Below are effective editing experiences in this domain: {Generation Memory}
+> Use them to improve field expressions and avoid regression errors.
+
+Optimized Documentation Generation 
+
+Fig. 6: Prompt Template for Documentation Generation #Task Prompt:    
+
+> Your task is to update domain-level optimization memories. Given the new documentation: {New Documentation} , the operation plan:
+> {Operation Plan} , the validation result: {Validation Result} , and the regression traces: {Regression Traces} , summarize reusable experience from this iteration. Identify newly observed failure patterns, effective field operations, and editing rules that may help future tools in the same domain. Return the result in the form:
+> {"Diagnosis Memory": [], "Planning Memory": [], "Generation Memory": []}
+
+#Memory Mechanisms:  
+
+> Below are previous memories in this domain: {Previous Memories}
+> Revise them with the new evidence and avoid preserving suggestions that caused regression errors.
+
+Memory Update 
+
+Fig. 7: Prompt Template for Updating the Memory regression errors. Fig. 6 shows the template of the generation prompt for the LLM. Specifically, the LLM is required to apply the operations in Pnt to d0 
+
+> t
+
+by adding missing fields, removing distracting or redundant fields, and refining ambiguous or incomplete fields, while preserving unchanged information that is not targeted by the operation plan. 
+
+D. Candidate Evaluation and Feedback Update 
+
+After generating the candidate documentation dnt , we evalu-ate whether it improves the task success rate of the target LLM agent through agent re-execution, and update the optimiza-tion feedback for subsequent iterations. Since the optimized documentation may improve some failed queries while harm-ing previously successful ones, we consider both validation performance and regression risk during the evaluation. 
+
+Regression-Aware Evaluation. For the target tool t, we re-place its original documentation d0 
+
+> t
+
+with the new documentation 
+
+dnt while keeping the documentation of other tools unchanged. Then, we execute the LLM agent on Qval c,t and compute the task success TS nc,t . In addition, we check whether dnt introduces regression errors on previously successful optimization queries by re-executing the LLM agent on Qopt c,t to obtain the failed trace set Fnc,t and the successful trace set Snc,t . Based on these results, we obtain the regression set Gnc,t , which contains the failed traces of queries that were successfully completed under the original documentation d0 
+
+> t
+
+but failed under dnt .
+
+Candidate and Memory Update. We compare the newly generated documentation dnt with the original documentation 
+
+d0 
+
+> t
+
+using the validation task success rate TS 0 
+
+> c,t
+
+obtained during execution profiling. Only when TS nc,t ≥ TS 0
+
+> c,t
+
+, we add the new tool documentation dnt to the candidate documentation set Dtc.Meanwhile, the failed traces Fnc,t collected on Qopt c,t are used as the input for failed trace diagnosis in the next iteration. We further update the domain-level memory based on the evaluation results. Specifically, we prompt an LLM to analyze the new documentation dnt , the regression set Gnc,t and the validation result TS nc,t . Fig. 7 shows the prompt template for the LLM. Specifically, we require the LLM to summarize the newly observed failure patterns, effective field operations and editing experience during this optimization iteration. Then, we update the Mdiag  
+
+> c
+
+, Mplan  
+
+> c
+
+and Mgen  
+
+> c
+
+, respectively. In this way, the updated traces and memories provide feedback for the next iteration, forming a closed optimization loop. 
+
+E. Final Documentation Selection 
+
+When optimization for tool t reaches the maximum number of iterations, we select the candidate with the highest validation task success rate from Dtc, breaking ties by choosing the shortest documentation to reduce execution context cost. We then pro-ceed to the next tool until all tools in Tc are processed. IV. E VALUATION 
+
+We implement a prototype of D OCS CHISEL with 2,687 lines of Python code. To evaluate the effectiveness and efficiency of DOCS CHISEL , we design the following research questions.  
+
+> •
+
+RQ3 Effectiveness Evaluation. What is the effectiveness of DOCS CHISEL in improving task success rate of LLM agents?  
+
+> •
+
+RQ4 Efficiency Evaluation. What is the efficiency and optimization overhead of D OCS CHISEL ? 
+
+> •
+
+RQ5 Sensitivity Analysis. How do optimization models and iteration budgets affect the effectiveness of D OCS CHISEL ? 
+
+> •
+
+RQ6 Ablation Study. What is the contribution of our memory mechanism to the effectiveness of D OCS CHISEL ?
+
+A. Evaluation Setup 
+
+Dataset. We select two tool-use benchmarks, i.e., Work-Bench [48] and API-Bank [27]. In addition to the five task domains from WorkBench used in RQ2 , API-Bank provides tools from four additional domains, i.e., finance management, health management, information retrieval, and smart home management (SHM). Overall, our evaluation dataset covers 9 task domains, involving 74 tools and 2,072 user queries. We split the user queries into optimization, validation, and test sets with a ratio of 5:1:4. The optimization and validation sets are used during documentation optimization, while the test set is held out throughout the optimization process and used only for the final evaluation of the optimized tool documentation. To ensure a fair and representative evaluation, we perform a stratified split over task domains and tools, so that each subset preserves the overall distribution of tool-use scenarios as much as possible. After splitting, the optimization, validation, and test sets contain 1,036, 207, and 829 user queries, respectively. The detailed statistics of the evaluation dataset across task domains and tools are available at [1] due to space limitations. 
+
+Metrics. Beyond the TS metric used in our empirical study, we also use tool invocation correctness (TC) to measure whether the LLM agent invokes the correct tools. Specifically, given the test suite containing tool-use queries Q, for each query qi ∈ Q , we denote the ground-truth tool set as Tqi and the tool set predicted by the LLM agent as ˆTqi . A query is regarded as tool-correct only when the predicted tool set exactly matches the ground-truth set, i.e., Tqi = ˆTqi . We compute tool invocation correctness as TC = 1
+
+> |Q|
+
+P|Q|  
+
+> i=1
+
+I(Tqi = ˆTqi ), where 
+
+I(·) is the indicator function. Together, TC and TS capture the effectiveness of tool documentation on both tool invocation behavior and task completion performance of LLM agents. 
+
+Baseline. We compare D OCS CHISEL with two tool docu-mentation optimization approaches, i.e., EASY TOOL [58] and DRAFT [42]. E ASY TOOL uses an LLM and a predefined template to convert documentation into concise, structured tool-use instructions. DRAFT uses LLMs to iteratively refine tool documentation based on feedback obtained by generating tool inputs and executing the tools. We use their official artifacts and adapt only the input interfaces to our dataset. 
+
+RQ Setup. For RQ3 and RQ4 , we apply D OCS CHISEL 
+
+with Claude Haiku 4.5 as the optimization model to optimize the original tool documentation in our dataset. We set the maximum number of iterations to 5 by default to balance optimization effectiveness and LLM token overhead. For RQ3 ,we evaluate the effectiveness of D OCS CHISEL by comparing it with using the original tool documentation and using the tool documentation optimized by E ASY TOOL and DRAFT, respectively. To understand whether the improvement general-izes across different agent settings, we conduct comparisons from three perspectives introduced in RQ2 , i.e., task domains, LLM backbones, and agent paradigms, respectively. For RQ4 , we report the additional token cost introduced by the optimized documentation during agent execution, com-pared with the original documentation. We also measure the optimization overhead of D OCS CHISEL , including the time cost and token consumption required to generate optimized tool documentation, and compare them with the baselines. For RQ5 , we examine how different optimization mod-els and iteration budgets affect D OCS CHISEL in the data analysis domain. We vary the LLM used for documentation optimization, i.e., GPT-4o and GLM-5, and the maximum number of optimization iterations, while keeping the original tool documentation, query set, and target agent unchanged. The target agent is a GPT-4o-based ReAct agent. We report the average TC and TS on the test set using the optimized documentation generated under each setting. For RQ6 , we conduct an ablation study to evaluate the contribution of our memory mechanism. We construct a variant of D OCS CHISEL , denoted as D OCS CHISEL -NoMem, by disabling the memory mechanism while keeping the remaining optimization pipeline unchanged. We then compare the tool documentation in the data analysis domain optimized by D OC -
+
+> S
+
+CHISEL and D OCS CHISEL -NoMem, and report the average TC and TS of the GPT-4o-based ReAct agent, analyzing whether the memory mechanism helps D OCS CHISEL produce more effective tool documentation for the target LLM agent. 
+
+Environment. We conduct all the experiments on Ubuntu 20.04.4 LTS servers with 4 NVIDIA GeForce RTX 3090 GPUs, Intel(R) Xeon(R) Silver 4310 @ 2.10GHz and 128GB memory. OG ET DRT DC 0.71 0.78 0.85 0.93 1.00 TC OG ET DRT DC 0.00 0.18 0.35 0.53 0.71 TS (a) Data Analysis+GPT+ReAct OG ET DRT DC 0.29 0.47 0.65 0.82 1.00 TC OG ET DRT DC 0.00 0.16 0.33 0.49 0.65 TS (b) Email+GPT+ReAct OG ET DRT DC 0.40 0.54 0.68 0.82 0.96 TC OG ET DRT DC 0.20 0.33 0.46 0.58 0.71 TS (c) Calendar+GPT+ReAct OG ET DRT DC 0.58 0.68 0.79 0.90 1.00 TC OG ET DRT DC 0.00 0.16 0.33 0.49 0.65 TS (d) CRM+GPT+ReAct OG ET DRT DC 0.31 0.48 0.66 0.83 1.00 TC OG ET DRT DC 0.00 0.25 0.50 0.75 1.00 TS (e) Health+GPT+ReAct OG ET DRT DC 0.28 0.46 0.64 0.82 1.00 TC OG ET DRT DC 0.01 0.26 0.50 0.74 0.99 TS         
+
+> (f) Information+GPT+ReAct OG ET DRT DC 0.23 0.42 0.61 0.81 1.00 TC OG ET DRT DC 0.00 0.25 0.50 0.75 1.00 TS (g) SHM+GPT+ReAct OG ET DRT DC 0.64 0.73 0.82 0.91 1.00 TC OG ET DRT DC 0.00 0.18 0.35 0.53 0.71 TS (h) Data Analysis+GLM+ReAct OG ET DRT DC 0.75 0.81 0.88 0.94 1.00 TC OG ET DRT DC 0.09 0.24 0.40 0.55 0.70 TS (i) Data Analysis+Claude+ReAct OG ET DRT DC 0.75 0.81 0.88 0.94 1.00 TC OG ET DRT DC 0.05 0.21 0.37 0.54 0.70 TS (j) Data Analysis+GPT+Multi-Agent
+
+Fig. 8: Effectiveness Comparison across Task Domains, LLM Backbones, and Agent Paradigms 
+
+B. Effectiveness Evaluation (RQ3) 
+
+Overall Results. Fig. 8 compares DOCS CHISEL (DC) with the original documentation (OG), E ASY TOOL (ET), and DRAFT (DRT) across task domains, LLM backbones, and agent paradigms. We independently repeat the optimization process three times. For each optimized result, we conduct five independent evaluation runs on the test set to account for execu-tion randomness. Hence, each boxplot summarizes the results from 3 × 5 = 15 runs. Overall, D OCS CHISEL achieves the highest average TC and TS in all evaluated settings. Compared with the original documentation, D OCS CHISEL improves TC by 34.69% and TS by 95.89% on average. Compared with the two baseline approaches, it achieves an average TC improvement of 30.83% and TS improvement of 75.15%. Even against the strongest baseline in each setting, D OCS CHISEL improves TC and TS by 26.23% and 46.11% on average, respectively. With respect to task domains, Fig. 8a-8g show that D OC -
+
+SCHISEL consistently achieves the highest average TC and TS in the seven domains presented in the paper. The remaining two domains, i.e., project management and finance management, are reported on our website [1] due to space limitations. Across all nine evaluated domains, D OCS CHISEL improves TC and TS by 46.27% and 194.22% over the original documentation, respectively, and by 27.34% and 42.36% over the strongest documentation optimization baseline on average. The gains are particularly evident in domains such as email management, customer relationship management, health management, and smart home management, where the original and baseline doc-umentation often yields low task success rate despite moderate tool invocation correctness. With respect to LLM backbones, Fig. 8a, Fig. 8h, and Fig. 8i show that D OCS CHISEL remains best-performing for all three backbones. Compared with the strongest baseline, it improves TC by 3.45% and TS by 60.83%, on average, across GPT-4o, GLM-5, and Claude Haiku 4.5. With respect to agent paradigms, Fig. 8a and Fig. 8j compare ReAct and Multi-Agent under the same task domain and GPT-4o backbone. D OCS CHISEL achieves the highest TC and TS under both paradigms. Compared with the strongest baseline, it improves TC by 3.44% and 3.34%, and TS by 63.61% and 58.35% under ReAct and Multi-Agent, respectively. The results further show that DOCS CHISEL generally achieves higher lower-end performance and more compact dis-tributions across repeated runs. Compared with E ASY TOOL and DRAFT, D OCS CHISEL reduces the average interquartile range of TC by 41.56% and 52.93%, respectively, and that of TS by 36.71% and 44.07%. These results indicate that D OCS CHISEL 
+
+introduces stable improvements across different agent settings. 
+
+Breakdown Analysis. EASY TOOL improves some settings by transforming documentation into concise and structured instructions. However, its fixed template applies the same information fields across agent settings. It may remove fields useful to a particular agent or fail to introduce fields absent from the original documentation, resulting in limited improvements. DRAFT uses feedback obtained by generating tool inputs and executing tools to iteratively refine tool documentation. Although such feedback helps correct tool descriptions, it mainly reflects isolated tool executions rather than failures occurring during end-to-end agent task solving. Moreover, it does not explicitly adapt the composition of information fields. Consequently, documentation-related failures observed in complete agent traces may remain unresolved. In contrast, D OCS CHISEL diagnoses failed agent execu-tion traces and performs field-level addition, removal, and refinement according to the target agent setting, allowing for TABLE III: Results of Efficiency Evaluation 
+
+Approach Doc Length Token Cost Time Cost (min) 
+
+Original 152.58 – –EASY TOOL 82.68 237.81 0.23 DRAFT 189.56 4,784.39 2.26 DOCS CHISEL 189.23 4,480.81 12.65 
+
+TABLE IV: Results of Model Sensitivity 
+
+Metrics GPT-4o GLM-5 Claude Haiku 4.5 
+
+TC 47.50% 73.75% 93.75% TS 21.25% 35.63% 56.25% 
+
+better alignment of tool documentation with the information requirements of the target agent, explaining its consistent improvements in both TC and TS. Nevertheless, D OCS CHISEL 
+
+does not achieve perfect results. Some failures originate from factors beyond tool documentation, such as incorrect task decomposition, stochastic LLM reasoning, or incomplete user queries. Therefore, documentation optimization can substan-tially improve agent effectiveness, but cannot eliminate failures caused by other components of the agent execution process. 
+
+Summary. DOCS CHISEL consistently outperforms E ASY -TOOL and DRAFT across task domains, LLM backbones, and agent paradigms, improving tool invocation correctness by 30.83% and task success rate by 75.15%, on average. 
+
+C. Efficiency Evaluation (RQ4) 
+
+Table III reports the average documentation length and optimization overhead per tool. E ASY TOOL produces the shortest documentation because it primarily compresses the original content. In contrast, DRAFT and D OCS CHISEL gen-erate slightly longer documentation by incorporating additional information. The documentation produced by D OCS CHISEL 
+
+contains 189.23 tokens on average, which is 24.02% longer than the original documentation but comparable to DRAFT. Thus, DOCS CHISEL introduces only a limited additional context cost. For optimization overhead, D OCS CHISEL consumes 6.35% fewer tokens than DRAFT for each tool during optimization. However, it requires 12.65 minutes on average, longer than EASY TOOL and DRAFT, because D OCS CHISEL repeatedly diagnoses failed traces, generates candidate documentation, and evaluates candidates through agent re-execution. Overall, DOCS CHISEL trades additional offline optimization time for substantially improved effectiveness, while maintaining compa-rable documentation length and token consumption to DRAFT. 
+
+Summary. DOCS CHISEL incurs a higher optimization-time cost, requiring 12.65 minutes per tool on average, while consuming 6.35% fewer optimization tokens than DRAFT and producing documentation of comparable length. 
+
+D. Sensitivity Analysis (RQ5) 
+
+Model Sensitivity. Table IV reports the effectiveness of D OC -
+
+> S
+
+CHISEL using different optimization models while keeping the target agent and evaluation setting unchanged. Claude Haiku 4.5 achieves the best performance, improving TC and TS over GLM-5 by 27.12% and 57.87%, respectively, and over GPT-4o 1 3 5 7 90.40 0.60 0.80 1.00 
+
+> TS TC
+
+Fig. 9: Results of Iteration Sensitivity 0.00 0.18 0.35 0.53 0.71 TS      
+
+> DOCS CHISEL
+> DOCS CHISEL -NoMem
+> 012345Iteration 0.71 0.78 0.85 0.93 1.00 TC DOCS CHISEL
+> DOCS CHISEL -NoMem
+
+Fig. 10: Results of Ablation Study by 97.37% and 164.71%. GLM-5 also outperforms GPT-4o, with relative gains of 55.26% in TC and 67.67% in TS. These results indicate that the quality of optimized documentation is sensitive to the optimization model. Documentation optimiza-tion requires the model to diagnose failed traces, identify field-level deficiencies, and generate appropriate revisions. Models with stronger instruction-following and reasoning capabilities can produce more effective documentation. 
+
+Iteration Sensitivity. Fig. 9 shows that increasing the number of optimization iterations improves both TC and TS. The gains are most pronounced in the early rounds. Compared with one iteration, five iterations improve TS by 80.00% and TC by 14.50%. This indicates that iterative execution feed-back progressively helps D OCS CHISEL identify and address documentation deficiencies. After five iterations, however, the marginal gains become small, suggesting that the optimization process has largely converged. We therefore set the default iteration budget to five to avoid large optimization overhead. 
+
+Summary. Stronger optimization models generally yield better documentation quality, while iterative refinement sub-stantially improves optimization effectiveness. The budget of five iterations achieves a favorable trade-off. 
+
+E. Ablation Study (RQ6) 
+
+Fig. 10 compares D OCS CHISEL with D OCS CHISEL -NoMem over five optimization iterations. In the first two iterations, the two variants achieve similar performance, indicating that both can improve documentation using the feedback from the current iteration. However, their performance diverges as optimization proceeds. At the fifth iteration, D OCS CHISEL -NoMem reduces TC and TS by 13.64% and 76.47% compared with D OC -
+
+> S
+
+CHISEL , respectively. Moreover, the relative TS improvement between D OCS CHISEL and D OCS CHISEL -NoMem increases from 4.17% at Iteration-1 to 76.47% at Iteration-5, indicating that the benefit of memory becomes more pronounced as optimization experience accumulates. Without memory, both metrics largely plateau after the second iteration. In contrast, DOCS CHISEL continues to improve by reusing previously observed documentation deficiencies, effective field operations, and editing experience. Such experience guides subsequent diagnosis, field planning, and candidate generation, preventing the optimizer from repeatedly exploring ineffective revisions. 
+
+Summary. The memory mechanism is critical to iterative documentation optimization, improving the final TC and TS, on average, by 13.64% and 76.47%, respectively. V. T HREATS TO VALIDITY 
+
+First, the selection of agent paradigms, LLM backbones, and datasets may limit the generalizability of our findings. To mitigate this threat, we evaluate D OCS CHISEL using two agent paradigms with three LLM backbones across nine task domains. Second, our evaluation metrics may not capture all aspects of agent tool-use effectiveness. To reduce this threat, we report complementary metrics that evaluate both tool invocation correctness and final task success rate. Moreover, identifying information fields and constructing documentation variants involve manual inspection and correction, which may introduce subjective bias. To mitigate this threat, multiple authors inde-pendently conducted the analysis and resolved disagreements through discussion, achieving a Cohen’s kappa coefficient of 0.862, with strong inter-rater agreement. Finally, the inherent randomness of LLMs and the instability of agent execution pose additional threats to validity. To mitigate these threats, we keep the prompts and execution environments unchanged within each comparison, use the official replication artifacts of all baselines, and conduct three independent optimization runs, each followed by five evaluation runs. Thus, each evaluated setting is assessed over 3 × 5 = 15 
+
+runs. Across our evaluation, we apply the Mann-Whitney U test [31], and the improvements of D OCS CHISEL remain sta-tistically significant after Holm correction [16] ( padj < 0.05 ). VI. R ELATED WORK 
+
+A. LLM Agent Ecosystems 
+
+Recent advances in LLM agents and agent ecosystems have substantially improved the capability of LLMs to interact with external tools [3, 7, 15, 17, 25, 52]. Specifically, ReAct [56] introduces the reasoning-and-acting paradigm for iterative tool invocation, while Toolformer [44] demonstrates that LLMs can learn tool-use behaviors through self-supervised training. AutoGen [51] provides a unified framework for multi-agent orchestration and workflow automation. Subsequent works [27, 38, 40] further improve large-scale tool-use capabilities of LLM agents. Representative agent systems such as Claude Code [2], OpenAI Codex [36], and SWE-agent [54] have demonstrated the growing applicability of tool-use LLM agents in software engineering and other complex domains [28]. To evaluate the reliability and execution capability of tool-use LLM agents, recent studies [8, 21, 22, 23, 45, 48, 50, 53, 55, 57] propose diverse benchmarks that include tools with documentation. Although these studies significantly advance tool-use capa-bilities of LLM agents, they mainly focus on tool construction, retrieval, invocation, and evaluation strategies, while largely treating tool documentation as fixed input for tool grounding and execution. In contrast, our work systematically investigates the structure and effectiveness of tool documentation itself, and studies how adaptive tool documentation optimization affects downstream task success rate across different agent settings. 
+
+B. Tool Documentation Engineering 
+
+Software engineering research has long recognized the importance of API usability, interface specifications, and documentation quality in supporting correct software usage [5, 6, 30, 32, 39, 49]. These works focus on API documentation generation [33], API documentation optimization [46] and documentation smell detection [24] to improve documenta-tion readability, completeness, and consistency for human developers. With the rapid development of LLM agents, tool documentation has also attracted research attention. Patel et al. [9] automatically generate executable tool-use demonstra-tions to reduce the manual effort of writing tool documentation, while E ASY TOOL [58] compresses existing tool documentation into concise instructions using predefined templates to reduce context overhead. A few works [10, 26, 42] further leverage LLMs and feedback from tool execution to iteratively refine the tool documentation for better tool invocation correctness. These studies improve tool documentation quality and the tool-use capabilities of LLM agents to some extent. However, they mainly optimize tool documentation from an isolated, tool-level perspective, focusing on rewriting, correction, com-pression, or refinement within existing information fields. In contrast, D OCS CHISEL does not treat documentation of each tool as an independent optimization target. Instead, it considers the interactions among tools within the same task domain and transfers optimization experience derived from domain-level and agent-aware execution failures to improve individual tool documentation by adding, removing, or refining information fields. In this way, D OCS CHISEL aims not only to enhance the invocation correctness of each tool, but also to improve the overall task success of different LLM agents. VII. C ONCLUSION 
+
+We conduct an empirical study of tool documentation for LLM agents, revealing the varying effectiveness of different in-formation fields on task success rate across task domains, LLM backbones, and agent paradigms. Our findings demonstrate that fixed tool documentation cannot consistently support different agent settings. Thus, we propose D OCS CHISEL , an adaptive tool documentation optimization framework that automatically refines tool documentation based on the execution traces of LLM agents. Large-scale experiments have been conducted to demonstrate the effectiveness and efficiency of D OCS CHISEL .REFERENCES [1] Anonymous. (2026) Docschisel. Accessed on May 11, 2026. [Online]. Available: https://anonymous.4open.science/r/F42D-DocsChisel [2] Anthropic. (2025) Claude code. Accessed on May 13, 2026. [Online]. Available: https://www.anthropic.com/claude-code [3] ——. (2025) Writing effective tools for agents — with agents. Accessed on May 13, 2026. [Online]. Available: https://www.anthropic.com/engi neering/writing-tools-for-agents [4] ByteDance. (2024) Coze. Accessed on May 13, 2026. [Online]. Available: https://www.coze.com [5] C. R. B. de Souza and D. L. M. Bentolila, “Automatic evaluation of api usability using complexity metrics and visualizations,” in Proceedings of the 31st International Conference on Software Engineering , 2009, pp. 299–302. [6] U. Dekel and J. D. Herbsleb, “Improving api documentation usability with knowledge pushing,” in Proceedings of the IEEE 31st International Conference on Software Engineering , 2009, pp. 320–330. [7] Dify.AI. (2024) Dify. Accessed on May 13, 2026. [Online]. Available: https://dify.ai [8] Y. Du, F. Wei, and H. Zhang, “Anytool: Self-reflective, hierarchical agents for large-scale api calls,” in Proceedings of the 41st International Conference on Machine Learning , 2024, pp. 11 812–11 829. [9] W. Fang, Y. Zhang, K. Qian, J. Glass, and Y. Zhu, “Play2prompt: Zero-shot tool instruction optimization for llm agents via tool play,” in Proceedings of the Findings of the Association for Computational Linguistics , 2025, pp. 26 274–26 290. [10] S. Ghoshal, A. Mittal, J. Singh, M. Ballesteros, W. Sun, F. Tu, S. Singh, Y. Benajiba, F. Shah, S. Bharadwaj et al. , “Jtpro: A joint tool-prompt reflective optimization framework for language agents,” arXiv preprint arXiv:2604.19821 , 2026. [11] T. Glm, A. Zeng, B. Xu, B. Wang, C. Zhang, D. Yin, D. Zhang, D. Rojas, G. Feng, H. Zhao et al. , “Chatglm: A family of large language models from glm-130b to glm-4 all tools,” arXiv preprint arXiv:2406.12793 ,2024. [12] Google. (2023) Google gemini. Accessed on May 13, 2026. [Online]. Available: https://gemini.google.com/ [13] S. Gravitas. (2023) Autogpt: Build, deploy, and run ai agents. Accessed on May 13, 2026. [Online]. Available: https://github.com/significant-gra vitas/autogpt [14] R. Guo, K. Dong, X. Gao, and K. Das, “Learning to rewrite tool descrip-tions for reliable llm-agent tool use,” arXiv preprint arXiv:2602.20426 ,2026. [15] J. He, C. Treude, and D. Lo, “Llm-based multi-agent systems for software engineering: Literature review, vision, and the road ahead,” 
+
+ACM Transactions on Software Engineering and Methodology , vol. 34, no. 5, pp. 1–30, 2025. [16] S. Holm, “A simple sequentially rejective multiple test procedure,” 
+
+Scandinavian Journal of Statistics , vol. 6, no. 2, pp. 65–70, 1979. [17] S. Hong, M. Zhuge, J. Chen, X. Zheng, Y. Cheng, J. Wang, C. Zhang, S. Yau, Z. Lin, L. Zhou et al. , “Metagpt: Meta programming for a multi-agent collaborative framework,” in Proceedings of the International Conference on Learning Representations , vol. 2024, 2024, pp. 23 247– 23 275. [18] X. Hou, Y. Zhao, Y. Liu, Z. Yang, K. Wang, L. Li, X. Luo, D. Lo, J. Grundy, and H. Wang, “Large language models for software engi-neering: A systematic literature review,” ACM Transactions on Software Engineering and Methodology , vol. 33, no. 8, pp. 1–79, 2024. [19] C.-Y. Hsieh, S.-A. Chen, C.-L. Li, Y. Fujii, A. Ratner, C.-Y. Lee, R. Krishna, and T. Pfister, “Tool documentation enables zero-shot tool-usage with large language models,” arXiv preprint arXiv:2308.00675 ,2023. [20] H. Huang, O. Zheng, D. Wang, J. Yin, Z. Wang, S. Ding, H. Yin, C. Xu, R. Yang, Q. Zheng et al. , “Chatgpt for shaping the future of dentistry: the potential of multi-modal large language model,” International Journal of Oral Science , vol. 15, no. 1, p. 29, 2023. [21] K.-H. Huang, A. Prabhakar, S. Dhawan, Y. Mao, H. Wang, S. Savarese, C. Xiong, P. Laban, and C.-S. Wu, “Crmarena: Understanding the capacity of llm agents to perform professional crm tasks in realistic environments,” in Proceedings of the Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies , 2025, pp. 3830–3850. [22] Y. Huang, J. Shi, Y. Li, C. Fan, S. Wu, Q. Zhang, Y. Liu, P. Zhou, Y. Wan, N. Gong et al. , “Metatool benchmark for large language models: Deciding whether to use tools and which to use,” in Proceedings of the International Conference on Learning Representations , 2024, pp. 42 978–43 007. [23] C. E. Jimenez, J. Yang, A. Wettig, S. Yao, K. Pei, O. Press, and K. Narasimhan, “Swe-bench: Can language models resolve real-world github issues?” in Proceedings of the International Conference on Learning Representations , vol. 2024, 2024, pp. 54 107–54 157. [24] J. Y. Khan, M. Tawkat Islam Khondaker, G. Uddin, and A. Iqbal, “Automatic detection of five api documentation smells: Practitioners’ perspectives,” in Proceedings of the IEEE International Conference on Software Analysis, Evolution and Reengineering , 2021, pp. 318–329. [25] LangChain. (2024) Langchain: Build agents faster, your way. Accessed on May 13, 2026. [Online]. Available: https://langchain.com [26] H. Li, S. You, F. Di Palo, Y. Qian, and A. Jain, “Verification-guided context optimization for tool calling via hierarchical llms-as-editors,” 
+
+arXiv preprint arXiv:2512.13860 , 2025. [27] M. Li, Y. Zhao, B. Yu, F. Song, H. Li, H. Yu, Z. Li, F. Huang, and Y. Li, “Api-bank: A comprehensive benchmark for tool-augmented llms,” in Proceedings of the Conference on Empirical Methods in Natural Language Processing , 2023, pp. 3102–3116. [28] F. Lin, D. J. Kim, and T.-H. Chen, “Soen-101: Code generation by emulating software process models using large language model agents,” in 
+
+2025 IEEE/ACM 47th International Conference on Software Engineering (ICSE) , 2025, pp. 1527–1539. [29] M. M. Liu, D. Garcia, F. Parllaku, V. Upadhyay, S. F. A. Shah, and D. Roth, “Toolscope: Enhancing llm agent tool use through tool merging and context-aware filtering,” arXiv preprint arXiv:2510.20036 , 2025. [30] W. Maalej and M. P. Robillard, “Patterns of knowledge in api reference documentation,” IEEE Transactions on software Engineering , vol. 39, no. 9, pp. 1264–1282, 2013. [31] P. E. McKnight and J. Najab, “Mann-whitney u test,” The Corsini encyclopedia of psychology , pp. 1–1, 2010. [32] N. Nahar, S. Zhou, G. Lewis, and C. K¨ astner, “Collaboration challenges in building ml-enabled systems: Communication, documentation, engi-neering, and process,” in Proceedings of the 44th international conference on software engineering , 2022, pp. 413–425. [33] K. Nybom, A. Ashraf, and I. Porres, “A systematic mapping study on api documentation generation approaches,” in Proceedings of the 44th Euromicro Conference on Software Engineering and Advanced Applications , 2018, pp. 462–469. [34] OpenAI. (2023) Introducing chatgpt. Accessed on May 13, 2026. [Online]. Available: https://openai.com/blog/chatgpt [35] OpenAI. (2024) Gpt-4o. Accessed on May 13, 2026. [Online]. Available: https://openai.com/index/hello-gpt-4o/ [36] ——. (2025) Introducing codex. Accessed on May 13, 2026. [Online]. Available: https://openai.com/index/introducing-codex/ [37] OpenAPIHub. (2024) Openapihub. Accessed on May 13, 2026. [Online]. Available: https://www.openapihub.com [38] S. G. Patil, T. Zhang, X. Wang, and J. E. Gonzalez, “Gorilla: Large language model connected with massive apis,” Advances in Neural Information Processing Systems , vol. 37, pp. 126 544–126 565, 2024. [39] M. Piccioni, C. A. Furia, and B. Meyer, “An empirical study of api usability,” in Proceedings of the ACM / IEEE International Symposium on Empirical Software Engineering and Measurement , 2013, pp. 5–14. [40] Y. Qin, S. Liang, Y. Ye, K. Zhu, L. Yan, Y. Lu, Y. Lin, X. Cong, X. Tang, B. Qian et al. , “Toolllm: Facilitating large language models to master 16000+ real-world apis,” in Proceedings of the International Conference on Learning Representations , vol. 2024, 2024, pp. 9695–9717. [41] C. Qu, S. Dai, X. Wei, H. Cai, S. Wang, D. Yin, J. Xu, and J.-R. Wen, “Towards completeness-oriented tool retrieval for large language models,” in Proceedings of the 33rd ACM International Conference on Information and Knowledge Management , 2024, pp. 1930–1940. [42] ——, “From exploration to mastery: Enabling llms to master tools via self-driven interactions,” in Proceedings of the International Conference on Learning Representations , 2025, pp. 55 675–55 697. [43] RapidAPI. (2024) Rapidapi. Accessed on May 13, 2026. [Online]. Available: https://rapidapi.com [44] T. Schick, J. Dwivedi-Yu, R. Dess` ı, R. Raileanu, M. Lomeli, E. Hambro, L. Zettlemoyer, N. Cancedda, and T. Scialom, “Toolformer: Language models can teach themselves to use tools,” Advances in Neural Informa-tion Processing Systems , vol. 36, pp. 68 539–68 551, 2023. [45] H. Shen, Y. Li, D. Meng, D. Cai, S. Qi, L. Zhang, M. Xu, and Y. Ma, “Shortcutsbench: A large-scale real-world benchmark for api-based agents,” in Proceedings of the International Conference on Learning Representations , 2025, pp. 77 772–77 797. [46] L. Shi, H. Zhong, T. Xie, and M. Li, “An empirical study on evolution of api documentation,” in Proceedings of the International Conference on Fundamental Approaches To Software Engineering , 2011, pp. 416–431. [47] Z. Shi, S. Gao, L. Yan, Y. Feng, X. Chen, Z. Chen, D. Yin, S. Verberne, and Z. Ren, “Tool learning in the wild: Empowering language models as automatic tool agents,” in Proceedings of the ACM on Web Conference ,2025, pp. 2222–2237. [48] O. Styles, S. Miller, P. Cerda-Mardini, T. Guha, V. Sanchez, and B. Vidgen, “Workbench: a benchmark dataset for agents in a realistic workplace setting,” arXiv preprint arXiv:2405.00823 , 2024. [49] S. Subramanian, L. Inozemtseva, and R. Holmes, “Live api documenta-tion,” in Proceedings of the 36th international conference on software engineering , 2014, pp. 643–652. [50] Q. Tang, Z. Deng, H. Lin, X. Han, Q. Liang, B. Cao, and L. Sun, “Toolalpaca: Generalized tool learning for language models with 3000 simulated cases,” ArXiv , vol. abs/2306.05301, 2023. [51] Q. Wu, G. Bansal, J. Zhang, Y. Wu, B. Li, E. Zhu, L. Jiang, X. Zhang, S. Zhang, J. Liu et al. , “Autogen: Enabling next-gen llm applications via multi-agent conversations,” in Proceedings of the 1st Conference on Language Modeling , 2024. [52] C. S. Xia, Y. Deng, S. Dunn, and L. Zhang, “Demystifying llm-based software engineering agents,” Proceedings of the ACM on Software Engineering , vol. 2, no. FSE, pp. 801–824, 2025. [53] Q. Xu, F. Hong, B. Li, C. Hu, Z. Chen, and J. Zhang, “On the tool manipulation capability of open-source large language models,” ArXiv ,vol. abs/2305.16504, 2023. [54] J. Yang, C. E. Jimenez, A. Wettig, K. Lieret, S. Yao, K. Narasimhan, and O. Press, “Swe-agent: Agent-computer interfaces enable automated software engineering,” Advances in Neural Information Processing Systems , vol. 37, pp. 50 528–50 652, 2024. [55] S. Yao, N. Shinn, P. Razavi, and K. Narasimhan, “ τ -bench: A benchmark for tool-agent-user interaction in real-world domains,” arXiv preprint arXiv:2406.12045 , 2024. [56] S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao, “React: Synergizing reasoning and acting in language models,” arXiv preprint arXiv:2210.03629 , 2022. [57] P. Yu, W. Liu, Y. Yang, J. Li, Z. Zhang, X. Feng, and F. Zhang, “Benchmarking llm tool-use in the wild,” arXiv preprint arXiv:2604.06185 ,2026. [58] S. Yuan, K. Song, J. Chen, X. Tan, Y. Shen, K. Ren, D. Li, and D. Yang, “Easytool: Enhancing llm-based agents with concise tool instruction,” in Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , 2025, pp. 951–972. [59] A. Zeng, X. Lv, Z. Hou, Z. Du, Q. Zheng, B. Chen, D. Yin, C. Ge, C. Huang, C. Xie et al. , “Glm-5: from vibe coding to agentic engineering,” 
+
+arXiv preprint arXiv:2602.15763 , 2026. [60] L. Zhuang, Q. Zhang, H. Zhou, Y. Zhang, and X. Huang, “Losemb: Logic-guided semantic bridging for inductive tool retrieval,” in Proceedings of the ACM Web Conference , 2026, pp. 3835–3846.
