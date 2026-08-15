@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-14</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-15</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 24 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 23 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-14 21:54:05 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-15 20:50:44 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读10篇、速读14篇，共处理24篇论文，其中《Error-Aware Reverse Auction Mechanism for Large Language Model Routing》与《Latent On-Policy Self-Distillation》获满分推荐。最值得关注的方向是LLM路由的容错拍卖机制，以及隐式在线自蒸馏带来的训练效率提升；速读中MoE负载均衡与多智能体专家混合也有亮点。建议普通读者优先精读两篇满分论文，再按需跟进速读中的MoE分布式推理与任务导向多智能体工作。</p>
+<p>今日精读9篇、速读14篇，共扫描23篇论文，重点聚焦Agent自主进化与真实环境数据科学自动化。最值得关注的是《Rethinking Self-Evolving Agents》提出反思预设优化管线（10分），以及《DSAgentBench》测试Agent在真实计算机环境中端到端数据科学任务（9分）。建议普通读者优先了解多调用LLM工作流中的角色相关模型替换风险，以及Agent安全向网络问题的重构视角。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Error-Aware Reverse Auction Mechanism for Large Language Model Routing">Error-Aware Reverse Auction Mechanism for Large Language Model Routing</span></li><li><span class="dpr-home-dashboard-paper-title" title="Latent On-Policy Self-Distillation">Latent On-Policy Self-Distillation</span></li><li><span class="dpr-home-dashboard-paper-title" title="OpenLoopEvolve: A Verifiable Self-Evolution Framework for Loop Policies in Long-Horizon Complex Tasks">OpenLoopEvolve: A Verifiable Self-Evolution Framework for Loop Policies in Long-Horizon Complex Tasks</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Self-Evolving Agents: Do We Still Need Prescribed Optimization Pipelines?">Rethinking Self-Evolving Agents: Do We Still Need Prescribed Optimization Pipelines?</span></li><li><span class="dpr-home-dashboard-paper-title" title="DSAgentBench: Can Agents Automate End-to-End Data-Science Workflows in Real Computer Environments?">DSAgentBench: Can Agents Automate End-to-End Data-Science Workflows in Real Computer Environments?</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning from Online User Feedback for Shopping Agents">Learning from Online User Feedback for Shopping Agents</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>7</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Adaptive Supervised Anchoring for On-Policy Self-Distillation">Adaptive Supervised Anchoring for On-Policy Self-Distillation</span></li><li><span class="dpr-home-dashboard-paper-title" title="EasyBalance: Cross-Layer Load Balancing in Distributed MoE Inference">EasyBalance: Cross-Layer Load Balancing in Distributed MoE Inference</span></li><li><span class="dpr-home-dashboard-paper-title" title="MoRSE: Task-Oriented Multi-Agent System with Mixture of Role-Subtask Experts">MoRSE: Task-Oriented Multi-Agent System with Mixture of Role-Subtask Experts</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Beyond Tier Labels: Role- and Deployment-Dependent Model Substitution in Multi-Call LLM Workflows">Beyond Tier Labels: Role- and Deployment-Dependent Model Substitution in Multi-Call LLM Workflows</span></li><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Agent Security as a Networking Problem">Rethinking Agent Security as a Networking Problem</span></li><li><span class="dpr-home-dashboard-paper-title" title="ERSkill: Evolving for Skill-Guided Adaptive Memory Retrieval">ERSkill: Evolving for Skill-Guided Adaptive Memory Retrieval</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 </div>
 

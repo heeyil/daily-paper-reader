@@ -1,0 +1,528 @@
+Title: Scalable Long-Horizon Planning with Staggered Updates for Lifelong MAPF
+
+URL Source: https://arxiv.org/pdf/2608.06702v1
+
+Published Time: Mon, 10 Aug 2026 00:20:05 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# Scalable Long-Horizon Planning with Staggered Updates for Lifelong MAPF 
+
+Vaibhav Sanjay 1 and Jiaoyang Li 1
+
+Abstract — Lifelong Multi-Agent Path Finding (LMAPF) re-quires generating collision-free paths for large agent fleets under strict real-time constraints. Reactive frameworks such as PIBT and Enhanced PIBT (EPIBT) scale effortlessly to thousands of agents through rule-based, step-by-step coordination but suffer from severe temporal myopia, making them ineffective in sce-narios where long-horizon reasoning is essential. RHCR plans windowed paths over multi-step horizons but incurs substantial planning overheads that hinder scalability. TP tackles both challenges by planning only subsets of agents at each timestep, yet its applicability is restricted to highly structured maps. To achieve long-horizon planning at scale across general maps, we propose Path Updates over Staggered Horizons (PUSH), a LMAPF planner capable of coordinating thousands of agents in under a second while planning over multi-step horizons. PUSH combines the key advantages of PIBT, RHCR, and TP. Like TP, PUSH reduces computational complexity by planning only a subset of agents at each timestep using staggered planning windows. Unlike TP, however, PUSH plans RHCR-style windowed paths in general maps without relying on restrictive map assumptions. To maintain high throughput in congested environments, PUSH further integrates EPIBT-inspired priority inheritance, backtracking, and anytime improvements into its windowed planning. Empirical evaluations across two realistic MAPF scenarios requiring long-horizon reasoning show that PUSH scales to the same massive agent loads as EPIBT (e.g., 10k agents) while achieving significantly higher system throughput than all baselines. 
+
+I. Introduction Multi-Agent Path Finding (MAPF) is the problem of finding collision-free paths for a group of agents, navigat-ing them from their corresponding start locations to their goal locations. MAPF is applicable to several real-world problems, such as planning for robotic sortation centers and autonomous warehouses. To better represent the constant flow of tasks that autonomous warehouses typically expe-rience, researchers typically study a variant of the MAPF problem called Lifelong MAPF (LMAPF). In this variant, agents receive new goals upon reaching their current ones, necessitating a continuous planning cycle for agents. One of the earliest LMAPF algorithms is Token Passing (TP) [1], a long-horizon planner that achieves high scalability by planning paths for agents as they receive new goals in a prioritized planning manner. However, TP does not apply to all map structures in general, limiting its applicability in practice. Rolling Horizon Collision Resolution (RHCR) [2] removes this limitation by planning paths over a fixed, long-horizon window using standard MAPF algorithms and has become the most widely adopted long-horizon LMAPF  
+
+> 1Vaibhav Sanjay and Jiaoyang Li are with the Robotics Institute, Carnegie Mellon University.
+
+{vsanjay,jiaoyanl }@andrew.cmu.edu 
+
+planner. However, it suffers from limited scalability since it replans all agents simultaneously within each planning win-dow. More recently, Priority Inheritance with Backtracking (PIBT) [3] and its enhanced variant EPIBT [4] have emerged as highly scalable LMAPF planners for general maps. They replace long-horizon planning with reactive, rule-based coor-dination through recursive priority inheritance and backtrack-ing. Nevertheless, the price of this computational efficiency is severe temporal myopia. While (E)PIBT performs impressively under standard LMAPF benchmarks [5], many real-world applications re-quire long-horizon reasoning that these benchmarks fail to capture. For example, LMAPF assumes that agents can immediately move towards their next goals upon reaching their current ones. In practice, agents often remain stationary while executing tasks such as loading or unloading, creating temporary goal occupancies that induce severe queuing if not anticipated in advance. Furthermore, some industrial layouts feature long, narrow corridors [6], [7], requiring agents to anticipate downstream traffic prior to entry. We evaluate against these two representative benchmark test cases in our experiments and discuss additional real-world applications in Section VI. In this paper, we introduce Path Updates over Staggered Horizons (PUSH), an LMAPF algorithm that maintains the robust, long-horizon reasoning of frameworks like RHCR while matching the extreme scalability and congestion-handling capabilities of reactive planners like EPIBT. PUSH uniquely bridges the gap between subset-agent planners like TP, which scale by routing a subset of agents over full horizons, and windowed planners like RHCR, which plan windowed horizons over the entire fleet. Our framework maintains a global set of safe fallback paths, enabling selec-tive, windowed replanning for only a partial subset of agents across unaligned temporal windows. Furthermore, PUSH includes EPIBT-inspired recursive displacement. Agents cal-culate fleet-wide priorities before planning, allowing higher-priority agents to actively push lower-priority agents and trigger recursive replanning. This allows for highly scalable planning even in severely congested scenarios. Finally, we integrate a localized, anytime Large Neighborhood Search routine tailored to our staggered windowed structure to con-tinually drive plans toward optimality within strict real-time execution budgets. We compare the algorithms on two bench-marks that require long-horizon reasoning and demonstrate that our approach outperforms all baselines significantly in system throughput. arXiv:2608.06702v1 [cs.MA] 7 Aug 2026 II. Related Work We provide an introduction to three different LMAPF planning paradigms, along with an introduction to an exam-ple in each category. We then discuss anytime optimization techniques commonly used in online planning methods. 
+
+A. Subset Planning 
+
+One idea for scaling LMAPF is to avoid planning all agents at the same time. Instead, only agents that have completed their current paths are replanned. Existing algorithms in this category [1], [8], [9] rely on specialized map structures and/or goal assignment algorithms. PUSH, to our knowledge, is the first algorithm in this category that requires neither. We use TP [1] as a representative example to illustrate the key ideas behind this class of algorithms. 
+
+1) TP: Token Passing (TP) is an early LMAPF algorithm that replans only agents that just received new goals. Al-though replanning only this subset drastically reduces plan-ning complexity, TP treats all other agents as higher-priority agents, preventing newly replanned agents from colliding with any of them. This rigidness frequently leads to unsolv-able planning queries and permanent deadlocks whenever an already-planned path obstructs a critical bottleneck. Thus, TP’s solvability guarantees are fundamentally restricted to 
+
+well-formed maps, which ensure that every pair of goals is connected by a path that avoids all other goals. 
+
+B. Windowed Planning 
+
+Another prevalent idea for scaling LMAPF is windowed planning, which bounds the temporal complexity of the problem by optimizing agent paths over a fixed number of timesteps. Examples include WHCA* [10] and the more general framework RHCR [2], which we describe below. 
+
+1) RHCR: Rolling Horizon Collision Resolution (RHCR) divides the lifelong problem into fixed-length episodes. It is governed by two key hyperparameters: the planning horizon 
+
+W and the execution horizon K (where K ≤ W ). At the beginning of each episode, RHCR uses a windowed MAPF planner to generate W -step collision-free paths for the entire fleet. The agents then execute the first K steps before replanning. RHCR works with many MAPF planners on general maps, making it a popular framework with many follow-up works [11], [6]. Subsequent extensions to RHCR enhance reasoning in long corridors [12], employ learning-based agent prioritization [6], reuse experience from previous windowed horizons [13], or dynamically adjust graph edge weights to reduce congestion [11]. However, despite these refinements, RHCR remains fundamentally bottlenecked at scale because replanning the entire fleet simultaneously in-curs costly overheads in large fleets or dense traffic. 
+
+C. Reactive Planning 
+
+Reactive planning encompasses a wide variety of scal-able approaches that optimize agent movements over short temporal horizons, typically considering only the next step. Representative examples include rule-based, PIBT-style algo-rithms derived from Priority Inheritance with Backtracking [3], [4] and learning-based algorithms [14], [15]. Recently, hybrid algorithms merge these paradigms to deliver even stronger performance [16]. In this paper, we focus on PIBT-style algorithms, which serve as the foundational bedrock for state-of-the-art reactive planners. 
+
+1) PIBT: Priority Inheritance with Backtracking (PIBT) [3] utilizes a reactive, one-step decision rule. At each timestep, PIBT establishes a global priority ordering across the agent fleet. Agents then plan sequentially in descending order of priority, each selecting its best next action. If a higher-priority agent chooses a move that pushes a lower-priority agent, the displaced agent immediately plans its own evasive move, temporarily inheriting the higher priority. If an agent fails to find a valid action, PIBT backtracks along the dependency chain, forcing the preceding agent to select its next best action. Clearly, the priority ordering is crucial to its performance. Common priorities include longer elapsed time (sorting agents by elapsed timesteps since reaching the last goal) and closer goal (sorting agents by distance to the next goal) [17]. Subsequent papers improved the next-step selection procedure to better avoid congestion, improving the throughput of the system [18]. Other papers improved upon the algorithm itself, such as using regret learning to better improve tiebreaking action selections [19]. Papers such as LaCAM [20] utilize PIBT as a fast low-level successor generator to efficiently explore many joint-state agent con-figurations. 
+
+2) EPIBT: To bridge the gap between the strict one-step nature of PIBT and longer-horizon windowed methods, Enhanced PIBT (EPIBT) [4] extends PIBT with multi-action planning by enabling agents to reserve paths of up to W
+
+actions. However, due to its rule-based nature, EPIBT keeps 
+
+W small (i.e., 3-5) and restricts each planned path to push at most one lower-priority agent. It follows the same recursive priority inheritance and backtracking framework as PIBT to push conflicting agents out of the way. Despite their fast planning speed, reactive planners gener-ally lack the long-horizon foresight needed to handle certain real-world scenarios due to their limited planning horizons. 
+
+D. Anytime Optimization 
+
+Anytime optimization improves solution quality during the idle time between the completion of planning and the per-timestep runtime limit. It is particularly effective for online planning, allowing an initial feasible solution to be refined without delaying execution, and is therefore used by many LMAPF systems [4], [21], [22], [23]. 
+
+1) LNS: A common approach is Large Neighborhood Search (LNS). Given an existing MAPF solution, MAPF-LNS [24] repeatedly selects a subset of agent paths, removes them, and replans using Prioritized Planning (PP) while treating unselected paths as obstacles. In highly congested scenarios where PP often fail to find a feasible repair, EPIBT proposes a modified LNS tailored to its solution. It repeatedly selects a random agent, removes its W -step path, and assigns it the highest priority to override neighboring paths. If the resulting solution improves upon the current one, it is accepted. This iterative process runs until the timestep budget is exhausted. III. Problem Formulation LMAPF is defined on a graph, typically a grid map where adjacent cells are connected by edges. We want to navigate a set of N agents, A = {r1, ..., r N }, from their current positions to their assigned goals. Upon completing a task at its current goal, an agent is assigned a new goal by a given scheduler. Time is discretized into timesteps, and at each timestep an agent may either move to an adjacent vertex or wait in place. A collision occurs when two agents occupy the same vertex at the same timestep (vertex collision) or swap vertices in consecutive timesteps (edge collision). Our goal is to maximize throughput (the average number of goals reached per timestep) while avoiding collisions. 
+
+1) Task Completion Time: To simulate the effect of agents completing tasks at their goals (e.g., loading/unloading pack-ages), we introduce the Task Completion Time (TCT). If the TCT is T timesteps, an agent reaching its goal at timestep 
+
+t must remain there until timestep t + T before receiving a new goal from the scheduler. We further assume that TCT may be stochastic and is unknown in advance. When T = 0 ,this formulation reduces to standard LMAPF. IV. Method We introduce Path Updates over Staggered Horizons (PUSH), an LMAPF algorithm that combines key principles from TP, RHCR, and EPIBT to simultaneously achieve long-horizon planning, high scalability, and general map applicability. Conceptually, PUSH extends Token Passing (TP), which scales by replanning only agent subsets and maintaining a set of collision-free fallback paths Π. To ensure that a new path always exists, TP maintains a set of collision-free paths Π. Importantly, TP requires Π to be free of target collisions; that is, if agents reaching their goals wait there indefinitely, they will not collide with any other agents. TP replans an agent when it reaches its current goal. In the worst case, the agent can therefore wait at its current goal until all other agents reach their goals before moving to its next goal, guaranteed by the assumption of a well-formed map. PUSH eliminates this constraint by integrating RHCR’s rolling-horizon lookahead: rather than planning fully to the goal, agents replan W -step paths that remain collision-free against Π. A feasible path always exists because any agent can always default to its existing fallback path in Π.While this baseline (denoted as PUSH-lite in our experi-ments) yields an efficient planner, forcing replanning agents to treat all other agent’s paths as immutable hard constraints leads to excessive waiting. To resolve this, PUSH maintains persistent agent priorities as in PIBT and EPIBT and allows higher-priority agents to recursively displace lower-priority neighbors, drastically improving path quality while preserv-ing scalability and map generality. We now formally describe PUSH. 
+
+A. High-Level Planning 
+
+PUSH relies on three predefined parameters: W , K (K ≤
+
+W ), and M . As in RHCR, W and K denote the planning and execution horizons, respectively. Borrowing from EPIBT, 
+
+M bounds the maximum number of times an agent can be revisited during one recursive search, preventing excessive computation time. PUSH calls Algorithm 1 at the start of every timestep be-fore agents move. The input includes the set of agents ri ∈ A ,along with their current positions si, goals gi, and priorities 
+
+pi. PUSH also maintains a countdown array time2Replan ,indicating when each agent should be replanned, and a set of 
+
+W -step collision-free paths Π for all agents. Before timestep 0, time2Replan is set to evenly distributed values between 
+
+0 and K − 1 inclusive, which facilitates PUSH’s subset planning behavior. Π is initialized with W -step waiting-in-place operations for each agent. At the beginning of each timestep, PUSH takes Π from the previous timestep, removes the first action (which has already been executed) from every path, and appends a wait action (line 2). This immeiately gives us a set of W -step collision-free paths. However, these paths contain many wait actions and can likely be improved. Therefore, PUSH then identifies the subset Q ⊆ A of agents that require path updates. We first skip task executing agents (lines 6). Agents that have reached their goals and are assigned no-op paths (i.e., waiting at their goals for the entire horizon) begin executing their tasks (lines 7-8). For all other agents, PUSH decrements time2Replan [ri]
+
+(line 11), then checks if the agent has exhausted its execution window or its next action is a wait in place (line 12). If so, it is inserted into Q (line 12). Q is then sorted in order of priority, breaking ties by agent ID (line 13). Next, PUSH replans each agent in Q in order. It first constructs a protected set of agents H, consisting of higher-priority agents together with agents currently executing tasks (H0), which cannot be pushed during replanning (line 15). It then initializes the global visit counter visitCnt , which limits recursive replanning to at most M vists per agent (line 16). Finally, PUSH invokes PushPlan to compute a new W -step path through recursive priority-pushing (line 17). 
+
+B. Priority Inheritance Pushing 
+
+Algorithm 2 shows PushPlan, which aims to plan a new W -step path for agent ri. At a high level, PushPlan follows the priority inheritance and backtracking mechanism of EPIBT. It first plans a path for ri that collides with at most one lower-priority agent in A \ H (line 6). If such a collision occurs, the displaced agent rd inherits the protected set H of ri, adds ri to H, and is recursively replanned (line 11). The recursion continues until either a collision-free solution is found, in which case the search unwinds, and all agents in the dependency chain adopt their new paths and reset time2Replan to K (line 12), or no feasible paths exists, triggering backtracking (line 7). To support larger planning horizons, PUSH differs from EPIBT in three key aspects. The first difference, already introduced in Algorithm 1, is that PUSH replans only a Algorithm 1: PUSH 
+
+Input: Agents ri ∈ A with positions si, goals gi, and priorities pi, their time to replan time2Replan 
+
+and their paths Π from previous timestep 
+
+Output: Updated paths Π for the current timestep  
+
+> 1
+
+foreach path π ∈ Π do  
+
+> 2
+
+Remove π[0] from π and append a wait action;  
+
+> 3
+
+Q ← ∅ ; // Agents that need to be replanned  
+
+> 4
+
+H0 ← ∅ ; // Agents that are executing tasks  
+
+> 5
+
+foreach agent ri ∈ A do  
+
+> 6
+
+if ri is doing task then H0 ← H 0 ∪ { ri}; 
+
+> 7
+
+else if Π[ ri] is a no-op path and si = gi then  
+
+> 8
+
+ri starts its task;  
+
+> 9
+
+H0 ← H 0 ∪ { ri}; 
+
+> 10
+
+else  
+
+> 11
+
+time2Replan [ri] ← time2Replan [ri] − 1; 
+
+> 12
+
+if time2Replan [ri] = 0 or Π[ ri][0] = wait 
+
+then Q ← Q ∪ { ri}; 
+
+> 13
+
+Sort Q by priority, breaking ties by agent ID;  
+
+> 14
+
+foreach agent ri ∈ Q do  
+
+> 15
+
+H ← H 0 ∪ { rj ∈ A | pj is higher than pi}; 
+
+> 16
+
+visitCnt [ri] ← 0, ∀ri ∈ A ; 
+
+> 17
+
+PushPlan (ri, H, Π, visitCnt ); 
+
+> 18
+
+return Π;subset of agents at each timestep and executes each planned path for up to K steps instead of one. The second difference lies in the realization of PlanPath (line 6), which computes an optimal path for ri that satisfies the constraints in cons (explained later) and collides with at most one lower-priority agent. Unlike EPIBT, which pre-computes all W -step paths, PUSH runs a modified windowed space-time A*, making large planning horizons computation-ally tractable. Each search state records the displaced agent (if any), allowing repeated collisions with the same lower-priority agent while prohibiting collisions with multiple agents. The search also enforces the constraints in cons ,pruning states that contain a vertex/edge collision with agent 
+
+rd at timestep td for (d, t d) ∈ cons . The PlanPath procedure returns π, a valid W -step path if it exists, rd, an agent that this path collides with, and td, the timestep of the collision. Since multiple π might exist, PlanPath returns the path that minimizes h(π[W ], g i), where h is the shortest path distance function and gi is agent ri’s next goal (i.e. the path that takes 
+
+ri closest to its goal). The last difference occurs during backtracking. When no path is found for an agent (line 7), PushPlan restores its old path in Π and returns false, forcing the preceding agent to replan. EPIBT would continue by enumerating another candidate path for the preceding agent. For large W ,however, exhaustive path enumeration becomes prohibitively expensive. Instead, PUSH records the failed collision as a constraint (rd, t d) (line 14), requiring future A* searches to avoid the vertex or edge collision with agent d at timestep td.
+
+Algorithm 2: PushPlan in PUSH 
+
+Input: Agent ri, set of higher-priority agents H,paths for all agents Π, and visit counts 
+
+visitCnt 
+
+Output: true if a collision-free path for ri was found, false otherwise  
+
+> 1
+
+if visitCnt [ri] ≥ M then return false;  
+
+> 2
+
+visitCnt [ri] ← visitCnt [ri] + 1 ; 
+
+> 3
+
+cons ← ∅ ; // Constraints  
+
+> 4
+
+πold ← Π[ ri]; 
+
+> 5
+
+Loop  
+
+> 6
+
+(π, r d, t d) ← PlanPath (ri, cons , H, Π) ; 
+
+> 7
+
+if π = ∅ then  
+
+> 8
+
+Π[ ri] ← πold ; 
+
+> 9
+
+return false;  
+
+> 10
+
+Π[ ri] ← π; 
+
+> 11
+
+if rd does not exist or PushPlan (rd, H ∪ { ri}, Π, visitCnt ) then  
+
+> 12
+
+time2Replan [ri] ← K; 
+
+> 13
+
+return true;  
+
+> 14
+
+cons ← cons ∪ { (rd, t d)};This prevents revisiting the same failure on subsequent loops and provides an effective way to explore alternative paths. 
+
+C. Theoretical Analysis 
+
+Like TP and EPIBT, PUSH guarantees to return collision-free paths for all agents at every timestep in finite time. This is because PushPlan on Algorithm 1 line 17 always returns true, as it can at least find a path that is identical to ri’s old path in Π. Moreover, PushPlan always terminates in finite time because (1) the recursion depth of PushPlan is bounded by the number of agents, since each agent is added to the protected set H whenever it pushes another agent, preventing cyclic recursion; and (2) the number of iterations of the loop (line 5) is bounded by the number of possible collisions an agent can encounter within W timesteps. The following theorem formalizes this result; its proof is provided in the appendix, along with a time complexity analysis. 
+
+Theorem 1: At every timestep, PUSH guarantees to return 
+
+Π in finite time, and Π is guaranteed to be collision-free. Furthermore, we show that PUSH preserves the same deadlock-freedom guarantee as EPIBT: every agent is guar-anteed to reach its goal within a finite number of timesteps if the longer elapsed time is used as the priority ordering, the graph is biconnected, and TCT is 0 (i.e., agents do not perform tasks upon reaching their goals). The following theorem formalizes this result; its proof and a discussion of why the guarantee may not hold for either PUSH or EPIBT when TCT is non-zero are provided in the appendix. 
+
+Theorem 2: If the longer elapsed time is used as the priority ordering, the graph is biconnected, and TCT is 0, then PUSH is deadlock-free: every agent reaches its goal within a finite number of timesteps. Warehouse-Large (500x140) Warehouse-Small (161x63) Symbotic (115x32) Delivery (21x27) Sortation (500x140) Random (32x32) Fig. 1. A visualization of the maps used in the experiments. For the Symbotic and Delivery maps, agent goal locations must swap between green and blue tiles. For all other maps, agent start and goal locations are randomly distributed across the free spaces. 
+
+D. Anytime Optimization 
+
+PUSH takes advantage of EPIBT-style LNS to optimize its solutions during alloted time after Algorithm 1 completes and before the next planning cycle must start. Similarly to EPIBT, PUSH selects a random agent ri that is not doing tasks (i.e., not in H0) and call PushPlan on this agent. Given the old set of paths Πold and the updated paths Π, we compare them to see if the replanning improved the solution quality. To do so, we calculate PNi=1 h(ei, g i), where ei is the last position in the path of agent ri. The set with the lesser sum is the one with agents closer to their goals on average, and is thus the set of paths we should accept. We repeat this process until the time limit is reached. V. Experimental Results In this section, we empirically evaluate PUSH against sev-eral baselines. Our experiments are performed on a machine with an AMD Threadripper 3990X 64-core processor with 192 GB of RAM. We base our implementation on the official repository for EPIBT, made in C++. 
+
+A. Experiment Setup 1) Testing Scenarios: We evaluate PUSH across two long-horizon scenarios: (1) TCT Maps (random-32-32-20, sortation, warehouse-large, warehouse-small) test the algorithms with large TCTs. These maps can be found in the MAPF benchmark [5] or the League of Robot Runners competition [25]. The goal positions are evenly sampled from the free space in the map. (2) Complex Maps (symbotic, 1
+
+delivery) feature long corridors and dead-ends with zero TCTs. The Symbotic map [6] contains many vertical parallel and a long horizontal deck. The delivery map [7] features many short tree-like pathways with goals deep inside. The goals for each agent are sampled alternately between green and blue tiles. Figure 1 shows these maps. 
+
+2) Baselines: We evaluate PUSH against representative baselines from across the main LMAPF paradigms. We ex-clude subset-planning frameworks (e.g., Token Passing) due to their strict topological map requirements. From windowed planning, we select RHCR with a PBS solver (RHCR-PBS), the current state of the art. From reactive planning, we select the state-of-the-art training-free baselines PIBT and EPIBT with LNS (EPIBT-LNS). Additionally, we include an ablation model, PUSH-lite, which omits recursive priority pushing and instead assigns newly replanned agents the lowest prior-ity. To evaluate the impact of anytime optimization, we test two variants of our method: PUSH and PUSH-LNS. 
+
+3) Hyperparameters: The 3 important hyperparameters 
+
+W , K, and M are set based on the algorithm. PUSH, PUSH-LNS, PUSH-lite, and RHCR all use W = 10 and K = 5 
+
+for fair comparison. EPIBT uses W = 3 and K = 1 (best reported parameters in the original paper), while PIBT uses 
+
+W = 1 and K = 1 as it does not support multi-step planning. PUSH, PUSH-LNS, and EPIBT set M = 10 . Furthermore, the method of priority ordering is important to consider for both PUSH variants as well as PIBT and EPIBT. For the TCT maps, we utilize standard “close goal” priorities, where agents closer to their goals receive higher priorities. For the complex maps, we switch to “far goal” priorities where agents farther to their goals receive higher priorities. This intuitively lets agents who just completed a task deep within a dead end escape without being forced inside by agents taking space at the sole exit and empirically performs better. 
+
+4) Evaluation Criteria: We run each experiment for 1,000 timesteps with a 1-second per-timestep planning budget and report throughput (goals reached per timestep) averaged over 5 randomized trials, together with its standard deviation (shown as shaded regions in the figures). We also report average decision time per timestep. To enforce the planning budget, if any algorithm besides RHCR times out at a given timestep, the algorithm terminates, and unplanned agents fall back on their paths from the previous timestep, which are guaranteed to be collision-free. Since RHCR replans every K
+
+timesteps, it receives K seconds of planning time per rolling horizon for fair comparison. If it times out, we default to PIBT for K steps before returning back to RHCR. 
+
+B. Results on TCT Maps 
+
+Figure 2 compares the performance of PUSH and baselines in the TCT maps, where agents remain stationary at goal locations for T = 20 timesteps upon arrival. Across all eval-uated maps and fleet sizes, PUSH and PUSH-LNS achieve                                                                     
+
+> 1It is a representative warehouse map used by Symbotic. 200 400 600 800 0246810 Throughput
+> random-32-32-20
+> 2000 4000 6000 8000 10000 0246810 sortation
+> 2000 4000 6000 8000 10000 0246810 warehouse-large
+> 200 400 600 800 1000 0246810 warehouse-small
+> 200 400 600 800 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Decision Time (ms) 2000 4000 6000 8000 10000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 2000 4000 6000 8000 10000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 200 400 600 800 1000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> PUSH-LNS PUSH PUSH-lite EPIBT-LNS RHCR PIBT 200 400 600 800 012345Throughput
+> random-32-32-20
+> 2000 4000 6000 8000 10000 010 20 30 40 sortation
+> 2000 4000 6000 8000 10000 0510 15 20 25 warehouse
+> 200 400 600 800 1000 01234567warehouse2
+> 200 400 600 800 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Decision Time (ms)
+> 2000 4000 6000 8000 10000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 2000 4000 6000 8000 10000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 200 400 600 800 1000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> PUSH-LNS PUSH PUSH-lite EPIBT-LNS(3) RHCR-PBS PIBT
+
+Fig. 2. Comparison of PUSH with baselines on TCT maps assuming a task completion time of 20 timesteps. 20 40 60 0246810 Throughput                       
+
+> delivery
+> 200 400 600 800 0246810 symbotic
+> 20 40 60 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Decision Time (ms) 200 400 600 800 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> PUSH-LNS PUSH PUSH-lite EPIBT-LNS RHCR PIBT 20 40 60 01Throughput
+> delivery
+> 200 400 600 800 012345symbotic
+> 20 40 60 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Decision Time (ms)
+> 200 400 600 800 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> PUSH-LNS PUSH PUSH-lite EPIBT-LNS(3) RHCR-PBS PIBT
+
+Fig. 3. Comparison of PUSH with baselines on complex maps. 
+
+the strongest throughput. The results highlight distinct failure modes: while RHCR provides competitive throughput at low agent densities, the planner rapidly exhausts its planning budget as congestion increases, forcing search truncation and a fallback to myopic PIBT execution that degrades through-put. Purely reactive planners such as PIBT and EPIBT-LNS maintain smooth throughput scaling in layouts with abundant short detours like sortation, but struggle in narrow corri-dors (warehouse-small, warehouse-large) and dense ob-stacles (random-32-32-20). Furthermore, while the PUSH-lite ablation matches PUSH at low agent counts in large maps, its performance suffers a catastrophic collapse as fleet size scales beyond 3,000 agents in warehouse-large and 6,000 agents in sortation. In contrast, PUSH and PUSH-LNS achieve impressive maximum throughputs, delivering a 25% maximum throughput improvement in warehouse-large and a 300% maximum throughput improvement in random-32-32-20 over EPIBT-LNS. 
+
+C. Results on Complex Maps 
+
+To isolate the structural impact of maps on algorithmic performance, Figure 3 evaluates on complex maps with instantaneous task completion ( T = 0 ). PUSH-LNS achieves the highest throughput, at around 1.0 in delivery and reaching 3.8 in symbotic, while maintaining tight standard deviations. The experimental results reveal distinct failure modes among the baselines under topological constraints: EPIBT-LNS struggles with high agent densities within deep corridor networks, and its performance is highly sensitive to start-goal configurations, manifesting as high throughput variance (reflected in the wide shaded standard deviations in delivery). As fleet size increases, RHCR is unable to match PUSH-LNS in delivery, and in symbotic it frequently exhausts its 5-second per-horizon budget. Finally, the perfor-mance failure of PUSH-lite across both maps illustrates the role of recursive priority displacement in non-well-formed maps. 
+
+D. TCT Ablation 
+
+Figure 4 evaluates the performance sensitivity of PUSH-LNS and EPIBT-LNS to varying Task Completion Times (T ∈ {0, 10 , 20 }), omitting decision time plots as both algorithms fully utilize the 1-second per-timestep planning budget. The severe vulnerability of myopic planners to non-zero TCTs is particularly apparent in the dense random-32-32-20 map: while EPIBT-LNS achieves high throughput under standard LMAPF ( T = 0 ), its performance degrades when T = 10 or 20 . In contrast, PUSH-LNS demon-strates exceptional performance, retaining high throughput outperforming EPIBT-LNS across all non-zero TCTs. While the topological flexibility and abundant alternative pathways 200 400 600 800 0246810 12                 
+
+> Throughput
+> random-32-32-20
+> 2000 4000 6000 8000 10000 010 20 30 40 50 sortation
+> 2000 4000 6000 8000 10000 0510 15 20 25 30 35 warehouse-large
+> 200 400 600 800 1000 0246810 warehouse-small
+> PUSH-LNS (T=0) PUSH-LNS (T=20) EPIBT-LNS (T=10) EPIBT-LNS (T=20) PUSH-LNS (T=10) EPIBT-LNS (T=0)
+
+Fig. 4. Comparison of PUSH-LNS with EPIBT-LNS with various TCTs. Brighter colors indicate longer TCTs. 1 3 5 7 9 11 13 15           
+
+> Window Size (W)
+> 01234
+> Throughput
+> symbotic
+> 1357911 13 15
+> Window Size (W)
+> 012345warehouse-small
+> PUSH-LNS EPIBT-LNS RHCR
+
+Fig. 5. Comparison of PUSH with baselines when varying planning window sizes. We used 300 agents and a TCT of 0 timesteps in symbotic. We used 500 agents and a TCT of 20 timesteps in warehouse-small. 
+
+of the sortation map partially cushion EPIBT-LNS from degradation, the deep, narrow corridors of the warehouse environments severely penalize reactive planners. 
+
+E. Window-Size Ablation 
+
+Figure 5 illustrates the effect of planning window size on PUSH-LNS, EPIBT-LNS, and RHCR. For the sym-botic map, we used 300 agents and a TCT of 0. For the warehouse-small map, we used 500 agents and a TCT of 20. An interesting occurrence is that PUSH-LNS and EPIBT-LNS report very similar throughputs with the same window sizes of 1, 3, and 5. This result is expected because both planners rely on the same recursive backtracking mechanism for planning agent paths. However, EPIBT-LNS falls off dramatically at W = 7 , due to the exponential explosion in number of possible operations at high W . In contrast, PUSH-LNS faces no such restriction, giving it access to long horizon planning. RHCR cannot keep up with PUSH-LNS or EPIBT-LNS at this scale, and beyond W = 8 in warehouse-small and W = 3 in symbotic, it completely defaults to PIBT planning. VI. Conclusion and Future Directions We introduce PUSH, an LMAPF framework that matches the scale of reactive planners like EPIBT while maintaining the benefits of long-horizon reasoning. PUSH uses subset planning and windowed planning to generate long-horizon plans for the planning queue, while utilizing an EPIBT-style recursive backtracking structure to handle planning in highly congested scenarios. This makes PUSH the first LMAPF algorithm to utilize subset planning while supporting general graph structures and to be able to coordinate up to 10,000 agents with long-horizon planning. 
+
+1) Future Direction 1: Long-Horizon Applications: In this work, we demonstrate PUSH’s strong empirical performance in two representative scenarios. In practice, many other MAPF applications remain challenging due to the need for simultaneous long-horizon reasoning and large-fleet coordi-nation. We hope our PUSH framework opens a compelling pathway toward solving these challenges. For example, real-world robots are subject to kinodynamic constraints, such as robot velocity/acceleration limits. Successful planners in this setting must anticipate momentum and braking distances during dense multi-agent interactions. Existing approaches rely on windowed planning to capture these long-horizon dependencies [26] but scale to only a few hundred agents. Extending PUSH’s low-level A* planner to incorporate kin-odynamic state spaces could potentially scale these solutions to support thousands of agents. Similarly, MAPF under strict deadlines or delivery windows remains bottlenecked by joint windowed planning overheads [27], [28]. Integrating task ur-gency directly into PUSH’s dynamic priority structure would give higher priority deliveries precedence during recursive planning, paving the way for real-time deployment at scale. 
+
+2) Future Direction 2: Algorithmic Enhancements: While kept simple to establish a new LMAPF paradigm, PUSH offers several promising avenues for future enhancement. First, the current planning horizon W is fixed. A natural extension is to dynamically vary a Wi per agent based on the local agent density. Second, PUSH inherits EPIBT’s restriction that an agent may push at most one lower-priority agent. Recent work [17] extends EPIBT to support pushing multiple agents, and this capability could be incorporated into PUSH. Third, agents in the planning queue Q are replanned sequentially. An alternative is to dynamically merge some agents into a meta-agent and replan them jointly using more optimal MAPF algorithms, which would combine the joint-optimization strengths of RHCR with the extreme scalability of PUSH. Finally, recent advances for PIBT, such as learning-based improvements [14], [16] and congestion-aware guidance [11], [18], could be incorporated into PUSH to further boost computational speed and coordination effec-tiveness. References 
+
+[1] H. Ma, J. Li, T. S. Kumar, and S. Koenig, “Lifelong multi-agent path finding for online pickup and delivery tasks,” in Conference on Autonomous Agents and MultiAgent Systems , p. 837–845, 2017. [2] J. Li, A. Tinka, S. Kiesel, J. W. Durham, T. K. S. Kumar, and S. Koenig, “Lifelong multi-agent path finding in large-scale warehouses,” in AAAI Conference on Artificial Intelligence (AAAI) ,pp. 11272–11281, 2021. [3] K. Okumura, M. Machida, X. D´ efago, and Y. Tamura, “Priority inheritance with backtracking for iterative multi-agent path finding,” 
+
+Artificial Intelligence , p. 103752, 2022. [4] E. Yukhnevich and A. Andreychuk, “Enhancing pibt via multi-action operations,” in AAAI Conference on Artificial Intelligence , vol. 40, pp. 29865–29873, 2026. [5] R. Stern, N. R. Sturtevant, A. Felner, S. Koenig, H. Ma, T. T. Walker, J. Li, D. Atzmon, L. Cohen, T. K. S. Kumar, E. Boyarski, and R. Bartak, “Multi-agent pathfinding: Definitions, variants, and benchmarks,” Symposium on Combinatorial Search (SoCS) , pp. 151– 158, 2019. [6] H. Zheng, Y. Ma, B. Araki, J. Chen, and C. Wu, “Learning-guided prioritized planning for lifelong multi-agent path finding in warehouse automation,” Journal of Artificial Intelligence Research , vol. 85, Mar. 2026. [7] Y. Fujitani, T. Yamauchi, Y. Miyashita, and T. Sugawara, “Deadlock-free method for multi-agent pickup and delivery problem using priority inheritance with temporary priority,” Procedia Computer Science ,vol. 207, pp. 1552–1561, 2022. [8] M. Liu, H. Ma, J. Li, and S. Koenig, “Task and path planning for multi-agent pickup and delivery,” in International Conference on Autonomous Agents and MultiAgent Systems , p. 1152–1160, 2019. [9] T. Yamauchi, Y. Miyashita, and T. Sugawara, “Standby-based deadlock avoidance method for multi-agent pickup and delivery tasks,” in Inter-national Conference on Autonomous Agents and Multiagent Systems ,p. 1427–1435, 2022. [10] D. Silver, “Cooperative pathfinding,” AAAI Conference on Artificial Intelligence and Interactive Digital Entertainment , vol. 1, p. 117–122, Jun. 2005. [11] Y. Zhang, H. Jiang, V. Bhatt, S. Nikolaidis, and J. Li, “Guidance graph optimization for lifelong multi-agent path finding,” in International Joint Conference on Artificial Intelligence (IJCAI) , pp. 311–320, 2024. [12] S. Song, K.-I. Na, and W. Yu, “Anytime lifelong multi-agent pathfind-ing in topological maps,” IEEE Access , vol. 11, pp. 20365–20380, 2023. [13] N. Madar, K. Solovey, and O. Salzman, “Leveraging experience in lifelong multi-agent pathfinding,” in International Symposium on Combinatorial Search (SoCS) , vol. 15, pp. 118–126, AAAI Press, 2022. [14] Y. Wang, B. Xiang, S. Huang, and G. Sartoretti, “Scalable commu-nication for reinforcement- and imitation-learning-based multi-agent pathfinding,” IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pp. 9301–9308, 2023. [15] M. Damani, Z. Luo, E. Wenzel, and G. Sartoretti, “Pathfinding via reinforcement and imitation multi-agent learning - lifelong,” IEEE Robotics and Automation Letters , vol. 6, pp. 2666–2673, 2020. [16] H. Jiang, Y. Wang, R. Veerapaneni, T. Duhan, G. Sartoretti, and J. Li, “Deploying ten thousand robots: Scalable imitation learning for lifelong multi-agent path finding,” in IEEE International Conference on Robotics and Automation (ICRA) , pp. 1–7, 2025. [17] Z. Jiang, Y. Zhang, R. Veerapaneni, and J. Li, “Planning over mapf agent dependencies via multi-dependency pibt,” in IEEE/RSJ Inter-national Conference on Intelligent Robots and Systems (IROS) , p. (in print), 2026. [18] Z. Chen, D. Harabor, J. Li, and P. J. Stuckey, “Traffic flow optimisation for lifelong multi-agent path finding,” in AAAI Conference on Artificial Intelligence (AAAI) , pp. 20674–20682, 2024. [19] K. Okumura and H. Nagai, “Lightweight and effective preference con-struction in pibt for large-scale multi-agent pathfinding,” International Symposium on Combinatorial Search , vol. 18, pp. 110–117, 07 2025. [20] K. Okumura, “Search-based algorithm for quick multi-agent pathfind-ing,” in AAAI Conference on Artificial Intelligence , 2023. [21] Y. Zhang, Z. Chen, D. Harabor, P. L. Bodic, and P. J. Stuckey, “Planning and execution in multi-agent path finding: Models and algorithms,” International Conference on Automated Planning and Scheduling , vol. 34, p. 707–715, May 2024. [22] H. Jiang, Y. Zhang, R. Veerapaneni, and J. Li, “Scaling lifelong multi-agent path finding to more realistic settings: Research challenges and opportunities,” in Symposium on Combinatorial Search (SoCS) ,pp. 234–242, 2024. [23] J. Li, Z. Chen, Y. Zheng, S.-H. Chan, D. Harabor, P. J. Stuckey, H. Ma, and S. Koenig, “Scalable rail planning and replanning: Winning the 2020 flatland challenge,” International Conference on Automated Planning and Scheduling , vol. 31, p. 477–485, May 2021. [24] J. Li, Z. Chen, D. Harabor, and S. Koenig, “Anytime multi-agent path finding via large neighborhood search,” in International Joint Conference on Artificial Intelligence (IJCAI) , pp. 4127–4135, 2021. [25] S.-H. Chan, Z. Chen, T. Guo, H. Zhang, Y. Zhang, D. Harabor, S. Koenig, C. Wu, and J. Yu, “The league of robot runners competition: Goals, designs, and implementation,” in International Conference on Automated Planning and Scheduling , 2024. [26] J. Yan and J. Li, “Multi-agent motion planning for differential drive robots through stationary state search,” in AAAI Conference on Artifi-cial Intelligence (AAAI) , pp. 23360–23368, 2025. [27] H. Ma, G. Wagner, A. Felner, J. Li, T. K. S. Kumar, and S. Koenig, “Multi-agent path finding with deadlines,” in International Joint Conference on Artificial Intelligence , p. 417–423, 2018. [28] G. Fine, D. Atzmon, and N. Agmon, “Anonymous multi-agent path finding with individual deadlines,” in International Conference on Autonomous Agents and Multiagent Systems , p. 869–877, 2023. 
+
+Appendix We derive the two theorems stated in the main body. 
+
+Theorem 1: At every timestep, PUSH is guaranteed to return Π in finite time, and Π is guaranteed to be collision-free. 
+
+Proof: We first prove that PUSH always terminates in finite time; the key step is to show that the recursive call to PushPlan terminates in finite time. The completion of PushPlan depends on both its recursion and its inner loop being bounded. The depth of recursion is bounded, as each pushed agent is added to the set H, preventing cyclical pushing. Since the number of agents is finite, this prevents an infinite recursion. The internal loop (line 5 in Algorithm 2) is repeated as each recursive call to a PushPlan for agent 
+
+rd fails. Upon each failure, the constraint set cons grows with a new spatiotemporal constraint (cannot collide with agent rd at timestep td). Since PlanPath cannot violate any previously created constraint, it cannot output the same path twice. This, combined with the fact that the number of W -step paths for an agent is bounded, means that there is a maximum number of times that the loop can repeat before PlanPath returns π = ∅ and the loop terminates. Thus, the loop is bounded, and PushPlan terminates in finite time. Next, we prove that, after each call of PushPlan on line 17 in Algorithm 1, Π is guaranteed to be collision-free. Suppose that this call is made on agent r1. The PlanAgent procedure can only return (1) a path that is collision-free, (2) a path that collides with a single agent, or (3) no solution. In case 1, 
+
+Π[ r1] is replaced with a new collision-free path, after which we return true (line 13). In case 2, PushPlan is recursively called on a pushed agent. Suppose that this agent is r2. Before this call returns, a number of recursive calls might be made (limited to the total number of agents with lower priority than r1). Suppose each successive PushPlan call is made to agents in consecutive order (i.e. agent rj pushes agent rj+1 , etc.). Then each call adds an agent to the protected set (line 11), forcing agent rj to avoid collision with {r1, · · · , r j−1}, along with the original protected set H of r1 (defined on line 15 in Algorithm 1). Eventually, since the recursive calls are limited, we will reach a PushPlan call on an agent ri that enters case 1 or 3. If this agent enters case 1, then it must have found a collision-free path with all agents. At this point, Π is collision-free, since each successive PushPlan call avoids collisions with the agents in calls prior. Thus, each PushPlan call returns true, yielding a collision-free Π. The other scenario is that PushPlan cannot find a path for ri and we enter case 3. In this case, the old path of ri is restored (line 8) and 
+
+ri−1 replans. If r2 fails to plan, then agent r1 is forced to replan. When this happens, a constraint is added to cons (line 14) and we commence a new iteration of the loop (line 5). However, note that Π[ r1] is a W -step collision-free path. This means it cannot be blocked by cons , since if it was blocked by a constraint (rd, t d), that would imply rd and r1’s path intersect at time td, which is not possible for a collision-free path. Thus, Π[ r1] cannot be blocked, and PlanAgent is guaranteed to return it in some loop iteration. Since this path satisfies case 1, it will always succeed. Since this does not change any of the paths, Π remains collision-free. This also proves that case 3 never occurs for agent r1, namely the agent that PushPlan tries to replan for on line 17 in Algorithm 1. Since each call of PushPlan on line 17 returns with collision-free Π in finite time, the for loop in Algorithm 1 (line 14) will terminate with collision-free Π in finite time. Building on the above proof, we can derive the time complexity of PUSH. We characterize its time complexity by bounding the number of invocations of PlanPath, namely the A* search used to compute a W -step path for a single agent. 
+
+Proposition 1: At each timestep, PUSH (Algorithm 1) invokes the PlanPath procedure (i.e., an A* search) at most 
+
+N 2M P times, where N is the number of agents, M is the maximum revisit limit, W is the planning window size, and 
+
+P is the number of possible W -step paths for an agent. 
+
+Proof: The loop of PushPlan (Algorithm 2 line 5) can be repeated a maximum of P times, once for each potential 
+
+W -step path. The PushPlan algorithm itself can recursively call itself and proceed to this loop a maximum of M times for each of the N agents, since visitCnt restricts the number of times PushPlan can be called per agent to M times (line 1). Thus, the total number of PlanPath calls in PushPlan is N M P . Since visitCnt is reset to 0 for all agents before every PushPlan call in Algorithm 1 (line 16), this bound remains the same for all of these calls. If every agent is in the planning queue Q in Algorithm 1, then PushPlan is called once for each, thus the total PlanPath calls of PUSH is N 2M P .Next, we prove that PUSH preserves the deadlock-free guarantee of EPIBT, namely all agents can eventually reach their goals under the same assumptions as EPIBT. We accomplish this by showing that the highest-priority agent can always make progress towards its goal. Then we will show that this leads to all agents reaching their goals. 
+
+Lemma 1: If the graph is biconnected and TCT is 0, then, whenever the highest-priority agent, denoted by r1, is replanned, PUSH guarantees to find a new collision-free path 
+
+π for agent r1 that strictly decreases its distance to its goal, i.e., h(π[W ], g 1) < h (Π[ r1][ W ], g 1), where h is the shortest path distance function and Π[ r1] refers to the path of r1 after line 2 of Algorithm 1. 
+
+Proof: Since the planning queue Q is sorted by priority (line 13 of Algorithm 1), the initial call to PushPlan replans the path for agent r1. Since r1 is the highest-priority agent, the set of higher-priority agents is empty. Furthermore, since TCT is 0, the set of agents executing tasks is also empty. Therefore, the protected set H is empty. To facilitate the proof, we define X1 as the set of W -step paths π for agent r1 satisfying (1) h(π[W ], g 1) <h(Π[ r1][ W ], g 1), and (2) π collides with either no agents in Π (excluding itself) or exactly one agent at step W . Note that this set is always nonempty because we can construct a path π∗ 
+
+> 1
+
+∈ X1 by replicating Π[ r1] for W − 1 steps and changing the last step to be one step closer to its goal. Since the last step of Π[ r1] is an appended wait action (line 2) while π∗ 
+
+> 1
+
+moves one step closer it g1, π∗ 
+
+> 1
+
+satisfies condition 1. Furthermore, since π∗ 
+
+> 1
+
+only deviates from Π[ r1] at step 
+
+W , it can collide with a maximum of one agent at step W ,satisfying condition 2. To prove the lemma, we aim to show that PlanAgent (called on line 6 of Algorithm 2) either finds a path better than any path in X1 (i.e. is closer to the goal at step W ) and returns true, or finds a path in X1, and this path will always return true. The former case clearly satisfies the lemma, since all paths in X1 already strictly decrease their distance to the goal at step W . The rest of this proof focuses on the latter case, where we must prove (1) PushPlan cannot return false before trying at least one path in X1 and (2) this path will result in a return of true. We start by proving that PlanAgent always returns a path in X1 in one of the loop iterations in PushPlan before PushPlan returns false. Since H is empty, the only possibility for PlanAgent to not return any paths in X1 is that all of them are blocked by constraints in cons . However, we can show that for cons to block a path in π ∈ X1, a different path π′ ∈ X1 had to already have been returned previously. To show this fact, suppose that π is indeed blocked by cons . Since π is collision-free with other agents for the first W − 1 steps and PUSH only adds constraints at vertices/edges at timesteps that lead to collisions with other agents, it could only have been blocked by a constraint at step W . However, the existence of this constraint implies that in a previous loop iteration there was a path π′ that collided with an agent only at step W . π′ would also satisfy 
+
+h(π′[W ], g 1) ≤ h(π[W ], g 1) since PlanAgent returns paths that take r1 closer to its goal first. Therefore, π′ ∈ X1, and 200 400 600 800 01234Throughput                                
+
+> random-32-32-20
+> 2000 4000 6000 8000 10000 0510 15 20 25 30 35 sortation
+> 2000 4000 6000 8000 10000 025810 12 15 18 warehouse-large
+> 200 400 600 800 1000 0123456warehouse-small
+> 200 400 600 800 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Decision Time (ms)
+> 2000 4000 6000 8000 10000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 2000 4000 6000 8000 10000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 200 400 600 800 1000 Number of Agents 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> PUSH-LNS PUSH PUSH-lite EPIBT-LNS RHCR PIBT
+
+Fig. 6. Comparison of PUSH with baselines on the rotation motion model, assuming a task completion time of 20 timesteps. 
+
+our statement holds. Next, we show that finding any π ∈ X1 from PlanAgent will result in a return of true for this loop iteration. We can accomplish this in a similar way to how PIBT [3] does the same: by exploiting a cycle in the biconnected graph. If π collides with no agents, then PUSH simply returns true. Otherwise, suppose π collides with an agent r2 at step W . Agent r2 inherits the priority of agent r1 and is replanned with H = {r1}. Similarly to π∗ 
+
+> 1
+
+, we can construct 
+
+π∗ 
+
+> 2
+
+, which replicates Π[ r2] for W −1 steps but makes a move at step W to avoid r1’s push (but not necessarily closer to its goal). Agent r2 can always pivot to a vertex that does not cause a collision with agent r1 at step W due to the graph biconnectivity. This is because biconnectivity implies we can construct a cycle starting with the last two positions in agent 
+
+r1’s path, C = ( π[W − 1] , π [W ], · · · ), guaranteeing that π∗
+
+> 2
+
+can move from π[W ] to the next vertex in the cycle without colliding with agent r1 at steps W − 1 and W respectively. This can be extended to any agent ri on the cycle at timestep 
+
+W , for which we can define π∗ 
+
+> i
+
+[W ] as the path that replicates 
+
+Π[ ri] for W −1 steps and moves to the next vertex in the cycle on step W . Similarly to X1, we can define Xi to be set of paths for agent ri that do not collide with any agent for W −1
+
+steps, and on step W , moves to the next vertex in the cycle. For similar reasons to r1, a PushPlan call for ri cannot return false without trying at least one path in Xi (such as π∗ 
+
+> i
+
+). Now, we must prove that r2 using any path in X2
+
+will return true and allow r1’s path to remain. Suppose for the sake of contradiction that the PushPlan call for agent r2
+
+returns false. Since r2 always tries a path in X2, this implies that agent r2 attempted to push an agent ri̸ = r1 positioned at π∗ 
+
+> 2
+
+[W ] on step W and that push returned false. This is also true for ri, the agent it pushes, and so on, which would include all agents on the cycle C. However, the existence of this cycle directly implies that some agent rd on the cycle at step W must exist with a free neighbor. Even if the cycle was full, rd would be the agent at the cycle position behind 
+
+π[W − 1] , allowing it to shift to r1’s old position. Thus, this call actually returns true, so the PushPlan call for agent r2
+
+must return true. Therefore, agent r1 can also return true. 
+
+Theorem 2: If the longer elapsed time is used as the priority ordering, the graph is biconnected, and TCT is 0, then PUSH is deadlock-free: every agent reaches its goal within a finite number of timesteps. 
+
+Proof: At timestep 0, assume that agent r1 is the highest-priority agent. Since agent r1 remains the highest-priority agent until it reaches its goal, lemma 1 applies across all timesteps that r1 is moving to its goal. Thus, 
+
+h(Π[ r1][ W ], g 1) is strictly decreasing whenever r1 replans. Since agent r1 is always replanned at latest every W steps, 
+
+Π[ r1][ W ] will reach g1 in finite timesteps. After Π[ r1][ W ]
+
+reaches g1, the subsequent PushPlan calls will never take a path for agent r1 that reaches g1 later than its previous path. Thus, r1 is guaranteed to reach its goal. Once r1 reaches its goal, the second-highest-priority agent will become the highest priority. For the same reasoning, it will also reach its goal in a finite amount of time. As each agent becomes the highest priority, they will all be able to eventually reach their goals. In cases when T > 0, we cannot provide the same guarantee. The key difference in this case is that the highest-priority agent may attempt to push an agent that is executing its task at step W . Since this agent cannot be pushed, the rest of the proof cannot follow. An example case where this might happen is if the highest-priority agent is trapped between two agents who continuously receive tasks at their current locations. In this case, these two agents will stay in their locations forever, trapping the highest-priority agent between them and rendering it unable to reach its goal. This counterexample also holds for PIBT and EPIBT. We describe additional experiments and ablation studies. In these experiments, all hyperparameters remain the same as in the main results, unless otherwise stated. 
+
+A. Rotation Motion Model 
+
+Figure 6 shows the results. PUSH-LNS and PUSH remain the highest maximum throughput across all maps, demon-strating that longer horizon times also improve performance in the rotation model. This model challenges reactive plan-ners because agents need multiple moves to turn and vacate a cell. While EPIBT-LNS still handles the rotation model well, PIBT and RHCR perform poorly in every map. While PIBT’s one-step decision making process cannot easily push agents aside, RHCR fails to scale well as agent count and density increase.

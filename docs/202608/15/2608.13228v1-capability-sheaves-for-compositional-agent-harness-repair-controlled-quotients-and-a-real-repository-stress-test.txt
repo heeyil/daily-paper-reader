@@ -1,0 +1,1198 @@
+Preprint 2026
+Capability Sheaves for Compositional Agent-Harness Repair:
+Controlled Quotients and a Real-Repository Stress Test
+Saveliy Batruin
+saveliy.xo@gmail.com
+Independent researcher
+Abstract
+Agent harnesses combine retrieval, routing, state, provenance, and verification, but locally successful
+components may disagree on shared state. We model this failure with a finite capability sheaf: stalks
+encode typed behavior signatures, restriction maps retain shared fields, and accepted runs are useful
+global sections. An exact finite constraint-satisfaction problem (CSP) defines acceptance, while a
+linearized relative cohomology class provides a diagnostic and search feature.
+A controlled experiment over 20 task clusters introduces hidden interior mediators whose raw
+states are nuisance variables. Quotienting their coboundaries reduces the candidate budget from
+2,000 to 1,000 per cluster; aligning the hidden state removes the gap. Exact CSP matches the quotient,
+so the result demonstrates invariance to stale representatives, not superiority over exact reasoning.
+We then test the method on a discovery split from the SWE-bench Multilingual pool of
+PatchFuseBench: 160 issues from 20 repositories, 875 real candidate patches, 2,579 source-aware
+edit atoms, and 153 newly executed patches. A first pool-level construction is constant because
+[𝑏−𝐷𝑥] = [𝑏] in coker 𝐷and therefore cannot rank configurations. A candidate-indexed repair is
+nontrivial on 848/875 candidates and varies within 120/160 issues. It resolves 118 issues versus 116
+for a matched noncohomological selector, but the difference is not supported across repositories (exact
+sign-flip 𝑝= 0.75). A leave-one-repository-out abstention gate reaches 127/160, tying the strong
+anchor and exceeding its matched gate by one issue (𝑝= 1.0). The discovery gate therefore fails and
+the confirmatory split remains sealed. The study supports the controlled invariance mechanism and
+an identifiability correction, but not a real-world cohomological advantage.
+Keywords: AI agents, agent harness optimization, sheaf cohomology, global sections, constraint
+satisfaction, automated agent design, reproducible evaluation
+1. Introduction
+The behavior of a language-model agent depends on its harness: instructions, retrieval, routing, state,
+provenance, verification, and recovery. Current systems optimize prompts, programs, workflows, or
+agent designs through outer-loop search (Khattab et al., 2023; Hu et al., 2025; Zhang et al., 2025; Lee
+et al., 2026; Ursekar et al., 2026; Chen et al., 2026). Scalar scores rank complete candidates. They
+do not explain a common failure: each required capability appears locally available, but no execution
+combines the capabilities coherently.
+Consider a repository patch agent. One subsystem can locate the owned file, another can recover
+its declared API revision, a third can preserve the source commit, and a verifier can select a public
+contract test. These answers may refer to different files or revisions. Each subsystem looks competent;
+their shared path, revision, commit, and test state do not glue. This is a local-to-global failure of
+executable behavior.
+Sheaf theory gives precise language for local data, shared restrictions, agreement, and gluing
+(Bredon, 1997; Lane and Moerdijk, 1992; Curry, 2014). Here the objects are finite and executable.
+We use typed stalks and literal field projections. An exact CSP decides semantic feasibility. Linear
+© 2026 S. Batruin.
+arXiv:2608.13228v1  [cs.AI]  13 Aug 2026
+
+
+Batruin
+cohomology provides a diagnostic and a search score. This separation matters: a cohomological
+witness can be useful without fully deciding whether an executable candidate exists (Abramsky and
+Brandenburger, 2011; Abramsky et al., 2012; Car`u, 2017).
+The paper makes four contributions.
+1. We construct a finite capability sheaf for five requirements from disjoint typed traces. It includes
+an exact CSP, relative classes, and independently checked restriction maps.
+2. We prove exact gluing, local-score separation, spectral stability, and finite-trace repair recovery,
+while giving counterexamples to invalid converses of the linear relaxation.
+3. We report a controlled hidden-state experiment across 20 independent task clusters. Its aligned-
+state ablation tests the proposed invariance mechanism directly.
+4. We run a real patch-fusion stress test on 20 repositories. It includes official execution of new
+patches, clustered inference, an explicit identifiability counterexample, and a candidate-indexed
+repair.
+The claim is narrower than a general optimizer result. Exact CSP is the decisive control. In the
+controlled task family, quotienting removes a nuisance interior representative. In the real benchmark,
+the corrected quotient is configuration-specific but does not pass the development gate. We report
+both results because the failure marks the current boundary of the method.
+2. Capability Sheaves
+2.1. Finite behavior stalks and restrictions
+Let 𝑋be a finite incidence graph whose vertices are the five registered requirements
+𝐿= localization,
+𝐶= contract,
+𝑂= ordering,
+𝑃= preservation,
+𝑉= verification.
+A cellular sheaf F assigns a finite behavior-signature stalk F (𝑣) to each vertex, an overlap stalk F (𝑒)
+to each edge, and a restriction 𝜌𝑣→𝑒: F (𝑣) →F (𝑒) for every incidence. The vertex signatures are
+requirement
+typed signature fields
+localization
+file path, namespace alias, symbol
+contract
+file path, API revision, source commit
+ordering
+API revision, edit order, test identifier
+preservation
+file path, source commit, namespace alias
+verification
+file path, symbol, test identifier
+The learned sparse cover has six overlaps: 𝐿–𝑉shares file and symbol; 𝐿–𝑃shares file and namespace;
+𝐶–𝑃shares file and commit; 𝑂–𝑉shares the test identifier; 𝑃–𝑉shares file; and 𝐶–𝑂shares API
+revision. Every restriction is literal field projection.
+For one target in the baseline complex, a boundary behavior is a tuple 𝑠𝐴= (𝑠𝑣)𝑣∈𝑋(0) on the
+vertex subcomplex 𝐴= 𝑋(0). Each vertex has a registered good subset 𝐺𝑣⊆F (𝑣). Compatibility
+and local usefulness are distinct:
+𝑠𝑣∈𝐺𝑣
+and
+𝜌𝑣→𝑒(𝑠𝑣) = 𝜌𝑤→𝑒(𝑠𝑤) for 𝑒= 𝑣𝑤.
+2
+
+
+Capability Sheaves for Agent-Harness Repair
+2.2. Exact CSP and gluing
+For a candidate harness 𝑐, let 𝑠𝑣(𝑐) be its selected local behavior. The exact feasibility predicate is
+Φ(𝑐) =
+Û
+𝑣∈𝑋(0)
+[𝑠𝑣(𝑐) ∈𝐺𝑣] ∧
+Û
+𝑒=𝑣𝑤∈𝑋(1)
+[𝜌𝑣→𝑒𝑠𝑣(𝑐) = 𝜌𝑤→𝑒𝑠𝑤(𝑐)].
+(1)
+For finite stalks this is an ordinary finite CSP. The sheaf formulation does not remove combinatorial
+hardness; it separates local existence from gluing and supplies typed linear diagnostics across
+candidates.
+Theorem 1 (Augmented feasibility) Let {𝑈𝑖} be a cover of a task domain and let F be a sheaf
+of feasible behaviors on that cover. Suppose (i) the local predicate for 𝑈𝑖is true exactly when
+the selected section 𝑠𝑖∈F (𝑈𝑖) exists and is useful, and (ii) every overlap needed for the sheaf
+gluing axiom is registered. Then a candidate represents a global section accepted by the cover-local
+predicate in Equation (1) if and only if every local predicate holds and every registered pair of
+restrictions agrees.
+Proof If all local predicates hold, assumption (i) supplies the selected local sections. Assumption
+(ii) turns the overlap bits into equality of every pair of restrictions needed by the cover. The sheaf
+gluing axiom gives a unique global section with those restrictions, and this section is accepted by the
+conjunction in Equation (1). Conversely, restrictions of one accepted global section exist locally,
+satisfy the registered predicates by assumption (i), and agree on every overlap. Both assumptions are
+necessary: missing local sections can make compatibility vacuous, and an omitted overlap can hide a
+conflict.
+2.3. Relative connecting obstruction
+Represent each finite field value by an exact one-hot basis vector over F2. The cellular coboundary is
+(𝛿0𝑥)𝑒= 𝜌𝑣→𝑒𝑥𝑣+ 𝜌𝑤→𝑒𝑥𝑤,
+𝑒= 𝑣𝑤.
+(2)
+The short exact sequence of the pair (𝑋, 𝐴) induces a connecting map, and the boundary section has
+class
+𝜕[𝑠𝐴] = [𝛿0𝑠𝐴] ∈𝐻1(𝑋, 𝐴; F ).
+(3)
+Because 𝐴contains every vertex, 𝐶0(𝑋, 𝐴; F ) = 0; hence this class vanishes exactly when adjacent
+typed restrictions agree. It is a genuine relative cellular-sheaf class for the declared pair, although in
+this experiment it is algebraically a structured edge-mismatch vector rather than a quotient over latent
+interior completions.
+The independently reconstructed one-hot complex has
+dim 𝐶0 = 246,
+dim 𝐶1 = 233,
+rank 𝛿0 = 173,
+so dim 𝐻1(𝑋; F ) = 60 and dim 𝐻1(𝑋, 𝐴; F ) = 233. These dimensions describe the representation,
+not failure prevalence.
+3
+
+
+Batruin
+2.4. Hidden interior states and a nontrivial quotient
+The first experiment fixes 𝐴= 𝑋(0). It has no relative degree-zero cochains, so its class is the
+raw boundary mismatch. The second experiment changes this geometry. For every typed overlap
+coordinate 𝑗, we insert a hidden mediator vertex between the two public requirement vertices. The
+public vertices form the boundary 𝐴; the mediators lie in 𝑋\ 𝐴.
+Let 𝑉𝑗be the one-hot vector space for coordinate 𝑗. If the public values are ℓ𝑗, 𝑟𝑗∈𝑉𝑗and the
+hidden value is ℎ𝑗∈𝑉𝑗, one extension of the boundary has relative residual
+𝑞𝑗(ℎ𝑗) = (ℓ𝑗+ ℎ𝑗, ℎ𝑗+ 𝑟𝑗) ∈𝑉𝑗⊕𝑉𝑗.
+(4)
+Changing ℎ𝑗by 𝑢adds the interior coboundary
+𝐷𝑗𝑢= (𝑢, 𝑢),
+𝐷𝑗=
+𝐼
+𝐼
+
+.
+Over F2, the map 𝑃𝑗= [𝐼𝐼] satisfies 𝑃𝑗𝐷𝑗= 0 and ker 𝑃𝑗= im 𝐷𝑗. Hence
+𝑄𝑗= (𝑉𝑗⊕𝑉𝑗)/im 𝐷𝑗 𝑉𝑗,
+[𝑞𝑗(ℎ𝑗)] ↦−→ℓ𝑗+ 𝑟𝑗.
+(5)
+The quotient has positive dimension dim𝑉𝑗, and its class does not depend on the hidden state. Taking
+direct sums over coordinates gives 𝐶1(𝑋, 𝐴; F )/im 𝛿0
+int. For actual one-hot endpoints, the class is
+zero exactly when ℓ𝑗= 𝑟𝑗on every registered coordinate.
+This construction supports a direct intervention. We hold the public task and candidate fixed
+and vary the mediator state: stale, aligned with the left endpoint, aligned with the right endpoint, or
+randomized. The quotient ranking should stay fixed. A raw half-edge score may change. The aligned
+condition is a negative control: when ℎ𝑗= ℓ𝑗, the raw mismatch already equals the public endpoint
+mismatch, so quotienting should not improve the stopping budget.
+2.5. What linearization does not prove
+For an actual one-hot boundary, Equation (3) exactly tests the registered compatibility fields. For a
+portfolio of executable candidates, one may instead form signatures 𝜎(𝑐) ∈F𝑑
+2 , their span 𝑆, and a
+quotient class [𝑡] ∈F𝑑
+2 /𝑆for a target signature 𝑡.
+Proposition 2 (One-sided portfolio certificate) If [𝑡] ≠0, then no candidate has signature 𝑡. The
+converse is false.
+Proof An exact candidate would put 𝑡in 𝑆, so a nonzero quotient is a sound no-candidate certificate.
+For the converse, take candidates with signatures (1, 0) and (0, 1) and target (1, 1). The target lies in
+their linear span, but neither candidate realizes it. Therefore quotient vanishing must be followed by
+exact membership or execution.
+Quotient vanishing must therefore be followed by exact candidate membership or execution.
+Likewise, compatibility cannot substitute for missing useful local sections, which is why Equation (1)
+retains both obligations.
+4
+
+
+Capability Sheaves for Agent-Harness Repair
+Hidden interior states: representative versus quotient class
+One typed overlap coordinate; exact one-hot cochains over GF(2)
+A Subdivide a public overlap
+The public endpoints are fixed; the mediator is hidden.
+ℓ
+h
+r
+boundary A
+hidden interior
+boundary A
+ℓ + h
+h + r
+Same boundary, aligned h
+ℓ = r = v, h = v
+raw = (0, 0)
+class = 0
+Same boundary, stale h
+ℓ = r = v, h = u
+raw = (v+u, u+v)
+class = 0
+The raw score changes although the public gluing problem does not.
+Parameter varied: h ∈ {left, right, stale, randomized}.
+B Quotient out the hidden degree-zero state
+Changing h adds an interior coboundary.
+C⁰(X,A)
+C¹(X,A)
+Q
+D
+P
+h
+(ℓ+h, h+r)
+ℓ+r
+D = [ I ; I ]
+P = [ I I ]
+P D = I + I = 0
+[rₕ] = P rₕ = ℓ+ r (independent of h)
+What this does not prove
+Class zero gives an admissible interior completion;
+execution and useful local sections still require the exact CSP/tests.
+Finite model → matrix model → empirical intervention.
+Figure 1: A finite and matrix model of the hidden-state quotient. The raw half-edge residual changes
+when the mediator state ℎchanges. The quotient map removes this interior coboundary and
+keeps only the endpoint disagreement ℓ+ 𝑟. The picture does not replace the exact CSP:
+class zero checks the registered gluing fields, while useful local sections and execution are
+separate requirements.
+3. Repair and Search
+3.1. Typed fillers and obstruction-guided completion
+The registered library contains five transformations:
+• a symbol-index router exposing symbol-to-file retrieval;
+• a revision ledger exposing immutable file-to-commit provenance;
+• a workspace partition exposing deployment-to-workspace routing;
+• a dependency checkpoint exposing API revision and edit order; and
+• a test-oracle verifier executing public tests with at most one correction call.
+The common candidate pool consists of all nonempty subsets of size at most three, hence 25 bundles.
+A filler changes typed evidence and the induced local sections; after application we recompute both
+the exact CSP and the relative class.
+The outcome-blind completion operator enumerates the pool and lexicographically minimizes
+relative obstruction weight, maximizes exact-lift fraction and nomination margin, and then minimizes
+filler cost. It selects workspace partition plus dependency checkpoint at cost 3 in every task replicate.
+Before the proposal, the registered all-local structural decoy has nonzero relative weight and no exact
+5
+
+
+Batruin
+lift. After the proposal, relative weight is zero and the exact-lift fraction is one. No confirmatory
+outcome enters this computation.
+3.2. Information separation
+Theorem 3 (Local-score repair-order separation)
+Let 𝑐1, . . . , 𝑐𝐾have identical isolated local
+signatures. Suppose exactly one, 𝑐𝐽, has compatible restrictions and every other candidate has a
+nonzero exact relative class. A top-one selector whose observation is only the isolated signature has
+minimax success at most 1/𝐾under arbitrary relabeling of the candidates. A zero-class-first selector
+given the exact restriction classes ranks 𝑐𝐽first. For any ordering independent of the hidden feasible
+label, under a uniform random permutation the expected rank of 𝑐𝐽is (𝐾+ 1)/2.
+Proof All 𝐾candidates induce the same observation for the local-only selector. Place the unique
+feasible index uniformly on the 𝐾labels. Conditional on the common observation, any deterministic
+top-one choice succeeds with probability 1/𝐾; randomization cannot improve this average, so Yao’s
+minimax principle yields the bound against an adversarial relabeling. Exact relative classes identify
+the unique zero-class candidate by hypothesis. Finally, the position of one distinguished element in a
+uniform permutation is uniform on {1, . . . , 𝐾} and has mean (𝐾+ 1)/2.
+The theorem identifies the information missing from isolated scores. It does not imply that
+a cohomological relaxation outperforms an exact CSP supplied with the same restrictions. The
+experiment therefore treats exact CSP as the semantic control and adaptive NSGA-II, local marginal,
+pairwise, shuffled, and random orderings as equal-pool search baselines.
+4. Stability of an Estimated Linear Obstruction
+Exact typed restrictions need no estimation. Broader applications may learn a linear coboundary
+𝐷∈R𝑝×𝑞and target 𝑏∈R𝑝from fresh traces. Naively using the full image of a noisy matrix is
+invalid because an arbitrarily small perturbation can increase rank.
+Theorem 4 (Rank-truncated residual stability) Let 𝐷have registered rank 𝑟≥1, image 𝑈, and
+smallest nonzero singular value 𝛾= 𝜎𝑟(𝐷) > 0. Suppose
+∥b𝐷−𝐷∥2 ≤𝜀< 𝛾,
+∥b𝑏−𝑏∥2 ≤𝜏,
+∥𝑏∥2 ≤𝐵.
+Let b
+𝑈𝑟be the leading 𝑟-dimensional left singular subspace of b𝐷, and put
+𝜌= min
+
+1,
+2𝜀
+𝛾−𝜀
+
+,
+𝑇= 𝜏+ 𝜌𝐵.
+Then
+dist(b𝑏, b
+𝑈𝑟) −dist(𝑏,𝑈)
+ ≤𝑇.
+Consequently, thresholding the estimated residual at 𝑇accepts every true lift and rejects every
+population nonlift whose residual is greater than 2𝑇.
+6
+
+
+Capability Sheaves for Agent-Harness Repair
+Proof If 𝜌= 1, the projector-distance bound is automatic for orthogonal projectors. Otherwise
+𝜀< 𝛾/3; Weyl’s inequalities give 𝜎𝑟( b𝐷) ≥𝛾−𝜀and 𝜎𝑟+1( b𝐷) ≤𝜀, so the leading 𝑟-subspace
+is separated. Wedin’s singular-subspace perturbation theorem then bounds the projector distance
+between 𝑈and b
+𝑈𝑟by the conservative value 2𝜀/(𝛾−𝜀) = 𝜌(Wedin, 1972). With projectors 𝑃and
+b𝑃,
+∥(𝐼−b𝑃)b𝑏∥2 −∥(𝐼−𝑃)𝑏∥2
+ ≤∥(𝐼−b𝑃)(b𝑏−𝑏)∥2 + ∥( b𝑃−𝑃)𝑏∥2
+≤𝜏+ 𝜌𝐵= 𝑇.
+The two classification statements follow by applying this interval around a population residual of
+zero or one strictly larger than 2𝑇.
+The deterministic statement gives the following finite-trace guarantee.
+Corollary 5 (Finite-trace lift/no-lift stability)
+Suppose each of 𝑛independent complete traces
+contributes unbiased coordinate estimators of 𝐷and 𝑏, with every coordinate supported on an
+interval of length at most two. Under the rank, gap, and norm hypotheses of Theorem 4, choose 𝜀< 𝛾
+and 𝜏> 0. If
+𝑛≥max
+2𝑝𝑞
+𝜀2 log 4𝑝𝑞
+𝛿, 2𝑝
+𝜏2 log 4𝑝
+𝛿
+
+.
+(6)
+then, with probability at least 1 −𝛿, the rank-𝑟estimated residual has error at most 𝑇= 𝜏+
+𝐵min{1, 2𝜀/(𝛾−𝜀)}. Consequently the threshold-𝑇decision preserves every population lift and
+every population nonlift with residual strictly greater than 2𝑇.
+Proof Coordinatewise Hoeffding bounds at tolerances 𝜀/√𝑝𝑞for 𝐷and 𝜏/√𝑝for 𝑏, followed by a
+union bound, give ∥b𝐷−𝐷∥𝐹≤𝜀and ∥b𝑏−𝑏∥2 ≤𝜏with probability at least 1 −𝛿. Since the operator
+norm is bounded by the Frobenius norm, Theorem 4 applies on that event.
+Coordinates within one trace may be dependent; independence is used only across complete
+traces. Cached duplicates do not increase 𝑛. Since the quotient obstruction [𝑏] ∈R𝑝/im 𝐷vanishes
+exactly when dist(𝑏,𝑈) = 0, Corollary 5 is a statistical stability result for the lift/no-lift decision. It
+does not assert equality of two separated nonzero quotient classes.
+Every displayed hypothesis matters. Without rank truncation, 𝐷= diag(1, 0), 𝑏= 𝑒2, and
+b𝐷= diag(1, 𝜀) produce a false lift for every 𝜀> 0. Without a positive gap the image is not stably
+identifiable; without the strict margin the lift and nonlift residual intervals overlap.
+4.1. Finite-trace recovery of restriction-aware ordering
+The preceding theorem stabilizes a fixed linear obstruction. A complementary question is whether
+development traces recover the repair ordering itself. Let C = {1, . . . , 𝐾} be a finite candidate
+pool and let 𝜇𝑐∈[0, 1]𝑚be its population face-agreement vector. Define the weakest-face score
+ℎ(𝑐) = min 𝑓𝜇𝑐𝑓. Here a face may encode either a registered local predicate or an overlap agreement
+event, so ℎis a canonical restriction-aware bottleneck score. It is not the lexicographic policy frozen
+in the experiments; the theorem isolates the sampling obligation for one explicit population objective.
+7
+
+
+Batruin
+Theorem 6 (Finite-trace repair recovery) Assume 𝑐★uniquely maximizes ℎwith gap
+Δ = min
+𝑐≠𝑐★{ℎ(𝑐★) −ℎ(𝑐)} > 0.
+For every 𝑐, observe 𝑛fresh vectors 𝑍𝑐,𝑡∈[0, 1]𝑚adapted to a filtration, with fixed conditional mean
+E[𝑍𝑐,𝑡| F𝑡−1] = e𝜇𝑐and ∥e𝜇𝑐−𝜇𝑐∥∞≤𝜂< Δ/2. Coordinates within one trace may be dependent.
+Put bℎ(𝑐) = min 𝑓𝑛−1 Í
+𝑡𝑍𝑐,𝑡, 𝑓. If
+𝑛≥
+8
+(Δ −2𝜂)2 log 2𝐾𝑚
+𝛿
+,
+then arg max𝑐bℎ(𝑐) = 𝑐★with probability at least 1 −𝛿.
+Proof Let 𝑒= (Δ −2𝜂)/4 > 0. Coordinatewise conditional Hoeffding–Azuma bounds (Hoeffding,
+1963; Azuma, 1967) and a union bound give
+Pr
+
+max
+𝑐, 𝑓|b𝜇𝑐𝑓−e𝜇𝑐𝑓| > 𝑒
+
+≤2𝐾𝑚exp(−2𝑛𝑒2) ≤𝛿.
+On the complementary event, ∥b𝜇𝑐−𝜇𝑐∥∞≤𝑒+ 𝜂. Since the minimum is one-Lipschitz in max
+norm, every rival satisfies
+bℎ(𝑐★) −bℎ(𝑐) ≥Δ −2(𝑒+ 𝜂) = Δ −2𝜂
+2
+> 0.
+Thus the empirical maximizer is uniquely 𝑐★.
+The theorem permits arbitrary dependence among faces of the same trace but requires freshness
+across complete traces. Cached copies do not increase 𝑛. More importantly, it is an identification-
+conditional result: concentration cannot turn a misspecified face vocabulary into a causal restriction
+model.
+5. Trace Construction and Baseline Experiment
+5.1. Generated repository task
+Each task contains two migration tickets and four same-namespace adapter files per ticket. Exactly one
+file is owned by the deployment. A valid response must edit that file, install the dependency-declared
+API revision, place migration before caller, preserve the owned source commit, and select the public
+contract test. The model emits only bounded JSON edit operations naming existing tasks, targets,
+paths, and typed values. Invalid paths, fields, targets, and values are rejected. A separate Python
+process applies the edits and runs public tests; no model-supplied program is imported or executed.
+The five fillers change the actual evidence available to the model: symbol/path retrieval,
+path/commit provenance, deployment/workspace routing, dependency order, and public-test feedback.
+The model never sees a complete plan identifier or hidden expected patch.
+8
+
+
+Capability Sheaves for Agent-Harness Repair
+5.2. Trace-induced maps
+A disjoint map-training split evaluates 25 candidates on four tasks with two targets each, producing
+200 typed target traces. Registered vertex fields are selected from the task schema; filler-stage
+nomination maps are estimated from the training labels; and the incidence graph is the maximum-
+weight spanning tree plus the two strongest redundant edges. This yields six overlaps and 3,600
+zero-error projection-composition checks.
+Before confirmatory outcomes were opened, an independent reconstruction enumerated all
+25 structural boundaries on eight fresh tasks and 16 targets. All 7,200 direct-versus-composed
+restriction coordinates agree. The resulting cochain dimensions are reported in Section 2. This
+verifies implementation functoriality for the declared fields; heldout calibration tests whether those
+fields retain semantic information.
+5.3. First frozen equal-pool design
+The experiment uses the exact API identifiers deepseek-ai/DeepSeek-V4-Flash and zai-org/
+GLM-5-FP8; the operator attests that the latter serves GLM-5.2. Four fresh screen–heldout task
+replicates are evaluated by both endpoints. Every model–task block evaluates the same 25 candidates
+once, giving 200 candidate evaluations. Public-test failure permits at most one correction call, so the
+final matrix contains 272 model calls.
+The primary budget is candidate evaluations to the first bundle passing both screen and heldout
+tasks. Secondary resource measures are calls to success and provider-reported prompt, completion,
+and total tokens to success. Token totals include correction calls and are compared between policies
+only within an exact endpoint; they measure model-mediated token effort, not elapsed time. Other
+metrics are joint heldout success, successful filler cost, non-target regressions, screen-to-heldout
+regressions, obstruction calibration, and structural computation.
+The registered primary contrast is within-block adaptive-NSGA-II minus full-class candidate
+evaluations, tested by an exact one-sided sign test. The eight endpoint–task measurements share
+four task replicates, so we additionally average endpoints within task before a conservative cluster
+sensitivity.
+5.4. Baseline search results
+Seventy-one of 200 candidate–block rows pass heldout tests, and all 71 are exact joint successes:
+35 for DeepSeek and 36 for GLM. These endpoint counts are descriptive, not model-population
+estimates.
+For the primary contrast, seven NSGA-II-minus-full block differences equal 1.25 candidate
+evaluations and the remaining difference equals 2.375. All favor full class, with mean difference
+1.390625 and one-sided 𝑝= 0.00390625. Averaging the two endpoints within each shared task gives
+differences (1.8125, 1.25, 1.25, 1.25) and 𝑝= 0.0625. Thus the direction holds in every task and
+endpoint, while task-level replication remains small.
+The outcome-blind cost-3 proposal passes exactly in all eight blocks with one call per block and
+no heldout non-target regression. The registered all-local decoy passes only two blocks. This closes
+the loop from typed obstruction, through filler generation and recomputation, to executable heldout
+behavior.
+9
+
+
+Batruin
+Figure 2: One confirmatory experiment. Panel A reports the equal-pool stopping budget. Panel B
+reports total tokens to first success separately inside each endpoint. Panel C shows heldout
+balanced accuracy of structural criteria. Panel D compares the outcome-blind generated
+filler with the registered all-local structural decoy.
+Table 1: Equal-pool search. Candidate evaluations are primary; calls include public-test corrections.
+Lower values, regressions, and filler cost are better.
+policy
+success
+evaluations
+calls
+regressions
+filler cost
+full relative class
+1.000
+1.000
+1.000
+0.000
+6.000
+exact CSP
+1.000
+1.000
+1.000
+0.000
+6.000
+pairwise proxy
+1.000
+2.000
+3.000
+0.000
+6.000
+local marginal
+1.000
+2.000
+3.000
+0.000
+6.000
+shuffled class
+1.000
+2.000
+2.250
+0.000
+5.000
+adaptive NSGA-II
+1.000
+2.391
+2.922
+3.156
+5.633
+random
+1.000
+2.391
+2.922
+3.156
+5.633
+5.5. Token effort and calibration
+Relative to NSGA-II, full-class search reduces total tokens to success by 67.5% for DeepSeek and
+71.6% for GLM; completion-token reductions are 63.2% and 68.1%. Exact CSP has identical
+10
+
+
+Capability Sheaves for Agent-Harness Repair
+Table 2: Mean provider-reported total tokens to first success. Values are policy comparisons within
+endpoint; absolute counts are not ranked across different tokenizers.
+policy
+DeepSeek endpoint
+GLM endpoint
+full relative class
+3,172.5
+2,808.5
+exact CSP
+3,172.5
+2,808.5
+local marginal
+10,763.5
+9,591.0
+shuffled class
+3,626.5
+11,664.0
+adaptive NSGA-II
+9,770.2
+9,901.5
+stopping candidates and therefore identical token effort. The token result is consequently evidence
+for global relational information, not for an incremental cohomological advantage.
+Heldout balanced accuracy is 0.574 for local-only, 0.862 for exact CSP, 0.613 for full relative
+class, and 0.471 for shuffled class. Full class has specificity 1.0 but sensitivity 0.225; exact CSP is
+the strongest compatibility predictor. Structural feature computation takes a mean 4.45 ms per task
+replicate on the artifact host, excluding the one-time human and data cost of choosing the vocabulary
+and training the restriction map.
+6. Hidden-Interior Quotient Experiment
+6.1. Frozen design and causal prediction
+We froze this experiment before making any new model call. It uses the same two model endpoints
+and the same pool of 25 filler bundles as the baseline study. The new matrix has 20 independent
+task clusters. Each cluster has a fresh screen task, a fresh heldout task, and a separate model seed.
+Both endpoints evaluate every candidate in every cluster. The final matrix therefore contains 1,000
+candidate outcomes. Public-test feedback adds at most one correction call, giving 1,360 model calls
+in total.
+The structural score uses the subdivided complex from Section 2.4. Every registered overlap
+coordinate has one hidden mediator. We evaluate four outcome-blind interventions on that mediator:
+stale, aligned-left, aligned-right, and randomized. In all 4,000 registered candidate–target–intervention
+checks, the quotient signature is unchanged. The quotient and stale-raw rankings differ at 24 of 25
+positions in every task cluster.
+The preregistered primary policy minimizes quotient obstruction weight, then uses interior-
+completion rate, exact-lift rate, nomination margin, and filler cost. The stale-raw policy scores the
+two half-edge residuals before the quotient and then uses local coverage and cost. This is a targeted
+stress test: the stale mediator is distinct from both public endpoint values, so a raw score can treat a
+compatible boundary as inconsistent. The aligned-left policy is the negative control. In that condition,
+the raw score already tracks the endpoint mismatch.
+The independent statistical unit is the task cluster. For each cluster, we average candidate
+evaluations to first joint success over the two endpoints. The frozen primary contrast is stale-raw
+minus quotient. We use an exact one-sided paired sign test over the 20 clusters. Exact CSP
+is the positive semantic control. Pairwise, local, adaptive NSGA-II, and random search use the
+same candidate outcomes. NSGA-II and random search each use four registered search seeds per
+model–cluster block.
+11
+
+
+Batruin
+Hidden-interior quotient: preregistered causal result
+20 independent task clusters · 2 model endpoints · same 25 candidates
+A Candidate evaluations to first joint success
+Relative quotient
+1.000
+Exact CSP
+1.000
+Raw, aligned h
+1.000
+Raw, stale h
+2.000
+Adaptive NSGA-II
+2.562
+Random
+2.562
+Lower is better; static policies have 40 model×cluster runs.
+B Hidden-state intervention isolates the mechanism
+stale interior
+aligned interior
+quotient 1.0
+raw 2.0
+quotient 1.0
+raw 1.0
+gap = +1
+gap = 0
+Prediction: quotient helps only when h is a nuisance representative.
+C Primary unit: paired difference within each task cluster
+0
++1
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+raw − quotient candidate evaluations
+20 / 20
+clusters favor quotient
+exact sign test p = 9.54e-07
+mean paired gap = +1.000
+bootstrap 95% CI [1.000, 1.000]
+D Model effort (within endpoint)
+DeepSeek V4 Flash
+−71.2%
+GLM-5
+−71.7%
+1 call (quotient) vs 3 calls (stale raw)
+Tokens are never compared across endpoints.
+Observation, not theorem: the causal claim is limited to this frozen task family and these registered hidden-state interventions.
+Figure 3: Preregistered hidden-interior result. Panel A shows the equal-pool stopping budget. Panel
+B is the causal check: the stale representative creates a gap, while aligning the hidden
+state removes it. Panel C shows all 20 paired task-cluster differences, not candidate-level
+pseudo-replicates. Panel D shows total-token reductions within each endpoint. The figure is
+computational evidence for this frozen task family, not a theorem about arbitrary harnesses.
+6.2. Primary result and ablation
+The 1,000 outcomes contain 278 candidates that pass both screen and heldout tests. The quotient
+policy reaches the first success in 1.000 candidate evaluation in every model–cluster block. The
+stale-raw policy needs 2.000. After averaging endpoints, every task cluster has paired difference +1.
+Thus all 20 non-tied clusters favor the quotient. The exact one-sided sign-test value is
+𝑝= 2−20 = 9.5367 × 10−7.
+The mean paired difference is 1.000 candidate evaluation; the cluster bootstrap 95% interval is
+[1.000, 1.000]. Equivalently, quotienting reduces the candidate stopping budget by 50% relative to
+the stale raw representative.
+The aligned-left raw policy also reaches success in 1.000 evaluation. Its paired difference from
+the quotient is zero in every cluster. This ablation is important: it shows that the gain is tied to a
+nuisance interior representative. It is not a generic reward for adding a cohomological label. Exact
+CSP also matches the quotient in every cluster, as predicted.
+Within endpoint, the quotient reduces total tokens to success by 71.2% for DeepSeek and 71.7%
+for GLM relative to the stale-raw policy. It reduces model calls from 3.000 to 1.000. These are
+12
+
+
+Capability Sheaves for Agent-Harness Repair
+Table 3: Hidden-interior experiment. All policies reach success. Candidate evaluations are the
+primary budget. Token means are compared only within an endpoint. Static policies have
+40 model–cluster runs; NSGA-II and random have 160 runs because they use four search
+seeds.
+policy
+evaluations
+calls
+DeepSeek tokens
+GLM tokens
+relative quotient
+1.000
+1.000
+3,050.8
+2,706.5
+exact CSP
+1.000
+1.000
+3,050.8
+2,706.5
+raw, aligned interior
+1.000
+1.000
+3,088.3
+2,784.5
+raw, stale interior
+2.000
+3.000
+10,587.3
+9,548.4
+pairwise proxy
+2.000
+3.000
+10,587.3
+9,548.4
+local marginal
+2.000
+3.000
+10,587.3
+9,548.4
+adaptive NSGA-II
+2.562
+3.837
+12,768.4
+12,011.6
+random
+2.562
+3.837
+12,768.4
+12,011.6
+within-endpoint effort comparisons; they do not rank the two model families. The equality with exact
+CSP sets the claim boundary: the experiment shows value from quotienting hidden-state nuisance
+over a fixed raw representative, not value beyond an equally informed exact solver.
+7. Real-Repository Stress Test
+7.1. Benchmark, split, and outcome firewall
+We next test whether the controlled effect transfers to real patch fusion. We use the seven-source
+SWE-bench Multilingual pool from PatchFuseBench (Yang et al., 2026; Jimenez et al., 2024). The
+pool contains 300 GitHub issues. We split the 41 eligible repositories, not individual issues: 20
+repositories and 160 issues form the development split; 21 repositories and 140 issues form a sealed
+confirmatory split. This section uses only the development split.
+The 160 issues contain 1,120 possible source slots. Twenty-three slots are missing, but no issue is
+removed. Exact duplicate patches are collapsed only after their provenance is retained. The resulting
+pool has 875 unique source-compatible patches. We decompose them against the base commits
+into 2,579 lossless edit atoms. Each atom keeps its file, base interval, old bytes, new bytes, mode
+change, and source-patch support. The fixed conflict graph has 2,022 interval-overlap pairs and 109
+source-local semantic-alternative pairs.
+GLM-5 assesses each atom against the issue, a source-derived rubric, and the local base context. It
+never receives benchmark tests, solved labels, or the gold patch. A strong repository-held-out selector
+supplies the same anchor to all methods. It resolves 127/160 issues. The matched router receives
+atom evidence, candidate membership, conflicts, and the anchor. The relative router receives the same
+inputs plus the signed relative block. The exact control uses the same evidence in a deterministic
+binary optimization.
+If a method returns an unchanged pool patch, we use its corrected content-addressed verdict.
+Every new patch is run with the official pinned SWE-bench harness. The final evaluation has 153/153
+completed fresh-patch rows and no infrastructure failures. Incomplete Docker calls are not counted
+as failed tests.
+13
+
+
+Batruin
+7.2. Identifiability counterexample and repair
+The first atom construction uses one full-pool matrix
+𝐷: R𝑚−→R𝑝+𝑞+2,
+where the columns are all available atoms, the first 𝑝rows are issue obligations, the next 𝑞rows are
+conflict interfaces, and the final rows are build and regression risk. For target 𝑏, the router receives
+the canonical representative of [𝑏] in coker 𝐷.
+This class is global to the issue, not specific to a binary selection. For any two selections 𝑥1, 𝑥2,
+[𝑏−𝐷𝑥1] −[𝑏−𝐷𝑥2] = [𝐷(𝑥2 −𝑥1)] = 0
+in coker 𝐷.
+(7)
+Thus the class cannot rank 𝑥1 against 𝑥2. The least-squares atom potentials may still influence a
+language model, but they are not different cohomology classes for different patches.
+We repair this defect by indexing the complex by the candidate action. If patch 𝑆contains atom
+set 𝑆, let 𝐷𝑆contain only those hidden interior columns and the common obligation-and-risk rows.
+Its score is
+𝑞(𝑆) =
+∥(𝐼−𝐷𝑆𝐷+
+𝑆)𝑏∥2
+∥𝑏∥2
+.
+(8)
+The matched control uses the same atom evidence but replaces the span and projection by coordinate-
+wise maximum support and maximum risk. Exact candidate scoring is a second control. Of 875
+candidate complexes, 848 have positive interior rank and positive quotient dimension. The value
+𝑞(𝑆) varies across candidates on 120/160 issues.
+7.3. Results
+Table 4 separates three questions. Full-pool routing asks the model to construct one atom subset.
+Candidate-restricted selection chooses one submitted patch. Repository-held-out abstention decides
+whether to keep the strong anchor.
+The full-pool relative router resolves 104 issues and the matched router resolves 109. Their paired
+difference is −5/160; the repository-macro difference is −0.0316, the cluster bootstrap 95% interval
+is [−0.0838, 0.0102], and the exact repository sign-flip value is 𝑝= 0.28125. No new fused patch
+from any of the three methods turns an anchor failure into a success. This rules out a real fusion gain
+for the present atom evidence and router.
+The candidate-indexed quotient is better than its matched control by two issues: four paired wins
+and two losses. The effect occurs in only three repositories and has exact 𝑝= 0.75. It also remains
+nine issues below the anchor. A symmetric leave-one-repository-out abstention procedure learns
+when to keep the anchor. The quotient gate recovers 127/160, while the matched gate gets 126/160.
+Their only discordant issue favors the quotient, but one nonzero repository gives 𝑝= 1.0.
+The preregistered development gate requires at least four issue gains, a positive repository-macro
+effect, six nonzero repositories, and 𝑝≤0.2. Neither corrected experiment passes. We therefore do
+not open the 21 confirmatory repositories. Further threshold searches on the same outcomes would
+be post-selection bias.
+14
+
+
+Capability Sheaves for Agent-Harness Repair
+Real patch fusion: identifiability audit and corrected test
+160 issues - 20 repositories - 875 real candidates - 2,579 source-aware edit atoms
+A Full-pool class is constant across choices
+One map D is built from every available atom.
+choice x1
+choice x2
+coker(D)
+one quotient space
+[b - D x1]
+=
+[b - D x2]
+Counterexample: their difference lies in im(D). The class cannot rank x1 against x2.
+B Repair: restrict the complex to each candidate
+Candidate S keeps only its own hidden edit atoms.
+candidate S1
+candidate S2
+coker(D_S1)
+score q1
+coker(D_S2)
+score q2
+q1 != q2
+now
+rankable
+Observed: 848/875 nontrivial complexes; candidate score varies on 120/160 issues.
+C Corrected discovery result
+Resolved issues; higher is better. All inference clusters by repository.
+Strong common anchor
+127/160
+Full-pool relative router
+104/160
+Restricted quotient selector
+118/160
+Matched selector
+116/160
+LOO quotient abstention
+127/160
+LOO matched abstention
+126/160
+Primary comparisons
+Direct: quotient +2 issues
+3 nonzero repositories; exact p = 0.75
+Abstention: quotient +1 issue
+1 nonzero repository; exact p = 1.0
+Development gate: not passed
+Computation is evidence for this benchmark. The algebraic equality in panel A is the proof-backed claim.
+Figure 4: Real patch-fusion audit. Panel A is a finite and matrix counterexample: the full-pool class
+is identical for all selections; this is the proof-backed statement in Equation (7). Panel
+B shows the candidate-indexed repair. Its different scores are an algebraic computation,
+not a correctness theorem. Panel C reports the empirical development results. The
+corrected quotient is discriminative, but neither direct selection nor abstention passes the
+repository-level gate.
+8. Claim Boundary and Threats to Validity
+The controlled studies use generated JSON, a bounded edit language, and compact public tests. Their
+purpose is mechanism identification. They do not estimate performance on natural repositories. The
+baseline also has only four independent task clusters. The hidden-state study has 20 clusters, but its
+stale mediator is a deliberate intervention, not an estimate of how often deployed systems contain
+stale state.
+The aligned ablation supports the controlled mechanism: when the nuisance representative is
+removed, the quotient gap disappears. Exact CSP also matches the quotient. Thus the controlled
+evidence supports invariance to hidden-state choice, not superiority over an equally informed exact
+solver.
+The real-repository study improves external validity but remains one fixed candidate pool. Its
+seven sources, issue distribution, and strong anchor may not represent other generation systems.
+Atom boundaries are lossless at the diff level, but the obligation and risk evidence comes from one
+GLM-5 pass. Independent GLM-5 and Qwen hunk studies earlier in development showed material
+evidence-model dependence. Better semantic interfaces, generated tests, or new edit bytes might
+change the result.
+15
+
+
+Batruin
+Table 4: Real-repository development results. “Changed” counts outputs that differ from the common
+anchor. “New” counts patches absent from the submitted pool. All denominators are 160
+issues.
+stage
+method
+resolved
+changed
+new
+full-pool atom
+routing
+common anchor
+127
+0
+0
+matched router
+109
+79
+26
+relative router
+104
+85
+37
+exact semantic control
+96
+120
+112
+candidate-
+restricted
+common anchor
+127
+0
+0
+matched selector
+116
+122
+0
+restricted quotient
+118
+123
+0
+exact semantic selector
+119
+122
+0
+LOO abstention
+common anchor
+127
+0
+0
+matched gate
+126
+6
+0
+quotient gate
+127
+7
+0
+Repositories are the statistical clusters. Candidate patches, model sources, and atom rows within
+a repository are not independent samples. The direct candidate quotient differs from its matched
+control in only three repositories; the abstention comparison differs in one. These designs cannot
+support a small repository-level 𝑝-value, even though they include 160 issues.
+The exact atom optimization is not computationally hard on this workload. HiGHS solves all
+2,579 binary atom variables, including an issue with 338 variables, in 3.45 seconds after presolve. We
+therefore make no speed claim from the size of the naive binary grid. Likewise, quotient vanishing is
+not binary semantic feasibility.
+Provider-reported tokens in the controlled studies measure effort within one endpoint’s tokenizer
+and accounting rules. They do not rank model families. The real study also excludes the human cost
+of defining rubrics, checking source boundaries, and auditing harness failures.
+The real development protocols were fixed before their corresponding scores were joined to
+outcomes, but they followed earlier negative development results. Their 𝑝-values are exploratory.
+The confirmatory repositories remain sealed because the development gate failed. A positive claim
+requires a new method fixed before those outcomes are opened.
+9. Related Work
+Classical sheaf theory formalizes local data and gluing (Bredon, 1997; Lane and Moerdijk, 1992);
+cellular sheaves and their Laplacians provide finite computational models (Curry, 2014; Hansen and
+Ghrist, 2019). Sensor integration illustrates how local consistency can diagnose distributed data
+(Robinson, 2017). We use the same mathematical machinery for typed agent behavior rather than
+geometric measurements.
+Recent expository work surveys the path from finite-poset sheaves to machine learning (Ayzenberg
+et al., 2025), while a sheaf-theoretic account of tasks in distributed systems treats solvability through
+compatible local views (Felber et al., 2025). Our task object is narrower: a frozen finite harness
+candidate and its executable typed trace.
+16
+
+
+Capability Sheaves for Agent-Harness Repair
+Knowledge sheaves express schema-constrained knowledge-graph embeddings as approximate
+global sections (Gebhart et al., 2023). More directly, Olivieri and Hern´andez (2026) rank finite
+scientific-theory transitions by transport and gluing obstruction in a controlled AI-agent benchmark.
+Our setting differs in its object of intervention and validation: fillers change repository operations,
+models synthesize bounded edits, public tests execute, and search policies are compared behind a
+prospective outcome firewall.
+The sheaf-theoretic account of contextuality characterizes locally consistent families without
+global sections (Abramsky and Brandenburger, 2011). Cohomological witnesses and known false
+negatives motivate our exact-plus-linear hierarchy (Abramsky et al., 2012, 2015; Car`u, 2017).
+Connections between global sections and robust CSP further support the exact semantics (Abramsky
+et al., 2013; Conghaile, 2022).
+Neural sheaf diffusion and connection-Laplacian networks learn sheaf-valued representations on
+graphs (Bodnar et al., 2022; Barbero et al., 2022). Our object is instead an executable capability
+abstraction used to repair an agent harness. Persistent homology and stable vectorizations study
+multiscale topological summaries (Carlsson, 2009; Cohen-Steiner et al., 2007; Adams et al., 2017);
+persistence is complementary to, but not needed for, the finite relative obstruction tested here.
+Automated prompt, program, workflow, and agent optimization motivate the outer loop (Khattab
+et al., 2023; Hu et al., 2025; Zhang et al., 2025; Lee et al., 2026; Ursekar et al., 2026). HarnessFix is
+especially close in using failed trajectories to localize harness flaws and validate scoped repairs (Chen
+et al., 2026). Our contribution is not a new general optimizer. It is a structural observation channel
+and a typed repair ordering that can sit inside such optimizers when local capability signatures are
+insufficient.
+PatchFusion studies the same post-generation decision problem as our real stress test (Yang
+et al., 2026). It uses deterministic repeated-atom evidence and reports 236/300 solved issues on its
+SWE-bench Multilingual pool. We reuse that fixed candidate pool but ask a different question: does a
+hidden-state quotient add information beyond matched semantic evidence? Our negative result does
+not contradict PatchFusion’s deterministic fusion result. It shows that the present cohomological
+construction does not improve it.
+Table 5 makes the closest distinctions explicit (Khattab et al., 2023; Hu et al., 2025; Zhang et al.,
+2025; Lee et al., 2026; Ursekar et al., 2026; Chen et al., 2026; Olivieri and Hern´andez, 2026; Yang
+et al., 2026).
+17
+
+
+Batruin
+Table 5: Closest systems by intervention object, structural authority, and validation. “Not declared”
+means only that the cited work does not use the exact sheaf/CSP object studied here.
+work
+object changed or
+diagnosed
+structural authority
+validation
+DSPy / AFlow /
+ADAS
+prompts, programs,
+workflows, agent
+designs
+task objective and
+optimizer state; no
+declared capability sheaf
+heldout task scores
+Meta-Harness
+executable harness
+code
+proposer access to source,
+prior scores, and traces
+application and agent
+benchmarks
+VeRO
+versioned target
+agents
+versions, rewards,
+observations, and budget
+ledger
+reproducible
+budget-controlled
+evaluation
+HarnessFix
+trajectory-localized
+harness flaws and
+patches
+trace IR with provenance
+and control flow
+scoped patch
+validation and heldout
+tests
+PatchFusion
+one patch from a
+fixed multi-agent pool
+deterministic repeated
+edit-atom evidence
+official repair
+benchmarks
+Olivieri–
+Hern´andez
+scientific
+theory-transition
+candidates
+chart transport and gluing
+obstruction
+controlled
+transition-card
+benchmark
+this work
+harness fillers and
+fixed-pool patches
+finite stalks, exact CSP,
+and hidden-state relative
+quotients
+public tests and
+official SWE-bench
+execution
+10. Conclusion
+A capability sheaf separates local usefulness from shared-state agreement. Its exact CSP is the
+semantic decision rule. A relative class can add an invariant diagnostic, but it cannot replace exact
+feasibility or execution.
+The controlled hidden-state experiment works as intended. Quotienting a stale interior represen-
+tative reduces the candidate budget from 2.000 to 1.000 in all 20 clusters. Aligning the hidden state
+removes the gap, and exact CSP matches the quotient. This is evidence for an invariance mechanism.
+The real-repository stress test gives a different result. The first full-pool class is identical for every
+atom selection and therefore cannot rank them. The candidate-indexed repair fixes this mathematical
+defect and produces nontrivial, varying scores on most of the real pool. It gives a small advantage over
+its matched selector, but the effect is not distributed across enough repositories. Repository-held-out
+abstention ties the strong anchor rather than improving it.
+We therefore do not claim a real-world cohomological advantage. The main scientific result
+is a boundary: hidden-state quotienting succeeds in the controlled intervention, while the tested
+obligation-and-risk complex is too weak for real patch fusion. A stronger construction must encode
+semantic interfaces that actually glue across edits, rather than attach one global class to an issue.
+Such a method should be frozen before the sealed confirmatory repositories are opened.
+18
+
+
+Capability Sheaves for Agent-Harness Repair
+Acknowledgments
+The accompanying artifact contains the controlled protocols, all 1,200 controlled metadata/outcome
+pairs, the real discovery split and content-addressed candidate pool, 153 completed fresh-patch
+evaluations, exact tests, source hashes, regenerated figures, and the original hash-bound runtime. No
+endpoint credential is included.
+Appendix A. Reproducibility Checklist
+The standalone repository contains:
+• src/capability_sheaves: task generation, exact CSP, hidden-state and candidate-indexed
+quotient construction, repository-clustered analysis, and figure rendering;
+• configs: controlled protocols, real-benchmark development protocols, restriction maps, and
+revealed task-generation secrets;
+• data/raw: 200 baseline metadata/outcome pairs with complete provider usage and hash bindings;
+• data/latent_quotient/raw: 1,000 hidden-state metadata/outcome pairs, materialized before
+the corresponding external outcomes;
+• data/map_training: the disjoint trace split used to construct the restriction map;
+• data/processed: the frozen aggregate and independent cochain reconstruction;
+• results/swebench_real: the discovery split, label and harness audits, atom inventory, source-
+aware evidence, fresh-patch checkpoints, candidate-indexed analyses, and publication figure;
+• results: baseline outputs plus the frozen hidden-state plan, analysis, report, and other publication
+figures;
+• provenance: the immutable 200-job plan and byte-identical hash-bound execution runtime; and
+• tests: scientific, token-accounting, figure, and provenance invariants.
+The readable package is a post-execution refactor. Original machine identifiers remain only under
+provenance where changing them would invalidate frozen hashes. They do not denote additional
+empirical studies in this paper.
+Appendix B. Additional Counterexamples
+Compatibility without local existence.
+If a required stage has no selected section, every registered
+equality among the remaining stages may hold. A pairwise all-ones vector therefore does not imply
+Theorem 1’s local premise.
+Linear vanishing without an executable candidate.
+The signatures (1, 0) and (0, 1) span (1, 1)
+over F2, but no member of the portfolio realizes (1, 1). This is why exact candidate membership
+follows the quotient computation.
+One pool-level class for every configuration.
+Fix the full atom map 𝐷and target 𝑏. For any
+binary selections 𝑥1, 𝑥2, the representatives 𝑏−𝐷𝑥1 and 𝑏−𝐷𝑥2 differ by 𝐷(𝑥2 −𝑥1) ∈im 𝐷. They
+therefore define the same class in coker 𝐷. A configuration-specific comparison must change the
+admissible interior map, for example by using 𝐷𝑆1 and 𝐷𝑆2.
+19
+
+
+Batruin
+Small perturbation and rank inflation.
+For 𝐷= diag(1, 0) and 𝑏= 𝑒2, the target is distance
+one from im 𝐷. The matrix b𝐷= diag(1, 𝜀) is arbitrarily close to 𝐷but has full image, making the
+untruncated residual zero. Registered-rank truncation in Theorem 4 is not optional.
+References
+Samson Abramsky and Adam Brandenburger. The sheaf-theoretic structure of non-locality and
+contextuality. New Journal of Physics, 13(11):113036, 2011.
+Samson Abramsky, Shane Mansfield, and Rui Soares Barbosa. The cohomology of non-locality and
+contextuality. In Proceedings of the 8th International Workshop on Quantum Physics and Logic,
+volume 95 of Electronic Proceedings in Theoretical Computer Science, pages 1–14, 2012.
+Samson Abramsky, Georg Gottlob, and Phokion G. Kolaitis. Robust constraint satisfaction and local
+hidden variables in quantum mechanics. In Proceedings of the Twenty-Third International Joint
+Conference on Artificial Intelligence, pages 440–446, 2013.
+Samson Abramsky, Rui Soares Barbosa, Kohei Kishida, Raymond Lal, and Shane Mansfield.
+Contextuality, cohomology and paradox. In 24th EACSL Annual Conference on Computer Science
+Logic (CSL 2015), volume 41 of Leibniz International Proceedings in Informatics, pages 211–228.
+Schloss Dagstuhl–Leibniz-Zentrum fuer Informatik, 2015. doi: 10.4230/LIPIcs.CSL.2015.211.
+Henry Adams, Tegan Emerson, Michael Kirby, Rachel Neville, Chris Peterson, Patrick Shipman,
+Sofya Chepushtanova, Eric Hanson, Francis Motta, and Lori Ziegelmeier. Persistence images: A
+stable vector representation of persistent homology. Journal of Machine Learning Research, 18(8):
+1–35, 2017.
+Anton Ayzenberg, Thomas Gebhart, German Magai, and Grigory Solomadin. Sheaf theory: From
+deep geometry to deep learning. arXiv:2502.15476, 2025.
+Kazuoki Azuma. Weighted sums of certain dependent random variables. Tohoku Mathematical
+Journal, Second Series, 19(3):357–367, 1967. doi: 10.2748/tmj/1178243286.
+Federico Barbero, Cristian Bodnar, Haitz S´aez de Oc´ariz Borde, Michael Bronstein, Petar Veliˇckovi´c,
+and Pietro Li`o. Sheaf neural networks with connection laplacians. In Proceedings of Topological,
+Algebraic, and Geometric Learning Workshops 2022, volume 196 of Proceedings of Machine
+Learning Research, pages 28–36, 2022.
+Cristian Bodnar, Francesco Di Giovanni, Benjamin Paul Chamberlain, Pietro Li`o, and Michael M.
+Bronstein. Neural sheaf diffusion: A topological perspective on heterophily and oversmoothing in
+GNNs. In Advances in Neural Information Processing Systems, volume 35, pages 18527–18541,
+2022.
+Glen E. Bredon. Sheaf Theory, volume 170 of Graduate Texts in Mathematics. Springer, second
+edition, 1997.
+Gunnar Carlsson. Topology and data. Bulletin of the American Mathematical Society, 46(2):255–308,
+2009.
+20
+
+
+Capability Sheaves for Agent-Harness Repair
+Giovanni Car`u. On the cohomology of contextuality. arXiv:1701.00656, 2017.
+Mengzhuo Chen, Junjie Wang, Zhe Liu, Yawen Wang, and Qing Wang. From failed trajectories to
+reliable LLM agents: Diagnosing and repairing harness flaws. arXiv:2606.06324, 2026.
+David Cohen-Steiner, Herbert Edelsbrunner, and John Harer. Stability of persistence diagrams.
+Discrete and Computational Geometry, 37(1):103–120, 2007.
+Adam ´O Conghaile. Cohomology in constraint satisfaction and structure isomorphism. In 47th
+International Symposium on Mathematical Foundations of Computer Science (MFCS 2022),
+volume 241 of Leibniz International Proceedings in Informatics, pages 75:1–75:16. Schloss
+Dagstuhl–Leibniz-Zentrum fuer Informatik, 2022. doi: 10.4230/LIPIcs.MFCS.2022.75.
+Justin Michael Curry. Sheaves, Cosheaves and Applications. PhD thesis, University of Pennsylvania,
+2014. arXiv:1303.3255.
+Stephan Felber, Bernardo Hummes Flores, and Hugo Rincon Galeana. A sheaf-theoretic characteri-
+zation of tasks in distributed systems. arXiv:2503.02556, 2025.
+Thomas Gebhart, Jakob Hansen, and Paul Schrater. Knowledge sheaves: A sheaf-theoretic framework
+for knowledge graph embedding. In Proceedings of the 26th International Conference on Artificial
+Intelligence and Statistics, volume 206 of Proceedings of Machine Learning Research, pages
+9094–9116, 2023.
+Jakob Hansen and Robert Ghrist. Toward a spectral theory of cellular sheaves. Journal of Applied
+and Computational Topology, 3:315–358, 2019.
+Wassily Hoeffding. Probability inequalities for sums of bounded random variables. Journal of the
+American Statistical Association, 58(301):13–30, 1963.
+Shengran Hu, Cong Lu, and Jeff Clune. Automated design of agentic systems. In International
+Conference on Learning Representations, 2025.
+Carlos E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik
+Narasimhan. SWE-bench: Can language models resolve real-world GitHub issues? In International
+Conference on Learning Representations, 2024. URL https://arxiv.org/abs/2310.06770.
+Omar Khattab, Arnav Singhvi, Paridhi Maheshwari, Zhiyuan Zhang, Keshav Santhanam, Sri
+Vardhamanan, Saiful Haq, Ashutosh Sharma, Thomas T. Joshi, Hanna Moazam, Heather Miller,
+Matei Zaharia, and Christopher Potts. DSPy: Compiling declarative language model calls into
+self-improving pipelines. arXiv:2310.03714, 2023.
+Saunders Mac Lane and Ieke Moerdijk. Sheaves in Geometry and Logic: A First Introduction to
+Topos Theory. Springer, 1992.
+Yoonho Lee, Roshen Nair, Qizheng Zhang, Kangwook Lee, Omar Khattab, and Chelsea Finn.
+Meta-harness: End-to-end optimization of model harnesses. arXiv:2603.28052, 2026.
+David N. Olivieri and Roque J. Hern´andez. Sheaf-theoretic transport and obstruction for detecting
+scientific theory shift in AI agents. arXiv:2605.14033, 2026.
+21
+
+
+Batruin
+Michael Robinson. Sheaves are the canonical data structure for sensor integration. Information
+Fusion, 36:208–224, 2017.
+Varun Ursekar, Apaar Shanker, Veronica Chatrath, Yuan Xue, and Sam Denton. VeRO: An evaluation
+harness for agents to optimize agents. arXiv:2602.22480, 2026.
+Per-˚Ake Wedin. Perturbation bounds in connection with singular value decomposition. BIT Numerical
+Mathematics, 12:99–111, 1972. doi: 10.1007/BF01932678.
+Boyang Yang, Xiangliang Hu, Luyao Ren, Yanjun Chen, Bach Le, Tegawend´e F. Bissyand´e, and Haoye
+Tian. A single patch is not enough: Deterministic fusion of repair candidates. arXiv:2607.01597,
+2026. URL https://arxiv.org/abs/2607.01597.
+Jiayi Zhang, Jinyu Xiang, Zhaoyang Yu, Fengwei Teng, Xionghui Chen, Jiaqi Chen, Mingchen
+Zhuge, Xin Cheng, Sirui Hong, Jinlin Wang, Bingnan Zheng, Bang Liu, Yuyu Luo, and Chenglin
+Wu. AFlow: Automating agentic workflow generation. In International Conference on Learning
+Representations, 2025.
+22
