@@ -1,0 +1,484 @@
+Title: Long SKILL Compliance as Logical Reasoning: Closure-Grounded Detection with Scaling-Guided On-Policy Distillation
+
+URL Source: https://arxiv.org/pdf/2608.08146v1
+
+Published Time: Tue, 11 Aug 2026 00:42:51 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# Long SKILL Compliance as Logical Reasoning: Closure-Grounded Detection with Scaling-Guided On-Policy Distillation 
+
+Shuaitao Zhao * Feng Ni * Lichao Ma Jiaye Lin Fei Han Yang Wei Lu Pan 
+
+Meituan, Beijing, China 
+
+{zhaoshuaitao,nifeng02}@meituan.com 
+
+Abstract 
+
+The increasing complexity of enterprise busi-ness scenarios has promoted the widespread adoption of long SKILL documents in agent systems, posing new challenges for compli-ance detection: large models incur substan-tial inference costs, while small models may fail to maintain detection accuracy. To address this gap, we propose SkillCDG, a graph-based framework for long SKILL compliance detec-tion. SkillCDG represents complex business policies as a two-layer constraint dependency graph, where the upper layer indexes SKILL descriptions for scenario routing and the lower layer captures dependencies among atomic constraints within each SKILL. During infer-ence, two-level retrieval followed by depen-dency closure supports compliance judgment and source traceability. We comprehensively evaluate the framework on three enterprise datasets and two controlled public benchmark variants. Experimental results demonstrate that SkillCDG outperforms baseline methods by up to 12.8 percentage points in detection F1 score, while reducing token consumption by a max-imum 64.3%. Moreover, we further investi-gate the inherent relationships among policy-graph complexity, model scale, and detection performance. Comparative experiments con-ducted on four checkpoints from a single model family validate a concise and effective scaling trend: end-to-end detection correctness exhibits a complexity-differentiated scaling pattern, and the complexity metric derived from the con-straint dependency graph can effectively quan-tify instance difficulty and the performance im-provement potential of models. Leveraging this insightful scaling trend, we conduct adaptive training sample selection and adopt on-policy distillation to efficiently enhance the compli-ance detection capability of small-scale mod-els. 
+
+> *Equal contribution.
+
+1 Introduction 
+
+Large language model (LLM) agents increasingly rely on SKILLs to encapsulate domain knowledge, operational procedures, and business policies. Re-cent work evaluates whether SKILLs improve task performance and are followed faithfully by agents (Li et al., 2026; Han et al., 2026; Zhong et al., 2026; Yu et al., 2026; Wang et al., 2026). En-terprise SKILLs, however, are often long docu-ments containing workflows, eligibility conditions, mandatory checks, and exceptions. Besides guid-ing execution, they serve as the specification for post-hoc auditing (Balaji et al., 2026; Yang et al., 2026). Given an interaction and an agent response, an auditor must determine whether every applica-ble constraint was satisfied and, for a violation, identify both the violated rule and its supporting interaction evidence. Auditing differs fundamentally from execution. Execution starts from a business state that acti-vates a procedure and leads to an action. Auditing starts from the observed action and reasons back-ward to recover the governing workflow, active constraints, and mandatory prerequisites. As illus-trated in Figure 1, two agents may issue the same refund, for example, although only one verified eli-gibility, obtained confirmation, and respected the applicable limit. The outcome alone cannot distin-guish them; compliance depends on the complete policy-governed path (Yao et al., 2024; Balaji et al., 2026; Yang et al., 2026). Instruction-following benchmarks test explicit and compositional constraints (Zhou et al., 2023; He et al., 2024b; Pyatkin et al., 2025; Wen et al., 2024; Wu et al., 2024; Diao et al., 2025), while interactive benchmarks evaluate policy adherence during task completion (Yao et al., 2024; Barres et al., 2025; Balaji et al., 2026). CompliBench di-rectly tests whether LLM judges detect and localize violations (Yang et al., 2026). These evaluations arXiv:2608.08146v1 [cs.AI] 8 Aug 2026 The takeout has been overdue.  
+
+> Please wait for a moment…
+> Raw Skill Documents Does the agent's response comply with business constraints?
+> Constraints Raw Skills
+> Policy requires: acknowledge customer complaint first
+> Agent 2
+> I ' m very sorry. Please wait for a moment… Agent 1
+
+Figure 1: Identical responses may result from compliant and non-compliant procedures. Reliable auditing re-quires the applicable rule and its complete set of policy prerequisites. 
+
+commonly expose policies as flat documents or rule collections. The judge must retrieve relevant rules, reconstruct their prerequisites, and apply the resulting obligations simultaneously. An incorrect verdict may therefore arise from failed retrieval, dependency inference, or rule application, but end-to-end accuracy cannot separate these causes. This coupling also obscures what a stronger judge actu-ally improves: policy access, logical reconstruction, or the final comparison between obligations and observed behavior. Long-context and retrieval methods only par-tially address this coupling. Nominally long con-text windows do not ensure robust use of dis-persed evidence (Liu et al., 2024; Bai et al., 2024; Du et al., 2025), while compression can discard task-relevant details (Jiang et al., 2023; Pan et al., 2024). Retrieval-augmented generation supplies compact external evidence (Lewis et al., 2020), and graph-based methods improve multi-hop access through semantic relations (Gutiérrez et al., 2024; Edge et al., 2024; Guo et al., 2024). Compliance, however, requires mandatory logical dependencies: omitting a prerequisite or exception may reverse the verdict. General-purpose semantic graphs do not guarantee such dependency completeness. Dif-ficulty therefore depends not only on document length, but also on how relevant rules and their prerequisites are distributed throughout the policy. Long SKILL auditing thus poses three coupled challenges: scenario routing identifies the govern-ing SKILL and workflow; dependency completion recovers all activated prerequisites, exceptions, and checks; and audit traceability retains links between obligations and their source evidence. Flat policy representations leave all three implicit inside the judge. We propose SkillCDG , which formulates long SKILL compliance detection as action-conditioned policy reasoning. SkillCDG converts enterprise SKILL format policies into a two-layer constraint dependency graph. The upper layer indexes SKILL metadata, e.g., name and description, to locate the governing process. The lower layer decom-poses each SKILL into atomic condition-action constraints linked to their source spans. A typed 
+
+require edge denotes a mandatory prerequisite for auditing another rule, making both rule applicabil-ity and triggered obligations explicit. During inference, SkillCDG first retrieves can-didate scenarios using the interaction and agent response. It then retrieves atomic seed rules within the selected SKILLs and expands their require de-pendencies into an instance-specific closure. This compact subgraph contains both directly relevant rules and every prerequisite reachable in the ex-tracted CDG. An LLM judge uses the closure to predict compliance, while retained source spans provide auxiliary evidence for inspecting violations. The pipeline therefore separates policy retrieval, dependency completion, and judgment while re-taining links from every atomic constraint to its original policy span. The structured representation further enables us to ask whether larger judges continue to justify their cost as policies become denser and more interde-pendent. Scaling-law studies relate performance to model size, data, compute, and context properties (Kaplan et al., 2020; Hoffmann et al., 2022; Snell et al., 2025; Yue et al., 2025; Montgomery et al., 2025), but do not isolate business-policy structure. We characterize this structure with rule density , the proportion of policy tokens retained in auditable atomic rules, and dependency coupling , the num-ber of prerequisite edges relative to the number of constraints. The two factors distinguish policies with many independent rules from tightly coupled dependency networks. We evaluate SkillCDG on three enterprise datasets and two controlled public benchmark vari-ants. Within the Qwen3.5 family, we hold the Skill-CDG representation and inference settings fixed across four checkpoints, isolating the relationship between model scale and sample-level policy-graph complexity. The analysis reveals a useful decom-position: end-to-end capacity improves and then saturates with model scale, while CDG-derived complexity represents residual instance difficulty across checkpoints. The data favor this parsimo-nious form over an additional scale–complexity at-tenuation interaction. We use the selected predictor to prioritize instances with greater teacher–student headroom for scaling-guided on-policy distillation (OPD), linking predictive model selection to cost-aware small-model training (Gu et al., 2024; Agar-wal et al., 2024). Our main contributions are: • We formulate long SKILL auditing as action-conditioned policy reasoning and introduce a two-layer CDG that supports SKILL-level scenario routing and atomic prerequisite de-pendencies. • We develop two-level retrieval and depen-dency closure to construct compact policy con-texts for compliance judgment, with source spans retained as auxiliary audit evidence. • Across three enterprise datasets, two public-benchmark variants, and multiple model scales, we estimate and validate a saturating empirical relationship between model scale, policy-graph complexity, and correctness. • We translate the fitted teacher–student head-room into scaling-guided OPD sample priori-ties under a fixed distillation budget. 
+
+2 Related Work 
+
+2.1 Instruction Following and Agent Compliance 
+
+Instruction tuning and human-feedback alignment improve general instruction adherence (Ouyang et al., 2022), motivating evaluations of explicit, multilingual, multi-turn, verifiable, and long-context constraints (Zhou et al., 2023; He et al., 2024b,a; Pyatkin et al., 2025; Wen et al., 2024; Wu et al., 2024). Agent-focused benchmarks extend this setting to domain guidelines and tool-mediated tasks (Diao et al., 2025; Qi et al., 2025; Yao et al., 2024; Barres et al., 2025; Balaji et al., 2026). Com-pliBench further evaluates whether an LLM judge can detect and localize policy violations (Yang et al., 2026). These works measure end-to-end adherence, but generally leave rule retrieval and prerequisite reconstruction implicit inside the eval-uated model. 
+
+2.2 Agent Skills and Structured Policy Access 
+
+Recent benchmarks study the utility, generation, security, and retrieval of Agent Skills (Li et al., 2026; Han et al., 2026; Zhong et al., 2026; Yu et al., 2026; Wang et al., 2026; Su et al., 2026). Long-context evaluations reveal that larger context windows alone do not guarantee reliable evidence use (Liu et al., 2024; Bai et al., 2024; Du et al., 2025). Compression can reduce irrelevant input (Jiang et al., 2023; Pan et al., 2024), and RAG aug-ments generation with retrieved external evidence (Lewis et al., 2020). Graph-based retrieval and automatic knowledge-graph construction further improve multi-hop access through semantic rela-tions (Gutiérrez et al., 2024; Edge et al., 2024; Guo et al., 2024; Mo et al., 2025). SkillCDG instead rep-resents mandatory dependencies among auditable condition-action constraints, so graph traversal con-structs a prerequisite closure rather than a set of semantically related passages. 
+
+2.3 Scaling and Distillation 
+
+Classical scaling laws relate loss to model size, data, and compute (Kaplan et al., 2020; Hoffmann et al., 2022); later work studies test-time com-pute, retrieval-augmented inference, and context-dependent scaling (Snell et al., 2025; Yue et al., 2025; Montgomery et al., 2025). These formula-tions do not model policy structure as a task vari-able. We estimate an empirical, task-specific re-lationship between model size, policy-graph com-plexity, and compliance correctness. Knowledge distillation transfers teacher behavior to smaller models (Hinton et al., 2015). Conventional offline distillation learns from fixed reference or teacher-generated sequences, whereas on-policy distillation evaluates student-generated trajectories under the teacher, reducing the mismatch between training prefixes and those visited during autoregressive inference (Gu et al., 2024; Agarwal et al., 2024). Our downstream distillation study uses predicted teacher–student headroom to allocate a fixed on-policy training budget. 
+
+3 Methodology 
+
+Our methodology has two components. First, Skill-CDG represents long SKILL business policies as a Constraint Dependency Graph (CDG) and re-trieves a graph-complete rule context for compli-ance judgment. Second, a complexity-aware em-pirical scaling model jointly characterizes model capacity and policy-graph difficulty. The former removes redundant input while restoring prerequi-sites; the latter supports model and sample selec-tion. Each policy document is a SKILL , denoted Dj ,and the collection is D = {D1, . . . , D m}. As il-lustrated in Figure 2, SkillCDG contains an offline graph-construction stage and an online retrieval-and-judgment stage. 
+
+3.1 SkillCDG: Constraint Dependency Graph-Based Compliance Detection 3.1.1 Problem Formulation 
+
+Given a conversation history H, current environ-ment state O, the SKILL collection D, and an agent response A, the task of policy compliance detec-tion is to judge whether A violates policies in D,formulated as: 
+
+ˆy = fθ(H, O, D, A ), ˆy ∈ { 0, 1}, (1) where ˆy is the predicted label. The gold label y
+
+follows the same encoding: y = 1 indicates a viola-tion and y = 0 indicates compliance. The interac-tion state is essential because the same action can be compliant under one condition and prohibited under another; the task therefore depends on policy applicability rather than surface similarity. Each SKILL policy can be decomposed into a set of atomic constraint rules . Each rule is de-fined as a triple ri = ⟨ci, a i, Si⟩, where ci specifies the applicable condition, ai defines the normative agent action (required, prohibited, or permitted), and Si retains the original policy text spans for au-dit traceability. Rules are not fully independent: evaluating one rule may require the compliance status of other rules as a logical prerequisite, which motivates our graph-based dependency modeling. Atomic decomposition separates applicability from the required action, and source spans identify both the evaluated obligation and its policy origin. 
+
+3.1.2 Offline Stage: Constraint Dependency Graph Construction 
+
+We first formalize the graph structure and depen-dency semantics, then describe the three-step con-struction pipeline. 
+
+Formal Definitions . For a SKILL Dj with rule set Rj , we define a directed require relation: an edge (ri, r k) ∈ E j (denoted ri → rk) holds if and only if determining the compliance status of ri
+
+necessarily requires evaluating rk as a prerequisite. The rule set Rj and edge set Ej form the rule-level dependency graph Gj = ( Rj , Ej ). This mandatory semantics distinguishes prerequisites from merely related concepts. 
+
+Block-wise Atomic Constraint Extraction .Long SKILL documents are split into semantic blocks along Markdown heading boundaries. For each block, an LLM extracts atomic rules and iden-tifies require dependencies within the block, form-ing a local subgraph. This keeps extraction focused on a coherent segment and reduces distraction from distant text. 
+
+Cross-Block Graph Fusion . Local subgraphs are incrementally merged into the complete rule graph Gj for each SKILL. During fusion, seman-tically equivalent rules across blocks are dedupli-cated, their source spans are unified, and cross-block require edges are supplemented. Fusion re-pairs block-level fragmentation by reconnecting prerequisites across sections without duplicating obligations. 
+
+Two-Layer Graph Architecture . The full CDG 
+
+GCDG consists of two hierarchical layers. The up-per layer is a SKILL-level routing index whose nodes retain SKILL metadata for scenario selection. The lower layer contains the atomic rule graphs 
+
+{G j }mj=1 for individual SKILLs. This separation excludes unrelated scenarios while retaining fine-grained dependencies within each selected policy. Unlike entity-centric knowledge graphs built for general retrieval with heterogeneous relations (Edge et al., 2024; Guo et al., 2024), SkillCDG assigns a uniform require semantics to all rule-level edges, eliminating relation-type heterogeneity. Graph traversal in each selected SKILL computes the transitive prerequisite closure for compliance judgment. This design brings two core properties: (1) Source traceability : every rule retains direct links to its original policy text; (2) Unified audit semantics : rule-graph operations directly serve the completeness requirement of compliance decision-making. 
+
+3.1.3 Online Stage: Compliance Detection Pipeline 
+
+The online pipeline maps the current interaction 
+
+q = ( H, O, A ) to a compact, graph-complete pol-icy context via three sequential steps. (i) Two-Level Policy Retrieval . Audit keywords are extracted from the interaction context for coarse-to-fine retrieval. At the SKILL level, keywords are matched against SKILL names and descriptions to remove irrelevant scenar-ios. Within each selected SKILL, keywords are matched against rule conditions, actions, and source spans to locate seed obligations and limit the judgment context. ---name: Refund description: Used when users require a refund ---## Usage … …      
+
+> Constraints
+> R1: < 𝑐 !, 𝑎 !, 𝑆 !>
+> Dependencies
+> R1 − 𝑟𝑒𝑞𝑢𝑖𝑟𝑒 −> R2 R2: < 𝑐 ", 𝑎 ", 𝑆 ">
+> … … … … SKILL Level Constraint Level Long SKILL Documents
+> Dialog and Background
+
+Offline : CDG Construction   
+
+> ②Keyword Retrieval
+> Closure Construction Constraints Seed Constraints ①Scenario Routing
+
+Online : Compliance Detection  
+
+> Two-layer CDG Retrieved Constraint Context
+
+Figure 2: Overview of SkillCDG. The offline stage converts long SKILL business policies into a two-layer constraint dependency graph. The online stage performs SKILL-level retrieval, constraint-level retrieval, dependency closure, and LLM-based compliance judgment. 
+
+(ii) Dependency Closure Expansion . Starting from the seed rule set, we traverse require edges in Gj to compute the full dependency closure. Retrieval alone may find a target rule but omit an eligibility check or excep-tion needed to interpret it. Closure repairs this incompleteness by retaining every reach-able prerequisite while still filtering unrelated rules. (iii) Compliance Judgment . The rule closure is converted into structured policy text and fed into an LLM together with the interaction con-text. Explicit conditions, actions, and pre-requisites let the judge apply rules without reconstructing the full policy. Two-level retrieval narrows the policy scope to be judged, and dependency closure yields complete judgment basis based on the require edges in the extracted CDG. Filtering irrelevant redundant text further reduces model inference overhead, bring-ing lower inference latency and higher detection accuracy. Detailed examples and human evaluation results are included in the supplementary materials. 
+
+3.2 Complexity-Aware Empirical Scaling Trend 
+
+The CDG also makes policy structure measurable. For instance i, let Di ⊆ D denote its associated SKILL documents and Gi = ( Ri, Ei) denote their induced rule graph, where Ri contains atomic rules and Ei contains their require dependencies. We define rule density, dependency coupling, and their composite policy-graph complexity as 
+
+Id,i = T (Ri)
+
+T (Di) , Ic,i = |E i||R i| , Ci = Id,i Ic,i ,
+
+(2) where T (·) counts tokens, including all documents when its argument is a set. Thus, high Ci indicates that constraints are both dense in the document and strongly coupled through prerequisites. Den-sity measures auditable content, while coupling measures prerequisite reasoning; their product dis-tinguishes long sparse documents from compact, dependency-heavy policies. Let N be the parameter count and Zi,N =
+
+1[ˆ yi,N = yi] indicate whether a model with param-eter count N correctly judges instance i. We use a flexible candidate in which correctness can saturate with scale and the scaling trajectory can vary with policy-graph complexity. Following context-aware scaling formulations (Montgomery et al., 2025), a mechanism-driven candidate expresses this behav-ior as 
+
+logit P (Zi,N = 1) = γdata( i) − η eCi
+
++β
+
+
+
+1 − e−ρ eN α 
+
+e−λ eCi ,
+
+(3) where eN = N/ 1B , eCi = Ci/C 0, C0 is the training-fold median, and γdata( i) is a dataset inter-cept; the remaining parameters satisfy β, ρ, α > 0,while η and λ remain unconstrained so that the data, rather than the parameterization, determine the di-rection of the complexity effects. The first expo-nential term models saturation with scale, while the interaction term allows complexity to alter scale-dependent gains. To avoid imposing a particular interaction, we compare Eq. 3 with an additive lo-gistic model and a nested saturating model that fixes λ = 0 .Let bPb(C, d ) = bP (Z = 1 | N = b, C, data = 
+
+d) and let QC (p) denote the empirical p-quantile of policy-graph complexity. For parameter count 
+
+b and dataset d, we measure the gain over the 2B checkpoint and the change in this gain between high- and low-complexity policies: 
+
+Gb(C, d ) = bPb(C, d ) − bP2B (C, d ),
+
+∆Gb(d) = Gb(QC (0 .9) , d ) − Gb(QC (0 .1) , d ).
+
+(4) The gain statistics locate where additional capac-ity is useful, supporting model choice and sam-ple prioritization. Models are estimated from sample-level Bernoulli outcomes and selected us-ing session-grouped cross-validation with the one-standard-error rule. Parameters are fitted by global differential evolution followed by local optimiza-tion. Session-clustered bootstrap yields confidence intervals, and leave-one-scale-out evaluation tests whether the relationship predicts an unseen check-point. Grouped validation prevents leakage across related interactions, while the latter test measures generalization beyond fitted scales. 
+
+4 Experiments 
+
+We organize the evaluation around four research questions: • RQ1: How effectively and efficiently does SkillCDG detect violations in long SKILL documents? • RQ2: Can model scale and CDG-derived policy complexity jointly predict compliance-detection performance? • RQ3: What are the respective contributions of keyword retrieval and dependency closure? • RQ4: Can scaling-derived headroom improve the allocation of a fixed on-policy distillation budget? 
+
+4.1 Experimental Setup Datasets. We evaluate practical utility on three anonymized enterprise datasets and out-of-domain transfer on one public benchmark and its con-trolled long-policy variant. Anonymized enter-prise datasets include Fulfillment , AfterSales and 
+
+MerchantSupport . Fulfillment covers consumer-facing order-fulfillment conversations governed by long business policies. AfterSales contains post-order service conversations organized around stan-dardized business workflows. MerchantSupport 
+
+covers merchant-facing consultation and opera-tional support. CompliBench evaluates violation detection under normal-length enterprise guide-lines (Yang et al., 2026). CompliBench-Long 
+
+preserves the original conversations and labels but augments each policy with irrelevant intents and redundant paraphrases, creating a controlled long-policy setting with substantial distractor text. Ta-ble 1 summarizes the five evaluation settings.                 
+
+> Dataset Samples # SKILLs Avg. tokens Fulfillment 1,442 14 10.6k AfterSales 1,536 12 7.0k MerchantSupport 870 32 5.0k CompliBench 2,710 86 0.7k CompliBench-Long 2,710 86 9.5k
+> Table 1: Dataset statistics. Average tokens is measured by Qwen3.5 series tokenizer.
+
+Baseline methods. We compare SkillCDG with two representative policy-access strategies. RawSkill supplies all associated SKILL documents directly to the judge. LightRAG builds an entity-relation graph and retrieves policy context in its keyword configuration, without an additional em-bedding model. SkillCDG retrieves SKILLs and seed rules by keyword and then computes the tran-sitive closure of their require dependencies. 
+
+Evaluation metrics. We report accuracy (ACC) for overall correctness and F1 score for balanced detection. 
+
+Implementation Details. We conduct experi-ments with open-source models including the Qwen3.5(Team, 2026) series and DeepSeek-V4(DeepSeek-AI et al., 2026) series, and further perform evaluations on the closed-source GPT-5. The chunk length is set to 12000 for chunked pro-cessing, and Qwen3-0.6b is adopted as the embed-ding model. For compliance detection, the tem-perature parameter is fixed to 0.01 across all LLM inference calls. 
+
+4.2 RQ1: Effectiveness and Inference Cost 
+
+Long SKILL documents contain both essential de-pendencies and scenario-irrelevant content. Skill-CDG performs two-stage filtering via the construc-tion of Constraint Dependency Graphs to precisely retrieve scenario-relevant constraint rules. To eval-uate the effectiveness of SkillCDG, we conduct comparisons against existing baselines across three model families and five datasets. We measure com-pliance detection accuracy and F1 score for all methods, and the experimental results are presented in Table 2. Method Fulfillment AfterSales Merchant Support ACC F1 ACC F1 ACC F1                                                                                                             
+
+> Qwen3.5-4B
+> RawSkill 42.8 41.5 48.0 44.7 46.1 46.1 LightRAG 44.6 40.3 49.6 45.2 47.3 48.5 SkillCDG 54.4 54.3 50.6 50.6 56.0 52.9 Qwen3.5-9B
+> RawSkill 41.3 39.2 48.4 45.3 44.9 44.9 LightRAG 51.2 48.7 48.3 49.5 45.7 45.4 SkillCDG 50.0 50.0 54.8 54.8 50.8 50.0 Qwen3.5-27B
+> RawSkill 54.4 54.1 56.5 56.2 62.5 58.7
+> LightRAG 60.3 54.2 56.2 49.3 69.1 45.8 SkillCDG 67.6 46.5 58.3 40.7 71.7 45.6
+> DeepSeek-V4-Flash
+> RawSkill 67.9 57.0 61.1 57.3 70.5 46.1 LightRAG 65.9 43.5 58.8 41.3 72.0 43.4 SkillCDG 65.0 59.1 56.8 54.8 67.4 51.4 DeepSeek-V4-Pro
+> RawSkill 68.7 62.6 70.4 69.5 72.0 60.5 LightRAG 67.4 55.6 70.4 69.3 71.3 60.8
+> SkillCDG 60.3 55.6 60.4 67.8 68.5 59.5
+> GPT-5.4
+> RawSkill 69.9 64.3 67.8 66.8 71.0 56.9 LightRAG 64.1 46.7 57.4 46.3 68.7 52.2 SkillCDG 61.8 58.0 63.7 63.2 69.8 58.8
+
+Table 2: Enterprise effectiveness. ACC and F1 are reported in percentage points. Bold indicates the best result within each model-dataset block. 
+
+Gains are strongest for compact judges. Against RawSkill, SkillCDG improves Qwen3.5-4B F1 by 12.8, 5.9, and 6.8 points and Qwen3.5-9B F1 by 10.8, 9.5, and 5.1 points across the three datasets. At 27B, it further raises ACC by 13.2, 1.8, and 9.2 points. These results show that structured policy access is most beneficial to compact judges, which are more sensitive to redundant text and missing logical links, and remains effective at larger scales. The pattern also shows that increasing model size does not replace policy organization: better inputs and stronger judges address complementary parts of the task. 
+
+Cost evaluation. To assess computational over-head, we measure token consumption of SkillCDG in compliance detection. We benchmark against the raw long-text approach on three datasets and record the average per-sample token usage, as reported in Table 3. SkillCDG cuts average online token con-sumption by 64.3%, 33.9%, and 39.1% over the three enterprise datasets by filtering out irrelevant rules while retaining dependencies. The Fulfill-ment dataset, featuring the longest average policy texts, yields the largest token savings, confirming that structural filtering becomes more valuable with longer rule documents.         
+
+> Method Fulfillment AfterSales Merchant Support RawSkill 35.0k 10.1k 16.8k SkillCDG 12.5k 6.7k 10.3k
+
+Table 3: Mean online token usage. 
+
+Public-benchmark transfer. Without dataset-specific retuning, we compare RawSkill and Skill-CDG on CompliBench and CompliBench-Long in Table 4.                      
+
+> Variant CompliBench CompliBench-Long ACC F1 ACC F1
+> Qwen3.5-27B
+> RawSkill 20.4 25.1 26.3 27.0 SkillCDG 24.2 25.5 27.8 29.1 DeepSeek-V4-Flash
+> RawSkill 20.8 20.7 22.6 22.2 SkillCDG 24.5 24.3 26.4 25.8
+
+Table 4: Transfer to a public compliance benchmark and its controlled long-policy variant. 
+
+SkillCDG improves ACC/F1 by 3.8/0.4 and 
+
+1.5/2.1 points for Qwen3.5-27B, and by 3.7/3.6
+
+and 3.8/3.6 points for DeepSeek-V4-Flash, demon-strating consistent transfer across normal and long-policy settings. Improvements on CompliBench-Long are especially informative because its labels and conversations are unchanged while distractor text is added; the gains therefore reflect resistance to irrelevant policy content rather than a change in task semantics. RawSkill exposes every rule and forces the judge to separate obligations from large amounts of irrel-evant text. LightRAG reduces this burden through lexical retrieval, but semantic relevance alone does not ensure that prerequisite rules are present. Skill-CDG combines filtering with dependency closure: filtering controls context length, while closure pre-serves the constraint chain needed for compliance reasoning. This explains the joint improvement in effectiveness and token cost. 
+
+4.3 RQ2: Complexity-Aware Empirical Scaling 
+
+We further investigate the relationship between model scale and graph complexity based on the structure of Constraint Dependency Graphs. We fit task-specific scaling equations using samples from all five datasets with model sizes N ∈{0.8, 2, 4, 9}B, taking model scale and instance-level policy-graph complexity as explanatory vari-ables. Session-grouped five-fold cross-validation is adopted to select the optimal fitted model. Leave-one-scale-out evaluation is used to test the predic-tion capability for unseen model scales, and 1,000 session-clustered bootstrap replicates produce 95% confidence intervals. Figure 3 exhibits an obvious complexity-dependent pattern: the performance on low-complexity samples converges rapidly as model scale increases, while high-complexity sam-ples are harder to judge and attain larger perfor-mance gains from larger models. The experimental results of the 27B model align with the fitted trend, verifying the extrapolative validity of the model. 
+
+> Figure 3: Fitted end-to-end correctness at the 10th and 90th percentiles of CDG complexity on three business datasets.
+
+The fitted trend reveals the complementary roles of the two variables: model scale characterizes the available model capacity, while CDG complexity identifies samples where extra capacity can deliver improvements. Based on this, we can estimate de-tection performance under candidate model sizes, avoid deploying oversized judges for saturated sim-ple samples, and select instances with high poten-tial for performance improvement. This insight motivates us to estimate teacher-student headroom under the unified closure representation for model distillation, which we explore in RQ4. 
+
+4.4 RQ3: Ablation Study 
+
+To evaluate the effectiveness of individual compo-nents within SkillCDG, we perform ablation stud-ies on its two core modules: keyword-based filter-ing and dependency closure computation. When keyword retrieval is removed, the judge is fed with all dependency rules to verify the efficacy of the filtering mechanism. Without dependency closure, only matched rules are retained, which helps val-idate whether complete prerequisite reasoning is indispensable. We conduct experiments on three enterprise datasets and measure accuracy and F1 score for each ablation variant. Experimental re-sults are illustrated in Table 5.                                            
+
+> Variant Fulfillment AfterSales Merchant Support ACC F1 ACC F1 ACC F1
+> Qwen3.5-27B
+> SkillCDG 67.6 46.5 58.3 40.7 71.7 45.6
+> w/o Keyword 66.0 47.4 56.3 38.7 72.7 43.6 w/o Closure 61.7 43.7 45.6 33.2 66.1 40.4
+> DeepSeek-V4-Flash
+> SkillCDG 65.0 59.1 56.8 54.8 67.4 51.4
+> w/o Keyword 69.7 56.2 57.4 55.1 69.2 48.8 w/o Closure 68.7 53.7 55.6 53.2 66.1 48.4
+> Table 5: Ablation study results.
+
+Experimental results demonstrate that remov-ing either component degrades the overall perfor-mance of SkillCDG. Without the keyword filter-ing mechanism, the context length increases drasti-cally and the inference overhead of the discriminant model rises sharply alongside degraded detection performance. This issue is more pronounced on the Qwen3.5-27B model, as it supports a shorter maximum context window compared to DeepSeek-V4-Flash. In contrast, removing the dependency closure computation causes more severe perfor-mance degradation, with a maximum F1 drop of 7.5 points for the Qwen3.5-27B model. This veri-fies that rules obtained solely through direct match-ing are insufficient for complex policy reasoning. The two components cooperate synergistically to address the constraint compliance challenges inher-ent in long SKILL scenarios. Dependency closure serves as the core mechanism for ensuring detec-tion performance, recovering eligibility conditions, exception constraints, and mandatory check rules that are easily overlooked by simple lexical match-ing. Meanwhile, keyword filtering improves infer-ence efficiency by eliminating scenario-irrelevant rules before compliance judgment. The combina-tion of the two modules yields a compact input context while fully preserving the completeness of prerequisite condition reasoning. 4.5 RQ4: Scaling-Guided On-Policy Distillation 
+
+Uniform OPD treats all training samples as equally valuable, even though the scaling results show that simple samples may already be saturated for the student. This can spend a fixed training budget on examples with little remaining transfer value. We instead use the fitted model in Eq. 3 to estimate where Qwen3.5-9B offers Qwen3.5-4B the greatest headroom. For instance i from dataset di, the score is 
+
+gi = bP9B (Ci, d i) − bP4B (Ci, d i). (5) Both methods preserve identical dataset–label quo-tas; Uniform OPD samples randomly within strata, while Scaling-guided OPD selects the highest gi.Each method uses 2,000 samples with the same model architecture, optimization schedule, and training budget; only sample selection differs. This matched design attributes any performance differ-ence to the allocation strategy rather than additional data or compute. Let FB = F1(Base -4B) and FT =F1(Teacher -9B) . We quantify the fraction of the initial teacher–student gap recovered by method M
+
+as 
+
+Recovery( M ) = F1( M ) − FB
+
+FT − FB
+
+× 100% . (6)                       
+
+> Model Fulfillment AfterSales Merchant Support ACC F1 ACC F1 ACC F1 4B Base 52.4 50.3 51.6 52.6 56.0 52.9 9B Teacher 56.0 55.0 54.8 53.8 57.8 58.0
+> 4B + Uniform OPD 54.4 54.3 50.6 53.6 56.0 53.9 4B + Scaling-guided OPD 56.4 56.3 53.6 54.6 57.3 54.9
+
+Table 6: Scaling-guided on-policy distillation with Qwen3.5-4B as the student and Qwen3.5-9B as the teacher. 
+
+Table 6 shows that scaling guidance improves ACC/F1 by 2.0/2.0, 3.0/1.0, and 1.3/1.0 points on Fulfillment, AfterSales, and MerchantSupport, respectively. It recovers 127.7%, 166.7%, and 39.2% of the F1 teacher–student gap, compared with 85.1%, 83.3%, and 19.6% for Uniform OPD. Recovery above 100% means the student surpasses the teacher on F1 in Fulfillment and AfterSales. The improvement on every dataset confirms that the advantage is not confined to one business do-main. These results turn the empirical scaling relation-ship into an actionable training signal. Samples with little predicted headroom provide limited new supervision, whereas high-headroom samples ex-pose reasoning behavior the student has not yet mastered. Under the same budget, scaling-guided sampling therefore concentrates optimization on higher-value instances and transfers teacher capa-bility more efficiently than uniform sampling. 
+
+5 Conclusion 
+
+This work targets compliance detection for enter-prise agents with long SKILL documents. Com-bining formal modeling and retrieval optimization, we build the Constraint Dependency Graph to en-able atomic constraint retrieval and dependency closure computation. Our approach significantly compresses the context for compliance detection while preserving detection accuracy. Evaluations over multiple datasets reveal the scaling relation-ship among model scale, policy complexity and detection performance. We utilize this relationship to guide sample selection in on-policy distillation and enhance the compliance detection performance of small models. Future directions include explor-ing diverse business scenarios, extending textual policy rules to multimodal policies, and developing techniques to further reduce compliance detection latency. 
+
+References 
+
+Rishabh Agarwal, Nino Vieillard, Yongchao Zhou, Piotr Stanczyk, Sabela Ramos, Matthieu Geist, and Olivier Bachem. 2024. On-policy distillation of language models: Learning from self-generated mistakes. In 
+
+The Twelfth International Conference on Learning Representations .Yushi Bai, Xin Lv, Jiajie Zhang, Hongchang Lyu, Jiankai Tang, Zhidian Huang, Zhengxiao Du, Xiao Liu, Aohan Zeng, Lei Hou, Yuxiao Dong, Jie Tang, and Juanzi Li. 2024. LongBench: A bilingual, multi-task benchmark for long context understanding. In 
+
+Proceedings of the 62nd Annual Meeting of the Asso-ciation for Computational Linguistics , pages 3119– 3137. Sumanth Balaji, Piyush Mishra, Aashraya Sachdeva, and Suraj Agrawal. 2026. Beyond ivr: Bench-marking customer support llm agents for business-adherence. arXiv preprint arXiv:2601.00596 .Victor Barres, Honghua Dong, Soham Ray, Xujie Si, and Karthik Narasimhan. 2025. tau2-bench: Evaluat-ing conversational agents in a dual-control environ-ment. arXiv preprint arXiv:2506.07982 .DeepSeek-AI, Anyi Xu, Bangcai Lin, Bing Xue, and et.al. 2026. Deepseek-v4: Towards highly effi-cient million-token context intelligence. Preprint ,arXiv:2606.19348. Lingxiao Diao, Xinyue Xu, Wanxuan Sun, Cheng Yang, and Zhuosheng Zhang. 2025. Guidebench: Bench-marking domain-oriented guideline following for llm agents. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics .Yufeng Du, Minyang Tian, Srikanth Ronanki, Subendhu Rongali, Sravan Bodapati, Aram Galstyan, Azton Wells, Roy Schwartz, Eliu A. Huerta, and Hao Peng. 2025. Context length alone hurts llm performance de-spite perfect retrieval. In Findings of the Association for Computational Linguistics: EMNLP 2025 .Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody, Steven Truitt, Dasha Metropolitansky, Robert Osazuwa Ness, and Jonathan Larson. 2024. From local to global: A graph RAG approach to query-focused summariza-tion. arXiv preprint arXiv:2404.16130 .Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. 2024. MiniLLM: On-policy distillation of large language models. In The Twelfth International Conference on Learning Representations .Zirui Guo, Lianghao Xia, Yanhua Yu, Tu Ao, and Chao Huang. 2024. LightRAG: Simple and fast retrieval-augmented generation. arXiv preprint arXiv:2410.05779 .Bernal Jiménez Gutiérrez, Yiheng Shu, Yu Gu, Michi-hiro Yasunaga, and Yu Su. 2024. HippoRAG: Neu-robiologically inspired long-term memory for large language models. In Advances in Neural Information Processing Systems , volume 37. Tingxu Han, Yi Zhang, Wei Song, Chunrong Fang, Zhenyu Chen, Youcheng Sun, and Lijie Hu. 2026. Swe-skills-bench: Do agent skills actually help in real-world software engineering? arXiv preprint arXiv:2603.15401 .Qianyu He, Jie Zeng, Wenhao Huang, Lina Chen, Jin Xiao, Qianxi He, Xunzhe Zhou, Jiaqing Liang, and Yanghua Xiao. 2024a. Can large language models understand real-world complex instructions? In Pro-ceedings of the AAAI Conference on Artificial Intelli-gence , volume 38, pages 18188–18196. Yun He, Di Jin, Chaoqi Wang, Chloe Bi, Karishma Mandyam, Hejia Zhang, Chen Zhu, Ning Li, Tengyu Xu, Hongjiang Lv, et al. 2024b. Multi-if: Bench-marking llms on multi-turn and multilingual instruc-tions following. arXiv preprint arXiv:2410.15553 .Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. 2015. Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531 .Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, Thomas Hennigan, Eric Noland, Katherine Millican, George van den Driessche, Bog-dan Damoc, Aurelia Guy, Simon Osindero, Karén Simonyan, Erich Elsen, and 3 others. 2022. An em-pirical analysis of compute-optimal large language model training. In Advances in Neural Information Processing Systems , volume 35, pages 30016–30030. Huiqiang Jiang, Qianhui Wu, Xufang Luo, Dongsheng Li, Chin-Yew Lin, Yuqing Yang, and Lili Qiu. 2023. Longllmlingua: Accelerating and enhancing llms in long context scenarios via prompt compression. 
+
+arXiv preprint arXiv:2310.06839 .Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B. Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec Radford, Jeffrey Wu, and Dario Amodei. 2020. Scaling laws for neural language models. arXiv preprint arXiv:2001.08361 .Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir Karpukhin, Naman Goyal, Hein-rich Küttler, Mike Lewis, Wen-tau Yih, Tim Rock-täschel, Sebastian Riedel, and Douwe Kiela. 2020. Retrieval-augmented generation for knowledge-intensive NLP tasks. In Advances in Neural Infor-mation Processing Systems , volume 33, pages 9459– 9474. Xiangyi Li, Wenbo Chen, Yimin Liu, Shenghan Zheng, Xiaokun Chen, Yifeng He, Yubo Li, Bingran You, Haotian Shen, Jiankai Sun, Shuyi Wang, Binxu Li, Qunhong Zeng, Di Wang, Xuandong Zhao, Yuanli Wang, Roey Ben Chaim, Zonglin Di, Yipeng Gao, and 22 others. 2026. Skillsbench: Benchmarking how well agent skills work across diverse tasks. 
+
+arXiv preprint arXiv:2602.12670 .Nelson F. Liu, Kevin Lin, John Hewitt, Ashwin Paran-jape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. 2024. Lost in the middle: How language mod-els use long contexts. Transactions of the Association for Computational Linguistics , 12:157–173. Belinda Mo, Kyssen Yu, Joshua Kazdan, Joan Cabezas, Proud Mpala, Lisa Yu, Chris Cundy, Charilaos Kanat-soulis, and Sanmi Koyejo. 2025. Kggen: Extracting knowledge graphs from plain text with language mod-els. arXiv preprint arXiv:2502.09956 .Kyle Montgomery, David Park, Jianhong Tu, Michael Bendersky, Beliz Gunel, Dawn Song, and Chen-guang Wang. 2025. Predicting task performance with context-aware scaling laws. arXiv preprint arXiv:2510.14919 .Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul F. Christiano, Jan Leike, and Ryan Lowe. 2022. Training language models to follow instructions with human feedback. In Advances in Neural Information Processing Systems , volume 35, pages 27730–27744. Zhuoshi Pan, Qianhui Wu, Huiqiang Jiang, Menglin Xia, Xufang Luo, Jue Zhang, Qingwei Lin, Victor Rühle, Yuqing Yang, Chin-Yew Lin, H. Vicky Zhao, Lili Qiu, and Dongmei Zhang. 2024. Llmlingua-2: Data distil-lation for efficient and faithful task-agnostic prompt compression. arXiv preprint arXiv:2403.12968 .Valentina Pyatkin, Saumya Malik, Victoria Graf, Hamish Ivison, Shengyi Huang, Pradeep Dasigi, Nathan Lambert, and Hannaneh Hajishirzi. 2025. Generalizing verifiable instruction following. 
+
+Preprint , arXiv:2507.02833. Yunjia Qi, Hao Peng, Xiaozhi Wang, Amy Xin, Youfeng Liu, Bin Xu, Lei Hou, and Juanzi Li. 2025. Agen-tif: Benchmarking instruction following of large lan-guage models in agentic scenarios. arXiv preprint arXiv:2505.16944 .Charlie Snell, Jaehoon Lee, Kelvin Xu, and Aviral Ku-mar. 2025. Scaling llm test-time compute optimally can be more effective than scaling model parame-ters. In The Thirteenth International Conference on Learning Representations .Weihang Su, Jianming Long, Qingyao Ai, Qiaozhi He, Yichen Tang, Changyue Wang, Yiteng Tu, Yingbo Wang, and Yiqun Liu. 2026. Skill retrieval augmenta-tion for agentic ai. arXiv preprint arXiv:2604.24594 .Qwen Team. 2026. Qwen3.5: Accelerating productivity with native multimodal agents. Leye Wang, Zixing Wang, and Anjie Xu. 2026. Skill-tester: Benchmarking utility and security of agent skills. arXiv preprint arXiv:2603.28815 .Bosi Wen, Pei Ke, Xiaotao Gu, Lindong Wu, Hao Huang, Jinfeng Zhou, Wenchuang Li, Binxin Hu, Wendy Gao, Jiaxing Xu, et al. 2024. Benchmark-ing complex instruction-following with multiple con-straints composition. Advances in Neural Informa-tion Processing Systems , 37:137610–137645. Xiaodong Wu, Minhao Wang, Yichen Liu, Xiaoming Shi, He Yan, Xiangju Lu, Junmin Zhu, and Wei Zhang. 2024. Lifbench: Evaluating the instruction following performance and stability of large language models in long-context scenarios. arXiv preprint arXiv:2411.07037 .Jingbo Yang, Guanyu Yao, Bairu Hou, Xinghan Yang, Nikolai Glushnev, Iwona Bialynicka-Birula, Duo Ding, and Shiyu Chang. 2026. Complibench: Benchmarking llm judges for compliance viola-tion detection in dialogue systems. Preprint ,arXiv:2604.12312. Shunyu Yao, Noah Shinn, Pedram Razavi, and Karthik Narasimhan. 2024. tau-bench: A benchmark for tool-agent-user interaction in real-world domains. arXiv preprint arXiv:2406.12045 .Dexu Yu, Youhua Li, Zhaoyang Guan, Xianhao Lin, Jin-ing Luan, Zihao Rao, Xuanqi Lan, Yang Ran, Bo Lan, Nai-Xin Zhai, Hanwen Du, Junchen Fu, Wenhao Deng, Yongxin Ni, and Chunxiao Li. 2026. Skillau-dit: From fixed-suite benchmarking to skill-centered assessment. Preprint , arXiv:2606.22613. Zhenrui Yue, Honglei Zhuang, Aijun Bai, Kai Hui, Rolf Jagerman, Hansi Zeng, Zhen Qin, Dong Wang, Xuan-hui Wang, and Michael Bendersky. 2025. Inference scaling for long-context retrieval augmented genera-tion. In The Thirteenth International Conference on Learning Representations .Shanshan Zhong, Yi Lu, Jingjie Ning, Yibing Wan, Li-han Feng, Yuyi Ao, Leonardo F. R. Ribeiro, Markus Dreyer, Sean Ammirati, and Chenyan Xiong. 2026. Skilllearnbench: Benchmarking continual learning methods for agent skill generation on real-world tasks. Preprint , arXiv:2604.20087. Jeffrey Zhou, Tianjian Lu, Swaroop Mishra, Sid-dhartha Brahma, Sujoy Basu, Yi Luan, Denny Zhou, and Le Hou. 2023. Instruction-following evalu-ation for large language models. arXiv preprint arXiv:2311.07911 .
+
+A Datasets 
+
+A.1 Data Format 
+
+Every sample in our datasets contains a conver-sation history H, an environment state O, a can-didate agent response A, one or more associated SKILL documents, and a gold label y. Table 7 gives the normalized schema. The source data use 
+
+positive for a compliant response and negative 
+
+for a policy-violating response. Evaluation maps them to y = 0 and y = 1 , respectively.                
+
+> Field Description
+> label positive for compliant and
+> negative for violating.
+> skills Names of the SKILL documents associated with the interaction.
+> context Conversation history Hup to the audited response.
+> background Environment state O, including observable business signals.
+> model_response Candidate response Ato be au-dited.
+
+Table 7: Normalized instance schema after identifier removal and pseudonymization. 
+
+The enterprise datasets originate from opera-tional customer-service evaluation records contain-ing model-based assessments and an independent human assessment. Conversion retains the posi-tive/negative label and the SKILL routing associ-ated with each record. Conversation-level identi-fiers become pseudonymous grouping keys. A.2 Statistics 
+
+Table 8 reports sample counts, SKILL counts, la-bel distributions, and average policy lengths. Ful-fillment contains consumer order-fulfillment inter-actions governed by multiple applicable SKILLs. 
+
+AfterSales contains consumer-facing post-order workflows, with one routed SKILL per sam-ple. MerchantSupport contains merchant-facing operational-support interactions. Together, the three datasets span complementary routing regimes, policy structures, and service scenarios.                      
+
+> Dataset Samples SKILLs Compliant Violation Fulfillment 1,442 14 955 487 AfterSales 1,536 12 898 638 MerchantSupport 870 32 630 240 CompliBench 2,710 86 827 1,883 CompliBench-Long 2,710 86 827 1,883
+
+Table 8: Dataset composition and label counts. Average policy length is measured with the Qwen3.5 series tok-enizer. 
+
+CompliBench. We convert the public bench-mark at the frozen source revision into the common schema while preserving its conversations and la-bels. Each guideline becomes one SKILL, and the original conversation identifier becomes the session grouping key. 
+
+CompliBench-Long. This controlled variant preserves the same 2,710 conversations, 212 ses-sions, 86 SKILL identities, and labels as Com-pliBench. Domain-level distractor intents and re-dundant paraphrases expand the policy text while preserving the target decision. This paired design evaluates long-policy robustness using identical conversations and labels. 
+
+A.3 Sample Example 
+
+A representative instance illustrates the normalized format: 
+
+History H: The merchant asks why a cancelled or-der was judged to be the merchant’s responsibility. 
+
+Environment O: The refund and cancellation records identify “merchant responsibility” and state that the item did not match its description or was not prepared according to the note. 
+
+Candidate A: The agent states that the judgment may be incorrect, promises a review within 48 hours, and redirects the merchant to a city man-ager. 
+
+Label: Violation. In this instance, O supplies factual signals, H es-tablishes the decision point, and the audit evaluates 
+
+A against the applicable policy obligations. 
+
+B CDG Construction 
+
+B.1 Offline Construction 
+
+Each atomic constraint rule is a triple ri =
+
+⟨ci, a i, Si⟩, where ci specifies the applicable con-dition, ai defines one normative agent action (re-quired, prohibited, or permitted), and Si retains the original policy text spans for audit traceability. Al-gorithm 1 constructs the rule graph block by block and then connects dependencies across blocks. 
+
+Algorithm 1 Block-wise CDG construction for one SKILL                                                                      
+
+> Require: SKILL document Djwith name and description
+> Ensure: Rule graph Gj= ( Rj,Ej)
+> 1: Split Djat Markdown heading boundaries into semantic blocks B1, . . . , B s
+> 2: Initialize Gj←(∅,∅)
+> 3: for Bℓin document order do
+> 4: Extract atomic rules Rℓfrom Bℓ
+> 5: Extract within-block require edges Eℓ
+> 6: Validate fields, unique identifiers, edge endpoints, and source spans 7: Rebase local rule identifiers to avoid collisions 8: if ℓ= 1 then
+> 9: Gj←(Rℓ,Eℓ)
+> 10: else
+> 11: Predict cross-block merge map Mℓand require
+> edges E×
+> ℓ
+> 12: Apply Mℓto rules and edge endpoints; union source spans 13: Add the remaining rules in Rℓto Rj
+> 14: Ej← E j∪ E ℓ∪ E ×
+> ℓ
+> 15: Remove self-loops and duplicate edges from Ej
+> 16: Gj←(Rj,Ej)
+> 17: end if
+> 18: end for
+> 19: Store Gj; index its name and description 20: return Gj
+
+The upper layer indexes SKILL names and de-scriptions for scenario routing. The lower layer models mandatory dependencies within each se-lected SKILL. Rule identifiers are unique within each SKILL. Each require edge links two existing rules and represents a mandatory audit prerequisite. A visited set supports cyclic procedural structures and guarantees finite traversal. 
+
+B.2 Online Inference 
+
+Algorithm 2 expands lexical seed rules along out-going require edges. If ri → rk, then retrieving 
+
+ri also retrieves rk. The resulting closure preserves every prerequisite represented in the frozen graph. Algorithm 2 Action-conditioned compliance de-tection                                                                          
+
+> Require: Interaction q= ( H, O, A ); two-layer CDG
+> Ensure: Predicted label by
+> 1: Extract audit keywords Kfrom (H, O, A )
+> 2: Route to candidate SKILLs Dq
+> 3: for each selected SKILL Dj∈ D qdo
+> 4: Match Kagainst rule fields 5: Let Sjbe the matched seed-rule identifiers 6: if Sj=∅then
+> 7: Sj← R jfor full-rule coverage 8: end if
+> 9: Q←Sjand Cl j←Sj
+> 10: while Q̸=∅do
+> 11: Remove rifrom Q
+> 12: for each edge (ri, r k)∈ E jdo
+> 13: if rk/∈Cl jthen
+> 14: Add rkto Cl jand Q
+> 15: end if
+> 16: end for
+> 17: end while
+> 18: end for
+> 19: Render S
+> jCl jas condition–action text 20: Judge (H, O, A )against the rendered closure 21: return by
+
+B.3 Graph Statistics 
+
+Table 9 reports the complete enterprise CDGs used in the experiments. “Depth” is the mean, across SKILLs, of each graph’s maximum dependency depth. “Cycle” counts SKILL graphs containing at least one directed cycle. Coupling is Ic = |E| /|R| ,computed after graph fusion. These statistics are computed directly from the frozen policy graphs before evaluation.             
+
+> Dataset SKILLs Rules Edges IcDepth Fulfillment 14 3,467 1,737 0.501 4.36 AfterSales 12 1,235 869 0.704 5.33 MerchantSupport 32 2,494 1,432 0.574 3.94 Total 58 7,196 4,038 0.561 –
+
+Table 9: Statistics of the constructed enterprise con-straint dependency graphs. The total coupling is com-puted from pooled edge and rule counts. 
+
+The enterprise CDGs exhibit distinct structural profiles. Fulfillment has the largest mean number of rules per SKILL ( 247 .6), while MerchantSup-port has the largest SKILL set and 77 .9 rules per SKILL on average. AfterSales has the highest de-pendency coupling and mean maximum depth, con-sistent with its staged service workflows. Visited-set traversal handles all eight cyclic SKILL graphs and renders each closure rule once. 
+
+B.4 Human Evaluation Gold labels. Each enterprise source record in-cludes an independent human assessment along-side model-based assessments. Dataset conversion preserves the source label, associated SKILLs, and session identifier. The independent assessment sup-plies the gold label used throughout evaluation. 
+
+Rule extraction. Domain experts independently annotated a reference set of atomic rules for every SKILL in the three enterprise datasets. For each dataset, all extracted and expert-annotated rules are pooled across its SKILLs before evaluation. Rule-set agreement measures the semantic agree-ment between the two pooled rule inventories. In a separate rule-level assessment, the experts eval-uated every LLM-extracted atomic rule against its source policy; rule correctness is the percentage of pooled extracted rules judged correct. Table 10 reports both dataset-level results. The two metrics distinguish agreement with the complete expert-annotated inventory from the correctness of indi-vidual extracted rules.         
+
+> Dataset Rule-set agreement Rule correctness Fulfillment 95.3% 99.8% AfterSales 93.7% 99.9% MerchantSupport 92.8% 98.7%
+
+Table 10: Expert evaluation of LLM-extracted atomic rules on the enterprise datasets. 
+
+CDG inspection. The case in Section C is man-ually evaluated according to four criteria: (i) the selected SKILL governs the interaction; (ii) the re-trieved rules are atomic and applicable; (iii) every displayed require edge expresses a necessary au-dit prerequisite; and (iv) the verdict follows from the interaction and dependency closure. The au-dit records a pass for all four criteria. The three directly applicable obligations are represented as separate atomic actions, while dependency expan-sion introduces the merchant-responsibility evi-dence, deduction-limit explanation, and corrective-guidance requirement needed for the judgment. The inspection establishes an auditable path from source policy spans to atomic rules, dependency closure, and compliance judgment. 
+
+B.5 Baselines RawSkill. For each sample, RawSkill concate-nates the complete associated SKILL documents in their original Markdown form. The complete policy text provides maximal source coverage, with relevance selection and dependency reasoning per-formed by the judge. 
+
+LightRAG. LightRAG builds an entity–relation index over the same SKILL corpus. Documents are segmented into 12,000-token chunks with 100-token overlap, and all judge models evaluated on a dataset share the same prebuilt index. Each entity and relation is profiled with textual descriptions and linked source chunks. The online query con-tains the associated SKILL names, O, H, and A,and requests complete condition–action constraints for the shared compliance judge. Retrieval uses the keyword-oriented graph query mode to collect matched entities, relations, and source chunks. The configuration uses top_k =20, chunk_top_k =8, and a 6,000-token retrieved-context cap. Online token totals cover retrieval and judgment; index construction is part of offline preprocessing. 
+
+SkillCDG. SkillCDG selects SKILLs and audit keywords, performs lexical matching over condi-tions, actions, and source spans, and computes the transitive require closure. The rendered policy context contains rule identifiers, conditions, and actions, while the stored graph nodes retain full source spans for traceability. 
+
+Ablations. w/o Keyword Retrieval provides all atomic rules in the associated SKILLs and therefore removes both keyword extraction and two-level filtering. w/o Closure retains SKILL selection and lexical seed matching and passes the matched seed rules directly to the judge. These variants isolate context filtering from dependency completion.                    
+
+> Method Policy unit Filtering Dependency expansion RawSkill Raw documents None Implicit in judge LightRAG Retrieved text Keyword graph None SkillCDG Atomic rules Two-level Transitive require
+> w/o Keyword Atomic rules None All rules supplied w/o Closure Atomic rules Two-level None
+
+Table 11: Policy-access methods and controlled abla-tions. 
+
+Shared controls. For every comparison, the compliance-judgment prompt, response schema, decoding settings, candidate responses, and labels are fixed. The response schema requires a Boolean 
+
+violation and a short reason. Each result uses one completed judgment per instance. The parser validates Boolean labels and accompanying rea-sons before aggregation. Online token accounting includes selection and judgment calls; index and CDG construction belong to offline preprocessing. 
+
+C Case Study 
+
+We examine a MerchantSupport violation instance using DeepSeek-V4-Flash as the fixed judge. 
+
+C.1 Interaction 
+
+Conversation. The merchant asks why an or-der was judged to violate the rules. In the prior turn, the agent explains that the cancellation note says “item inconsistent with the description / not prepared according to the order note.” The mer-chant then objects that bundled-discount orders generally do not support customer notes. 
+
+Relevant environment state. Both the refund record and the cancellation record assign respon-sibility to the merchant. The cancellation evi-dence states that the item was inconsistent with its description or not prepared according to the order note. The customer refund is 11.16 cur-rency units, and the merchant’s expected income, which bounds the relevant deduction explanation, is 8.66. 
+
+Candidate response. “You are right that bundled-discount orders do not support customer notes. The basis for this judgment may be incor-rect. I will record it for further review, and a result is expected within 48 hours. For the meal-loss claim, please contact the city manager. Would you like me to find the contact information?” 
+
+The response discounts the recorded cancellation evidence, omits the deduction limit and corrective recommendation, and introduces an unsupported 48-hour review commitment. 
+
+C.2 Extracted CDG 
+
+The graph-construction model extracts six rele-vant rules and three require edges from the order-refund SKILL. The complete sources arrays are retained in the stored rule nodes. 
+
+{"rules": [ {"id": "C032", "condition": "merchant responsibility and refund explanation", "action": "state the refund reason and cite responsibility evidence"}, {"id": "C033", "condition": "merchant responsibility and refund explanation", "action": "state the deduction upper bound"}, {"id": "C034", "condition": "merchant responsibility and refund explanation", "action": "provide an improvement recommendation"}, {"id": "C014", "condition": "determining the refund reason or responsible party", "action": "read both from system signals "}, {"id": "C050", "condition": "using the merchant-responsibility refund script", "action": "state merchant responsibility and the deduction limit"}, {"id": "C007", "condition": "the refund is caused by the merchant", "action": "explain honestly and provide corrective guidance"} ], "edges": [ {"source": "C032", "target": "C014", "type ": "require"}, {"source": "C033", "target": "C050", "type ": "require"}, {"source": "C034", "target": "C007", "type ": "require"} ]}
+
+Rules C032 –C034 are directly applicable to the interaction. Their dependency closure adds C014 ,
+
+C050 , and C007 , thereby grounding the required evidence, deduction explanation, and corrective guidance. Every rendered business fact is grounded in the source policy. 
+
+C.3 Detection Output 
+
+For each policy representation, we report the fixed judge’s Boolean violation decision and reason. 
+
+RawSkill. 
+
+> {"violation": false, "reason": "The response explains the refund and provides a city-manager route without exceeding the SKILL scope." }
+
+SkillCDG. 
+
+> {"violation": true, "reason": "Rules C033-C034 require the 8.66 limit and improvement advice; the response gives review and city-manager routing." }
+
+The contrast centers on policy structure: RawSkill presents the policy as a single text se-quence, whereas SkillCDG renders the three obli-gations as separate atomic rules and connects them to their prerequisites through dependency closure. The frozen CDG maps each rule identifier to its con-dition, action, and source span, making retrieval, dependency completion, and rule application di-rectly inspectable. 
+
+D Training 
+
+D.1 Data 
+
+The two OPD variants draw training instances from the same three enterprise datasets used in the main experiments. Each compliance-judgment input fol-lows the same SkillCDG construction and contains the conversation history H, environment state O,candidate response A, and retrieved policy context. The inputs are materialized before sample selection so that both methods use the same fixed represen-tation. Direct identifiers are replaced, and sample and session identifiers are stored as irreversible SHA-256 pseudonyms. Each method trains on 2,000 selected instances under identical dataset–label quotas. Uniform OPD samples randomly within each stratum using seed 17. Scaling-guided OPD ranks instances within the same stratum by gi = bP9B (Ci, d i) − bP4B (Ci, d i)
+
+and retains the highest-scoring instances. This matched design fixes the training-set size and com-position across the two allocation strategies. 
+
+D.2 Environment 
+
+Table 12 summarizes the execution environments. Open-source judges in the main detection experi-ments are served with SGLang on eight NVIDIA H20 GPUs with 96 GB memory per GPU; closed-source judges are accessed through their APIs. OPD is executed on two NVIDIA RTX PRO 6000 GPUs with 96 GB memory per GPU: one GPU hosts student training and rollouts, and one hosts teacher inference. Student rollouts and teacher inference use vLLM, while verl coordinates on-policy generation and the policy-gradient update.                
+
+> Component Configuration Main inference 8×NVIDIA H20 (96 GB); SGLang for open-source models; API infer-ence for closed-source models. Main decoding Temperature 0.01 with a fixed prompt and response schema across methods. OPD hardware 2×NVIDIA RTX PRO 6000 (96 GB), Ubuntu 22.04. OPD software Python 3.10, PyTorch 2.10, CUDA 12.8, verl 0.8.0, and vLLM 0.18.0. Models Qwen3.5-4B student and Qwen3.5-9B teacher, loaded from local check-points. Precision BF16 student optimization with FSDP and gradient checkpointing.
+
+Table 12: Compute environments used for evaluation and OPD. 
+
+Each reported model–method–dataset cell is derived from a complete end-to-end execution. RQ2 uncertainty is quantified with 1,000 session-clustered bootstrap replicates using seed 2027. OPD sample selection and training use seed 17. D.3 Optimization 
+
+Table 13 lists the shared configuration for Uniform OPD and Scaling-guided OPD. Each run processes 2,000 instances for two epochs with a global batch size of 24, yielding 168 optimizer steps. The stu-dent is updated through rank-32 LoRA adapters on the language-model linear layers; the visual mod-ules, lm_head , and embed_tokens remain frozen. The model pair, optimization schedule, and decod-ing settings are shared across the two methods.                           
+
+> Parameter Value Teacher / student Qwen3.5-9B / Qwen3.5-4B Training instances 2,000 Epochs /optimizer steps 2 / 168 Global batch size 24 Policy mini-batch size 24 Learning rate 1×10 −6
+> LoRA rank / alpha 32 / 64 Maximum prompt length 12,288 tokens Maximum response length 128 tokens Maximum tokens per GPU 24,834 Rollouts per prompt n1Rollout temperature / top-p
+> 0.7 / 0.9 KL estimator Single-sample k1reverse-KL estimator Policy update Vanilla policy gradient with de-tached −k1advantages Task reward Disabled
+> k1clamp [−10 ,10]
+> Training seed 17
+
+Table 13: Shared OPD hyperparameters. 
+
+For each training prompt, the student samples one response from its current policy. At each re-sponse token at, the frozen teacher scores the same token conditioned on the student-generated prefix 
+
+x<t . The verl trainer computes k1,t = log πθ(at |
+
+x<t ) − log πT (at | x<t ); its expectation under 
+
+at ∼ πθ(· | x<t ) is DKL (πθ ∥ πT ). The estimator is clipped, negated, and used as a detached advan-tage in the policy-gradient loss. With task rewards disabled, teacher-derived advantages provide the optimization signal on trajectories drawn from the current student policy.
