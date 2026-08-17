@@ -1,0 +1,327 @@
+Title: P2Skill: Privacy Preserving Skill Distillation for Cloud-Local LLM Inference Systems
+
+URL Source: https://arxiv.org/pdf/2608.14094v1
+
+Published Time: Mon, 17 Aug 2026 00:50:32 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# P2Skill: Privacy Preserving Skill Distillation for Cloud-Local LLM Inference Systems 
+
+Myunghoon Ryu, Geunpyo Park, Sungjoon Lee, XinYu Piao, Jong-Kook Kim 
+
+Department of Electrical and Computer Engineering Korea University Seoul, Republic of Korea 
+
+{ryumh10,gppark,ssungjoon,xypiao97,jongkook}@korea.ac.kr 
+
+# Abstract 
+
+Cloud-local LLM inference systems have the potential to use the reasoning capabil-ity of large cloud models while protecting sensitive user data on personal devices. Cloud-bound requests must exclude personally identifiable information (PII) to prevent external data leakage. Existing privacy-preserving methods rely on prompt perturbation, entity masking, or model fine-tuning, but these approaches may distort contextual semantics or require additional training. This paper proposes P2Skill, a prompt-based skill distillation method in which a local small language model (SLM) autonomously performs decomposition, PII-aware routing, paraphrasing, and reconstruction by following the skill prompts. Skills are iteratively refined from execution failures by a cloud LLM, enabling the local SLM to generalize beyond memorized PII patterns, and therefore P2Skill requires no privacy-specific fine-tuning or learned auxiliary detectors. Evaluation on a four-domain benchmark shows that P2Skill achieves 1.69 × and 3.66 × higher privacy-preserved inference quality than previous baselines. 
+
+# 1 Introduction 
+
+Recent large language models (LLMs) have achieved significant improvements in code synthesis [7], logical reasoning [39], and natural language understanding [5, 16]. These models have found extensive deployment in personal agents, workplace automation, and decision support systems, embedding natural language inference into an expanding range of privacy-sensitive workflows [38]. Cloud-based inference has emerged as the predominant deployment paradigm for sustaining the performance demands of such applications, attracting considerable research and industrial attention [21, 17]. A fundamental concern inherent to this paradigm lies in the necessity of transmitting user input prompts to remote servers, which frequently contain personally identifiable information (PII) [9, 20, 25]. The consequent risk of PII exposure is particularly severe in domains requiring strict data confidentiality, such as healthcare [34, 36], legal services [8], and financial advising [41, 37]. Minimizing this leakage while maintaining inference quality constitutes a central challenge in the deployment of cloud-based LLM services, and motivates the growing interest in collaborative architectures that partition inference workloads between cloud and local computational resources [18, 15, 23, 35]. Prior work has explored several directions to protect PII contained in user prompts before transmis-sion to cloud servers. Cryptographic inference [12, 29, 28] guarantees confidentiality but requires specialized primitives, model retraining for encrypted operations, and complex multi-party infras-tructure. Named Entity Recognition based deidentification [10, 43, 45] applies learned detectors that strip identifiable spans, but redacted prompts lose task-critical context. Local differential privacy (LDP) methods [26, 11, 33, 1] perturb tokens before transmission, but the injected noise degrades linguistic coherence and the privacy-utility trade-off remains an inherent limitation. Cloud-local LLM inference systems [18, 23, 15, 35, 46] partition workloads between an on-device small model and the 
+
+> Preprint. arXiv:2608.14094v1 [cs.CR] 14 Aug 2026
+
+cloud LLM by routing simple or privacy-sensitive sub-tasks locally and forwarding harder reasoning to the cloud. However, the privacy module in such systems is trained as a separate component and demands per-deployment adaptation. Reconstructing the original semantic content from the privacy-redacted prompt also requires an additional trained restoration module [45] or an auxiliary mechanism deployed on the local device. To minimize privacy leakage and maintain inference quality in cloud-local LLM inference systems, this paper introduces P2Skill as a method that distills privacy-preserving skills and applies these skills to a local small language model (SLM). A skill is a reusable natural-language prompt that encapsulates a specific capability of an LLM [47, 19, 4, 30, 31], and P2Skill defines four major skills for decomposition, PII-aware routing, paraphrasing, and reconstruction. The skills are iteratively refined from execution failures by a cloud LLM, leaving the local SLM frozen and requiring no additional fine-tuning or learned auxiliary detectors. Driven by these skills, the SLM transmits only PII-free content or prompt to the cloud and recognizes general PII patterns rather than memorized examples. These two design choices, (i) prompt-only operation on a frozen SLM and (ii) a closed-loop skill refinement that rejects sample-specific rewrites by a hardcoding-prevention check, distinguish P2Skill from learned anonymizers and perturbation-based methods. Results from a four-domain benchmark on four SLMs show that P2Skill achieves the lowest PII leakage and higher average privacy-preserved inference quality than LDP methods. 
+
+# 2 Related Work 
+
+Earlier works show that language models can memorize and reconstruct training-data identifiers, but they do not address the transformation or validation of cloud-bound prompts [6, 25]. Split-and-Denoise adds LDP noise at the representation level and denoises on the client [26], incurring a privacy-quality trade-off because noise can degrade downstream inference quality. PrivacyRestore combines client-side privacy-span removal and server-trained restoration vectors [45], whereas EmojiPrompt uses generative obfuscation [24]. Both approaches rely on auxiliary trained or generative components and can distort task-relevant semantics. PAPILLON models privacy-conscious delegation as a prompt-optimized multi-stage pipeline that trades off inference quality and privacy leakage [35], whereas PRISM combines entity-level sensitivity estimation, soft routing, and adaptive two-layer LDP for cloud-edge inference [46]. Both cloud-edge approaches rely on privacy-specific learned components, either a prompt program optimized on a labeled benchmark or a parametric sensitivity detector and a calibrated LDP budget, and require retraining or recalibration for new domains or PII distributions. Unlike these previous approaches, P2Skill operates entirely as prompt-based skills on the local SLM, avoiding both the noise-induced privacy-quality trade-off of representation-level LDP and the semantic distortion from auxiliary trained or generative components. P2Skill detects PII by a prompt-based skill rather than a learned detector or a calibrated LDP budget, and adaptation to new domains or PII distributions therefore requires no retraining or recalibration. 
+
+# 3 Proposed Method 
+
+3.1 Overview 
+
+Figure 1 illustrates the end-to-end workflow of P2Skill. The user prompt is processed entirely on the local small language model (SLM) by four prompt-based skills to enhance privacy protection in cloud-local LLM inference systems [47, 19, 4, 30, 31]. The first skill decomposes the prompt into sub-tasks. The second skill attaches a privacy-aware solvability label to each sub-task, and the dispatcher uses the label to route the sub-task to the local SLM or the cloud LLM. Before transmission, the third skill paraphrases any cloud-bound sub-task that still contains detected personally identifiable information (PII). The fourth skill reconstructs the sub-task results into a single final response. Cloud-bound requests pass a deterministic identifier matcher that rejects declared identifiers and known PII patterns. The cloud LLM therefore only receives PII-free requests. The skills are produced by a cloud-LLM-guided refinement loop. Each iteration compares the local pipeline’s response to a reference response produced by the cloud LLM, attributes the worst failure to a single stage, and prompts the cloud LLM to update that stage’s skill. 2Figure 1: End-to-end overview of the P2Skill pipeline. 
+
+3.2 Pipeline Stages Privacy-preserving decomposition (skill #1). The local SLM first uses the decomposition skill to split the user prompt P into k sub-tasks {s1, . . . , s k}, where each sub-task captures one self-contained unit of work and carries a flag indicating whether it contains PII. Given an incoming prompt, as shown in Figure 2, the local SLM first inspects its structure. If the prompt contains independent questions, comparison branches, document sections, or chained reasoning steps, the local SLM splits the prompt at those boundaries. A prompt that consists of a single request remains intact. The detection inventory covers names, contact and location details, account and medical identifiers, financial values, credentials, and travel attributes that identify a user context. Public figures, organizations, and general factual content are not flagged unless the surrounding context reveals private information. This stage is privacy-critical because failing to detect a PII identifier is more harmful than incorrectly flagging non-PII content. A false flag routes the sub-task to the local SLM at a slight cost to inference quality, whereas a missed identifier propagates straight to the cloud and breaks the privacy guarantee. For example, flagging "London" in a tourist itinerary routes the sub-task locally and slightly reduces tourism inference quality, whereas missing the patient name "Sarah Johnson" in a medical sub-task transmits real PII to the cloud. Therefore, the decomposition skill is tuned to favor flagging over missing. 
+
+PII-aware routing (skill #2). The local SLM uses the routing skill to attach a solvability label to each sub-task. A label of no-answer-needed skips the sub-task, and the remaining sub-tasks are dispatched based on the PII flag pi ∈ { 0, 1} that Stage #1 attached to si. Let ˆsi denote the paraphrased rewrite of si produced by Stage #3 (described in the next paragraph), and let M ATCH (·)
+
+denote the deterministic identifier matcher, a rule-based scanner that flags any text containing a declared identifier or a known PII pattern. The routing rule is ROUTE (si) = 
+
+
+
+cloud LLM (direct) if pi = 0 ,
+
+cloud LLM (after paraphrasing) if pi = 1 and M ATCH (ˆ si) = clean ,
+
+local SLM if pi = 1 and M ATCH (ˆ si)̸ = clean .
+
+(1) A PII-free sub-task is forwarded directly to the cloud, and a sub-task containing PII is sent to the cloud when its paraphrased rewrite passes the matcher. Sub-tasks whose identifier density exceeds a fixed threshold skip paraphrasing and are processed entirely on the local SLM, because paraphrasing 3Figure 2: Decomposition skill splits the prompt into sub-tasks and attaches a PII flag and entity types. Routing skill then attaches a solvability label, and the dispatcher sends each sub-task to the cloud directly, to the cloud after paraphrasing, or to the local SLM. a dense identifier list tends either to leave residual identifiers in the rewritten text or to remove the context required for an accurate answer. Figure 2 also shows the routing skill attaching a solvability label to each decomposed sub-task. 
+
+PII paraphrasing (skill #3). The local SLM uses the paraphrasing skill to rewrite any cloud-bound sub-task si that still contains detected PII. The paraphrase ˆsi satisfies the substring-exclusion constraint 
+
+ˆsi = PARAPHRASE (si) such that p̸ ⊑ ˆsi ∀p ∈ PII (si), (2) where each p ∈ PII (si) is the literal string of a detector-confirmed raw identifier in si, and p ⊑ ˆsi
+
+denotes that p appears as a substring of ˆsi. The rewrite preserves role, intent, and document structure, and removes every detected identifier. Removing identifiers necessarily changes the surface form of the request, and a careless rewrite can drop task-critical context and lower the quality of the cloud answer. The skill itself cannot guarantee equivalence to the original because some information is intentionally discarded, and quality preservation is therefore handled outside the skill rather than as a hard in-skill constraint. The refinement loop in Section 3.3 closes this gap by treating each low score from the inference quality judge that traces back to this stage as a paraphrasing failure, and the cloud LLM in its supervisor role then rewrites the paraphrasing skill so that future rewrites better retain task-critical context while still removing every detected identifier. Figure 3 shows a representative paraphrasing example. Each PII-flagged sub-task is rewritten to remove the detected identifiers while preserving the underlying intent. After the rewrite, the local device runs the same deterministic identifier matcher used for the initial cloud-bound check, scanning the rewritten text for declared identifier strings and known PII patterns. If any identifier remains, the sub-task is redirected to the local path or returned for further splitting. 
+
+Final response reconstruction (skill #4). At the end of the pipeline, the local SLM uses the reconstruction skill to synthesize the final response from the original user prompt P and the set of sub-task results {r1, . . . , r k}, where ri denotes the answer produced for sub-task si. The response takes one of two forms depending on the prompt type. For factual and open-ended questions, the local SLM composes an answer that integrates the available sub-task results, preserves concrete facts, and avoids echoing the original prompt. For private documents, forms, or notices, the local SLM reconstructs the original document structure from the user’s prompt P , and the user’s own identifiers may appear in the final output even though they are excluded from any cloud-bound request. Figure 4 shows a reconstructed response that combines local and cloud sub-task outputs back into the user’s original document layout. 4Figure 3: Paraphrasing skill rewrites a PII-containing sub-task to remove every detected identifier while preserving the task semantics. 
+
+Figure 4: Reconstruction skill combines the cloud and local LLM responses and restores the user’s PII from the local PII map kept on the device. 
+
+3.3 How to Distill the Skills 
+
+Figure 5 shows the skill distillation procedure, in which a cloud LLM guides the refinement, encoding the resulting knowledge into prompt-based skills rather than into the local SLM’s weights. Each of the four pipeline stages has one skill prompt, and all four prompts are initialized by hand to specify the stage output format, behavioral constraints, and privacy policy. The loop refines the decomposition, paraphrasing, and reconstruction skills, while the PII-aware routing skill is left at its initial version. The cloud LLM serves three roles inside the refinement loop, (i) a reference that produces the target answer for each prompt, (ii) an evaluator that scores the local SLM’s response and identifies the failing stage, and (iii) a supervisor that rewrites the failing skill. The refinement loop runs for T
+
+iterations and uses a quality threshold τ to decide whether a scored response counts as a success or a failure. 
+
+Iterative refinement loop. Each iteration samples a mini-batch Bt from refinement prompts that mix PII-containing and PII-free instances, and the same mixture is preserved on average inside Bt.For every prompt x ∈ Bt, the loop performs the following steps. 1. The local SLM runs the full pipeline using the current skills and produces a response ys
+
+together with a per-stage trace ρs that records the decomposition output, the routing label for each sub-task, the paraphrased rewrites, and the reconstructed final response. 2. The cloud LLM in its reference role answers the original prompt directly and produces a reference response yr .3. The cloud LLM in its evaluator role scores the triple (x, y s, y r ) and returns a quality score 
+
+q(x) ∈ { 1, . . . , 10 } together with a short failure tag g(x) that names the symptom of any failure. 4. If q(x) ≥ τ , the prompt counts as a success and the tag is ignored. Otherwise, the prompt counts as a failure, and the tag g(x) together with a small number of trace counts in ρs such as the sub-task count and the response length is used to attribute the failure to a single stage to update by a deterministic rule. The evaluator scores only the end-to-end response, and per-stage cloud judging is not required. The supervisor role is deferred until every prompt in Bt has been scored, and is then invoked once per iteration to update at most one skill, as described next. 5Figure 5: Iterative refinement loop for skill distillation. The local SLM executes the four-stage pipeline, and the cloud LLM evaluates the response and updates the failing skill. 
+
+Skill update. After every prompt in Bt has been scored, the cloud LLM in its supervisor role aggregates the per-prompt failure tags and applies three rules in sequence to update at most one skill. 
+
+Stage assignment. Each failure tag g is mapped to one stage j(g) ∈ { decomposition , paraphrasing ,
+
+reconstruction } that is most likely the cause of the failure. (i) An empty or off-topic output is mapped to reconstruction. (ii) An excessive sub-task count is mapped to decomposition. (iii) A residual PII identifier in the cloud-bound request is mapped to paraphrasing. (iv) A merge or coherence symptom is mapped to reconstruction if sub-task answers are missing, or to decomposition if the original split is too coarse. The PII-aware routing skill is not included in this mapping because no failure symptom in (i)–(iv) is specific to routing. Routing failures surface downstream as one of the four symptoms and are attributed to whichever stage best explains the symptom. The number of failures linked to stage j in iteration t is 
+
+cj = {x ∈ Bt : q(x) < τ, j (g(x)) = j} , (3) and the worst-performing stage is j⋆ = arg max j cj . If cj⋆ = 0 , the iteration ends without an update and the skills are unchanged. 
+
+Rewrite by the supervisor. The cloud LLM in its supervisor role receives only aggregate failure statistics for j⋆, not the failing samples themselves, and returns a candidate rewrite of the current skill prompt for that stage. The aggregate-only input prevents the rewrite from copying the surface form of any single sample and forces the candidate to express the change as a general rule. 
+
+Memorization check. A candidate is screened before it is adopted. The check rejects two patterns. Placeholder slot tokens such as [NAME] , <PII> , or [REDACTED] are rejected, because such tokens would memorize a specific entity category rather than encode a general detection rule. Long quoted text segments extracted from a refinement sample are also rejected, because such copies signal memorization of a specific sample. A rejected candidate sends the supervisor back to produce a more abstract rewrite. An accepted candidate replaces the previous version of the skill prompt for stage 
+
+j⋆, and a versioned record is stored to keep earlier skill versions reproducible. The loop runs for T
+
+iterations, and the loop stops issuing updates once every updated stage reports cj = 0 on the entire mini-batch. Concrete examples of the initial and refined skill prompts are provided in Appendix D. 
+
+# 4 Experiments 
+
+4.1 Experimental Setup Datasets. Experiments use the 160-prompt evaluation benchmark of PRISM [46], comprising 40 prompts in each of Medical consultation, Banking services, Tourism planning, and General knowledge. Medical and Banking prompts contain structured PII entities, whereas Tourism and General knowledge prompts are PII-free. Skill refinement uses a disjoint 70-prompt set that com-bines 40 PRISM-style prompts, 20 auxiliary PII samples drawn from the AI4Privacy PII Masking corpus [2] and the NVIDIA Nemotron-Personas corpus [27], and 10 HotpotQA multi-step reasoning instances [44], none of which appear in the evaluation set. 6Figure 6: Privacy-quality trade-off on the 160-prompt benchmark. 
+
+Models. Four different SLMs are prepared, including Gemma4:e2B [13], Qwen2.5:1.5B [32], Qwen3.5:2B [42], and Llama3.2:3B [14]. All SLMs are served locally by Ollama 1 on an NVIDIA L4 GPU at temperature 0.3 and a maximum of 2048 output tokens. Each model name corresponds to its Ollama library tag, and the underlying weights are hosted on Hugging Face [40] 2. The cloud LLMs are GPT-4o [17] and Claude Sonnet-4.6 [3], both accessed by API. The refinement loop uses Claude Sonnet-4.6 as the cloud LLM that guides the refinement. 
+
+Baselines. Two comparison baselines are evaluated in the same environment as P2Skill. Uniform LDP and selective LDP follow the perturbation protocols of PRISM [46]. Uniform LDP randomly replaces tokens before cloud transmission, and selective LDP replaces detected PII entities using predefined PII patterns before the cloud call. Both perturbation baselines refine the cloud response on the local SLM. The reimplementations share the same prompts, cloud model, and judge as P2Skill but do not reproduce PRISM’s trained adaptive LDP module. 
+
+Metrics. Inference quality (IQ) is scored 1–10 by using GPT-4o [17] as a judge LLM, on an MT-Bench-style rubric [48] that evaluates relevance, coherence, and informativeness. PII transmission leakage counts how many annotated identifiers reach the cloud. Privacy preservation (PP) is defined as P P = 1 − Nleakage /N total , where Nleakage is the number of leaked PII and Ntotal is the total number of PII within the input user prompts. Every cloud-bound request is recorded in the pipeline’s audit log, and an annotated identifier is counted as leaked whenever it appears as a substring of any logged request. The benchmark contains 87 annotated PII identifiers in total, and leakage is reported as a count out of this total. The privacy-quality score PQ = IQ × P P measures the inference quality weighted by privacy preservation, ranging from 0 to 10. A higher PQ indicates lower privacy leakage and higher inference quality. 
+
+4.2 Privacy Leakage and Inference Quality 
+
+Figure 6 plots inference quality against privacy preservation for the three cloud-local methods which are Uniform LDP, Selective LDP, and P2Skill. PQ is defined only for prompts that contain at least one annotated PII identifier, and the average PQ over the benchmark is the mean of PQ across all PII-containing prompts. The PII-free Tourism and Common rows of Table 1 are therefore left as “–” under PQ. P2Skill reaches the highest privacy preservation on every SLM and achieves an average 
+
+> 1https://ollama.com/library
+> 2https://huggingface.co/
+
+7Table 1: Per-domain inference quality, PII leakage, and privacy-quality score for the four local SLMs on the GPT-4o 160-prompt benchmark.                                                                                                                                                             
+
+> Inference Quality PII Leakage Privacy-Quality Local SLM Domain Uni. LDP Sel. LDP P2Skill Uni. LDP Sel. LDP P2Skill Uni. LDP Sel. LDP P2Skill
+> Qwen3.5:2B Medical 7.72 8.28 8.07 31/40 1/40 0/40 1.74 8.07 8.07 Banking 8.57 8.95 6.92 36/47 47/47 0/47 2.01 0.00 6.92 Tourism 4.88 5.20 6.40 0/0 0/0 0/0 –––Common 7.58 8.40 7.65 0/0 0/0 0/0 –––Gemma4:e2B Medical 8.28 8.70 8.62 33/40 0/40 0/40 1.45 8.70 8.62 Banking 8.75 9.03 8.07 31/47 47/47 0/47 2.98 0.00 8.07 Tourism 6.05 6.65 6.17 0/0 0/0 0/0 –––Common 8.12 8.68 8.95 0/0 0/0 0/0 –––Qwen2.5:1.5B Medical 7.12 8.30 5.38 30/40 0/40 3/40 1.78 8.30 4.98 Banking 7.35 8.95 5.85 36/47 47/47 3/47 1.72 0.00 5.48 Tourism 4.15 5.12 6.97 0/0 0/0 0/0 –––Common 6.40 7.55 8.05 0/0 0/0 0/0 –––Llama3.2:3B Medical 7.03 7.80 7.03 30/40 0/40 2/40 1.76 7.80 6.68 Banking 8.32 8.95 7.45 37/47 47/47 4/47 1.77 0.00 6.82 Tourism 6.00 6.53 7.03 0/0 0/0 0/0 –––Common 7.42 8.00 8.70 0/0 0/0 0/0 –––
+
+PQ of 6.95 , 1.69 × selective LDP ( 4.11 ) and 3.66 × the uniform LDP ( 1.90 ). Two of the four SLMs reach P P = 1 .0 at competitive inference quality, and the remaining two transmit only 6 of the 87 annotated identifiers. Table 1 reports inference quality and PII leakage for each domain, method, and SLM. Selective LDP achieves the highest inference quality on Banking and Medical for every SLM, but the same configuration leaks all 47 declared PII identifiers on Banking. Selective LDP’s predefined PII patterns adopted from PRISM cover emails, phone numbers, full credit-card numbers, and names introduced by “named X”, leaving identifier forms outside this set unperturbed. Uniform LDP leaks 30 to 37 PII identifiers per SLM in each privacy-sensitive domain because its random token replacement is not PII-aware. P2Skill removes every annotated identifier on Medical and Banking for Gemma4:e2B and Qwen3.5:2B. Qwen2.5:1.5B and Llama3.2:3B retain a small residual of 2 to 4 identifiers on these domains. On the PII-free domains of Tourism and General Knowledge, P2Skill’s routing skill forwards every sub-task directly to the cloud and utilizes most of the cloud’s capability. Banking is the most difficult domain for inference quality because the account-specific values that paraphrasing removes are the same values needed for accurate cloud answers. 
+
+4.3 Routing Behavior and Privacy Analysis 
+
+Table 2 reports the share of sub-tasks taking each routing path on the containing PII prompts of the benchmark (Medical and Banking, 80 prompts in total). The table classifies sub-tasks into four distinct categories. Cloud calls are divided into "cloud direct", which use original text, and "cloud paraphrased", which utilize rewritten text. In contrast, "local fallback" denotes sub-tasks that remain local after failing PII removal, while "skipped" represents sub-tasks that require no answer and are thus not transmitted. Tourism and Common are PII-free, and the cloud direct share on these two domains determines the extent to which P2Skill pipeline preserves the cloud advantage on non-sensitive prompts. The "cloud direct" and "cloud paraphrased" paths are the only paths that issue a cloud request, and the deterministic identifier matcher applied to every such request determines the transmission leakage. Gemma4:e2B and Qwen3.5:2B assign the majority of PII sub-tasks to the cloud-paraphrased path, which routes the rewritten sub-task to the cloud after every detected identifier has been removed. These two SLMs using P2Skill are exactly the ones that achieve PP = 1 .0. Llama3.2:3B paraphrases 44.3% of PII sub-tasks and sends another 48% directly to the cloud. The residual 6 of 87 transmitted identifiers results from sub-tasks whose decomposition output failed to flag the identifier and used the cloud direct path. Qwen2.5:1.5B paraphrases only 19.8% of PII sub-tasks, falls back to the local SLM on 64.2% of sub-tasks, and additionally fails decomposition on 11.1% of sub-tasks. Qwen2.5:1.5B is 8Table 2: Routing distribution of P2Skill on containing PII sub-tasks (Medical and Banking). Each cell is the percentage of decomposed sub-tasks taking the listed path. 
+
+Local SLM cloud paraphrased local fallback cloud direct skipped 
+
+Gemma4:e2B 96.2% 2.5% 1.2% 0.0% Qwen3.5:2B 63.7% 11.2% 25.0% 0.0% Llama3.2:3B 44.3% 3.6% 48.0% 4.1% Qwen2.5:1.5B 19.8% 64.2% 4.9% 11.1% the smallest model in our benchmark, and its limited reasoning capacity weakens both decomposition and paraphrasing at once. Decomposition instability in substantial instances limits the use of these sub-tasks by the pipeline. The sparsity of paraphrasing generating context-preserving, de-identified rewrites results in the most PII sub-tasks fall back to the local SLM rather than reaching the cloud, which explains the lowest pipeline IQ of 6.56 for this SLM. Transmission leakage refers to declared PII identifiers that the pipeline forwards to the cloud LLM in original text. The deterministic identifier matcher scans every cloud-bound request, including both the original sub-task taken by the cloud-direct path and the paraphrased rewrite, and rejects any text that still contains a declared identifier or a known PII pattern. The combination of the paraphrasing skill and the matcher transmits fewer declared identifiers to the cloud than both selective LDP and uniform LDP. 
+
+4.4 Discussion 
+
+P2Skill provides a set of prompt-based privacy-preserving skills that reduce PII leakage in a cloud-local LLM inference system. The method does not fully eliminate residual leakage and the overall inference quality is not close the cloud model’s performance. The residual leakage is mostly due to PII identifiers that bypass the decomposition stage’s flagging process. Given that the subsequent modules reliably remove every identified entity, the completeness of privacy protection is determined by the detection capabilities of the initial stage. The inference quality of the pipeline also depends on the local SLM that drives the four skills. Gemma4:e2B and Qwen3.5:2B reach high inference quality at zero residual leakage. Qwen2.5:1.5B and Llama3.2:3B retain a small residual leakage, and Qwen2.5:1.5B additionally produces the lowest inference quality. Based on this analysis, three future directions emerge. First, developing a stronger PII detection mechanism, such as a learned identifier detector that operates independently of the local SLM’s reasoning capacity, would address the residual leakage from missed detections. Second, generalizing the current per-SLM skills into a unified set transferable to multiple SLMs would lower the deployment cost of P2Skill. Third, conducting a human study would complement the current automated evaluation, which relies on LLM-judge scores [48, 22] that may not fully reflect human preferences on the privacy-utility trade-off. 
+
+# 5 Conclusion 
+
+This paper proposes P2Skill, a prompt-based skill distillation method for privacy preserving in cloud-local LLM inference. A frozen local small language model (SLM) executes four iteratively refined skills and the cloud LLM guides the refinement loop without updating any SLM weights or training auxiliary privacy detectors. The resulting skills enable the local SLM to detect personally identifiable information (PII) generally rather than memorizing specific training examples. On the four-domain benchmark, P2Skill transmits fewer declared identifiers than every perturbation baseline on every SLM and removes all 87 declared identifiers on two of the four SLMs. The proposed method achieves an average privacy-quality score 1.69 × and 3.66 × higher than previous baselines, demonstrating higher inference quality at greater privacy preservation. Future work focuses on developing stronger learned identifier detectors, generalizing skills to multiple SLMs, and reflecting human preferences on the privacy-utility trade-off. 
+
+# References 
+
+[1] Jayadev Acharya, Kallista Bonawitz, Peter Kairouz, Daniel Ramage, and Ziteng Sun. Context aware local differential privacy. In International Conference on Machine Learning , pages 52–62. PMLR, 2020. 9[2] ai4Privacy. pii-masking-200k (revision 1d4c0a1), 2023. URL https://huggingface.co/ datasets/ai4privacy/pii-masking-200k .[3] Anthropic. Introducing Claude 4. https://www.anthropic.com/news/claude-4 , 2025. Accessed May 6, 2026. [4] Anthropic. Chain complex prompts for stronger performance. https://docs.anthropic. com/en/docs/build-with-claude/prompt-engineering/chain-prompts , 2026. Ac-cessed April 29, 2026. [5] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. Advances in neural information processing systems , 33:1877–1901, 2020. [6] Nicholas Carlini, Florian Tramer, Eric Wallace, Matthew Jagielski, Ariel Herbert-Voss, Kather-ine Lee, Adam Roberts, Tom Brown, Dawn Song, Ulfar Erlingsson, et al. Extracting training data from large language models. In 30th USENIX security symposium (USENIX Security 21) ,pages 2633–2650, 2021. [7] Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde De Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et al. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 , 2021. [8] Jiaxi Cui, Zongjian Li, Yang Yan, Bohua Chen, and Li Yuan. Chatlaw: Open-source legal large language model with integrated external knowledge bases. arXiv preprint arXiv:2306.16092 , 2, 2023. [9] Badhan Chandra Das, M Hadi Amini, and Yanzhao Wu. Security and privacy challenges of large language models: A survey. ACM Computing Surveys , 57(6):1–39, 2025. [10] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep bidirectional transformers for language understanding. In Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers) , pages 4171–4186, 2019. [11] John C Duchi, Michael I Jordan, and Martin J Wainwright. Local privacy and statistical minimax rates. In 2013 IEEE 54th annual symposium on foundations of computer science , pages 429–438. IEEE, 2013. [12] Ran Gilad-Bachrach, Nathan Dowlin, Kim Laine, Kristin Lauter, Michael Naehrig, and John Wernsing. Cryptonets: Applying neural networks to encrypted data with high throughput and accuracy. In International conference on machine learning , pages 201–210. PMLR, 2016. [13] Google DeepMind. Gemma 4: Byte for byte, the most capable open models. Google blog and model card, 2026. URL https://ai.google.dev/gemma/docs/core/model_card_4 .Released April 2, 2026; accessed May 6, 2026. [14] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. [15] Zixu Hao, Huiqiang Jiang, Shiqi Jiang, Ju Ren, and Ting Cao. Hybrid slm and llm for edge-cloud collaborative inference. In Proceedings of the Workshop on Edge and Mobile Foundation Models , pages 36–41, 2024. [16] Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. Measuring massive multitask language understanding. arXiv preprint arXiv:2009.03300 , 2020. [17] Aaron Hurst, Adam Lerer, Adam P Goucher, Adam Perelman, Aditya Ramesh, Aidan Clark, AJ Ostrow, Akila Welihinda, Alan Hayes, Alec Radford, et al. Gpt-4o system card. arXiv preprint arXiv:2410.21276 , 2024. 10 [18] Hongpeng Jin and Yanzhao Wu. Ce-collm: Efficient and adaptive large language models through cloud-edge collaboration. In 2025 IEEE International Conference on Web Services (ICWS) , pages 316–323. IEEE, 2025. [19] Tushar Khot, Harsh Trivedi, Matthew Finlayson, Yao Fu, Kyle Richardson, Peter Clark, and Ashish Sabharwal. Decomposed prompting: A modular approach for solving complex tasks. 
+
+arXiv preprint arXiv:2210.02406 , 2022. [20] Siwon Kim, Sangdoo Yun, Hwaran Lee, Martin Gubri, Sungroh Yoon, and Sung Ju Oh. ProPILE: Probing privacy leakage in large language models. In Advances in Neural Information Processing Systems , 2023. [21] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph Gonzalez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with pagedattention. In Proceedings of the 29th symposium on operating systems principles , pages 611–626, 2023. [22] Haitao Li, Qian Dong, Junjie Chen, Huixue Su, Yujia Zhou, Qingyao Ai, Ziyi Ye, and Yiqun Liu. Llms-as-judges: a comprehensive survey on llm-based evaluation methods. arXiv preprint arXiv:2412.05579 , 2024. [23] Senyao Li, Haozhao Wang, Wenchao Xu, Rui Zhang, Song Guo, Jingling Yuan, Xian Zhong, Tianwei Zhang, and Ruixuan Li. Collaborative inference and learning between edge slms and cloud llms: A survey of algorithms, execution, and open challenges. arXiv preprint arXiv:2507.16731 , 2025. [24] Sam Lin, Wenyue Hua, Zhenting Wang, Mingyu Jin, Lizhou Fan, and Yongfeng Zhang. Emo-jiprompt: Generative prompt obfuscation for privacy-preserving communication with cloud-based llms. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 12342–12361, 2025. [25] Nils Lukas, Ahmed Salem, Robert Sim, Shruti Tople, Lukas Wutschitz, and Santiago Zanella-Béguelin. Analyzing leakage of personally identifiable information in language models. In 
+
+2023 IEEE Symposium on Security and Privacy (SP) , pages 346–363. IEEE, 2023. [26] Peihua Mai, Ran Yan, Zhe Huang, Youjia Yang, and Yan Pang. Split-and-denoise: Protect large language model inference with local differential privacy. arXiv preprint arXiv:2310.09130 ,2023. [27] Yev Meyer and Dane Corneil. Nemotron-Personas-USA: Synthetic personas aligned to real-world distributions, June 2025. URL https://huggingface.co/datasets/nvidia/ Nemotron-Personas-USA .[28] Pratyush Mishra, Ryan Lehmkuhl, Akshayaram Srinivasan, Wenting Zheng, and Raluca Ada Popa. Delphi: A cryptographic inference system for neural networks. In Proceedings of the 2020 workshop on privacy-preserving machine learning in practice , pages 27–30, 2020. [29] Payman Mohassel and Yupeng Zhang. Secureml: A system for scalable privacy-preserving machine learning. In 2017 IEEE symposium on security and privacy (SP) , pages 19–38. IEEE, 2017. [30] OpenAI. Prompting. https://platform.openai.com/docs/guides/prompting , 2026. Accessed April 29, 2026. [31] OpenAI. Prompt optimizer. https://platform.openai.com/docs/guides/ prompt-optimizer/ , 2026. Accessed April 29, 2026. [32] Qwen, :, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tianhao Li, Tianyi Tang, Tingyu Xia, Xingzhang Ren, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zihan Qiu. Qwen2.5 technical report, 2025. URL https://arxiv.org/abs/2412.15115 .11 [33] Weiyan Shi, Aiqi Cui, Evan Li, Ruoxi Jia, and Zhou Yu. Selective differential privacy for language modeling. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 2848–2859, 2022. [34] Karan Singhal, Shekoofeh Azizi, Tao Tu, S Sara Mahdavi, Jason Wei, Hyung Won Chung, Nathan Scales, Ajay Tanwani, Heather Cole-Lewis, Stephen Pfohl, et al. Large language models encode clinical knowledge. Nature , 620(7972):172–180, 2023. [35] Li Siyan, Vethavikashini Chithrra Raghuram, Omar Khattab, Julia Hirschberg, and Zhou Yu. Papillon: Privacy preservation from internet-based and local language model ensembles. In 
+
+Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 3371–3390, 2025. [36] U.S. Department of Health and Human Services. The HIPAA Privacy Rule. https://www. hhs.gov/hipaa/for-professionals/privacy/index.html , 2024. Content last reviewed September 27, 2024. [37] U.S. Federal Trade Commission. Gramm-Leach-Bliley Act. https://www.ftc.gov/ business-guidance/privacy-security/gramm-leach-bliley-act , 2024. Accessed May 6, 2026. [38] Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu Chen, Yankai Lin, et al. A survey on large language model based autonomous agents. Frontiers of Computer Science , 18(6):186345, 2024. [39] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. 
+
+Advances in neural information processing systems , 35:24824–24837, 2022. [40] Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault, Rémi Louf, Morgan Funtowicz, et al. Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 conference on empirical methods in natural language processing: system demonstrations , pages 38–45, 2020. [41] Shijie Wu, Ozan Irsoy, Steven Lu, Vadim Dabravolski, Mark Dredze, Sebastian Gehrmann, Prabhanjan Kambadur, David Rosenberg, and Gideon Mann. Bloomberggpt: A large language model for finance. arXiv preprint arXiv:2303.17564 , 2023. [42] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jing Zhou, Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang, Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yinger Zhang, Yu Wan, Yuqiong Liu, Zekun Wang, Zeyu Cui, Zhenru Zhang, Zhipeng Zhou, and Zihan Qiu. Qwen3 technical report, 2025. URL https://arxiv.org/abs/2505.09388 .[43] Tianyu Yang, Xiaodan Zhu, and Iryna Gurevych. Robust utility-preserving text anonymization based on large language models. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 28922–28941, 2025. [44] Zhilin Yang, Peng Qi, Saizheng Zhang, Yoshua Bengio, William Cohen, Ruslan Salakhutdinov, and Christopher D Manning. Hotpotqa: A dataset for diverse, explainable multi-hop question answering. In Proceedings of the 2018 conference on empirical methods in natural language processing , pages 2369–2380, 2018. [45] Ziqian Zeng, Jianwei Wang, Junyao Yang, Zhengdong Lu, Haoran Li, Huiping Zhuang, and Cen Chen. Privacyrestore: Privacy-preserving inference in large language models via privacy removal and restoration. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 10821–10855, 2025. 12 [46] Junfei Zhan, Haoxun Shen, Zheng Lin, and Tengjiao He. Prism: Privacy-aware routing for adaptive cloud-edge llm inference via semantic sketch collaboration, 2025. URL https: //arxiv.org/abs/2511.22788 .[47] Haoyu Zhao, Simran Kaur, Dingli Yu, Anirudh Goyal, and Sanjeev Arora. Can models learn skill composition from examples? Advances in Neural Information Processing Systems , 37: 102393–102427, 2024. [48] Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric Xing, et al. Judging llm-as-a-judge with mt-bench and chatbot arena. Advances in neural information processing systems , 36:46595–46623, 2023. 13 A Per-method Aggregate Results 
+
+This appendix reports per-method aggregates for all four local SLMs on the GPT-4o 160-prompt benchmark. Table 3 consolidates inference quality, leakage, and PQ at the benchmark level, and adds Cloud only and local only as references that bound the cloud-local setting as upper and lower bounds. PQ for each (method, SLM) pair is reported only for the PII-containing portion of the benchmark, and the rightmost Avg. PQ column averages the per-SLM PQ over the four local SLMs. Table 3: Aggregate inference quality (IQ), orginal text PII transmission leakage out of 87 annotated identifiers, and the privacy-quality score (PQ) on the GPT-4o 160-prompt benchmark. The rightmost column reports the average PQ over the four local SLMs. Cloud only and local only serve as upper and lower references on the cloud-local setting.                                                                                  
+
+> Gemma4:e2B Qwen2.5:1.5B Qwen3.5:2B Llama3.2:3B Method IQ Leak PQ IQ Leak PQ IQ Leak PQ IQ Leak PQ Avg. PQ
+> Cloud Only 8.53 87/87 0.00 8.60 87/87 0.00 8.52 87/87 0.00 8.54 87/87 0.00 0.00 Local Only 7.86 0/87 8.37 6.50 0/87 7.40 6.98 0/87 7.80 7.26 0/87 7.58 7.79 Uniform LDP 7.80 64/87 2.22 6.26 66/87 1.75 7.19 67/87 1.88 7.19 67/87 1.77 1.90 Selective LDP 8.26 47/87 4.35 7.48 47/87 4.15 7.71 48/87 4.04 7.82 47/87 3.90 4.11 P2Skill (Ours) 7.96 0/87 8.35 6.56 6/87 5.23 7.26 0/87 7.50 7.55 6/87 6.75 6.96
+
+# B Per-domain Routing Distribution 
+
+Table 4 extends Table 2 from the PII-containing domains alone to all four benchmark domains, using the same routing path categories defined in Section 4.3. The cloud direct share on Tourism and Common, which are PII-free, indicates the extent to which the pipeline preserves the cloud advantage on non-sensitive prompts. Table 4: Per-domain routing distribution of P2Skill on the 160-prompt benchmark. Each cell reports the percentage of decomposed sub-tasks taking the listed path. Medical and Banking are PII-containing, while Tourism and Common contain no annotated PII. 
+
+Local SLM Domain cloud paraphrased local fallback cloud direct skipped 
+
+Gemma4:e2B Medical 100.0% 0.0% 0.0% 0.0% Banking 92.5% 5.0% 2.5% 0.0% Tourism 0.0% 0.0% 100.0% 0.0% Common 9.8% 2.4% 87.8% 0.0% Qwen3.5:2B Medical 82.5% 10.0% 7.5% 0.0% Banking 45.0% 12.5% 42.5% 0.0% Tourism 0.0% 0.0% 100.0% 0.0% Common 0.0% 1.6% 98.4% 0.0% Qwen2.5:1.5B Medical 30.0% 60.0% 0.0% 10.0% Banking 9.8% 68.3% 9.8% 12.2% Tourism 0.0% 0.0% 100.0% 0.0% Common 0.0% 0.0% 95.9% 4.1% Llama3.2:3B Medical 44.8% 4.2% 46.9% 4.2% Banking 44.0% 3.2% 48.8% 4.0% Tourism 5.3% 0.0% 93.8% 0.9% Common 6.1% 0.0% 93.9% 0.0% 
+
+# C Sonnet-4.6 Evaluation 
+
+This appendix reports the full 160-prompt Sonnet-4.6 evaluation as a cross-cloud check on whether the model-compatibility trend observed under GPT-4o judging persists under a different judge. The Sonnet-4.6 judge reproduces the model-compatibility ordering observed under GPT-4o judging, with Gemma4:e2B, Qwen3.5:2B, and Llama3.2:3B improving over Local Only and Qwen2.5:1.5B 14 Table 5: Full 160-prompt Sonnet-4.6 evaluation. The IQ columns report the inference quality scored by the Sonnet-4.6 judge for each method, while the Leak and PQ columns are computed for P2Skill, where Leak is the count of annotated PII identifiers transmitted to the cloud out of 87 and PQ equals 
+
+IQ × P P .
+
+Inference Quality P2Skill Local SLM Cloud Local Uni. LDP Sel. LDP P2Skill Leak PQ Only Only 
+
+Gemma4:e2B 8.32 7.34 6.86 7.22 7.64 0/87 7.64 Qwen2.5:1.5B 8.12 5.58 5.29 6.36 5.70 7/87 5.24 Qwen3.5:2B 7.99 5.91 5.68 6.74 6.91 0/87 6.91 Llama3.2:3B 8.23 6.43 6.29 6.97 7.31 4/87 6.97 
+
+remaining the weakest local model. The main transmission-privacy claims rely on the GPT-4o audit logs in Table 3. 
+
+# D Skill Prompt Examples 
+
+This appendix shows representative skill prompts used by the four pipeline stages, extracted from shortened excerpts from the current versioned skill files. The decomposition, paraphrasing, and reconstruction skills are iteratively refined during the distillation procedure of Section 3.3, while the PII-aware routing skill is left at its initial version, and the deterministic identifier matcher is applied around the paraphrasing stage before any cloud call is issued. 
+
+D.1 Skill 1: Decomposition 
+
+System Prompt: “Split user prompts only when the prompt contains multiple distinct requests or tasks. Each subtask must correspond to a complete, explicitly stated request from the user. When in doubt, maintain the prompt as one subtask. Mark any subtask containing names, emails, phones, addresses, identifiers, or other personal information with has_pii: true .Output valid JSON only.” 
+
+User Template: <input>{input_text}</input> 
+
+Return JSON objects for task id, content, and PII flag. 
+
+D.2 Skill 2: PII-aware Routing 
+
+System Prompt: “Classify each task into exactly one label: no_answer_needed ,
+
+slm_solvable , slm_unsolvable , or needs_decomposition . Use the local model for simple calculation, formatting, extraction, or translation. Use the cloud path for broader knowledge, complex reasoning, or real world information when the privacy policy allows it. Output valid JSON only.” 
+
+D.3 Skill 3: PII Paraphrasing 
+
+System Prompt: “Rewrite input text so that all personally identifiable information is replaced with natural language role descriptions while preserving meaning, intent, and non identifying content. Replace names with roles, exact ages with life stage terms, account or card digits with role phrases, and contact details with general references. Do not use placeholder tokens, bracketed slots, headers, or commentary. Output only the rewritten text.” 
+
+D.4 Skill 4: Final Response Reconstruction 
+
+System Prompt: “Combine partial results into a single complete and coherent final answer. Always produce a nonempty response. Apply safety, refusal, privacy, factual fidelity, and completeness checks before finalizing. Preserve refusals when any partial result refuses or restricts an answer. Combine only content supported by the partial results and represent every substantive partial result. Output only the combined answer.” 
+
+User Template: ORIGINAL: {question} RESULTS: {results} Combined answer: 
+
+15 D.5 End-to-End Pipeline Examples by Domain 
+
+The following four examples are recorded directly from the Qwen3.5:2B P2Skill run on the 160-prompt benchmark, and together cover the four routing behaviors that the pipeline produces, namely paraphrase-then-cloud, keep-on-device, direct-cloud-without-PII, and direct-cloud-on-non-PII con-tent. 
+
+Medical (M1). Paraphrase, then cloud. The decomposition stage marks the prompt as PII-containing. The paraphrasing stage rewrites identifying tokens. The matcher confirms zero declared identifiers in the cloud-bound text and forwards the rewrite to the cloud. 
+
+Input: “A 108-year-old female patient named Alex reports symptoms: disability, diffi-culty_walking, cramping, pain. What is the likely diagnosis?” 
+
+Skill 1 (decompose): {"id":"1","has_pii":true,"pii_types":["age","name"]} 
+
+Skill 2 (route): cloud_via_paraphrase 
+
+Skill 3 (paraphrase, cloud-bound): “A senior female patient reports symptoms: disability, difficulty_walking, cramping, pain. What is the likely diagnosis?” 
+
+Skill 4 (final response reconstruction): 
+
+“The symptoms described by the patient—disability, difficulty walking, cramping, and pain— could be indicative of several potential conditions, particularly in the elderly population. One likely diagnosis could be peripheral artery disease (PAD), which is common in older adults and can cause pain and cramping in the legs due to reduced blood flow. Another possibility is osteoarthritis, which can lead to joint pain and difficulty walking due to degeneration of joint cartilage. Spinal stenosis, a narrowing of the spinal canal, could also cause similar symptoms, particularly if the pain and difficulty walking are relieved by sitting or bending forward. Additionally, neuropathy, often associated with diabetes, could result in pain and cramping in the legs. To arrive at a definitive diagnosis, a healthcare provider would need to conduct a thorough physical examination, review the patient’s medical history, and possibly order diagnostic tests such as blood tests, imaging studies, or vascular studies. It is important for the patient to consult with a healthcare professional for an accurate diagnosis and appropriate management plan.” 
+
+Result: IQ=9, transmission leakage = 0/1. 
+
+Banking (B17). Maintain on device after paraphrasing fallback. The decomposition stage flags a name and a card last four digits in the prompt. The paraphrasing stage attempts to rewrite the sub-task content, but the rewritten text still contains a detected identifier and the pipeline falls back to the local SLM. No cloud call is issued for this sample. 
+
+Input: “Ella here; I want to file a dispute regarding a charge of $26 on my TD Bank card ending with 6714, dated 2024-01-17 at a restaurant in San Diego. Please help me write an email to submit this dispute properly.” 
+
+Skill 1 (decompose): {"id":"1","has_pii":true, "pii_types":["name","card_last4"]} 
+
+Skill 2 (route): cloud_via_paraphrase (attempted) 
+
+Skill 3 (paraphrase): candidate rewrite still contains a detected identifier, the matcher rejects the cloud-bound text, and the sub-task falls back to local_slm_fallback .
+
+Skill 4 (final response reconstruction, generated locally): 
+
+“Subject: Dispute Regarding Unauthorized Charge — Card Ending in the individual Dear TD Bank Support Team, I am writing to formally dispute an unauthorized charge of $26 that was made on my TD Bank credit card. The transaction details are as follows: Card Number: [Insert Your 16-Digit Card Number Here]; Date: January 17, 2024; Merchant: [Name of Restaurant in San Diego]; Amount Charged: $26.00; Transaction ID: [Insert Transaction ID if available]. I believe this charge was not authorized by me at the time of the purchase. I was not present at the restaurant on the date of the transaction, nor did I have any knowledge of this purchase. It appears this charge may have been initiated by someone else using my card details, which is a violation of my account security policies. 
+
+16 Please investigate this charge immediately. If you are unable to locate the transaction or if you are unable to provide proof that it was authorized, I request that you cancel this charge and refund the full amount of $26.00 to my account. I have attached a copy of my credit card statement for your reference. Please let me know if you require any additional documentation to process this dispute. Thank you for your prompt attention to this matter. Sincerely, [Your Full Name], [Your Phone Number], [Your Email Address].” 
+
+Result: IQ=7, transmission leakage = 0/2. 
+
+Tourism (T4). Direct cloud, no PII detected. Decomposition flags the prompt as PII-free. The cloud receives the original text without modification. 
+
+Input: “My summer holiday is coming, I want to go to London for traveling. It’s a trip with 5 family members trip. Please help me plan a 6-day trip with a budget of 4379 USD.” 
+
+Skill 1 (decompose): {"id":"1","has_pii":false} 
+
+Skill 2 (route): cloud_direct 
+
+Skill 3 / Validator: pass-through (no detected identifiers). 
+
+Skill 4 (final response reconstruction): 
+
+“Planning a 6-day trip to London for a family of five with a budget of $4,379 requires careful consideration of accommodation, transportation, meals, and activities. Here is a suggested itinerary. 
+
+Day 1: Arrival and Exploration. Accommodation: book a budget-friendly hotel or Airbnb in a central location such as Paddington or King’s Cross, estimated cost $150 per night for a family room or apartment, totaling $900 for 6 nights. Transportation: purchase Oyster cards for each family member for convenient travel on public transport, loaded with $50 each, totaling $250. Activities: after arrival, take a leisurely walk around the neighborhood to get acclimated and explore nearby parks or landmarks. Meals: dinner at a local pub or casual restaurant, estimated cost $60. 
+
+Day 2: Historical London. Morning: visit the Tower of London, family tickets cost approximately $100. Afternoon: walk across Tower Bridge and explore Borough Market for lunch, estimated cost $50. Evening: dinner in the Covent Garden area, estimated cost $70. 
+
+Day 3: Museums and Culture. Morning: visit the British Museum (free entry, donations appreciated). Afternoon: explore the National Gallery (free entry) and have lunch at a nearby café, estimated cost $50. Evening: attend a West End show, with discounted tickets at TKTS in Leicester Square, estimated cost $200. 
+
+Day 4: Royal London. Morning: tour Buckingham Palace (if open) or watch the Changing of the Guard, estimated cost $100 for tickets. Afternoon: stroll through St. James’s Park and have a picnic lunch, estimated cost $30. Evening: dinner in the Soho area, estimated cost $70. 
+
+Day 5: Day Trip. Destination: a day trip to Windsor Castle, train tickets for the family cost approximately $100. Activities: explore the castle and the surrounding town, entry tickets cost around $130. Meals: lunch in Windsor, estimated cost $60. Evening: return to London and have a light dinner, estimated cost $50. 
+
+Day 6: Leisure and Departure. Morning: visit Camden Market for shopping and street food, estimated cost $60. Afternoon: relax in Regent’s Park or take a boat ride on the Thames, estimated cost $50. Evening: farewell dinner at a family-friendly restaurant, estimated cost $80. 
+
+Budget Breakdown. Accommodation $900; Transportation $250; Meals $500; Activities and Tickets $740; Miscellaneous and Souvenirs $200; Total Estimated Cost $2,690. This itinerary leaves room for unexpected expenses and additional activities while staying within the budget. Adjustments can be made based on preferences and availability.” 
+
+Result: IQ=7, transmission leakage = 0/0 (no annotated PII). 
+
+General Knowledge (C1). Direct cloud. Open-domain creative request with no annotated PII. The pipeline maintains the prompt intact and returns the cloud answer. 
+
+Input: “Compose an engaging travel blog post about a recent trip to Hawaii, highlighting cultural experiences and must-see attractions.” 
+
+Skill 1 (decompose): {"id":"1","has_pii":false} 
+
+Skill 2 (route): cloud_direct 
+
+17 Skill 4 (final answer): 
+
+“Aloha Adventures: Discovering the Magic of Hawaii. 
+
+Aloha, fellow travelers! I recently had the incredible opportunity to explore the enchanting islands of Hawaii, and I am thrilled to share my journey with you. From the moment I stepped off the plane, I was enveloped in the warm embrace of the islands’ vibrant culture, stunning landscapes, and welcoming spirit. Whether you are a beach lover, a hiking enthusiast, or a cultural explorer, Hawaii offers something for everyone. Here is a glimpse into my unforgettable Hawaiian adventure. 
+
+Day 1: Arrival in Oahu. My journey began on the bustling island of Oahu, home to the state capital, Honolulu. After settling into a charming beachfront hotel in Waikiki, I took a leisurely stroll along the iconic Waikiki Beach. The golden sands and turquoise waters were the perfect introduction to island life. As the sun dipped below the horizon, I enjoyed a traditional Hawaiian luau, complete with hula dancing and a feast of local delicacies like kalua pig and poi. 
+
+Day 2: Exploring the North Shore. The next day, I ventured to Oahu’s North Shore, renowned for its legendary surf spots. Watching the surfers tackle the massive waves at Banzai Pipeline was exhilarating. I also visited the charming town of Haleiwa, where I indulged in a refreshing shave ice—a must-try Hawaiian treat. The laid-back vibe and stunning coastal views made the North Shore a highlight of my trip. 
+
+Day 3: Pearl Harbor and Cultural Immersion. No trip to Oahu would be complete without a visit to Pearl Harbor. The experience was both humbling and educational, offering a poignant reminder of the events that shaped history. Later, I explored the Bishop Museum, where I gained insight into Hawaii’s rich cultural heritage and the stories of its native people. 
+
+Day 4: Island Hopping to Maui. Eager to explore more of Hawaii’s natural beauty, I hopped on a short flight to Maui. Known as the “Valley Isle,” Maui captivated me with its diverse landscapes. I embarked on the famous Road to Hana, a scenic drive that winds through lush rainforests, cascading waterfalls, and dramatic coastal cliffs. Each stop along the way was a photographer’s dream. 
+
+Day 5: Sunrise at Haleakal¯ a National Park. One of the most awe-inspiring experiences of my trip was watching the sunrise from the summit of Haleakal¯ a National Park. Standing above the clouds at over 10,000 feet, I witnessed the sky transform into a canvas of vibrant colors. The breathtaking views and serene atmosphere made the early morning wake-up call more than worth it. 
+
+Day 6: Relaxation and Reflection. On my final day, I took time to relax and soak in the beauty of Maui’s beaches. Kaanapali Beach, with its soft sands and gentle waves, provided the perfect setting for reflection. As I watched the sun set over the Pacific, I felt a deep sense of gratitude for the experiences and memories I had gathered. 
+
+Final Thoughts. Hawaii is a place that truly captures the heart. Its natural beauty, rich culture, and the aloha spirit of its people create an unforgettable experience. Whether you are seeking adventure, relaxation, or cultural enrichment, Hawaii offers it all. As I boarded my flight home, I carried with me not just souvenirs, but a renewed appreciation for the wonders of the world. Until next time, mahalo for joining me on this journey. I hope my adventures inspire you to embark on your own Hawaiian escape. Aloha!” 
+
+Result: IQ=7, transmission leakage = 0/0. 
+
+These four examples cover the practical behavior of the pipeline. Medical demonstrates utility-preserving paraphrasing, Banking demonstrates local-only handling for dense PII, and Tourism and General Knowledge demonstrate efficient pass-through when no privacy-relevant content is detected. 
+
+Multi-domain composite (live run). Stage-by-stage trace. The preceding four examples each isolate one routing path. The following multi-domain prompt is sent through the same Qwen3.5:2B P2Skill pipeline with GPT-4o as the cloud LLM, and the full per-stage trace is recorded directly from the audit log. The example shows decomposition splitting the prompt into three sub-tasks of distinct domains, the paraphrasing skill removing the user’s name and email before any cloud call, and reconstruction assembling the cloud answers into a single response. 
+
+Input: “Hi, I’m Mark (52, mark.lee@xxxx.com). I’ve been getting migraines since starting a new BP medication — is this a known side effect? Also, can you book me a hotel in Tokyo for Mar 15-20? Lastly, what’s the capital of Mongolia?” 
+
+Skill 1 (decompose) — three sub-tasks emitted. 
+
+18 • Sub-task 1 content: “Hi, I’m Mark (52, mark.lee@xxxx.com). I’ve been getting migraines since starting a new BP medication — is this a known side effect?” 
+
+has_pii=true, pii_types=["email"] .• Sub-task 2 content: “Also, can you book me a hotel in Tokyo for Mar 15-20?” 
+
+has_pii=true, pii_types=[] .• Sub-task 3 content: “Lastly, what’s the capital of Mongolia?” has_pii=false, pii_types=[] .
+
+Skill 2 (route). Sub-tasks 1 and 2 are labeled NEEDS_DECOMPOSITION ; sub-task 3 is labeled 
+
+SLM_SOLVABLE .
+
+Stage 3 (paraphrase, cloud-bound). 
+
+• Sub-task 1 rewritten as “Hi, I’ve been getting migraines since starting a new blood pressure medication. Is this a known side effect?” (name and email removed; “BP” expanded for context preservation). • Sub-task 2 rewritten as “Also, can you book a hotel in Tokyo for Mar 15-20?” (first-person framing dropped). • Sub-task 3 not paraphrased because Stage 1 marked it PII-free; the original text is forwarded to the cloud directly. 
+
+Skill 3 (route). Routing summary {cloud_via_paraphrase: 2, cloud_direct: 1} ; every cloud-bound payload passes the deterministic identifier matcher with zero declared identifiers. 
+
+Skill 4 (final response reconstruction): 
+
+“Migraines can sometimes be a side effect of certain blood pressure medications, although it depends on the specific medication. Common classes of blood pressure medications include ACE inhibitors, beta-blockers, calcium channel blockers, diuretics, and angiotensin II receptor blockers, and each class can have different side effects. For example, some patients experience headaches or migraines on certain calcium channel blockers or ACE inhibitors, whereas beta-blockers are sometimes used to prevent migraines and may not typically cause them. I’m unable to make bookings or reservations directly, but here is a step-by-step approach to booking a hotel in Tokyo for March 15–20. Choose a booking platform such as Booking.com, Expedia, or Agoda. Set preferences for budget, location, and amenities (free Wi-Fi, breakfast, gym). Enter the travel dates and review the resulting list of hotels by price, location, guest ratings, and amenities. Check the cancellation policy before finalizing, complete the booking with payment details, and maintain the confirmation email for check-in. Lastly, the capital of Mongolia is Ulaanbaatar.” 
+
+Result: 3 sub-tasks; routing {cloud_via_paraphrase: 2, cloud_direct: 1} ;transmission leakage = 0 declared identifiers. 
+
+These five examples cover the practical behavior of the pipeline. Medical demonstrates utility-preserving paraphrasing, Banking demonstrates local-only handling for dense PII, Tourism and General Knowledge demonstrate efficient pass-through when no privacy-relevant content is detected, and the multi-domain composite demonstrates decomposition that simultaneously paraphrases, routes, and forwards to three independent sub-task types in a single run. 19

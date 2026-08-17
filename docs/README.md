@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-16</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-17</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 10 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>9</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-16 20:50:06 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-17 20:40:33 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读7篇、速读3篇，重点聚焦长程具身任务规划与LLM智能体评估。最值得关注两篇9分工作：GraphThink增强多步任务规划，以及揭示智能体切换评估静态偏差的Replay Gap。建议下一步延伸阅读策略感知工具使用及多跳推理评测，注意区分规划与评估方法的适用边界。</p>
+<p>今日共读18篇论文，其中9篇精读、9篇速读，重点聚焦AI智能体与多模态推理。</p>
+<p>最值得关注的是两篇9.0分精读：HELIX探索模型与工具协同的递归自改进，MedClaw用启发式智能体解决长程手术视频推理难题。</p>
+<p>建议普通读者优先了解智能体自改进和医疗AI落地方向，后续可关注多模态优化与边缘计算结合的低成本方案。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="GraphThink: Graph-Enhanced LLM Thinking for Long-Horizon Embodied Task Planning">GraphThink: Graph-Enhanced LLM Thinking for Long-Horizon Embodied Task Planning</span></li><li><span class="dpr-home-dashboard-paper-title" title="The Replay Gap: Static Evaluation of Model Switching in LLM Agents Scores the Wrong World">The Replay Gap: Static Evaluation of Model Switching in LLM Agents Scores the Wrong World</span></li><li><span class="dpr-home-dashboard-paper-title" title="Macaron-V1: Towards Open Continual Learning with Self-Improvement and Mixture-of-LoRA">Macaron-V1: Towards Open Continual Learning with Self-Improvement and Mixture-of-LoRA</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HELIX: Model-Harness Co-evolution for Recursive Self-Improvement">HELIX: Model-Harness Co-evolution for Recursive Self-Improvement</span></li><li><span class="dpr-home-dashboard-paper-title" title="MedClaw: Heuristic Agent Harness for Long-Horizon Surgical Video Reasoning">MedClaw: Heuristic Agent Harness for Long-Horizon Surgical Video Reasoning</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Graph-Based Reinforcement Learning Framework for Structured Drift Diagnosis and Recovery in Autonomous LLM Agents">A Graph-Based Reinforcement Learning Framework for Structured Drift Diagnosis and Recovery in Autonomous LLM Agents</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>5</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>7</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Retry, Switch, or Abstain? Learning Strategy-Aware Tool-Use Policies via Controlled Error Injection">Retry, Switch, or Abstain? Learning Strategy-Aware Tool-Use Policies via Controlled Error Injection</span></li><li><span class="dpr-home-dashboard-paper-title" title="VAKRA: Evaluating Multi-Hop Reasoning Across APIs and Retrieval Under Tool-Use Policies">VAKRA: Evaluating Multi-Hop Reasoning Across APIs and Retrieval Under Tool-Use Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="Towards a Formal Definition of Agent Memory: Basis, Span, Optimality, and the Sequential Memory Problem">Towards a Formal Definition of Agent Memory: Basis, Span, Optimality, and the Sequential Memory Problem</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MMDynOpt-Agent: Dynamic Optimization for Multimodal Large Language Model Reasoning via Reinforcement Learning">MMDynOpt-Agent: Dynamic Optimization for Multimodal Large Language Model Reasoning via Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Clearing the Fog: Towards Installing and Refining Proactive Exploration Capabilities in LLM Agents">Clearing the Fog: Towards Installing and Refining Proactive Exploration Capabilities in LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Enhancing Virtual Agents through SLMs and Edge-Computing: An Exploratory Evaluation of Think and Memory Processes">Enhancing Virtual Agents through SLMs and Edge-Computing: An Exploratory Evaluation of Think and Memory Processes</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span></div>
 </section>
 </div>
 
