@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-17</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-18</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 28 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>9</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>14</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-17 20:40:33 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-18 21:27:55 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,10 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共读18篇论文，其中9篇精读、9篇速读，重点聚焦AI智能体与多模态推理。</p>
-<p>最值得关注的是两篇9.0分精读：HELIX探索模型与工具协同的递归自改进，MedClaw用启发式智能体解决长程手术视频推理难题。</p>
-<p>建议普通读者优先了解智能体自改进和医疗AI落地方向，后续可关注多模态优化与边缘计算结合的低成本方案。</p>
+<p>今日共生成 28 篇推荐（精读 14 篇，速读 14 篇）</p>
+<p>精读：《HyMem: Hierarchical Context Management for Long-Horizon Agents via Information Isolation》（10.0/10）, 《Trust Is Not Enough: Influence Calibration for On-Policy Self-Distillation in Agentic RL》（9.0/10）</p>
+<p>速读：《Semantic Uncertainty-Guided Orchestration in Hierarchical Multi-Agent Systems》（8.0/10）, 《A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models》（8.0/10）, 《When Deep Research Agents Stagnate: Enhancing Reasoning with Retrieval-Aware Agent Control》（8.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +74,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">9 篇</strong>
+    <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HELIX: Model-Harness Co-evolution for Recursive Self-Improvement">HELIX: Model-Harness Co-evolution for Recursive Self-Improvement</span></li><li><span class="dpr-home-dashboard-paper-title" title="MedClaw: Heuristic Agent Harness for Long-Horizon Surgical Video Reasoning">MedClaw: Heuristic Agent Harness for Long-Horizon Surgical Video Reasoning</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Graph-Based Reinforcement Learning Framework for Structured Drift Diagnosis and Recovery in Autonomous LLM Agents">A Graph-Based Reinforcement Learning Framework for Structured Drift Diagnosis and Recovery in Autonomous LLM Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HyMem: Hierarchical Context Management for Long-Horizon Agents via Information Isolation">HyMem: Hierarchical Context Management for Long-Horizon Agents via Information Isolation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Trust Is Not Enough: Influence Calibration for On-Policy Self-Distillation in Agentic RL">Trust Is Not Enough: Influence Calibration for On-Policy Self-Distillation in Agentic RL</span></li><li><span class="dpr-home-dashboard-paper-title" title="SysEvolve: An AI-native, safe, autonomous adversarial attack-defense co-evolutionary system">SysEvolve: An AI-native, safe, autonomous adversarial attack-defense co-evolutionary system</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>7</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">agent-dist <strong>1</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +87,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">9 篇</strong>
+    <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MMDynOpt-Agent: Dynamic Optimization for Multimodal Large Language Model Reasoning via Reinforcement Learning">MMDynOpt-Agent: Dynamic Optimization for Multimodal Large Language Model Reasoning via Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Clearing the Fog: Towards Installing and Refining Proactive Exploration Capabilities in LLM Agents">Clearing the Fog: Towards Installing and Refining Proactive Exploration Capabilities in LLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Enhancing Virtual Agents through SLMs and Edge-Computing: An Exploratory Evaluation of Think and Memory Processes">Enhancing Virtual Agents through SLMs and Edge-Computing: An Exploratory Evaluation of Think and Memory Processes</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Semantic Uncertainty-Guided Orchestration in Hierarchical Multi-Agent Systems">Semantic Uncertainty-Guided Orchestration in Hierarchical Multi-Agent Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models">A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="When Deep Research Agents Stagnate: Enhancing Reasoning with Retrieval-Aware Agent Control">When Deep Research Agents Stagnate: Enhancing Reasoning with Retrieval-Aware Agent Control</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>9</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">agent-lsh <strong>12</strong></span><span class="dpr-home-dashboard-tag">moe-routing <strong>2</strong></span></div>
 </section>
 </div>
 

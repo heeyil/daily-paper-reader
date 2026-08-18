@@ -1,0 +1,663 @@
+Title: RLCascadeRouter: Quality-Estimator-Free Cascade Routing via Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2608.15817v1
+
+Published Time: Tue, 18 Aug 2026 01:14:59 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# RLCascadeRouter: Quality-Estimator-Free Cascade Routing via Reinforcement Learning 
+
+## Shihong Huang 1, Shengjie Wang 1, Hong Ma 1, Zhou Xu 2,∗
+
+> 1
+
+## Polytechnic Institute, Zhejiang University, Hangzhou, China 
+
+> 2
+
+## Department of Logistics and Maritime Studies, Faculty of Business, The Hong Kong Polytechnic University, Hong Kong, China 
+
+## Abstract 
+
+The growing ecosystem of large language mod-els (LLMs) offers huge potential to optimize performance-cost trade-offs. However, their het-erogeneous capabilities and inference costs make efficiently routing queries a significant challenge. Existing paradigms are inflexible: one-shot routers commit before observing responses, whereas con-ventional cascades stop adaptively but follow a fixed model order. Cascade routing removes both restrictions by reconsidering whether to stop or in-voke another model after each response. Current methods use a predict-then-optimize pipeline esti-mating response quality and future model utility. However, prediction loss for quality or utility is not equivalent to routing-decision loss. A lower prediction error does not necessarily yield a bet-ter action; a small boundary-crossing error can re-verse a “stop” or model-selection decision. There-fore, we propose RLCascadeRouter, a quality-estimator-free framework that formulates cascade routing as a Markov decision process with actions comprising “stop” and model selection. It uses trajectory returns and advantages to directly op-timize the performance-cost objective. Its Cas-cade Policy Network models candidate comple-mentarity for model selection and remaining-action value for stopping, eliminating independent post-hoc response-quality estimators. Evaluated across ten LLMRouterBench benchmarks with thirteen LLMs, RLCascadeRouter outperforms strong base-lines and achieves superior performance-cost trade-offs. It incorporates unseen models without retrain-ing, and ablation studies validate both policy com-ponents. 
+
+## 1 Introduction 
+
+The rapid development of large language models (LLMs) has created a diverse ecosystem of models with heteroge-neous capabilities and inference costs. While large, general-purpose models often provide strong average performance, 
+
+> ∗Corresponding authors.
+
+invoking them for every query can be prohibitively expen-sive. Conversely, smaller or specialized models may solve many queries at a substantially lower cost, but their perfor-mance can vary considerably across tasks and instances. This heterogeneity motivates LLM model selection: given a query and a pool of candidate models, the system should determine which model or sequence of models can produce a satisfac-tory answer while controlling the inference cost. [Varangot-Reille et al. , 2026; Moslem and Kelleher, 2026] Existing model-selection methods mainly follow two paradigms: routing and cascading [Moslem and Kelleher, 2026]. As illustrated in Figure 1(a), routing makes a one-shot decision that assigns each query to a candidate model, typically based on query features and the estimated capa-bilities and costs of the candidates [Zhuang et al. , 2025; Feng et al. , 2025]. Cascading, shown in Figure 1(b), ar-ranges models in a predefined sequence and invokes them successively until the current response is considered satis-factory [Chen et al. , 2024a; Aggarwal et al. , 2024; Gupta 
+
+et al. , 2024]. Despite their utility, both paradigms restrict the model-selection process. Routing can adapt the selected model but cannot revise its decision after observing the gen-erated response. Cascading can adapt the number of model calls, but its fixed order prevents query-specific skipping or reordering. A less restrictive strategy that supports both dy-namic model selection and dynamic stopping could therefore provide a stronger performance-cost trade-off. Dekoninck et al. [2025] take an important step toward this goal with cascade routing , illustrated in Figure 1(c). Their framework dynamically selects between stopping and future model combinations, generalizing both one-shot routing and fixed-order cascading. However, this framework remains crit-ically dependent on quality estimation: ex-ante estimates as-sess the value of models, while post-hoc estimates deter-mine whether the current response is sufficient to stop. This predict-then-optimize design creates a Prediction-Decision Mismatch because prediction loss and downstream decision loss are not equivalent. A small estimation error that crosses an action boundary can reverse a stopping or model-selecting decision, whereas a larger error that preserves the action or-dering may have no decision consequence. Consequently, im-proving the quality estimator does not necessarily improve the resulting routing policy. Therefore, we propose RLCascadeRouter , a quality-arXiv:2608.15817v1 [cs.AI] 16 Aug 2026 Query      
+
+> 𝑚 1
+> 𝑚 2
+> 𝑚 3
+> STOP
+> Quality
+> Estimator
+> 𝑚 1
+> 𝑚 2
+> 𝑚 3
+> STOP
+> Quality
+> Estimator
+> Query Router
+> 𝑚 1
+> 𝑚 2
+> 𝑚 3
+> STOP
+> Query 𝑚 1
+> STOP
+> Quality
+> Estimator 𝑚 2
+> STOP
+> Quality
+> Estimator
+> 𝑚 1
+> 𝑚 2
+> 𝑚 3
+> STOP
+> State(t+1)
+> 𝑚 1
+> 𝑚 2
+> 𝑚 3
+> STOP
+> State(t)
+> Policy
+> Network
+> (𝜋)
+> Policy
+> Network
+> (𝜋)
+> (a) Routing (b) Cascading
+> (c) Cascade Routing (d) RLCascadeRouter Figure 1: Comparison of LLM model-selection structures: (a) one-shot routing, (b) fixed-order cascading with quality-based stopping, (c) estimator-based cascade routing, and (d) RLCascadeRouter, which jointly learns “stop” and model actions through a unified MDP policy.
+
+estimator-free cascade-routing framework based on rein-forcement learning. As shown in Figure 1(d), we formu-late cascade routing as a Markov decision process (MDP) with an action space that jointly contains “stop” and all pre-viously unselected models. Rather than predicting response qualities and subsequently converting them into routing de-cisions, RLCascadeRouter learns action preferences directly from trajectory-level performance-cost feedback. Its Cascade Policy Network captures two relationships required by cas-cade routing: capability complementarity among the remain-ing models and the relative value of the current state versus the remaining actions. Consequently, “stop” and model se-lection are learned jointly under the final objective, without invoking an independently trained quality estimator or cali-brated stopping threshold. Our main contributions are threefold: • We demonstrate the Prediction–Decision Mismatch, and formulate cascade routing as an MDP that directly opti-mizes the final performance-cost objective through tra-jectory returns and advantages. • We develop a Cascade Policy Network for quality-estimator-free cascade routing. Its Complementarity En-coder models the relative values of the remaining mod-els, while its Value-Aware Stopper compares the current state with the action context to jointly learn when to stop and which model to invoke next. • We evaluate RLCascadeRouter on LLMRouter-Bench [Li et al. , 2026]. The results demonstrate strong overall performance, favorable performance-cost trade-offs, generalization to unseen models without policy retraining, and the effectiveness of the proposed policy components. 
+
+## 2 Related Work 
+
+2.1 LLM Routing and Cascading 
+
+LLM routing seeks to exploit differences in model capabil-ity and inference cost by assigning each query to a suitable model [Huang et al. , 2025; Hu et al. , 2024]. One of the most common applications of routing is model selection for nat-ural language input queries with known answers [Chuang et al. , 2024; Liu et al. , 2024; Nguyen et al. , 2024; Jang et al. ,2023]. Early approaches primarily execute this decision prior to generation. HybridLLM [Ding et al. , 2024] predicts query difficulty and routes between a weaker and a stronger model according to a configurable quality target. RouteLLM [Ong et al. , 2025] learns a strong-versus-weak routing boundary from human preference data and improves transfer through data augmentation. Subsequent methods extend routing to larger and dynamic model pools. RouterDC [Chen et al. , 2024b] learns query and model representations with dual contrastive objectives, while GraphRouter [Feng et al. , 2025] repre-sents tasks, queries, and LLMs as a heterogeneous graph and predicts performance-cost attributes for query–model edges. Avengers-Pro [Zhang et al. , 2025b] instead uses query clus-tering and cluster-level model profiles to select a model under different performance-cost preferences. Despite their differ-ent representations and learning objectives, these methods ul-timately commit to one model before observing its response. Cascading introduces post-generation feedback by invok-ing models successively and stopping when the current an-swer is considered reliable. FrugalGPT [Chen et al. , 2024a] learns both an ordered LLM cascade and response scorers that determine whether to return an answer or continue. Mixture-of-Thoughts [Yue et al. , 2024] uses repeated reasoning traces and response consistency to decide whether a query should be escalated to a stronger model. Select-then-Route [Shah and Shridhar, 2025] first constructs a task-relevant candidate pool and then executes a confidence-based cascade from cheaper to more capable models. Such methods can vary the num-ber of calls, but usually retain a predetermined escalation or-der and delegate the stopping decision to a confidence score, consistency rule, or quality estimator. Routing and cascading therefore provide complementary but incomplete forms of adaptivity. Single-step routers can choose among a broad model pool but cannot revise the deci-sion after generation, whereas conventional cascades can re-consider an answer but cannot freely choose the next model. In contrast, RLCascadeRouter treats “stop” and all unselected candidate models as peer actions at every decision step, en-abling both the cascade order and its depth to depend on the query and observed responses. 
+
+2.2 Reinforcement-Learning-Based Router 
+
+Several works formulate model selection as adaptive learning or sequential control [Shao et al. , 2025; Zheng et al. , 2024; Zhang et al. , 2026; Panda et al. , 2025]. AutoMix [Aggar-wal et al. , 2024] obtains an answer from a smaller model, es-timates its reliability through few-shot self-verification, and uses a POMDP-based router to accept the answer or esca-late within an ordered model hierarchy. PILOT [Panda et al. ,2025] formulates routing as a contextual bandit and updates query–model affinities from online feedback under a budget policy; however, each query still produces a single model-selection action. TREACLE [Zhang et al. , 2024] formulates model-and-prompt selection as a constrained MDP and trains a DQN policy using query embeddings, response consistency, re-query counts, and remaining budget. Its actions return the current answer, repeat the current model–prompt pair, or advance to the next pair in a global cascade ordered by accuracy–cost ratio. Dekoninck et al. [2025] provide a more general theoretical treatment. Their cascade-routing formula-tion dynamically compares stopping with future supermodels, establishes optimal strategies for routing and cascading, and identifies ex-ante and post-hoc quality estimation as critical to practical performance. Its implementation nevertheless de-pends on estimating the utility of unqueried models and gen-erated responses and on evaluating a combinatorial family of future continuations. Router-R1 [Zhang et al. , 2026] takes a different RL-based approach: it instantiates the router as a ca-pable LLM that interleaves internal think actions with multi-round route actions and aggregates the resulting responses into a final answer. This design targets agentic reasoning and multi-model aggregation rather than lightweight cascade con-trol. 
+
+## 3 RLCascadeRouter 
+
+We present our methodology in three parts. Section 3.1 for-malizes the mismatch between quality prediction and routing decisions. Section 3.2 defines the MDP formulation. Finally, Section 3.3 introduces the Cascade Policy Network used to approximate the resulting stopping and selection policy. 
+
+3.1 Prediction–Decision Mismatch 
+
+Prediction versus decision. Estimator-based cascade rout-ing follows a predict-then-optimize pipeline. At a state s, it first predicts the performance-cost utilities of the current and future options and then selects the option with the largest pre-dicted utility. Let u(s) ∈ R|A (s)| denote the true long-term utility vector of the valid actions, and let bu(s) be its predic-tion. The true and predicted decisions are 
+
+a∗(s) ∈ arg max  
+
+> a
+
+ua(s), ba(s) ∈ arg max  
+
+> a
+
+bua(s). (1) A prediction objective may minimize Lpred = ∥bu − u∥22. The downstream decision loss instead measures the utility lost by the induced action: 
+
+Ldec (bu, u ; s) = ua∗(s)(s) − uba(s)(s). (2) 
+
+Proposition 1 (Prediction–decision mismatch). Prediction loss and decision loss are not equivalent: there exist predic-tions bu(1) and bu(2) such that 
+
+Lpred (bu(1) , u ) < L pred (bu(2) , u ),Ldec (bu(1) , u ; s) > L dec (bu(2) , u ; s). (3) 
+
+Proof. Consider two actions with true utilities u = ( δ, 0) ,where δ > 0. Let bu(1) = ( −δ, 0) and bu(2) = ( δ + K, K )
+
+for any K > √2δ. The first prediction has squared error 4δ2
+
+but reverses the action ordering and incurs decision loss δ.The second has squared error 2K2 > 4δ2 but preserves the optimal action and incurs zero decision loss. □+0.10 
+
+> +0.00
+> Continue
+> STOP
+> -0.10
+> +0.00
+> +0.25
+> +0.15
+> Continue
+> Prediction Loss: 0.040
+> Ground Truth
+> CONT.
+> STOP
+> Prediction Loss: 0.045
+> CONT.
+> STOP
+> CONT.
+> STOP
+> Figure 2: Illustration of the prediction–decision mismatch. A lower prediction loss can reverse the correct decision, whereas a higher prediction loss can preserve it.
+
+Figure 2 illustrates this construction with δ = 0 .10 and 
+
+K = 0.15 : the lower-loss prediction reverses the CON-TINUE/STOP ordering, whereas the higher-loss prediction preserves the correct decision. Consequently, improving an intermediate quality estimator does not necessarily improve the routing policy it induces. This mismatch motivates learn-ing routing actions from their downstream utility rather than fitting an intermediate quality predictor in isolation. There-fore, we formulate cascade routing as an MDP with a trajec-tory return that directly captures the objective. 3.2 MDP Formulation 
+
+To jointly model routing and cascading, we formulate model selection and stopping over a candidate LLM pool M as an MDP: 
+
+E = ⟨S , A, P, R α, γ, T max ⟩ , (4) where S is the state space, A is the action space, P is the transition function, Rα is a cost-aware reward function, γ is the discount factor, and Tmax is the maximum routing depth. For a query q, the state at step t is defined as 
+
+st = ( q, y t, Ht, C t, t ) , (5) where yt denotes the current response, Ht records the previ-ously selected models, Ct is the accumulated inference cost, and t is the current routing depth. At the initial state, no model has been invoked and no response is available. The set of valid actions is 
+
+A(st) = {STOP } ∪ (M \ M t) , (6) where Mt is the set of models already selected before step t.Because the initial state contains no valid response, the “stop” action is masked at t = 0 . Previously selected models are also masked to prevent repeated invocation. Executing a model action at = mi invokes the selected model and updates the current response, model-selection history, accumulated cost, and routing depth. If at = STOP , the process terminates and returns yt as the final answer. An episode also terminates when the maximum routing depth Tmax is reached. We train a parameterized policy πθ (at | st) to maximize the expected cumulative utility over the routing process: 
+
+max  
+
+> θ
+
+Eq∼D , τ ∼πθ
+
+"T −1X
+
+> t=0
+
+γtRα(st, a t, s t+1 )
+
+#
+
+, (7) where τ denotes a routing trajectory, T ≤ Tmax is its adap-tive horizon, and Rα measures the performance-cost utility of each transition under preference coefficient α.For a query q, let Pt denote the benchmark score of the current response after step t, and let Ct denote the cumulative API cost of all model calls up to that step. We normalize performance and cost as 
+
+bPt = Pt − Pmin (q)
+
+Pmax (q) − Pmin (q) , (8) 
+
+bCt = 1 − Ct
+
+Cmax (q) , (9) where Pmin (q) and Pmax (q) are the minimum and maximum scores obtained by the candidate LLMs on query q, respec-tively. Cmax (q) is the cost of invoking the most expensive models allowed by the maximum depth. The performance-cost utility is defined as 
+
+Uα(st) = α bQt + (1 − α) bCt. (10) The policy is trained using the incremental reward 
+
+Rα = Uα(st+1 ) − Uα(st), (11) so that, with γ = 1 , the cumulative reward of a trajectory equals its final normalized utility. This formulation enables RLCascadeRouter to jointly learn model selection and stopping, choosing at each step between returning the current response and invoking any previously unselected model. By optimizing performance-cost utility, the policy adapts the model order and cascade depth to each query, learns whether the expected benefit of another selec-tion justifies its cost, and requires neither a quality estimator nor a stopping threshold at inference time. 
+
+3.3 Cascade Policy Network 
+
+The Bellman structure of the MDP exposes the two compar-isons that the policy must perform. Let J∗
+
+> α
+
+(st) denote the optimal terminal utility from state st. Conceptually, 
+
+J∗
+
+> α
+
+(st) = max 
+
+
+
+Uα(st), max 
+
+> mi∈M\M t
+
+E[J∗
+
+> α
+
+(st+1 ) | st, m i]
+
+
+
+.
+
+(12) The inner maximization selects the continuation model with the greatest complementary value, whereas the outer maxi-mization compares the current terminal value with the value attainable by continuing. The Cascade Policy Network em-ploys two jointly trained modules: the Complementarity En-coder (CE) models interactions among the remaining candi-dates to identify the most valuable continuation, while the Value-Aware Stopper (VAS) evaluates the current state to de-cide between “stop” and model selection. Both modules are optimized using reinforcement-learning feedback, enabling routing without an independent quality estimator. The over-all architecture is illustrated in Figure 3. We describe its two key components below, with detailed feature definitions and network equations deferred to Appendix A. 
+
+Complementarity Encoder. The state encoder first maps the query, last answer, routing history, accumulated cost, and cascade depth into a state representation. Each valid model action is then represented by an action token combin-ing the state representation, its model embedding, and query– model features, while “stop” is represented by a dedicated action token. The CE jointly processes the valid-action set through stacked self-attention and feed-forward layers. Con-sequently, each action representation depends on both the routing state and the remaining alternatives, allowing the pol-icy to capture capability complementarity, competition, and redundancy among candidate models. 
+
+Value-Aware Stopper. The VAS applies masked mean pooling to the contextualized valid-action representation and combines the resulting remaining-action context with the state representation. The Stop Gate uses this joint represen-tation to produce STOP/CONTINUE logits, while the value critic estimates the expected future return. The continuation logit is combined with the candidate-model scores, and an action mask followed by softmax yields a unified distribution over “stop” and all valid model actions. 
+
+## 4 Experimental Setup 
+
+Datasets and Metrics. We conduct our experiments on the performance-cost setting of LLMRouterBench [Li et al. , 2026], which contains ten benchmarks: American In-vitational Mathematics Examination (AIME) and LiveMath-Bench (LMB) for mathematical reasoning; LiveCodeBench Last answer  𝑦 𝑡    
+
+> State
+> Encoder
+> Query q
+> Routing history 𝐻 𝑡
+> Cost 𝐶 𝑡
+> Depth 𝑡
+
+𝑓 𝑡 
+
+> STOP
+
+𝒎 𝟏 
+
+𝒎 𝟐 
+
+𝒎 𝒊 
+
+𝑓 𝑡 
+
+𝑓 𝑡 
+
+𝑓 𝑡 
+
+𝑓 𝑡 
+
+𝑒 𝑚1 
+
+𝑒 𝑚2 
+
+𝑒 𝑚𝑖 
+
+---
+
+𝑔(𝑞, 𝑠 𝑡 , 𝑚 1)
+
+𝑔(𝑞, 𝑠 𝑡 , 𝑚 2)
+
+𝑔(𝑞, 𝑠 𝑡 , 𝑚 𝑖 )
+
+𝑥 𝑡,1 
+
+𝑥 𝑡,2 
+
+𝑥 𝑡,𝑖 
+
+𝑥 𝑡,𝑠𝑡𝑜𝑝  
+
+> State Embedding
+> Model Description Query -Model Prior
+> Unified Action Space
+> Feed
+> Forward
+> Add & Norm
+> Self Attention
+> Add & Norm
+
+𝑥 𝑡,𝑠𝑡𝑜𝑝  𝑥 𝑡,1  𝑥 𝑡,𝑖 
+
+ℎ𝑡,𝑠𝑡𝑜𝑝  ℎ𝑡,1  ℎ𝑡,𝑖 
+
+ℎ𝑡,𝑠𝑡𝑜𝑝  ℎ𝑡,1  ℎ𝑡,𝑖 
+
+Masked Mean Pool 
+
+Current State 𝑓 𝑡  Context 
+
+> Stop
+> Gate
+> Value
+> Critic
+
+𝑝 𝑠𝑡𝑜𝑝 , 𝑝 𝑐𝑜𝑛𝑡  𝑉𝑎𝑙𝑢𝑒(𝑠 𝑡 )
+
+ℎ𝑡,1  ℎ𝑡,𝑖 
+
+Shared MLP 
+
+𝑝 𝑡,1  𝑝 𝑡,𝑖 
+
+𝑃 𝑆𝑇𝑂𝑃 = 𝑝 𝑠𝑡𝑜𝑝 
+
+𝑃 𝑚 𝑖 = 𝑝 𝑐𝑜𝑛𝑡 + 𝑝 𝑡,𝑖 
+
+Softmax 
+
+Action mask 
+
+𝜋 𝜃 (𝑎 𝑡 |𝑠 𝑡 )
+
+(a) Complementarity Encoder (CE)  (b) Value -Aware Stopper (VAS) 
+
+State Representation 
+
+Valid Action Representation 
+
+Self -Attention Encoder Figure 3: Cascade Policy Network. (a) The Complementarity Encoder (CE) contextualizes state-conditioned action embeddings and scores the remaining models. (b) The Value-Aware Stopper (VAS) aggregates the action context to estimate the STOP/CONTINUE preference and state value. Their outputs form the unified masked routing policy. Table 1: Performance comparison of individual LLMs and routing methods in the performance-cost setting of LLMRouterBench. Bold and gray-shaded values denote the best and second-best results in each column. 
+
+Mathematics Code Knowledge IF Tool Overall Method AIME LMB LCB SWE GPQA HLE MMLU-Pro SimpleQA ArenaHard Tau2 Avg. ↑ Cost ↓
+
+Single-model baselines 
+
+GPT-5 83.33 78.38 84.54 16.00 88.33 25.97 87.22 48.00 70.35 69.05 65.12 124.81 Gemini-2.5-Pro 77.78 40.54 76.97 36.00 85.00 21.02 87.67 54.01 77.21 39.29 59.55 233.97 Qwen3-235B-Thinking 72.22 48.65 75.71 20.00 80.00 8.19 80.56 49.31 78.10 50.00 56.27 36.84 DeepSeek-R1-0528 72.22 72.97 76.03 25.33 78.33 17.00 84.67 28.66 65.93 34.52 55.57 60.75 GLM-4.6 88.89 64.86 58.99 22.67 80.00 15.46 80.89 25.89 68.36 48.81 55.48 61.39 Kimi-K2-0905 72.22 75.68 62.15 24.00 71.67 4.95 80.78 30.66 74.34 51.19 54.76 14.53 Qwen3-235B 77.78 72.97 58.36 16.67 55.00 9.74 83.78 54.01 76.99 41.67 54.70 6.98 DeepSeek-V3.1-Terminus 55.56 67.57 64.67 26.00 78.33 8.66 84.56 25.12 65.04 41.67 51.72 9.43 Claude-Sonnet-4 33.33 56.76 52.05 35.33 75.00 5.10 84.11 14.02 57.52 51.19 46.44 70.28 GPT-5-Chat 72.22 51.35 56.78 6.67 73.33 6.03 82.33 39.29 69.47 0.00 ∗ 45.75 17.96 Gemini-2.5-Flash 55.56 64.86 55.21 20.00 58.33 6.34 81.22 30.43 56.86 28.57 45.74 32.97 Intern-S1 38.89 59.46 46.69 8.00 70.00 10.36 83.00 14.33 67.48 32.14 43.03 13.85 DeepSeek-V3-0324 38.89 59.46 61.51 24.00 68.33 3.40 78.44 26.43 58.41 7.14 42.60 4.78 
+
+Routing methods 
+
+Random Router 61.11 64.86 64.04 18.67 73.33 10.51 82.56 35.52 68.14 39.29 51.81 50.17 HybridLLM 83.33 78.38 84.54 16.00 88.33 25.97 87.22 48.00 70.35 69.05 65.12 124.97 FrugalGPT 83.33 78.38 81.70 26.67 81.67 22.72 84.00 57.55 72.57 75.00 66.36 124.31 GraphRouter 83.33 78.38 84.54 30.00 88.33 25.46 86.11 48.00 70.44 69.05 66.37 125.88 Avengers-Pro 83.33 78.38 84.54 36.00 88.33 25.97 87.44 54.78 70.58 69.05 67.84 135.65 
+
+RLCascadeRouter 83.33 78.38 84.23 36.00 88.33 25.46 86.78 58.40 76.67 73.81 68.81 180.22 (LCB) and SWE-bench (SWE) for code generation and soft-ware engineering; Graduate-Level Google-Proof Question Answering (GPQA), Humanity’s Last Exam (HLE), MMLU-Pro, and SimpleQA (SQA) for knowledge and general rea-0 50 100 150 200 
+
+Average cost (lower is better) 
+
+> 45 50 55 60 65 70
+> Dataset-average performance (%) (higher is better)
+> GPT-5 Gemini-2.5-Pro Qwen3-235B-Thinking DeepSeek-R1-0528 GLM-4.6 Kimi-K2-0905 Qwen3-235B DeepSeek-V3.1-Terminus Claude-Sonnet-4 GPT-5-Chat Gemini-2.5-Flash Intern-S1 DeepSeek-V3-0324
+> AvengersPro RLCascadeRouter Single models
+
+Figure 4: The non-dominated operating points of RLCascadeRouter and Avengers-Pro, together with the individual LLMs. Table 2: Generalization to unseen models.                                                 
+
+> Setting AIME LMB LCB SWE GPQA HLE MMLU-Pro SimpleQA ArenaHard Avg. Cost Unseen Selection A: Initial pool 87.50 75.00 93.42 23.53 90.57 26.08 88.16 51.93 77.11 59.32 82.74 0.00 B: Unseen replacement 75.00 64.29 81.58 21.01 66.04 11.42 85.51 50.46 74.67 53.97 72.76 98.18
+> C: Replacement training 87.50 71.43 93.42 35.29 86.79 19.75 88.65 57.47 76.00 60.61 174.76 97.59
+
+soning; ArenaHard for Instruction Following (IF); and τ 2-Bench (Tau2) for tool use. We evaluate each routing method from two Metrics: Per-formance and Cost. To measure Performance, we score the response from the last selected model. We compute the mean score within each dataset and then report the macro-average over the ten datasets. To measure cost, we accumulate the API cost of every model invoked along the complete cascade routing trajectory, including all intermediate calls made be-fore termination. 
+
+Baselines. For a comprehensive evaluation, we compare RLCascadeRouter with several baselines: 
+
+Single-model baselines. We evaluate each of the 13 can-didate LLMs independently on all test queries: GPT-5, GPT-5-Chat, Gemini-2.5-Pro, Gemini-2.5-Flash, Claude-Sonnet-4, Qwen3-235B-A22B-2507, Qwen3-235B-A22B-Thinking-2507, DeepSeek-R1-0528, DeepSeek-V3-0324, DeepSeek-V3.1-Terminus, GLM-4.6, Kimi-K2-0905, and Intern-S1. These results characterize the strengths and costs of individ-ual models and provide the best single-model reference. 
+
+LLM routing baselines. We compare our framework against five representative routing strategies: (1) Random Router , which uniformly samples one model from the can-didate pool for each query; (2) HybridLLM [Ding et al. ,2024], a quality-aware binary router that predicts query dif-ficulty and routes between the cost-efficient Qwen3-235B-A22B-2507 and the stronger GPT-5; (3) FrugalGPT [Chen 
+
+et al. , 2024a], which learns an answer quality scorer and se-quentially cascades models according to learned acceptance thresholds; (4) GraphRouter [Feng et al. , 2025], which rep-resents tasks, queries, and candidate LLMs as a heteroge-neous graph and learns their interactions for model selec-tion; and (5) Avengers-Pro [Zhang et al. , 2025b], a strong performance-cost baseline that clusters query embeddings and selects a model using cluster-conditioned performance and cost statistics. All embedding-dependent baselines use Qwen3-Embedding-8B [Zhang et al. , 2025a] to ensure a con-sistent representation backbone. 
+
+Implementation Details. The policy network uses a hid-den dimension of 256 and a six-layer Transformer encoder with eight attention heads, a feed-forward dimension of 512, and a dropout rate of 0.1. We train the policy using PPO for 100 iterations with 2048 episodes per iteration. Each itera-tion performs four optimization epochs with a batch size of 256. We use AdamW with a learning rate of 3 × 10 −5 and a weight decay of 10 −4. The PPO clipping coefficient is 0.2, the discount factor is 1.0, the value-loss coefficient is 0.5, and the gradient norm is clipped to 1.0. The entropy coefficient is annealed from 0.03 to 0.005 during training. Within each dataset, queries are randomly divided into 60% training, 10% validation, and 30% testing subsets using random seed 42. RLCascadeRouter allows a maximum of three model calls per query. All experiments are implemented in PyTorch and conducted on an NVIDIA RTX 50-series GPU with 16GB of VRAM. 
+
+## 5 Experimental Analysis 
+
+5.1 Overall Performance 
+
+Table 1 compares RLCascadeRouter with five routing meth-ods and all 13 individual LLMs in the candidate pool. With 
+
+α = 1.0, RLCascadeRouter achieves the highest macro-average of 68 .81% . It improves over Avengers-Pro, the strongest routing baseline, by 0.97 percentage points, and over GPT-5, the strongest individual model, by 3.69 points. This result demonstrates that the learned cascade achieves a stronger aggregate result than either one-step routing or fixed single-model deployment. The gains are concentrated on a subset of tasks. Among routing methods, RLCascadeRouter performs best on SimpleQA and ArenaHard, improving over Avengers-Pro by 3.62 and 6.09 points, respectively, and it im-proves Tau2 by 4.76 points. It also matches the best routing score on AIME, LMB, SWE, and GPQA. While its total cost of 180 .22 is higher than that of Avengers-Pro and GPT-5; the subsequent experiment evaluates the complete Pareto frontier rather than a single high-performance operating point. 
+
+5.2 performance-cost Trade-off 
+
+We vary α ∈ { 0, 0.05 , . . . , 1.0} and train an independent pol-icy at each value. Figure 4 shows the non-dominated points of RLCascadeRouter and Avengers-Pro, together with the in-dividual LLMs. Avengers-Pro is the strongest disclosed base-line in LLMRouterBench [Li et al. , 2026]. RLCascadeR-outer provides a more favorable frontier over most of the medium- and high-performance range. Near 59% perfor-mance, it reaches 59 .11% at a total cost of 10 .64 , compared with 59 .10% at 16 .12 for Avengers-Pro, a 34 .0% cost reduc-tion. Near 67% , it reaches 67 .29% at 85 .41 , compared with 
+
+67 .22% at 107 .88 , reducing cost by 20 .8% . The same RL-CascadeRouter operating point also exceeds GPT-5 by 2.17 
+
+points while reducing cost by 31 .6% . At the upper end of the frontier, RLCascadeRouter reaches 68 .08% at 108 .07 , ex-ceeding the maximum performance attained by Avengers-Pro in this sweep ( 67 .93% ). These comparisons confirm that the performance gains shown in Table 1 are not restricted to high-cost scenarios. 
+
+5.3 Generalization 
+
+RLCascadeRouter uses textual model descriptions to route unseen LLMs without policy retraining; the descriptions are provided in Appendix B. Setting A trains the policy with the original model pool and evaluates it using the same pool. Setting B evaluates the checkpoint from Setting A on a modified pool, in which GPT-5, Qwen3-235B-Thinking, and DeepSeek-R1 are replaced by Gemini-2.5-Pro, Claude-Sonnet-4, and Qwen3-235B. Setting C trains and evaluates the policy on the modified pool. All settings use α = 1 .0.As shown in Table 2, three observations demonstrate the generalization capability of RLCascadeRouter. First, after re-placing the three most frequently selected seen models, Set-ting B achieves an average performance of 53 .97% , retaining 
+
+90 .99% of the 59 .32% performance obtained with the ini-tial pool, despite using the original policy without retraining. Second, the replacement models are selected for 98 .18% of the queries, indicating that the router can actively incorpo-rate newly introduced candidates rather than simply relying on the remaining seen models. Third, direct training on the replacement pool (Setting C) yields 60 .61% average perfor-mance. Without retraining, Setting B retains 89 .05% of this performance and invokes the replacement models at a compa-rable rate ( 98 .18% vs. 97 .59% ). These results show that RL-CascadeRouter can immediately utilize unseen models and preserve most of the achievable routing performance without policy retraining. 
+
+5.4 Ablation Study 
+
+We evaluate the two modules of the Cascade Policy Network. 
+
+w/o CE replaces the encoder with independent feed-forward blocks. w/o VAS removes the pooled representation of the remaining actions from the stopping branch, so that STOP/-CONTINUE depends only on the current state. In addition to these component ablations, we include QE Stop as a stop-ping control. It replaces the policy-based STOP/CONTINUE decision with a post-hoc quality estimator and a calibrated threshold while retaining the Full model selector. We report three representative preferences: α = 1 .0, 0.5, and 0.2.                                   
+
+> Table 3: Policy ablations and evaluator-based stopping control under three performance-cost preferences. Bold denotes the best result in each column.
+> Variant α= 1 .0α= 0 .5α= 0 .2
+> Perf. ↑Cost ↓Perf. ↑Cost ↓Perf. ↑Cost ↓
+> Full 68.81 180.22 61.91 28.06 58.02 10.13 w/o CE 68.30 152.60 60.32 21.05 56.81 7.23
+> w/o VAS 67.43 191.56 60.67 15.80 58.62 9.97 QE Stop 67.70 135.76 61.23 27.43 58.02 10.13
+
+w/o CE. Full outperforms w/o CE by 0.51 , 1.59 , and 1.21 
+
+points at α = 1.0, 0.5, and 0.2, respectively, supporting the need to model complementarity among candidate mod-els. w/o VAS. Removing VAS reduces performance by 1.38 
+
+and 1.23 points at α = 1 .0 and 0.5, but improves it by 0.60 
+
+points at α = 0 .2, indicating that remaining-action context is primarily beneficial in multi-step regimes. QE Stop. Re-placing learned stopping with a quality-estimator threshold reduces performance by 1.11 and 0.67 points at α = 1 .0 and 
+
+0.5. The methods are identical at α = 0 .2, where both reduce to single-step routing, showing that utility-based stopping is most effective when continuation is actively considered. 6 Conclusion 
+
+In this work, we present RLCascadeRouter, a quality-estimator-free cascade router that replaces predict-then-optimize quality estimation with a decision-aligned MDP pol-icy. Its Cascade Policy Network jointly learns candidate com-plementarity for model selection and remaining-action value for stopping. Experiments on ten benchmarks demonstrate strong performance-cost trade-offs, generalization to unseen models without retraining, and the effectiveness of the pro-posed policy design. Future work may extend this framework to online environments with dynamically changing model pools, costs, latencies, and response distributions. 
+
+## References 
+
+[Aggarwal et al. , 2024] Pranjal Aggarwal, Aman Madaan, Ankit Anand, Srividya Pranavi Potharaju, Swaroop Mishra, Pei Zhou, Aditya Gupta, Dheeraj Rajagopal, Karthik Kappaganthu, Yiming Yang, et al. AutoMix: Au-tomatically Mixing Language Models. Advances in Neu-ral Information Processing Systems , 37:131000–131034, 2024. [Chen et al. , 2024a] Lingjiao Chen, Matei Zaharia, and James Zou. Frugalgpt: How to use large language models while reducing cost and improving performance. Transac-tions on Machine Learning Research , 2024. [Chen et al. , 2024b] Shuhao Chen, Weisen Jiang, Baijiong Lin, James Kwok, and Yu Zhang. RouterDC: Query-Based Router by Dual Contrastive Learning for Assem-bling Large Language Models. Advances in Neural Infor-mation Processing Systems , 37:66305–66328, 2024. [Chuang et al. , 2024] Yu-Neng Chuang, Prathusha Kameswara Sarma, Parikshit Gopalan, John Boccio, Sara Bolouki, Xia Hu, and Helen Zhou. Learning to Route LLMs with Confidence Tokens. arXiv preprint arXiv:2410.13284 , 2024. [Dekoninck et al. , 2025] Jasper Dekoninck, Maximilian Baader, and Martin Vechev. A Unified Approach to Routing and Cascading for LLMs. In The International Conference on Learning Representations Workshop: SCOPE , 2025. [Ding et al. , 2024] Dujian Ding, Ankur Mallick, Chi Wang, Robert Sim, Subhabrata Mukherjee, Victor R¨ uhle, Laks Lakshmanan, and Ahmed H Awadallah. HybridLLM: Cost-Efficient and Quality-Aware Query Routing. In In-ternational Conference on Learning Representations , vol-ume 2024, pages 41348–41366, 2024. [Feng et al. , 2025] Tao Feng, Yanzhen Shen, and Jiaxuan You. GraphRouter: A Graph-based Router for LLM Se-lections. In International Conference on Learning Repre-sentations , volume 2025, pages 26186–26203, 2025. [Gupta et al. , 2024] Neha Gupta, Harikrishna Narasimhan, Wittawat Jitkrittum, Ankit Singh Rawat, Aditya Krishna Menon, and Sanjiv Kumar. Language Model Cascades: Token-level uncertainty and beyond. In The Twelfth Inter-national Conference on Learning Representations, ICLR 2024 , 2024. [Hu et al. , 2024] Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. RouterBench: A Benchmark for Multi-LLM Routing System. arXiv preprint arXiv:2403.12031 , 2024. [Huang et al. , 2025] Zhongzhan Huang, Guoming Ling, Yu-pei Lin, Yandong Chen, Shanshan Zhong, Hefeng Wu, and Liang Lin. RouterEval: A Comprehensive Benchmark for Routing LLMs to Explore Model-level Scaling Up in LLMs. arXiv preprint arXiv:2503.10657 , 2025. [Jang et al. , 2023] Joel Jang, Seungone Kim, Seonghyeon Ye, Doyoung Kim, Lajanugen Logeswaran, Moontae Lee, Kyungjae Lee, and Minjoon Seo. Exploring the Benefits of Training Expert Language Models over Instruction Tun-ing. In International Conference on Machine Learning ,pages 14702–14729. PMLR, 2023. [Li et al. , 2026] Hao Li, Yiqun Zhang, Zhaoyan Guo, Chenxu Wang, Shengji Tang, Qiaosheng Zhang, Yang Chen, Biqing Qi, Peng Ye, Lei Bai, Zhen Wang, and Shuyue Hu. LLMRouterBench: A Massive Benchmark and Unified Framework for LLM Routing. In Findings of the Association for Computational Linguistics: ACL 2026 ,2026. [Liu et al. , 2024] Yueyue Liu, Hongyu Zhang, Yuantian Miao, Van-Hoang Le, and Zhiqiang Li. OptLLM: Opti-mal Assignment of Queries to Large Language Models. In 2024 IEEE International Conference on Web Services (ICWS) , pages 788–798. IEEE, 2024. [Moslem and Kelleher, 2026] Yasmin Moslem and John D Kelleher. Dynamic model routing and cascading for efficient llm inference: A survey. arXiv preprint arXiv:2603.04445 , 2026. [Nguyen et al. , 2024] Quang H Nguyen, Thinh Dao, Duy C Hoang, Juliette Decugis, Saurav Manchanda, Nitesh V Chawla, and Khoa D Doan. MetaLLM: A High-performant and Cost-efficient Dynamic Framework for Wrapping LLMs. arXiv preprint arXiv:2407.10834 , 2024. [Ong et al. , 2025] Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E Gonzalez, M Waleed Kadous, and Ion Stoica. RouteLLM: Learn-ing to Route LLMs with Preference Data. In The Thir-teenth International Conference on Learning Representa-tions , 2025. [Panda et al. , 2025] Pranoy Panda, Raghav Magazine, Chai-tanya Devaguptapu, Sho Takemori, and Vishal Sharma. Adaptive LLM Routing under Budget Constraints. In 
+
+Findings of the Association for Computational Linguistics: EMNLP 2025 , 2025. [Shah and Shridhar, 2025] Soham Shah and Kumar Shrid-har. Select-then-Route : Taxonomy guided Routing for LLMs. In Proceedings of the 2025 Conference on Empir-ical Methods in Natural Language Processing: Industry Track , pages 425–441, 2025. [Shao et al. , 2025] Chenyang Shao, Xinyang Liu, Yutang Lin, Fengli Xu, and Yong Li. Route-and-Reason: Scaling Large Language Model Reasoning with Reinforced Model Router. arXiv preprint arXiv:2506.05901 , 2025. [Varangot-Reille et al. , 2026] Clovis Varangot-Reille, Christophe Bouvard, Mathieu Ciancone, Antoine Gourru, Marion Schaeffer, and Franc ¸ois Jacquenet. Doing More with Less: A Survey on Routing Strategies for Resource Optimisation in Large Language Model-Based Systems. 
+
+Journal of Artificial Intelligence Research , 86, 2026. [Yue et al. , 2024] Murong Yue, Jie Zhao, Min Zhang, Liang Du, and Ziyu Yao. Large Language Model Cascades with Mixture of Thought Representations for Cost-Efficient Reasoning. In International Conference on Learning Rep-resentations , volume 2024, pages 21691–21728, 2024. [Zhang et al. , 2024] Xuechen Zhang, Zijian Huang, Ege Onur Taga, Carlee Joe-Wong, Samet Oymak, and Jiasi Chen. Efficient Contextual LLM Cascades through Budget-Constrained Policy Learning. Advances in Neural Information Processing Systems , 37:91691–91722, 2024. [Zhang et al. , 2025a] Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, et al. Qwen3 Embedding: Advancing Text Embedding and Reranking Through Foundation Models. arXiv preprint arXiv:2506.05176 , 2025. [Zhang et al. , 2025b] Yiqun Zhang, Hao Li, Jianhao Chen, Hangfan Zhang, Peng Ye, Lei Bai, and Shuyue Hu. Be-yond GPT-5: Making LLMs Cheaper and Better via Performance-Efficiency Optimized Routing. In Proceed-ings of the 2025 7th International Conference on Dis-tributed Artificial Intelligence , pages 122–129, 2025. [Zhang et al. , 2026] Haozhen Zhang, Tao Feng, and Jiaxuan You. Router-R1: Teaching LLMs Multi-Round Routing and Aggregation via Reinforcement Learning. Advances in Neural Information Processing Systems , 38:141233– 141265, 2026. [Zheng et al. , 2024] Zhen Zheng, Xiaonan Song, and Chuan-jie Liu. MixLLM: LLM Quantization with Global Mixed-precision between Output-features and Highly-efficient System Design. arXiv preprint arXiv:2412.14590 , 2024. [Zhuang et al. , 2025] Richard Zhuang, Tianhao Wu, Zhaojin Wen, Andrew Li, Jiantao Jiao, and Kannan Ramchandran. EmbedLLM: Learning Compact Representations of Large Language Models. In International Conference on Learn-ing Representations , volume 2025, pages 76913–76926, 2025. A Cascade Policy Network Details 
+
+This section provides the complete feature definitions and network computations of the Cascade Policy Network (CPN). The CPN parameterizes the stochastic policy πθ (at | st) and the value function Vϕ(st) of the routing MDP. It consists of a Comple-mentarity Encoder (CE), which compares the remaining model actions, and a Value-Aware Stopper (VAS), which determines whether the best continuation opportunity justifies an additional model call. 
+
+A.1 State Representation 
+
+A query-only state representation cannot distinguish an unanswered query from one that already has a strong response, nor can it describe previous model calls and their accumulated costs. Let E(·) denote the embedding encoder. After t model calls, we construct the state representation as follows: 
+
+ft = [ eq ; eyt ; ¯ eMt ; emt ; zt; dq ], (13) where eq = E(q) and eyt = E(yt) encode the query and the current response, respectively. The aggregated representation of selected models is defined as 
+
+¯eMt = 1
+
+|M t|
+
+X 
+
+> mj∈M t
+
+emj , (14) where emj is obtained by embedding the textual description of candidate model mj . The feature emt represents the most recently invoked model, and dq is the dataset indicator. The scalar routing features are 
+
+zt =
+
+
+
+log(1 + Ct); tTmax 
+
+; I(t > 0); |M t||M| 
+
+
+
+, (15) which encode the accumulated cost, the normalized cascade depth, response availability, and the fraction of selected models. In the initial state, eyt , ¯eMt , and emt are set to zero vectors. 
+
+A.2 Query-Model Prior 
+
+Model descriptions provide semantic information but do not directly describe how individual models perform on different query types. We therefore construct a query-conditioned prior exclusively from the training split. Given a query embedding eq and K
+
+query-type centroids {μk}Kk=1 , the soft membership of query q in type k is defined as 
+
+wk(q) = exp(cos( eq , μ k)/τ )
+
+PKk′=1 exp(cos( eq , μ k′ )/τ ) , (16) where τ is a temperature parameter. Let φk,i denote the smoothed performance-cost statistics of model mi for query type k,including its performance, accuracy, cost, score percentile, and observation count. The Query-Model Prior is then computed as 
+
+p(q, m i) = 
+
+> K
+
+X
+
+> k=1
+
+wk(q)φk,i . (17) This prior is supplied as an input feature rather than used as an external routing rule. 
+
+A.3 Action Representation 
+
+Let 
+
+A = {STOP } ∪ M (18) denote the complete action universe. The validity mask μt(a) ∈ { 0, 1} is defined as 
+
+μt(a) = 
+
+I(t > 0) , a = STOP ,
+
+I(mi /∈ M t)I(t < T max ), a = mi. (19) Thus, STOP is unavailable before the first response, while previously selected models and further model calls at the maximum depth are masked. For each valid model action mi, we construct the auxiliary feature vector as follows: 
+
+g(q, s t, m i) = [ ec(q, m i); cos( eq , e mi ); cos( eyt , e mi ); cos(¯ eMt , e mi ); 
+
+p(q, m i)] ,
+
+(20) where ec(q, m i) is the normalized expected invocation cost. Similarities involving unavailable response or history features are set to zero. The corresponding action token is defined as 
+
+xt,i = [ ft; emi ; g(q, s t, m i); 0] , (21) where the final scalar is the action-type indicator. The STOP token uses the same state representation but contains no model-specific features: 
+
+xt, stop = [ ft; 0; 0; 1] . (22) This token-based construction allows all candidate models to be scored using shared parameters rather than model-index-specific output heads. 
+
+A.4 Complementarity Encoder 
+
+The marginal value of a model depends on the current response, the models already selected, and the alternatives that remain available. The CE therefore contextualizes every action against the complete valid-action set. Each action token is first projected into a shared hidden space and combined with a state projection as follows: 
+
+h(0)  
+
+> t,a
+
+= Pa(xt,a ) + Ps(ft), a ∈ A t, (23) where At = {a ∈ A : μt(a) = 1 }. Let H(ℓ) 
+
+> t
+
+denote the matrix containing the valid-action representations at layer ℓ. Each of the L Transformer blocks computes the following: 
+
+eH(ℓ) 
+
+> t
+
+= LN 
+
+
+
+H(ℓ−1)  
+
+> t
+
++ MHA 
+
+
+
+H(ℓ−1) 
+
+> t
+
+ 
+
+, (24) 
+
+H(ℓ) 
+
+> t
+
+= LN 
+
+ eH(ℓ) 
+
+> t
+
++ FFN 
+
+ eH(ℓ)
+
+> t
+
+ 
+
+, (25) where MHA denotes masked multi-head self-attention and 
+
+FFN( h) = W2 GELU( W1h + b1) + b2. (26) The final contextualized representation of action a is ht,a = H(L) 
+
+> t,a
+
+. Because self-attention operates over the complete valid-action set, ht,i represents the relative contribution of model mi rather than an isolated compatibility score. A shared model actor produces its continuation score as follows: 
+
+ρt,i = ModelActor( ht,i ), mi ∈ A t. (27) Sharing the actor across model tokens also avoids tying the policy output to fixed model indices. 
+
+A.5 Value-Aware Stopper 
+
+Stopping requires comparing the utility already obtained with the opportunities remaining in the action set. The VAS summa-rizes these opportunities by masked mean pooling as follows: 
+
+¯ht =
+
+P 
+
+> a∈A
+
+μt(a)ht,a 
+
+P 
+
+> a∈A
+
+μt(a) . (28) The pooled candidate-set representation is concatenated with the current state: 
+
+cctx  
+
+> t
+
+= [ ft; ¯ht]. (29) The Stop Gate and value critic are then computed as follows: 
+
+[ℓstop  
+
+> t
+
+, ℓ cont  
+
+> t
+
+] = StopGate( cctx  
+
+> t
+
+), (30) 
+
+Vϕ(st) = Critic( cctx  
+
+> t
+
+). (31) The critic is used to estimate policy advantages during training and does not directly determine the selected action. Unlike an external response-quality estimator, the VAS does not predict an absolute quality label or apply a calibrated threshold. Its stopping preference is learned jointly with model selection from the trajectory-level performance-cost return. 
+
+A.6 Joint Routing Policy 
+
+The CE and the VAS form a single hierarchical policy. Their outputs are combined into unified action logits as follows: 
+
+Lt(STOP ) = ℓstop  
+
+> t
+
+, (32) 
+
+Lt(mi) = ℓcont  
+
+> t
+
++ ρt,i . (33) The VAS therefore controls the global preference between stopping and continuing, while the CE determines which model is preferred conditional on continuation. Applying the validity mask yields the following masked routing policy: 
+
+πθ (at | st, μ t) = μt(at) exp( Lt(at)) 
+
+P 
+
+> a′∈A
+
+μt(a′) exp( Lt(a′)) . (34) At inference time, the policy selects an action from this masked distribution and either returns the current response or invokes the selected model. It requires neither ground-truth response scores nor an independent post-hoc quality estimator. 
+
+## B Model Descriptions 
+
+RLCascadeRouter represents each candidate model using an embedding of its textual description. The following tables provide the exact textual descriptions of all 13 candidate models used in our experiments. Table 4: Description of Gemini-2.5-Flash .
+
+Gemini 2.5 Flash is Google’s efficiency-oriented multimodal thinking model for low-latency and high-volume workloads. It handles text, images, audio, video, and long-context inputs, and supports configurable thinking, function calling, code execu-tion, and grounded retrieval. The model is suitable for general question answering, document understanding, routine reasoning, and agentic tasks where throughput and cost efficiency are important.  
+
+> Table 5: Description of GPT-5-Chat .
+
+GPT-5 Chat is OpenAI’s non-reasoning GPT-5 model previously used for conversational interaction in ChatGPT. It is designed for direct, responsive instruction following, general knowledge assistance, writing, and multi-turn dialogue, with support for function calling and structured outputs. The model is suitable for conversational and general-purpose tasks that benefit from strong language understanding without the additional computation of extended reasoning.  
+
+> Table 6: Description of GPT-5 .
+
+GPT-5 Medium is OpenAI’s GPT-5 reasoning model configured with medium reasoning effort. It is designed for complex reasoning, software coding, mathematics, instruction following, and agentic tool use across domains, and supports long-context inputs, function calling, and structured outputs. The medium setting balances solution quality and inference effort, making it suitable for challenging tasks that require deliberate reasoning without the maximum reasoning budget.  
+
+> Table 7: Description of Qwen3-235B-Thinking .
+
+Qwen3-235B-A22B-Thinking-2507 is Qwen’s mixture-of-experts reasoning model with 235 billion total parameters and 22 billion activated parameters, operating exclusively in thinking mode. It uses an extended reasoning process for logical reason-ing, mathematics, science, coding, academic problems, instruction following, and tool use. The model is suitable for highly complex tasks where deeper reasoning and long-context understanding justify greater generation length and inference cost.  
+
+> Table 8: Description of DeepSeek-V3 .
+
+DeepSeek-V3-0324 is DeepSeek’s general-purpose mixture-of-experts instruction model operating in a direct, non-thinking mode. It is designed for general question answering, reasoning, software coding, front-end development, instruction following, and tool use. The model is suitable for broad language and coding workloads, especially tasks that require capable and efficient direct generation rather than the longer explicit reasoning process of a dedicated reasoning model.  
+
+> Table 9: Description of DeepSeek-V3.1-Terminus .
+
+DeepSeek-V3.1-Terminus is DeepSeek’s hybrid inference model supporting both thinking and non-thinking behavior. It com-bines general language and reasoning capabilities with tool use, multi-step search, software coding, and agentic task execution, while improving language consistency and output reliability. The model is suitable for general assistants, code and search agents, and workflows that require flexible reasoning depth with a long context window.  
+
+> Table 10: Description of DeepSeek-R1 .
+
+DeepSeek-R1-0528 is DeepSeek’s dedicated reasoning model that generates an explicit reasoning process prior to producing its final answer. It is designed for difficult mathematics, logic, science, software coding, and other multi-step analytical tasks, with support for function calling and structured JSON output. The model is suitable when reasoning depth and solution quality are more important than latency, output length, or inference cost.  
+
+> Table 11: Description of GLM-4.6 .
+
+GLM-4.6 is Z.ai’s general-purpose reasoning and agentic model for coding, long-context processing, search, writing, and tool-based workflows. It supports tool use during inference and a 200K-token context window, with a particular emphasis on software engineering, front-end generation, search agents, and readable long-form writing. The model is suitable for complex multi-step tasks that combine reasoning, code, external tools, and substantial context. Table 12: Description of Kimi-K2 .
+
+Kimi-K2-Instruct-0905 is Moonshot AI’s mixture-of-experts instruction model with one trillion total parameters and 32 billion activated parameters, operating as a direct-response model without extended thinking. It is optimized for agentic coding, tool calling, front-end development, general chat, and autonomous problem-solving, with a 256K-token context window. The model is suitable for long-horizon coding and agent workflows that require capable, responsive tool use.  
+
+> Table 13: Description of Intern-S1 .
+
+Intern-S1 is InternLM’s multimodal mixture-of-experts reasoning model specialized for scientific problem-solving while retain-ing strong general language and vision capabilities. It is designed for scientific reasoning across chemistry, materials science, life science, and earth science, including molecular formulas, chemical structures, protein sequences, synthesis planning, and physical signals. The model is suitable for research-oriented questions and multimodal scientific tasks requiring specialized domain knowledge.  
+
+> Table 14: Description of Gemini-2.5-Pro .
+
+Gemini 2.5 Pro is Google’s high-capability multimodal thinking model for complex problems in mathematics, science, coding, and analytical reasoning. It handles text, images, audio, video, documents, and extended contexts, and supports function calling, code execution, and grounded retrieval. The model is suitable for difficult multi-step tasks, large document or codebase analysis, and workloads that prioritize answer quality over latency.  
+
+> Table 15: Description of Claude-Sonnet-4 .
+
+Claude Sonnet 4 is Anthropic’s hybrid reasoning model with both fast-response and extended-thinking modes. It is designed for precise instruction following, complex reasoning, software coding, agentic workflows, and tool use. The model balances capability and efficiency, making it suitable for general assistants, multi-step problem-solving, codebase navigation, and high-volume tasks that may benefit from deeper reasoning.  
+
+> Table 16: Description of Qwen3-235B .
+
+Qwen3-235B-A22B-Instruct-2507 is Qwen’s mixture-of-experts instruction model with 235 billion total parameters and 22 billion activated parameters, operating exclusively in non-thinking mode. It provides multilingual instruction following, text comprehension, logical reasoning, mathematics, science, coding, tool use, and long-context understanding. The model is suitable for broad general-purpose and open-ended tasks that require strong direct responses without an extended explicit reasoning trace.

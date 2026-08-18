@@ -1,0 +1,679 @@
+Title: Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+URL Source: https://arxiv.org/pdf/2608.15888v1
+
+Published Time: Tue, 18 Aug 2026 01:20:17 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Bounded Agents: Delegation Security for Multi-Agent AI Systems 
+
+# Xabier Muruaga 
+
+xabier@muruaga.ai Independent Researcher 
+
+## Abstract 
+
+LLM-based agents can act on behalf of a user to access cloud ser-vices, call tools, or invoke agents. At session start, the agent’s permissions are set but remain static, and each request is evalu-ated independently, without considering prior actions. Within its permissions, an agent may act contrary to the delegated task, com-bine individually permitted actions into a prohibited outcome, or delegate authority to a sub-agent without limiting it. A prompt in-jection poses a risk only if the agent has authority to perform such actions; this is therefore a problem of authorization architecture, not just the model. The Agentic Principal Chain (APC) tracks dele-gated authority from one principal to the next. APC evaluates each request against the accumulated session state using six authoriza-tion checks. APC carries forward and restricts delegated scope and budgets. Using composition closure, APC checks requests against prior actions to prevent prohibited combinations and enforces the decision outside the model. We prove Blast Radius Monotonicity and Composition Soundness for APC implementations; Compo-sition Soundness is limited to prohibited combinations under a complete restriction set and serialized admission. We evaluated 3,154 instances including InjecAgent, AgentDojo, and ASB. Our compromised-model evaluation tests APC independently of model behavior by inserting the ground-truth attack call after the first legitimate tool call. AgentDojo exfiltration fell from 75–100% to 0% across all four domains; APC blocked all 544 InjecAgent data-stealing cases. Intent binding reduced destruction from 38.6% to 4.0% and manipulation from 90.5% to 12.1%. Authorization latency was 0.24 ms at the 99th percentile on an idle host; across 949 Agent-Dojo task–injection pairs, utility was 8.6 and 13.9 percentage points lower in the two settings. Implementation, evaluation tools, and data are publicly available. 
+
+## Keywords 
+
+agentic AI, authorization, delegation, prompt injection, composition closure, multi-agent security 
+
+## 1 Introduction 
+
+Enterprise systems progressively deploy LLM-based agents that plan tasks, invoke tools, delegate to sub-agents, and produce irre-versible effects whose execution paths are determined at runtime. The access-control methods supervising these systems were de-signed for a setting in which the acting entity is human, the del-egation is explicit, and the granted scope is static. None of these assumptions hold for agentic AI: the acting entity is a non-human identity driven by a probabilistic model, delegation is dynamic and recursive across sub-agents, and the effective scope of a session evolves as the agent invokes tools. This paper develops one central argument: the security conse-quence of prompt injection is an authorization-architecture problem, not solely a model-robustness problem. An agent with access to an external communication tool can be induced to ex-filtrate documents; an agent without that access cannot, regardless of what is injected into its context [4, 26]. The relevant question is not only whether the model follows a malicious instruction—it is what the model is authorized to do when it does. We formalize this argument as the Agentic Principal Chain (APC) model: a session-scoped authorization state carried across delegated agent workflows and enforced by infrastructure outside the model run-time. From this central argument follow three structural observations. First, the model must be excluded from its own trust bound-ary. Most deployments place security controls at the model layer: “always ask before deleting.” These are prompt instructions that can be overridden or ignored. An approval gate implemented as a prompt instruction is not equivalent to one implemented in a Policy Enforcement Point (PEP). Second, per-action authorization is structurally insufficient. 
+
+An agent authorized to read confidential documents and to send external email can combine both to exfiltrate data—without violat-ing any individual permission. This is a confused-deputy problem at the level of action composition. Agentic systems require compo-sition closure : formal constraints on which action combinations are prohibited, evaluated over the session history, not per action in isolation. Third, agentic systems must assume breach. Some compo-nent will be compromised. The question is how much damage it can cause. Every delegation hop introduces another point at which au-thority may be compromised, and the blast radius must be bounded by architecture. A scope delimitation: APC addresses the authorization architecture—delegation-safe action admissibility and com-position closure—not the full surface of agent security. 
+
+Parameter-level validation of individual tool calls is a complemen-tary problem outside APC’s design boundary. Defenses against model manipulation, tool-specific policy engines, and data-flow isolation address different security problems; APC is designed to compose with, not replace, these mechanisms, and to layer on top of existing identity and policy infrastructure (e.g., OAuth and policy-as-code engines). 
+
+Contributions. The contributions are: (1) Composition closure as a formal authorization primi-tive. A session-wide constraint on which action-type com-binations are prohibited, enforced by infrastructure outside the model runtime. This primitive is not present as a con-straint over action-type combinations in classical authoriza-tion models (RBAC, ABAC, OAuth) or, to our knowledge, in current agentic security systems. Composition Sound-ness (Theorem 4.7) proves that the primitive is sound: no admissible action sequence produces a prohibited outcome 
+
+> 1arXiv:2608.15888v1 [cs.AI] 16 Aug 2026 Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+given a complete effective restriction set 𝑋 eff . 𝑘 -tuple ex-tensions (Proposition 4.2) catch multi-step exfiltration that evades pairwise restrictions. (2) Blast Radius Monotonicity across delegation chains. 
+
+A structural property (Theorem 4.6) establishing that the reachable blast radius is non-increasing at each delegation hop, with an explicit adversary model (§3) and a reference implementation tested in 99 delegation-chain scenarios at depths 2–8. (3) Compromised-model evaluation methodology. An evaluation design that tests infrastructure-level enforce-ment independently of whether the model resists manipu-lation, using ground-truth attack tool calls injected directly into the agent pipeline (Section 6). (4) Reference implementation (Python, 2,500 LOC source, 3,000 LOC tests) with executable tests aligned to all for-mal properties, observed sub-millisecond enforcement over-head, and deployment mappings to enterprise infrastruc-ture. The formal results are properties of the delegation algebra rather than of any given enforcement engine: they hold for any implemen-tation faithful to APC semantics, given the stated assumptions. The remainder of the paper is organized as follows. Section 2 provides background on agentic tool use, delegated authority, and the limitations of static authorization. Section 3 specifies the threat model and security requirements. Section 4 presents the session-scoped authorization model. Section 5 describes the runtime en-forcement architecture. Section 6 reports the evaluation. Section 7 discusses guarantees, deployment, and limitations; Section 8 sur-veys related work; and Section 9 concludes. 
+
+## 2 Background and Motivation 2.1 LLM-Based Agents and Tool Use 
+
+An LLM-based agent is a system in which a language model is en-abled to take actions in the world by emitting structured tool invoca-tions. A tool invocation names an operation (e.g., read , send_email ,
+
+transfer_funds ) and a set of parameters; an execution layer dis-patches the call to a backend—a local function, a REST API, a cloud service, or a Model Context Protocol (MCP) server. Agents oper-ate in a loop: the model observes context, proposes an action, the action executes, and its result is appended to context for the next step. Workflows are therefore multi-step, stateful, and determined at runtime rather than statically specified. Two properties of this execution model are security-relevant. First, the sequence of tool calls is not fixed in advance; it emerges from model inference over context that includes untrusted data (retrieved documents, tool outputs, sub-agent messages). Second, agents commonly delegate : an orchestrator agent decomposes a task and assigns subtasks to qualified sub-agents, which may in turn delegate further. Authority must therefore flow across a chain of non-human principals, each of which is an attack surface. 
+
+## 2.2 Delegated Authority and Non-Human Identities 
+
+In a delegated workflow, a human principal initiates a task and au-thorizes an agent to act on their behalf. The agent is a non-human identity : a principal with credentials and permissions but no in-dependent intent. Established delegation mechanisms—OAuth 2.0 authorization grants, on-behalf-of (OBO) token exchange [12], and Rich Authorization Requests [15]—answer the question “may this client act for this user against this resource?” at the moment a token is issued. Token Exchange does represent multi-party delegation: nested act claims record a chain of acting parties, and may_act 
+
+constrains who may act on behalf of whom. What these mecha-nisms do not provide is per-hop scope attenuation computed by infrastructure, constraints on which combinations of authorized operations may be exercised, or authorization state that depends on what the delegate has already done. Agentic workflows stress these mechanisms in two ways. First, recording a delegation chain is not the same as attenuating it: au-thority passes from user to orchestrator to sub-agent to tool, and each hop is a place where scope should narrow and where compro-mise may occur, but the grant itself carries no per-hop reduction that infrastructure computes and enforces. Second, authority is exercised over an extended, stateful session in which the safety of an action depends on what has already happened, not only on a static grant. A token that authorizes “read documents” and “send email” does not encode the constraint that these two capabilities must not be combined to move confidential data to an external recipient. 
+
+## 2.3 Why Static Authorization Fails in Stateful Agent Workflows 
+
+Classical access control evaluates each request in isolation against a policy that is fixed for the duration of a session. RBAC [27] and ABAC [10] decide whether a subject may act on a resource based on roles or attributes; per-tool permissions and allowlists decide whether a given tool may be invoked. None of these mechanisms reason about sequences of actions or about how the safety of one action depends on prior actions in the same session. A compromised or manipulated agent can exploit this gap in three concrete ways while remaining within its nominal permis-sions: 
+
+• Intent violation. The agent performs actions that are in-dividually permitted but unrelated to, or contrary to, the task the user delegated. 
+
+• Delegated-scope expansion. A sub-agent attempts to ex-ercise authority beyond what was passed to it, or authority propagates to additional sub-agents without attenuation. 
+
+• Unsafe composition (privilege propagation by com-bination). The agent combines individually authorized actions—read a confidential document, then send an exter-nal message—to realize a prohibited outcome that no single permission forbids. These are authorization failures, not model-alignment failures: they remain possible no matter how robust the model is to a given injection, because the underlying authority structure permits them. 
+
+> 2Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+Table 1: Adversary capabilities.      
+
+> ID Adversary capability
+> A1 Inject content into the agent’s context via untrusted data sources (indirect prompt injection) A2 Fully compromise a single principal in the chain (sub-agent, tool server, or orchestrator) A3 Observe which actions succeed or fail to probe scope boundaries A4 Maintain influence for the duration of a task session
+
+Addressing them requires authorization state that is scoped to the session , narrowed across delegation , and evaluated against prior-action state .
+
+## 3 Threat Model and Security Requirements 
+
+We assume a modern enterprise agentic system: a human initiates a task; an orchestrator delegates to one or more sub-agents; tools are exposed via MCP servers or APIs; and policy infrastructure exists outside the model runtime. 
+
+## 3.1 Assets 
+
+The protected assets are: (i) enterprise data, including confiden-tial documents and customer records; (ii) tool access and the op-erations tools expose; (iii) cloud resources and the actions they permit; (iv) external communication channels (email, messaging, web posting) that can serve as exfiltration sinks; (v) financial and operational actions with irreversible effects (transfers, deletions, account changes); and (vi) the audit trail itself, whose integrity is required to preserve accountability. 
+
+## 3.2 Adversary Capabilities 
+
+Table 1 enumerates the adversary’s capabilities. The adversary may inject content into the agent’s context through untrusted data (in-direct prompt injection); may fully compromise a single principal in the chain (a sub-agent, a tool server, or the orchestrator); may observe which actions succeed or fail to probe scope boundaries; and may maintain influence for the duration of a task session. We additionally consider a malicious low-privilege user or sub-agent attempting to exceed its delegated authorization. The baseline as-sumption is single-principal compromise ; the effect of multi-principal compromise is discussed in Section 7. 
+
+## 3.3 Trusted and Untrusted Components 
+
+The trusted computing base comprises the identity provider (IdP), the policy decision point (PDP), the policy enforcement gateway (PEP), the signed policy configuration, the approval service, and the append-only audit/evidence store. The adversary cannot compro-mise this infrastructure, forge cryptographic signatures or hashes, or operate across session boundaries (Table 2). The untrusted components are precisely those an attacker can influence: model outputs, retrieved content, user-provided doc-uments, tool outputs, sub-agent messages, and natural-language instructions of any origin. All such content is treated as data, never as authorization; authorization derives solely from the signed ses-sion state held by infrastructure. 
+
+Table 2: Trust boundaries (capabilities the adversary does not 
+
+have).     
+
+> ID Trust boundary
+> T1 Compromise the PDP, PEP, evidence sink, or key-management infrastructure T2 Forge cryptographic signatures or hashes T3 Operate across session boundaries
+
+Table 3: Security goals and the mechanisms that enforce them.               
+
+> ID Guarantee Enforced by
+> G1 No action outside scope 𝑆 (𝑝 𝑖 )executes Condition 2a G2 No prohibited action pair co-occurs in a session; 𝑘 -tuple restrictions extend this to ordered subsequences Condition 2b, Thm. 4.7, Prop. 4.2 G3 Blast radius does not increase at each delegation hop Thm. 4.6 G4 High-impact actions require valid approval tokens Condition 4 G5 Every admitted action is coupled to infrastructure-generated evidence, or execution is denied Condition 5 G6 Actions outside declared intent are denied or flagged Condition 6
+
+## 3.4 Security Goals 
+
+Under these conditions, the model targets six security goals (Ta-ble 3). 
+
+## 3.5 Non-Goals 
+
+The model does not attempt to: solve model alignment or prevent all hallucination; replace application-layer or backend authoriza-tion (it composes with, and does not supersede, the authorization checks performed by tools and services); prevent compromise of the trusted infrastructure itself (T1–T2); perform semantic parameter validation of every individual tool call; or prevent a compromised agent from choosing a suboptimal action within its authorized scope together with intent. The last item constitutes the alignment boundary: APC bounds what authority can be exercised and in what combinations , not whether a single authorized action is the right one. 
+
+## 4 Session-Scoped Authorization Model 4.1 Core Abstractions 
+
+The authorization subject in APC is not a single entity, but rather a 
+
+chain of principals bound to a session. A human principal 𝑝 0 initiates a task; an orchestrator 𝑝 1 acts on the human’s behalf; sub-agents 
+
+𝑝 2, . . . , 𝑝 𝑛 receive attenuated authority in turn; and tools execute at the end of the chain. Each principal is a distinct, verifiable identity (human, agent, or infrastructure), and authorization is decided for the acting principal at its position in the chain , not for the human or the agent in isolation. APC carries a session-level authorization state that travels with this chain. The state is created at session initialization as a crypto-graphically signed authorization envelope ; the authority conferred by the envelope is narrowed—never widened—at each delegation hop. It comprises four elements: an authorization scope (§4.2), the 
+
+> 3Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+principal chain and its delegation budget (§4.3), the prior-action state of the session (§4.6), and a pre-declared intent specification (§4.5). APC is not an identity provider, and it does not replace back-end authorization. It is an authorization-state layer that constrains delegated tool use and composes with existing identity and policy infrastructure. 
+
+## 4.2 Authorization Scope 
+
+Definition 4.1 (Authorization Scope). An authorization scope 𝑆 =
+
+(𝑅, 𝐴, 𝐷, 𝑋 ) consists of four components: 𝑅 (permitted resources), 𝐴 
+
+(permitted action types), 𝐷 (permitted data classifications), and 𝑋 ⊆
+
+ 𝐴 
+
+> 2
+
+ (prohibited action compositions; the reference implementation extends this to ordered 𝑘 -tuples). When two scopes are combined through delegation, the result is always narrower: 
+
+𝑆 1 ⊓ 𝑆 2 = (𝑅 1 ∩ 𝑅 2, 𝐴 1 ∩ 𝐴 2, 𝐷 1 ∩ 𝐷 2, 𝑋 1 ∪ 𝑋 2).
+
+After the meet, 𝑋 may contain pairs referencing action types no longer in 𝐴 1 ∩ 𝐴 2; such pairs are vacuously satisfied. The meet is associative, commutative, and idempotent. Restrictions can only accumulate; a downstream principal cannot remove them. For a scope 𝑆 = (𝑅, 𝐴, 𝐷, 𝑋 ) we write 𝑅 (𝑆 ), 𝐴 (𝑆 ), 𝐷 (𝑆 ), and 
+
+𝑋 (𝑆 ) for its four projections. The properties proved here hold at the action-type level of abstraction: the set 𝐴 and the mapping 
+
+𝜇 from tools to action types determine the granularity at which composition restrictions operate. Finer taxonomies yield tighter enforcement; coarser taxonomies increase the risk of intent overlap (§6). 
+
+## 4.3 Delegation Chains and Budgets 
+
+Authority flows through a chain: user to orchestrator to sub-agent to tool. At each hop, the scope narrows and quantitative limits apply. 
+
+Definition 4.2 (Principal Chain). 𝐶 = ⟨𝑝 0, 𝑝 1, . . . , 𝑝 𝑛 ⟩ is the or-dered sequence of principals, where 𝑝 0 is the human and each 𝑝 𝑖 
+
+received authority from 𝑝 𝑖 −1.The Agentic Principal Chain is the session-level authorization state carried along 𝐶 : the per-principal scope 𝑆 (𝑝 𝑖 ), the delega-tion budget, and the accumulated prior-action state. Infrastructure maintains it, signs it at creation, and consults it on every proposed action. 
+
+Definition 4.3 (Delegation Budget). 
+
+𝐵 = (𝛿 max , 𝛽 max , 𝜌 max , 𝜎 max , 𝜅, cost max )
+
+Six ceilings: delegation depth, cumulative blast radius, irreversible effects, sensitivity class, cross-domain composition, and compute cost. Set at session initialization, non-negotiable by the agent, tracked by infrastructure. Budget ceilings can only decrease along the chain. 
+
+Definition 4.4 (Scoped Principal). At each hop, the scope nar-rows by the meet: 𝑆 (𝑝 𝑖 ) = 𝑆 (𝑝 𝑖 −1) ⊓ 𝑆 role (𝑝 𝑖 ). This is computed by infrastructure, not by the agent. 
+
+## 4.4 Blast Radius and Containment 
+
+Definition 4.5 (Maximal Blast Radius). 
+
+𝐵𝑅 max (𝑝 𝑖 ) = 𝑅 (𝑆 (𝑝 𝑖 )) ∩ 𝑟 : blast (𝑟 ) ≤ 𝛽 max (𝑝 𝑖 ) − 𝛽 consumed (𝑝 𝑖 )
+
+where blast (𝑟 ) ∈ [ 0, 1] is the normalized blast-radius contribution of resource 𝑟 , assigned by infrastructure at deployment time and consistent across all principals in the chain; 𝛽 max (𝑝 𝑖 ) is the blast-radius ceiling; and 𝛽 consumed (𝑝 𝑖 ) is the cumulative budget consumed up to 𝑝 𝑖 . Budget consumption is updated atomically before each action executes. The method for deriving blast (𝑟 ) and 𝛽 max from enterprise risk artifacts is given in Appendix H. Theorem 4.6 (Blast Radius Monotonicity). For any principal chain: ∀𝑖 : 𝐵𝑅 max (𝑝 𝑖 ) ⊆ 𝐵𝑅 max (𝑝 𝑖 −1).
+
+Proof. By induction. Base: scope narrowing gives 𝑅 (𝑆 (𝑝 1)) ⊆ 
+
+𝑅 (𝑆 (𝑝 0)) . Budget-ceiling monotonicity (Definition 4.3) gives 
+
+𝛽 max (𝑝 1) ≤ 𝛽 max (𝑝 0). Budget consumption is cumulative: 𝑝 1 in-herits the consumed budget of 𝑝 0 and can only increase it, so 
+
+𝛽 consumed (𝑝 1) ≥ 𝛽 consumed (𝑝 0). Hence 
+
+𝛽 max (𝑝 1) − 𝛽 consumed (𝑝 1) ≤ 𝛽 max (𝑝 0) − 𝛽 consumed (𝑝 0).
+
+Both components of the intersection are subsets of their parent counterparts—scope by narrowing, and the budget set because 
+
+{𝑟 : blast (𝑟 ) ≤ 𝑎 } ⊆ { 𝑟 : blast (𝑟 ) ≤ 𝑏 } whenever 𝑎 ≤ 𝑏 —so 
+
+𝐵𝑅 max (𝑝 1) ⊆ 𝐵𝑅 max (𝑝 0). Inductive step: the identical argument ap-plies at each subsequent hop. □
+
+Structural requirement. The proof depends on cumulative budget accounting along the chain. Each child principal must inherit the consumed budget of its parent as a floor, 𝛽 consumed (𝑝 𝑖 ) ≥
+
+𝛽 consumed (𝑝 𝑖 −1). Scope narrowing alone guarantees 𝑅 (𝑆 (𝑝 𝑖 )) ⊆
+
+𝑅 (𝑆 (𝑝 𝑖 −1)) ; the full 𝐵𝑅 max monotonicity requires the cumulative-tracking invariant. The practical consequence is a containment guarantee : if an attacker compromises a sub-agent at depth 𝑘 , the damage is bounded by the scope and budget at that position. 
+
+## 4.5 Session Intent 
+
+Classical authorization answers is this principal permitted to do this? Intent binding answers an orthogonal question: is this ac-tion relevant to the declared task? The intent specification Ψ is 
+
+pre-declared by the session initiator at envelope creation; it is not inferred from the agent’s behavior or derived by the model at run-time. Ψ contains (i) a task-objective string; (ii) permitted resource patterns (glob-matched against the target resource); (iii) permitted action sequences (matched against the action type); (iv) negative constraints (resources explicitly prohibited regardless of other per-missions); and optionally (v) a fine-grained action–resource map 
+
+specifying, per action type, which resource patterns are permit-ted. Negative constraints are evaluated first and override all other permissions; where the action–resource map is present it takes precedence over coarse-grained patterns for mapped actions. The precondition 𝑅 Ψ ⊆ 𝑅 (𝑆 (𝑝 𝑖 )) is enforced at envelope creation, en-suring intent cannot widen scope. Proposition 4.1 (Intent Refinement). Let 𝑅 Ψ and 𝐴 Ψ denote the resources and action types permitted by Ψ. If 𝑅 Ψ ⊆ 𝑅 (𝑆 (𝑝 𝑖 )) and 
+
+𝐴 Ψ ⊆ 𝐴 (𝑆 (𝑝 𝑖 )) , then for every action 𝑎 , Admit Ψ (𝑎 ) ⇒ Admit 𝑆 (𝑎 ):intent only restricts, never widens. 
+
+> 4Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+Proof. Every resource pattern in Ψ matches a subset of re-sources in 𝑆 (𝑝 𝑖 ), and every permitted action type in Ψ is in 𝐴 (𝑆 (𝑝 𝑖 )) 
+
+(validated at envelope creation). Any action admitted under Ψ there-fore satisfies both intent and scope; the converse does not hold. □
+
+Intent binding supports graduated enforcement: strict (deny), 
+
+warn (admit with elevated logging), and audit (admit with a devia-tion flag). The envelope declares the mode, and the agent cannot modify it. 
+
+## 4.6 Prior-Action State 
+
+Composition constraints are evaluated against the prior-action state 
+
+of the session: a running set of exercised action types together with an ordered history of action types. The PEP maintains this state incrementally as actions are admitted. Pairwise restrictions are checked in time linear in the number of distinct exercised types; ordered 𝑘 -tuple restrictions are checked by subsequence matching over the history. The prior-action state is per-session and held by the infrastructure, not by the agent, so it cannot be reset or forged by model output. 
+
+## 4.7 Composition Constraints 
+
+The component 𝑋 of a scope encodes composition closure : the set of action-type combinations prohibited within a session. Pairwise restrictions 𝑋 ⊆  𝐴 
+
+> 2
+
+ prohibit co-occurrence of two action types; the implementation widens this to ordered 𝑘 -tuples 𝐾 for attacks that require three or more action types where no individual pair is prohibited. Theorem 4.7 (Composition Soundness). Let a prohibited out-come be any system effect that the security policy designates as im-permissible (e.g., data exfiltration, unauthorized privilege escalation). Assume each prohibited outcome requires the co-occurrence of at least one specific action-type pair to be realized (single-action prohibitions are handled by scope attenuation, Condition 2a). If the composition restriction set 𝑋 covers at least one such required pair for every pro-hibited outcome, then no sequence of individually admissible actions can produce any prohibited outcome. 
+
+Proof. By contradiction. Assume sequential action evaluation (concurrent execution requires serialized admission). If an admissi-ble sequence produces a prohibited outcome, some required pair 
+
+(𝑡 𝑖 , 𝑡 𝑗 ) ∈ 𝑋 must have been exercised. But when 𝑎 𝑗 was evaluated, 
+
+𝑡 𝑖 was already in the exercised set, so the composition check would have denied 𝑎 𝑗 , contradicting admissibility. □
+
+Scope and limitations. The theorem gives a conditional correct-ness result: the enforcement mechanism is sound relative to the policy specification 𝑋 . The guarantee is conditional on three as-sumptions: (1) completeness of 𝑋 , (2) serialized admission (concur-rent sub-agents require the PEP to serialize composition checks so TOCTOU violations do not arise), and (3) static 𝑋 within a session. The intent specification Ψ can override specific pairs, yield-ing 𝑋 eff = 𝑋 \ 𝑂 (Ψ), where 𝑂 (Ψ) is the set of pairs for which the declared intent explicitly authorizes both action types. Where intent-derived overrides are used, 𝑂 (Ψ) is fixed before the session starts and unavailable to model output; the theorem applies to the resulting static 𝑋 eff .Proposition 4.2 (Ordered 𝑘 -tuple soundness). Let 𝐾 be a set of prohibited ordered tuples of action types. Assume the enforcement mechanism denies any candidate action whose admission would cause some tuple in 𝐾 to appear as an ordered subsequence of the session history. Then no admissible action sequence can realize any prohibited tuple in 𝐾 .
+
+Proof. By contradiction. Suppose an admissible sequence re-alizes some prohibited tuple 𝜏 = (𝑡 1, . . . , 𝑡 𝑘 ) ∈ 𝐾 . Let 𝑎 𝑗 be the first action whose admission completes the final element 𝑡 𝑘 of 𝜏 
+
+as an ordered subsequence. At the time 𝑎 𝑗 is evaluated, the pre-fix (𝑡 1, . . . , 𝑡 𝑘 −1) is already present in order, so admitting 𝑎 𝑗 would cause 𝜏 to appear as a prohibited ordered subsequence. By assump-tion, the enforcement mechanism denies 𝑎 𝑗 , contradicting admissi-bility. □
+
+Unlike pairwise restrictions, 𝑘 -tuple restrictions are not subject to intent-derived overrides. The empirical cost of incomplete 𝑋 is quantified in Section 6.2: removing a single pair raises data-stealing ASR from 0% to 39.9%. 
+
+## 4.8 Policy Invariants 
+
+The model is governed by a small set of invariants which any faithful implementation must preserve: 
+
+• Monotone narrowing. Across delegation, 𝑅 , 𝐴 , and 𝐷 can only shrink and 𝑋 can only grow (Definition 4.1); budget ceilings can only decrease (Definition 4.3). Narrowing is irreversible within a session. 
+
+• Cumulative consumption. Consumed budget is inherited as a floor across hops, which is the structural requirement behind Theorem 4.6. 
+
+• Intent containment. 𝑅 Ψ ⊆ 𝑅 (𝑆 (𝑝 𝑖 )) and 𝐴 Ψ ⊆ 𝐴 (𝑆 (𝑝 𝑖 )) 
+
+at envelope creation, so intent restricts but never widens (Proposition 4.1). 
+
+• Fail closed. Missing, ambiguous, or unverifiable authority results in denial rather than execution. Infrastructure enforces the invariants, which model output cannot modify. 
+
+## 5 Runtime Enforcement Architecture 5.1 PEP/PDP Architecture 
+
+Enforcement follows the standard separation between a policy decision point (PDP) and a policy enforcement point (PEP), with the PEP placed outside the model runtime. The PDP evaluates the admissibility predicate for each proposed action against the session’s authorization state; the PEP gates execution on the PDP’s decision and commits evidence. Figure 1 shows the arrangement. 
+
+## 5.2 Tool Gateway Integration 
+
+The PEP is implemented as a tool gateway or an MCP gateway, sitting between the agent runtime and the backends it calls. Every tool invocation—whether a direct API call, a cloud-service action, or an MCP server request—passes through this gateway, which holds the signed authorization envelope for the session and narrows it at each delegation hop. Because the gateway is the single chokepoint              
+
+> 5Bounded Agents: Delegation Security for Multi-Agent AI Systems
+> Human Principal 𝑝 0
+> Orchestrator 𝑝 1
+> Sub-Agent 𝑝 2
+> Tool Execution
+> ⊓narrow
+> ⊓narrow scope narrows Policy Decision Pt. Enforcement Point Evidence Store C1 C2a C2b C2c C3 C4 C5 C6 admit/deny commit
+> 𝐵𝑅 max (𝑝 2) ⊆ 𝐵𝑅 max (𝑝 1) ⊆ 𝐵𝑅 max (𝑝 0)
+> Blast radius non-increasing (Thm. 4.6)
+
+Figure 1: Delegation chain with scope narrowing ( ⊓) at each hop (blue). Infrastructure enforcement (orange): the PDP evaluates six admissibility conditions before the PEP permits execution. The PEP commits tamper-evident evidence to an append-only store; if the store is unreachable, the action is denied (C5). 
+
+for action execution, the model cannot bypass it by emitting alter-native text: an action not admitted at the gateway never reaches the backend. The gateway does not replace the backend’s own au-thorization; it is an additional, session-scoped enforcement layer that fails closed. 
+
+## 5.3 Policy Evaluation Lifecycle 
+
+Each time the agent proposes an action, the PDP evaluates a con-junctive predicate over six conditions. If any condition does not hold, the action is denied: Admissible (𝑎, 𝐶, 𝑆, 𝐵, A, 𝐸, Ψ) = true 
+
+⇐⇒ 𝐶 1 ∧ 𝐶 2 ∧ 𝐶 3 ∧ 𝐶 4 ∧ 𝐶 5 ∧ 𝐶 6
+
+where 𝑎 is the proposed action, 𝐶 the principal chain, 𝑆 the effective scope, 𝐵 the budget state, A the approval store, 𝐸 the evidence-sink state, and Ψ the intent specification. 
+
+C1: Identity Binding. The runtime actor must be bound to a verifiable identity in the principal chain, distinguishing user from agent from infrastructure. 
+
+C2: Scope Attenuation with Composition Closure. Three subchecks: (2a) the action is within the attenuated scope—action type in 𝐴 (𝑆 ), target resource in 𝑅 (𝑆 ), data classification in 𝐷 (𝑆 ).
+
+(2b) The action does not create a prohibited combination with pre-vious actions in the session. (2c) The action satisfies all delegation-budget ceilings. 
+
+C3: Context and State Binding. The action must be bound to the specific task instance, policy version, and parameter context to prevent replay attacks across sessions. 
+
+C4: Approval Binding. The system computes an impact score 
+
+𝐼 (𝑎 ) = 𝑤 𝜌 · 𝜌 (𝑎 ) + 𝑤 𝛽 · 𝐵𝑙 (𝑎 ) + 𝑤 𝜎 · 𝑆𝑒 (𝑎 ), where 𝜌 (𝑎 ) ∈ [ 0, 1] is irreversibility, 𝐵𝑙 (𝑎 ) ∈ [ 0, 1] is blast radius, and 𝑆𝑒 (𝑎 ) ∈ [ 0, 1] is data sensitivity. If 𝐼 (𝑎 ) > 𝜃 , a single-use, hash-bound approval token is required—tied to the exact action, parameters, and session. Here 
+
+𝐵𝑙 (𝑎 ) is the blast-radius contribution of the action itself (set per                        
+
+> Legitimate read send_int ADMIT
+> ✓scope, intent ✓no pair in 𝑋
+> Direct exfil read send_ext DENY
+> ✓scope ×pair in 𝑋
+> Staged exfil read write send_int DENY
+> ✓scope ✓scope, pair ×𝑘 -tuple
+
+Figure 2: Composition closure distinguishes legitimate work-flows from attacks. Top: reading then sharing internally is admitted. Middle: direct exfiltration is blocked by pairwise restriction. Bottom: staged exfiltration via an intermediate write evades pairwise but is caught by 𝑘 -tuple restriction. 
+
+action profile at deployment time), distinct from the per-resource blast (𝑟 ) used in budget accounting (C2c, Definition 4.5). Approval binding is per-action; budget conformance (C2c) is cumulative. The two are complementary, not redundant. Calibration is detailed in Appendix G. 
+
+C5: Evidence Commitment. Before admitting an action, the PDP verifies that the evidence sink is reachable. If unreachable, the action is denied—no evidence trail means no execution. A SHA-256 hash chain enforces tamper-evidence: each package records the content hash of the preceding entry, so modifying or removing any interior entry breaks the chain and is detectable by traversal. Truncation of the chain tail is not detectable from the chain alone; detecting it requires an independently anchored head (e.g., periodic publication of the latest hash) or the append-only store assumed in the trusted computing base (T1). Production deployments should provide both. 
+
+C6: Intent Binding. The action is checked against the pre-declared intent specification Ψ. Negative constraints are evaluated first and override all other permissions. If no intent specification is available, admissibility falls back to C1–C5. 
+
+Guarantee tiers. The six conditions fall into three tiers: 
+
+• Tier 1 (structural): C2a, C2b, C3—properties proved rel-ative to a fixed effective policy. Theorem 4.7 and Proposi-tion 4.2 operate at this tier. 
+
+• Tier 2 (configuration-dependent): C4, C6—effectiveness depends on calibration and on the completeness of the intent specification. Residual ASR concentrates here. 
+
+• Tier 3 (operational/infrastructure): C1, C5, C2c— depends on infrastructure availability and integrity. 
+
+## 5.4 Audit and Trace Generation 
+
+Every admitted action is coupled to an infrastructure-generated evidence package committed to the append-only store before exe-cution (C5). Each package records the action, principal, scope, and policy version, parameter context, decision, and the hash chain linking it to the prior entry. Because evidence commitment is a precondition for execution and the store is append-only, the au-dit trail is both complete (no executed action lacks evidence) and tamper-evident (no entry can be altered or removed undetected).      
+
+> 6Bounded Agents: Delegation Security for Multi-Agent AI Systems
+> Exfiltration Destruction Manipulation
+> 025 50 75 100 87% 39% 90%
+> 0% 4% 12%
+> Attack Success Rate (%) No defense APC
+
+Figure 3: Compromised-model evaluation by attack type, pooled across all four AgentDojo domains (609 task–injection pairs). Exfiltration is eliminated by composition closure (C2b); destruction and manipulation are reduced by intent binding (C6).         
+
+> Data Stealing Disruptive Direct Harm Stealthy
+> 025 50 75 100
+> 100% 100% 100% 100%
+> 0% 0% 60% 30%
+> Attack Success Rate (%) No defense APC
+
+Figure 4: Static deterministic benchmarks: InjecAgent (1,054 cases) and ASB (400 cases). Data-stealing and disruptive at-tacks are blocked completely; residual direct-harm attacks (single-action within scope) and stealthy attacks (action-type granularity) lie outside APC’s design boundary. 
+
+## 5.5 Composition Restriction Authoring 
+
+The restriction set 𝑋 is authored per security domain, not per use case, analogous to separation-of-duty constraints in IAM. In the evaluated domains, 3–9 pairwise restrictions and 0–8 𝑘 -tuple restric-tions suffice (Table 6); the authoring follows a four-step procedure with a quantifiable coverage metric (Appendix A). The restriction set scales with prohibited outcomes, not with tool count. 
+
+## 6 Evaluation 
+
+We evaluate APC across components with distinct evidentiary roles. 
+
+Security evidence : InjecAgent and ASB validate composition closure (C2b) deterministically across 1,454 cases; the compromised-model AgentDojo evaluation validates enforcement when the model emits the benchmark’s ground-truth attack call across 609 task–injection pairs; the adaptive-attack suite validates all six conditions and both 
+
+Table 4: InjecAgent results (1,054 test cases). ASR = attack success rate (lower is better).               
+
+> Condition Data Stealing ASR Direct Harm ASR Total ASR
+> Baseline 100.0% 100.0% 100.0% Complete 𝑋 0.0% 60.4% 29.2% Partial 𝑋 39.9% 82.0% 60.2%
+
+formal results under white-box adversarial assumptions. Utility evidence : standard AgentDojo runs measure enforcement cost on legitimate task completion across 949 pairs. Formal validation : 99 delegation-chain scenarios validate Theorem 4.6 and the full six-condition predicate at depths 2–8. Reported security results are 
+
+observed attack effectiveness rates under the stated methodologies, not worst-case bounds. Figures 3 and 4 summarize the headline security outcomes. 
+
+## 6.1 Reference Implementation Validation 
+
+The reference implementation (Python, 2,500 LOC source, 3,000 LOC tests) implements executable tests aligned with all formal properties, with noted sub-millisecond local enforcement overhead (full six-condition admissibility 0.05 ms p50, 0.24 ms p99, highest observed p99 across repetitions 0.35 ms; environment, method, and per-component ranges in Appendix D). This measures only the APC authorization path—it excludes model inference, network round trips, and end-to-end agent runtime. Additionally, 99 delegation-chain scenarios validate the full six-condition predicate across 2–8 hop chains with 20 attack categories; all 99 produce the expected outcome (23 positive, 76 negative). Details in Appendix D. 
+
+## 6.2 InjecAgent: Composition Closure 
+
+InjecAgent [31] provides 1,054 test cases covering 17 user tools and 62 attacker tools, with attacks split into data stealing (544 cases) and direct harm (510 cases). Evaluation is deterministic: InjecAgent pre-fills the agent scratchpad, and we evaluate whether the APC admissibility predicate blocks the attacker tool given the session’s composition history. Table 4 shows the results. Complete 𝑋 reduces data stealing from 100% to 0%. Direct harm drops to 60.4%: the remaining cases are single-action attacks within scope that require parameter-level validation. The Partial 𝑋 condi-tion (one pair removed from 𝑋 ) raises data-stealing ASR to 39.9%, illustrating the cost of violating the completeness assumption of Theorem 4.7. 
+
+## 6.3 ASB: Composition Closure Across Domains 
+
+Agent Security Bench (ASB) [32] provides 400 attack tools across 10 agent scenarios, alongside 20 normal tools. We apply the same deterministic methodology. Table 5 shows the results. Complete 𝑋 blocks all 200 disruptive attacks and 140 of 200 stealthy attacks. Two surviving tool types ( DataExfiltrationTool ,
+
+DataExportTool ) carry exfiltration semantics but receive the 
+
+write class from the benchmark-level classifier, which keys on attack type rather than tool semantics. Under the correct class, the existing pair (read , send_external ) ∈ 𝑋 blocks both, confirming that this residual lies in the action-type taxonomy 𝜇 rather than in composition closure—the granularity dependence identified in 
+
+> 7Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+Table 5: ASB results (400 attack tools, 10 scenarios). ASR = attack success rate.               
+
+> Condition Stealthy ASR Disruptive ASR Total ASR
+> Baseline 100.0% 100.0% 100.0% Complete 𝑋 30.0% 0.0% 15.0%
+> Partial 𝑋 60.0% 100.0% 80.0%
+
+Table 6: Per-domain authoring burden.                                    
+
+> Domain Tools Action Cls. Pairwise 𝑘 -tuple Resources
+> Workspace 32 8785Banking 13 6535Travel 28 7347Slack 11 6324InjecAgent —980—ASB —790—
+
+Table 7: Utility preservation on four AgentDojo suites (Claude Sonnet 4.6). UPR = fraction of task–injection pairs where the user task is completed successfully. Values are means over 3 runs; ± denotes sample standard deviation. Δ
+
+columns report percentage-point differences computed from unrounded means.                           
+
+> Suite Baseline Strict Inter. Δstrict (pp)
+> Δinter. (pp)
+> Workspace (560) 96.2 ±0.2% 81.5 ±0.1% 86.7 ±0.4% −14.7 −9.6 Banking (144) 68.8 ±1.2% 50.0 ±0.7% 58.8 ±1.7% −18.8 −10.0 Travel (140) 59.8 ±1.1% 55.7 ±0.7% 60.0 ±1.4% −4.0 +0.2 Slack (105) 73.0 ±1.5% 56.5 ±5.2% 60.0 ±4.4% −16.5 −13.0
+
+Section 4.2. An independent semantic audit of every benchmark residual, classified from the benchmarks’ own natural-language attack descriptions rather than from our action-type labels, is provided in the artifact. 
+
+## 6.4 AgentDojo: Utility and Live Enforcement 
+
+AgentDojo [4] evaluates both attack success and task utility with live LLM agents. We integrate the APC enforcement layer as a pipeline element within AgentDojo’s tool execution loop. 
+
+Model selection. Utility preservation is evaluated with Claude Sonnet 4.6 (via AWS Bedrock). The compromised-model evaluation uses Claude Haiku 4.5 because the malicious tool call is injected directly from benchmark ground truth; the security outcome is driven primarily by infrastructure-level enforcement. 
+
+Per-domain configuration. Each suite requires a domain-specific action classifier, composition restrictions, and intent-parser key-words. Table 6 quantifies the per-domain effort. 
+
+Utility preservation. We report UPR under two configurations: 
+
+strict (all conditions enforced, approval-gated actions denied) and 
+
+interactive (human approval simulated for C4-only denials). Results are means over 3 independent runs (Table 7). Pair-weighted aggregate deltas across the 949 task–injection pairs are −13.9 pp under the strict condition and −8.6 pp under the inter-active condition. The tradeoff is explicit: the −8.6 pp interactive cost 
+
+Table 8: Compromised-model evaluation on four AgentDojo suites (Claude Haiku 4.5). Ground-truth attack injection sim-ulates a fully compromised model. Total: 609 unique task– injection pairs, 1,218 executions.                                                     
+
+> Suite / Category Attack Tools No Def. APC Blocking
+> Workspace (240 pairs)
+> Exfiltration send_email 90.0% 0.0% C2b + C4 + C6 Destruction delete_file/email 48.8% 5.0% C6 (intent) Manipulation create_calendar 97.5% 30.0% C6 (partial)
+> Banking (144 pairs)
+> Financial exfil. send_money 75.0% 0.0% C2b (formal) Manipulation update_sched_txn 87.5% 12.5% C6 (partial) Account takeover update_password 87.5% 0.0% C2b (formal)
+> Travel (120 pairs)
+> Exfiltration send_email 90.0% 0.0% C2b (formal) Manipulation reserve/calendar 86.7% 0.0% C6 (no overlap)
+> Slack (105 pairs)
+> Ext. exfiltration post_webpage 100.0% 0.0% C2b (formal) Int. exfiltration send_direct_msg 100.0% 0.0% 𝑘 -tuple Destruction remove_user 0.0% 0.0% — (attack fails undefended) Reconnaissance get_webpage 100.0% 0.0% C6 (intent)
+
+buys 0% observed exfiltration ASR under full model compromise across all four domains. 
+
+Compromised-model evaluation. Assuming the model may emit an attacker-chosen tool call is not hypothetical: the Gray Swan IPI Arena [8] reports that all 13 frontier models tested were induced to comply at least some of the time (0.5–8.5% ASR over 272,000 at-tacks), and the TRAP benchmark [14] reports 13–43% ASR across six frontier models. To evaluate APC independently of model strength, we instrument the AgentDojo pipeline (v1.2.2) with a compromised-model injection element that appends the ground-truth attack tool call after the first legitimate tool call, simulating full model com-promise. The undefended baseline is not uniformly 100% because AgentDojo’s success checker evaluates the full task state: in some pairs the injected tool call executes, but its preconditions are not met (e.g., the target data was not yet in the agent’s context), so the checker does not score the attack as successful. The cohort is smaller than the utility cohort (609 versus 949 pairs) because injection is defined only where the benchmark specifies one; we retain every user task, but only injection tasks whose AgentDojo ground truth contains at least one attack tool call. Injection tasks with empty ground truth provide nothing to inject and are excluded. Table 8 shows results. Exfiltration attacks are blocked at 0% observed ASR in all four suites. Aggregated across suites, destruction ASR drops from 38.6% to 4.0%, and manipulation ASR drops from 90.5% to 12.1%. 
+
+Residual failure taxonomy. Across all four domains, 18 attacks succeed despite enforcement (Table 9). Intent overlap (14 cases, 78%): the attack action class is indistinguishable from the legitimate task at the action-type level. Missing composition pair (4 cases, 22%): a policy-completeness issue. Neither category is a core limitation. 
+
+Matched-protocol comparison. In a matched-protocol comparison using Progent’s [28] AgentDojo fork adapted to Bedrock (artifact as available at evaluation time, manual policies, same model, two 
+
+> 8Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+Table 9: Taxonomy of residual attack successes (18 of 609 runs, 3.0% aggregated observed ASR).                   
+
+> Category Attack Tool Cases Root Cause
+> Intent overlap create_calendar_event 12 write class matches task intent
+> update_sched_transaction 2write class matches task intent Missing pair in 𝑋 delete_file 4(read ,delete )∉𝑋
+> Total 18
+
+independent runs per suite), both systems achieved 0% observed ASR across all available domains, and attack-time utility was com-parable in banking and workspace: Progent 59 .7 ± 1.0% / 88 .5 ± 0.3%; APC interactive 58 .8±1.7% / 86 .7±0.4%. The weighted mean delta is 
+
++1.6 pp in favor of Progent, within a predefined ±2 pp equivalence threshold. The APC figures in this comparison are those of Table 7 and are reproducible from the committed run files; the Progent-side figures were obtained by running that project’s own fork and are reported here without a corresponding artifact in our repository, since redistributing it is outside our control. 
+
+## 6.5 Adaptive Attacks 
+
+We design twenty-three attacks by an adversary with full knowl-edge of the model, covering the complete attack surface: all six conditions, both formal results, and all adversary capabilities (A1– A4) and trust boundaries (T1–T2). All twenty-three named attacks produce outcomes consistent with the model’s predictions. Of the 43 variants, 19 are positive cases (admitted by design), and 24 are attack variants targeting prohibited outcomes. Of these, 23 are blocked; ses-sion splitting is admitted by design (per-session composition state is a documented limitation, T3). Key findings: decomposed exfiltra-tion ( read → write → send_internal ) evades pairwise closure but is caught by 𝑘 -tuple restrictions; approval replay, expired to-kens, and consumed tokens confirm C4 integrity; evidence evasion confirms fail-closed behavior (C5); session splitting confirms per-session composition state—cross-session attacks are admitted, a documented limitation. Representative results are in Appendix B. 
+
+## 6.6 Evaluation Summary 
+
+Tables 10 and 11 summarize coverage across all benchmarks and attack classes. 
+
+## 7 Discussion 7.1 Relationship to RBAC, ABAC, OAuth, and OBO 
+
+APC is designed to complement, not replace, established access-control and delegation mechanisms. RBAC [27] and ABAC [10] decide individual requests against roles or attributes; APC layers a session-scoped, sequence-aware constraint (composition closure) on top of these per-request decisions. OAuth 2.0 and Rich Authoriza-tion Requests [15] issue delegated grants, and Token Exchange [12] can represent a chain of acting parties using nested act claims; the Authorization Envelope is conceptually aligned with a rich authorization request but adds what those mechanisms leave to the 
+
+Table 10: Evaluation coverage across all benchmarks (3,154 evaluation instances). The compromised-model and utility cohorts are drawn from the same AgentDojo task–injection space and are therefore not disjoint.                         
+
+> Benchmark Cases Type Main outcome
+> Delegation chains 99 Multi-hop (2–8 hops) 99/99, all 6 condi-tions InjecAgent 1,054 Public Data stealing 0% ASB 400 Public Disruptive 0% AgentDojo (utility) 949 Live LLM, 4 suites Δinteractive
+> −8.6 pp (mean, 3runs) AgentDojo (compromised) 609 †Compromised-model Exfil 0% all suites Adaptive 43 Self-designed 23/23 matched
+> †609 unique pairs, 1,218 total executions under two conditions.
+
+Table 11: Attack-class coverage summary. Residual values are observed ASR.                     
+
+> Attack class Coverage Main mechanism Residual
+> Multi-step exfiltration Full C2b composition closure 0% Delegation priv. escalation Full Thm. 4.6 0% Destruction (out-of-intent) High C6 intent binding 4% Manipulation (in-intent) Partial C6 (action-type granularity) 12.1% Single-action within scope None Outside APC boundary 60.4% Parameter-level misuse None Requires param. validation —
+
+application: scope attenuation computed per hop by infrastructure, prohibited action-type combinations, and admissibility conditioned on prior-action state. In a deployment, the IdP and OAuth/OBO flows establish identity and the initial grant; APC narrows that grant across the principal chain and enforces composition together with intent at the gateway. Backend services retain their own au-thorization; APC adds a session-scoped enforcement layer in front of them. 
+
+## 7.2 Guarantees and Assumptions 
+
+The two formal results are properties of the delegation algebra, not of a particular checker. Theorem 4.6 (blast-radius monotonicity) as-sumes scope narrowing, cumulative budget tracking, and consistent blast (𝑟 ) assignment by infrastructure; under these, the reachable blast radius is non-increasing at each hop, so compromise at depth 
+
+𝑘 can reach no more than the position it occupies. Whether the bound tightens with depth depends on the configured attenuation: the theorem alone permits it to remain flat. At the same time, the default per-hop factor in Appendix H makes it strictly decreasing. Theorem 4.7 (composition soundness) and Proposition 4.2 assume a complete effective restriction set ( 𝑋 eff for pairs, 𝐾 for ordered tuples) and serialized admission; under these, no admissible action sequence produces a prohibited outcome. 
+
+## 7.3 Enterprise and Cloud Deployment Considerations 
+
+In an enterprise deployment, APC maps onto concrete infrastruc-ture: the IdP (C1), the orchestration framework (delegation chain), a tool or MCP gateway (PEP), a policy engine such as a policy-as-code evaluator (PDP), an approval service (C4), and an append-only 
+
+> 9Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+Table 12: Formal results: assumptions, guarantees, and sup-porting evidence.        
+
+> Property Assumption Guarantee Evidence
+> Blast-radius mono. (Thm. 4.6) Scope narrowing; cumulative budget tracking; consistent
+> blast (𝑟 )
+> Reachable blast radius non-increasing per hop 99 chain scenarios (depths 2–8) Comp. soundness (Thm. 4.7, Prop. 4.2) Complete 𝑋 eff ,𝐾 ;serialized admission No admissible sequence produces prohibited outcome InjecAgent 0% DS; ASB 0% disruptive; adaptive all matched
+
+evidence store (C5). The gateway creates the Authorization En-velope at session initialization and narrows it at each delegation hop. Intent binding supports graduated rollout: composition closure (C2b) can operate in strict mode from day one because it depends on policy configuration rather than parsing quality. In contrast, intent enforcement can begin in warn or audit mode and tighten to strict once those intent specifications mature. The six budget dimensions map to existing enterprise risk artifacts (asset classifi-cation, business-impact analysis, change-management categories, separation-of-duty policies), so calibration reuses controls organi-zations already maintain (Appendix G and H). 
+
+## 7.4 Limitations 
+
+Several limitations bound the claims: 
+
+Construct: the action-class taxonomy 𝜇 involves expert judgment, and different security teams may derive different restriction sets; that reliance on expert judgment is inherent to all policy-based authorization, and the coverage metric (Appendix A) makes it mea-surable. 
+
+Internal: the compromised-model evaluation injects ground-truth attacks after the first legitimate step—a specific simulation method-ology, not a universal worst case; it does not model adversaries who interleave legitimate and malicious calls across many turns or adapt to enforcement feedback. Adaptive attacks are self-designed rather than externally red-teamed. 
+
+External: all benchmarks are synthetic, and no production-deployment data is presented; this is a deliberate scope choice, as the primary claims are structural. 
+
+Residual risk concentrates in single-action misuse within au-thorized scope, parameter-level attacks, intent overlap at coarse action-type granularity, incomplete composition-restriction sets, and attacks spanning multiple sessions (composition state is per-session; cross-session tracking requires durable lineage state, T3). Under multi-principal compromise ( 𝑘 ≥ 2), blast-radius monotonic-ity is unaffected (it is structural) and composition soundness holds per session; the residual reduces to the cross-session coordination problem. Finally, the theorems are not machine-checked; mecha-nized proofs are future work. 
+
+## 8 Related Work 
+
+Classical access control. Authorization in enterprise systems evolved through RBAC [27], ABAC [10], and capability-based secu-rity: Dennis and Van Horn [7] introduced capabilities, Miller [17] formalized attenuation, and SPKI/SDSI [9] enabled multi-hop dele-gation. ANSI RBAC’s dynamic separation of duty constrains role-activation combinations within a session, and Brewer–Nash (Chi-nese Wall) constrains access to objects in conflict-of-interest classes incrementally against access history; neither constrains action-type composition across tool invocations, and neither models multi-hop delegation with attenuation. APC extends this tradition with compo-sition closure and delegation budgets—constraints not captured by classical attenuation, needed because agents can reason about and recombine their capabilities. Zero Trust [25] mandates continuous verification but predates agentic AI, and Zanzibar [23] demonstrates that per-request authorization sustains millions of authorization requests per second, suggesting per-hop verification is feasible. Composition closure has a conceptual ancestor in information-flow control: Denning’s lattice model [6] and the decentralized label model of Myers and Liskov [18, 19]. Composition closure operates as a coarse-grained taint model at the action-type level, practical for opaque LLM agents where variable-level information-flow control is infeasible. 
+
+Delegation and authorization protocols. OAuth 2.0 Rich Authoriza-tion Requests [15] express fine-grained, structured grants. Token Exchange [12] supports multi-party delegation: nested act claims record the chain of acting parties and may_act restricts who may act on behalf of whom. These mechanisms establish who may act on behalf of whom and with what static scope; they do not define how scope narrows at each hop, which combinations of granted operations are prohibited, or how admissibility depends on prior actions in the session. South et al. [29, 30] extend OAuth for agent delegation and study identity management for agentic AI. APC is complementary: it consumes such a grant and adds per-hop attenu-ation, composition closure, and prior-action state. 
+
+Confused deputy and non-human identity. Unsafe composition is a confused-deputy problem at the level of action sequences: an agent is induced to combine authorized capabilities toward an unau-thorized end. Managing non-human identities and their delegated authority is an emerging concern that classical, human-centric IAM does not directly address; APC treats each agent as a distinct principal in an explicit chain. 
+
+LLM and agent security. Empirical work confirms that exploita-tion severity scales with privilege [4, 26]; relatedly, teams of LLM agents have been shown to exploit real zero-day vulnerabilities [33]. Standards and taxonomies—OWASP’s Top 10 for LLM and for Agen-tic Applications [20–22], the Cloud Security Alliance MAESTRO framework [3], and AIUC-1 [1]—identify threats but define no run-time enforcement model. Khoo et al. [13] provide a risk taxonomy without an enforcement architecture, and Madkour et al. [16] extend the NIST AI Risk Management Framework to agentic governance. 
+
+Runtime enforcement and guardrails. A growing cluster of de-terministic enforcement frameworks addresses runtime agent se-curity. Ji et al. [11] propose SEAgent, an ABAC-based mandatory-access-control framework monitoring agent–tool interactions via an information-flow graph. Debenedetti et al. [5] introduce CaMeL, which separates control flow from data flow, using capabilities to prevent exfiltration, with demonstrable dataflow isolation. Shi et 
+
+> 10 Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+al. [28] present Progent, a programmable privilege-control frame-work with a tool-level policy DSL; its current version reports 1.0% ASR on AgentDojo and 3.9% on ASB under automatic policy gen-eration, and 0% under manual policies, and adds an SMT solver that classifies each policy update as a narrowing (applied auto-matically) or an expansion (demanding explicit approval), so that a single agent’s effective action space cannot widen without ap-proval. Our matched-protocol measurement (§6.4) used the Progent artifact available at evaluation time, which predates that mecha-nism. Balunovic et al. [2] propose a security analyzer with a policy DSL and formally establish the correctness of its checker, and Ra-jagopalan and Rao [24] introduce authenticated workflows with cryptographic attestations. Those frameworks prove properties of their enforcement engines —in Progent’s case, a temporal mono-tonicity property: one agent’s action space is non-increasing across successive policy updates. APC’s Theorem 4.6 is structural : maxi-mum blast radius is non-increasing in position along the principal chain, because each hop takes the meet of the delegator’s scope and inherits the parent’s consumed budget as a floor. Neither temporal monotonicity nor checker correctness yields per-hop attenuation, cumulative budget inheritance across a chain, or composition clo-sure over the action-type history of prior hops, and none of these schemes establishes such properties of the authorization model 
+
+rather than of a particular engine. APC’s theorems hold for any implementation faithful to APC semantics; the two approaches can in principle be composed (Appendix F). 
+
+## 9 Conclusion 
+
+The security consequence of prompt injection in agentic systems is, to a substantial degree, an authorization-architecture problem: an agent that cannot combine the actions required to exfiltrate data—because the combination is prohibited at the infrastructure level—is not vulnerable to injection attacks that attempt it, regard-less of model behavior. We presented a session-scoped authorization model for delegated tool use, the Agentic Principal Chain, that op-erationalizes this view as a conjunctive admissibility predicate over six deterministic conditions enforced outside the model runtime, with composition closure as its central primitive. Two structural results—composition soundness and blast-radius monotonicity—hold for any implementation faithful to the model, under stated and explicit assumptions. Across 3,154 evaluation instances spanning public benchmarks, live LLM evaluation, and adversarial testing under full model compromise, the observed exfil-tration attack success rate is 0% across all four AgentDojo domains and InjecAgent’s 544 data-stealing cases, at an interactive utility cost of −8.6 pp; the two surviving ASB tool types trace to action-type misclassification rather than to the enforcement mechanism. APC controls which action types execute on which resources and in which combinations, not whether the parameters of an individually authorized action are benign; single-action misuse within scope and parameter-level attacks require complementary mechanisms. Future work includes machine-checked proofs of the two theorems, parameter-level validation for single-action attacks, cross-session composition tracking via durable lineage state, and evaluation on production-scale multi-agent deployments. 
+
+Disclosure. The author is a founding member of the AIUC Consor-tium and a contributor to OWASP and the Cloud Security Alliance. Publications of all three organizations are cited in Section 8 [1, 3, 20– 22], including in the assessment that these standards identify threats without specifying a runtime enforcement model. This work was conducted independently and does not represent a position of any of these organizations. 
+
+AI assistance. Large language model tools assisted with drafting and editing. All claims remain the responsibility of the author. 
+
+## A Restriction Authoring Procedure 
+
+We formalize the authoring of 𝑋 as a four-step procedure. 
+
+Step 1: Action-class enumeration. Enumerate the set of se-mantic action classes C. Each tool maps to exactly one class via 
+
+𝜇 : Tools → C .
+
+Step 2: Prohibited-outcome identification. From the domain threat model, identify the set of prohibited outcomes O with sever-ity classifications. 
+
+Step 3: Outcome-to-restriction mapping. For each 𝑜 ∈ O ,derive pairwise or 𝑘 -tuple restrictions from the minimal action sequence that produces it. 
+
+Step 4: Coverage verification. 
+
+coverage (𝑋, 𝐾, O) = |{ 𝑜 ∈ O : pairs (𝑜 ) ⊆ 𝑋 ∨ tuples (𝑜 ) ⊆ 𝐾 }| |O| .
+
+The AgentDojo workspace evaluation uses 7 pairwise and 8 𝑘 -tuple restrictions (coverage 1.0). The coverage metric is relative to O, not to all possible harmful sequences. 
+
+## B Adaptive Attack Details 
+
+Table 13 summarizes a representative subset of the twenty-three named attacks and their outcomes. 
+
+> 11 Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+Table 13: Adaptive attack results (representative subset). Twenty-three named attacks with 43 variants target all six conditions.                                   
+
+> Attack Strategy Result
+> Decomposed Exfil read →write →
+> send_internal (evades pairwise)
+> blocked (𝑘 -tuple) Intent Drift in-scope, out-of-intent resource
+> blocked (C6) Budget Exhaustion 3 transfers, budget max 2 blocked (C2c) Approval Replay reuse token with different parameters
+> blocked (C4 hash) Expired Token use approval token after TTL expires
+> blocked (C4 temporal) Consumed Token reuse single-use token after consumption
+> blocked (C4 single-use) Evidence Evasion act when evidence sink is down
+> blocked (C5 fail-closed) Scope Probing (A3) probe resources, actions, classifications boundaries enforced Gradual Buildup (A4) 8-step sequence with interleaved noise
+> blocked (pair + 𝑘 -tuple) Session Splitting split read/send across sessions admitted (per-session) Cross-Session Token (T3) replay session-A token in session-B
+> blocked (C4 session) Envelope Forgery (T2) sign envelope with wrong key
+> blocked (signature) Envelope Tampering (T2) modify sealed envelope scope
+> blocked (immutability) Depth Overflow act beyond delegation depth ceiling
+> blocked (C2c) Intent Warn Mode out-of-intent in warn vs strict mode graduated enforcement
+
+## C Mechanism-Class Comparison 
+
+We compare two classes of deterministic policy-enforcement ap-proaches on the same InjecAgent and ASB test cases: action-class composition closure (APC) and sensitivity-based information flow tracking (modeled after SEAgent [11]). Both are evaluated as static policy checkers. The SEAgent simulation maintains a session-level sensitivity high-water mark and denies flows from sensitive data to external sinks; this models sensitivity-label propagation but not the full information flow graph, so the reported gap is an upper bound. 
+
+Table 14: Enforcement mechanism comparison on InjecA-gent (1,054 cases) and ASB (400 cases).                    
+
+> InjecAgent ASB Mechanism DS DH Total Stlth. Disr. Class
+> Comp. closure (APC) 0.0% 60.4% 29.2% 30.0% 0.0% Action-class pairs Info flow (SEAgent sim.) 1.7% 59.2% 29.5% 60.0% 60.0% Sensitivity labels
+
+## D Implementation Details 
+
+The reference implementation (Python 3.11) provides executable tests aligned with all formal properties. 
+
+Measurement environment. Latencies were measured on an Intel Core i5-1245U (12th generation, 10 cores / 12 threads, 1.6 GHz base), 16 GB RAM, Windows 11 (build 26200), CPython 3.11.9, single-threaded and with no other significant load. This is a mobile-class processor. 
+
+Method. Each component is timed per call with time.perf_ counter() over 20,000 iterations following 500 warmup iterations; percentiles are nearest-rank over the sorted sample. We report the median across five independent repetitions, with the observed range across repetitions in brackets. Admissibility is measured on the admit path: every timed call passes all six conditions and performs the associated evidence commit, composition record, and budget consumption. Because budget consumption accumulates, the session is rebuilt at fixed intervals outside the timed region; measurements at session lengths of 20, 50, and 200 actions agree to within the reported ranges. The measurement covers only the in-process authorization path: it excludes model inference, network round-trips, policy retrieval from a remote PDP, and evidence-sink I/O. 
+
+Table 15: Enforcement latency on the environment above. Me-dian of five repetitions; bracketed values are the range across repetitions. Reproduced from the committed measurement artifact evals/latency/results/latency_appendix_d.json .          
+
+> Component p50 (ms) p99 (ms)
+> Full admissibility, C4 below threshold 0.049 [0.048–0.050] 0.240 [0.173–0.261] Full admissibility, C4 token veri-fied 0.057 [0.056–0.058] 0.236 [0.215–0.345] Composition closure (isolated) 0.0016 [0.0012–0.0021] 0.0031 [0.0016–0.0033] Envelope narrowing (meet + re-sign) 0.015 [0.015–0.016] 0.059 [0.049–0.081]
+
+Both admissibility rows evaluate all six conditions and perform the associated evidence commit, composition record, and budget consumption. They differ only in Condition 4: the first uses an action whose impact score falls below the approval threshold; the second uses an action above it with a valid single-use token, which adds roughly 0.01 ms at the median. Composition closure is mea-sured against a primed session history in both the isolated row and within the full path, so the pairwise lookup is exercised in each. Envelope narrowing recomputes the scope meet and re-signs the envelope; it occurs once per delegation hop rather than once per action, so it does not sit on the per-action hot path. Through-put expressed as evaluations per second is the reciprocal of mean single-call latency, not a measured concurrent throughput, and does not account for contention under parallel load. Absolute val-ues are hardware-dependent; scripts/benchmark_latency.py re-runs the measurement on the host machine and aborts if any timed call fails to reach an admit decision through all six conditions. The measurement is also sensitive to host load: two further executions of the same protocol on the same machine while other workloads were running produced 0.083–0.091 ms p50 and 0.345–0.427 ms p99 for full admissibility, with individual repetitions reaching 0.66 ms p99. The no-load precondition above is therefore a requirement rather than a formality, and the sub-millisecond figures reported here characterise the enforcement path under that condition rather 
+
+> 12 Bounded Agents: Delegation Security for Multi-Agent AI Systems
+
+than bounding it under contention. All three executions are com-mitted under evals/latency/results/ ; the values in Table 15 are those of the in-protocol run. The 99 delegation-chain scenarios cover scope escalation, bud-get exhaustion, cross-hop composition, blast-radius monotonicity, identity binding at depths 3–7, approval binding with hash integrity (C4), evidence-sink availability and mid-session failure (C5), intent binding (C6), 𝑘 -tuple cross-hop composition, cross-domain compo-sition, sensitivity escalation, expired envelopes, context edge cases, and conjunctive-predicate validation. 
+
+Domain configuration validation. Prior to the final evaluation runs, domain-specific configurations were validated with dedi-cated sanity-check scripts. Three sources of utility loss were dis-tinguished, and only the first two were corrected before freezing results: (i) implementation defects ; (ii) operationally invalid policy ;and (iii) genuine tradeoffs (not corrected). We applied all corrections before the final reported runs. 
+
+## E Reference Schemas and Validation Semantics 
+
+Authorization Envelope. A cryptographically signed artifact cre-ated by infrastructure at session initialization. It carries envelope and task identifiers, timestamps, principal identity and type, execu-tion role, the full scope tuple (𝑅, 𝐴, 𝐷, 𝑋 ), the intent specification Ψ,the delegation budget 𝐵 , policy version, a cryptographic nonce, and an infrastructure-key signature. Narrowed derivatives must satisfy: resources, actions, and data classifications ⊆ parent; pro-hibited compositions ⊇ parent; all budget fields ≤ parent values. Narrowing is irreversible within a session. 
+
+Approval Token. A single-use authorization artifact bound to an exact action instance via a SHA-256 hash of action type, target resource, and parameters. Cross-session replay is invalid. Expired tokens are invalid. uses_remaining is decremented atomically. 
+
+Normative Validation Rules. Nine rules govern all enforcement decisions: (1) Fail Closed : missing data → deny. (2) Conjunctive : all six conditions must pass. (3) Binding Precedence : envelope overrides manifest. (4) Temporal Validity : expired envelope/token/budget →
+
+deny. (5) Action-Hash Integrity : token valid only if hash matches. (6) Budget Precedence : exceeded ceiling → suspend. (7) Evidence Availability : sink unreachable → deny. (8) Composition Timing :checked against full session history. (9) Intent Conformance : strict 
+
+→ deny; warn → admit + log; audit → admit + flag. 
+
+## F Comparison Tables 
+
+Table 16: Standalone coverage of APC properties by existing authorization mechanisms.                                 
+
+> Property OAuth+OPA Prompts Static Manifest APC
+> Scope enforcement (G1) ✓——✓
+> Scope attenuation Partial —Tool-level ✓
+> Composition closure (G2) ———✓
+> Blast-radius mono. (G3) ———✓
+> Approval binding (G4) ———✓
+> Evidence commit. (G5) Partial ——✓
+> Intent binding (G6) ———✓
+
+Table 17: APC versus modern agentic security systems.                              
+
+> Property SEAgent CaMeL Progent APC
+> Data stealing ASR 0% 𝑎 ——0%
+> Composition closure Policy-dep. Dataflow-dep. Policy-dep. Formal 𝑏
+> Blast-radius mono. ——Temporal 𝑐 Structural
+> Multi-hop delegation Partial —Partial 𝑐 ✓
+> Intent binding ———✓
+> 𝑎 As reported by Ji et al. Our simplified simulation yields 1.7% DS ASR.
+> 𝑏 Formal guarantee conditional on completeness of 𝑋 eff .
+> 𝑐 Progent v3 proves one agent’s action space is non-increasing across policy updates (temporal), and discusses unified or per-sub-agent policy layers for multi-agent deployments; neither gives per-hop scope attenuation or cumulative budget inheritance along a delegation chain (structural).
+
+## G Impact Calibration 
+
+Weights 𝑤 𝜌 , 𝑤 𝛽 , 𝑤 𝜎 and threshold 𝜃 in 𝐼 (𝑎 ) = 𝑤 𝜌 · 𝜌 (𝑎 ) + 𝑤 𝛽 ·
+
+𝐵𝑙 (𝑎 ) + 𝑤 𝜎 · 𝑆𝑒 (𝑎 ) are calibrated by three complementary methods: 
+
+(i) Expert elicitation (domain experts rank actions, weights obtained by solving a constrained optimization problem, Kendall’s 𝜏 ≥ 0.8). 
+
+(ii) Bayesian estimation (for organizations with historical incident records). (iii) Sensitivity analysis (𝜃 selected for false-autonomous rate < 1%, approval burden < 15%). 
+
+## H Blast-Radius Calibration 
+
+Each resource 𝑟 is assigned a score blast (𝑟 ) ∈ [ 0, 1] by infrastruc-ture at deployment time: blast (𝑟 ) = 𝑤 𝑠 · scope (𝑟 ) + 𝑤 𝑣 · irrev (𝑟 ) + 𝑤 𝑑 · sens (𝑟 ),
+
+with 𝑤 𝑠 + 𝑤 𝑣 + 𝑤 𝑑 = 1 and 𝑤 𝑠 , 𝑤 𝑣 , 𝑤 𝑑 ≥ 0, where scope (𝑟 ) is the normalized count of affected principals/systems, irrev (𝑟 ) the degree of irreversibility within the recovery-time objective, and sens (𝑟 ) the data-sensitivity classification. The assignment must satisfy monotonicity: if 𝑟 ′ dominates 𝑟 on all three factors then blast (𝑟 ′) ≥ blast (𝑟 ). Default weights: 𝑤 𝑠 = 0.4, 𝑤 𝑣 = 0.4, 𝑤 𝑑 = 0.2. 
+
+Table 18: Illustrative blast scores under default weights.                               
+
+> Resource scope irrev sens blast Rationale
+> User calendar entry 0.1 0.2 0.1 0.14 Single user, recoverable, low sensitivity Shared team document 0.4 0.3 0.6 0.40 Team scope, versioned, confidential Customer PII record 0.6 0.7 1.0 0.72 Broad scope, hard to remediate, restricted Production database 0.9 0.9 0.8 0.88 Org-wide, near-irreversible, restricted External email send 0.7 1.0 0.5 0.78 Unrecallable, broad reach, variable sensitivity
+
+The session ceiling 𝛽 max is derived from the organization’s business-impact analysis for the task class, attenuated at each delegation hop ( 𝛽 max (𝑝 𝑖 ) ≤ 𝛽 max (𝑝 𝑖 −1); conservative default: 
+
+𝛽 max (𝑝 𝑖 ) = 0.7 · 𝛽 max (𝑝 𝑖 −1)). The proof of Theorem 4.6 requires only that blast (𝑟 ) values are consistent across the chain and that 
+
+𝛽 max is non-increasing; the specific values affect only the tightness of the bound. 
+
+> 13
+
+Bounded Agents: Delegation Security for Multi-Agent AI Systems 
+
+## I Code and Data Availability 
+
+The reference implementation, evaluation harnesses, and all domain configurations supporting the reported results are available at https: //github.com/xmuruaga/bounded-agents. 
+
+## References 
+
+[1] AIUC Consortium. 2025. AIUC-1: Security, Safety, and Reliability Standard for AI Agents. [2] Mislav Balunovic et al. 2024. AI Agents with Formal Security Guarantees. In 
+
+ICML Next Generation of AI Safety Workshop .[3] Cloud Security Alliance. 2025. MAESTRO: Multi-Agent Environment, Security, Threat, Risk, and Outcome. [4] Edoardo Debenedetti et al. 2024. AgentDojo: A Dynamic Environment to Evaluate Attacks and Defenses for LLM Agents. arXiv preprint arXiv:2406.13352 (2024). [5] Edoardo Debenedetti et al. 2025. Defeating Prompt Injections by Design. arXiv preprint arXiv:2503.18813 (2025). [6] Dorothy E. Denning. 1976. A Lattice Model of Secure Information Flow. Commun. ACM 19, 5 (1976), 236–243. [7] Jack B. Dennis and Earl C. Van Horn. 1966. Programming Semantics for Multi-programmed Computations. Commun. ACM 9, 3 (1966), 143–155. [8] M. Dziemian et al. 2026. How Vulnerable Are AI Agents to Indirect Prompt Injections? Insights from a Large-Scale Public Competition. arXiv preprint arXiv:2603.15714 (2026). [9] Carl Ellison, Bill Frantz, Butler Lampson, Ron Rivest, Brian Thomas, and Tatu Ylonen. 1999. SPKI Certificate Theory . Technical Report RFC 2693. Internet Engineering Task Force. [10] Vincent C. Hu et al. 2014. Guide to Attribute Based Access Control (ABAC) Definition and Considerations . Technical Report NIST SP 800-162. National Institute of Standards and Technology. [11] Zimo Ji, Daoyuan Wu, Wenyuan Jiang, Pingchuan Ma, Zongjie Li, Yudong Gao, Shuai Wang, and Yingjiu Li. 2026. Taming Various Privilege Escalation in LLM-Based Agent Systems: A Mandatory Access Control Framework. arXiv preprint arXiv:2601.11893 (2026). [12] Michael B. Jones, Anthony Nadalin, Brian Campbell, John Bradley, and Chuck Mortimore. 2020. OAuth 2.0 Token Exchange . Technical Report RFC 8693. Internet Engineering Task Force. [13] Shaun Khoo et al. 2025. With Great Capabilities Come Great Responsibilities: Introducing the Agentic Risk & Capability (ARC) Framework for Governing Agentic AI Systems. arXiv preprint arXiv:2512.22211 (2025). [14] Karolina Korgul et al. 2025. It’s a TRAP! Task-Redirecting Agent Persuasion Benchmark for Web Agents. arXiv preprint arXiv:2512.23128 (2025). [15] Torsten Lodderstedt, Justin Richer, and Brian Campbell. 2023. OAuth 2.0 Rich Authorization Requests . Technical Report RFC 9396. Internet Engineering Task Force. [16] Nada Madkour et al. 2026. Agentic AI Risk-Management Standards Profile . Tech-nical Report. University of California, Berkeley. [17] Mark S. Miller. 2006. Robust Composition: Towards a Unified Approach to Access Control and Concurrency Control . Ph. D. Dissertation. Johns Hopkins University. [18] Andrew C. Myers and Barbara Liskov. 1997. A Decentralized Model for In-formation Flow Control. In ACM Symposium on Operating Systems Principles (SOSP) .[19] Andrew C. Myers and Barbara Liskov. 2000. Protecting Privacy Using the Decen-tralized Label Model. ACM Transactions on Software Engineering and Methodology 
+
+9, 4 (2000), 410–442. [20] OWASP Foundation. 2025. Multi-Agentic System (MAS) Threat Modelling Guide. [21] OWASP Foundation. 2025. OWASP Top 10 for Agentic Applications. [22] OWASP Foundation. 2025. OWASP Top 10 for LLM Applications, v2025. [23] Ruoming Pang et al. 2019. Zanzibar: Google’s Consistent, Global Authorization System. In USENIX Annual Technical Conference (ATC) .[24] M. Rajagopalan and V. Rao. 2026. Authenticated Workflows: A Systems Approach to Protecting Agentic AI. arXiv preprint arXiv:2602.10465 (2026). [25] Scott Rose, Oliver Borchert, Stu Mitchell, and Sean Connelly. 2020. Zero Trust Architecture . Technical Report NIST SP 800-207. National Institute of Standards and Technology. [26] Yangjun Ruan et al. 2024. Identifying the Risks of LM Agents with an LM-Emulated Sandbox. arXiv preprint arXiv:2309.15817 (2024). [27] Ravi S. Sandhu, Edward J. Coyne, Hal L. Feinstein, and Charles E. Youman. 1996. Role-Based Access Control Models. IEEE Computer 29, 2 (1996), 38–47. [28] Tianneng Shi et al. 2025. Progent: Securing AI Agents with Privilege Control. 
+
+arXiv preprint arXiv:2504.11703 (2025). arXiv v3, revised May 2026; our evaluation used the earlier artifact. [29] Tobin South et al. 2025. Authenticated Delegation and Authorized AI Agents. 
+
+arXiv preprint arXiv:2501.09674 (2025). [30] Tobin South et al. 2025. Identity Management for Agentic AI. arXiv preprint arXiv:2510.25819 (2025). [31] Qiusi Zhan et al. 2024. InjecAgent: Benchmarking Indirect Prompt Injections in Tool-Integrated Large Language Model Agents. In Findings of the Association for Computational Linguistics (ACL) .[32] Hanrong Zhang et al. 2024. Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-Based Agents. arXiv preprint arXiv:2410.02644 (2024). [33] Yuxuan Zhu, Antony Kellermann, Akul Gupta, Philip Li, Richard Fang, Rohan Bindu, and Daniel Kang. 2026. Teams of LLM Agents Can Exploit Zero-Day Vulnerabilities. In Proceedings of the Conference of the European Chapter of the Association for Computational Linguistics (EACL) . arXiv:2406.01637. 14
